@@ -1,0 +1,37 @@
+{
+  "root_layer_identifier": "anon:test_stage",
+  "stage_identifier": "anon:test_stage",
+  "default_prim": "/World",
+  "prims": {
+    "/World": {
+      "path": "/World",
+      "type_name": "Xform",
+      "active": true,
+      "defined": true,
+      "instanceable": false,
+      "attributes": {},
+      "relationships": {},
+      "metadata": {}
+    },
+    "/World/Camera": {
+      "path": "/World/Camera",
+      "type_name": "Camera",
+      "active": true,
+      "defined": true,
+      "instanceable": false,
+      "attributes": {
+        "focalLength": {"type_name": "float", "value": 50.0}
+      },
+      "relationships": {},
+      "metadata": {}
+    }
+  },
+  "captured_at_epoch_ms": 1775491200000,
+  "capture_filter": {
+    "include_prim_patterns": ["*"],
+    "exclude_prim_patterns": [],
+    "include_properties": true,
+    "include_metadata": true,
+    "max_prim_count": 10000
+  }
+}

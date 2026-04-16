@@ -1,0 +1,23 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: sync_add_cube
+  name: "Test: Sync Add Cube"
+  tags: [test, smoke]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 10
+    failFast: true
+
+  variables:
+    prim_path: "/World/Cube"
+
+  assert:
+    - id: cube_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+        expected_type_name: Cube

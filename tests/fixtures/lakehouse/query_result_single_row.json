@@ -1,0 +1,21 @@
+{
+  "row_count": 1,
+  "rows": [
+    {
+      "values": {
+        "prim_path": "/World/Cube",
+        "op": "add",
+        "type_name": "Cube",
+        "size": 1.0,
+        "xformOp:translate": [0.0, 0.0, 0.0]
+      }
+    }
+  ],
+  "schema": {
+    "prim_path": "string",
+    "op": "string",
+    "type_name": "string",
+    "size": "double",
+    "xformOp:translate": "double3"
+  }
+}

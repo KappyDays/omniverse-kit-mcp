@@ -1,0 +1,61 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: trigger_sync_cube
+  name: "Trigger Mode: Lakehouse 동기화를 통한 Cube 생성 검증"
+  tags: [smoke, trigger-mode, prim-crud]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 60
+    failFast: true
+
+  variables:
+    batch_id: "2026-04-07-001"
+    prim_path: "/World/Cube"
+
+  arrange:
+    - id: reset_extension
+      module: extension
+      action: reset
+      args:
+        reset_internal_state: true
+        clear_caches: true
+
+  act:
+    - id: sync_extension
+      module: extension
+      action: trigger
+      args:
+        operation: sync_from_lakehouse
+        payload:
+          batch_id: ${variables.batch_id}
+        wait_for_idle: true
+        idle_timeout_s: 30
+
+  assert:
+    - id: cube_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+        expected_type_name: Cube
+
+    - id: cube_position
+      module: stage
+      action: assert_property
+      args:
+        prim_path: ${variables.prim_path}
+        property_name: xformOp:translate
+        comparator: approx
+        expected_value: [0, 0, 0]
+        tolerance: 0.001
+
+  cleanup:
+    - id: cleanup_reset
+      module: extension
+      action: reset
+      args:
+        reset_internal_state: true
+        clear_caches: true

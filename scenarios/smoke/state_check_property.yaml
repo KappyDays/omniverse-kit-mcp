@@ -1,0 +1,53 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: state_check_property
+  name: "State-Check Mode: 이미 동기화된 상태에서 Lakehouse-Stage 교차 검증"
+  tags: [smoke, state-check, cross-validation]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 30
+    failFast: false
+
+  variables:
+    prim_path: "/World/Robot_01"
+    lakehouse_namespace: "production"
+    lakehouse_dataset: "robot_assets"
+
+  assert:
+    - id: query_lakehouse
+      module: lakehouse
+      action: query
+      args:
+        target:
+          namespace: ${variables.lakehouse_namespace}
+          dataset: ${variables.lakehouse_dataset}
+        filters:
+          prim_path: ${variables.prim_path}
+        limit: 1
+
+    - id: robot_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+
+    - id: robot_position
+      module: stage
+      action: assert_property
+      args:
+        prim_path: ${variables.prim_path}
+        property_name: xformOp:translate
+        comparator: approx
+        expected_value: [0, 0, 0]
+        tolerance: 0.01
+
+    - id: robot_active
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+        expected_active: true
