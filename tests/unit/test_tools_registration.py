@@ -14,16 +14,19 @@ def mcp_server():
     return create_mcp_server(config)
 
 
-def test_22_tools_registered(mcp_server):
-    """Verify exactly 22 tools are registered (14 original + 8 WRITE)."""
+def test_25_tools_registered(mcp_server):
+    """Verify exactly 25 tools are registered."""
     tools = mcp_server._tool_manager._tools
-    assert len(tools) == 22, f"Expected 22 tools, got {len(tools)}: {list(tools.keys())}"
+    assert len(tools) == 25, f"Expected 25 tools, got {len(tools)}: {list(tools.keys())}"
 
 
 def test_module_tools_present(mcp_server):
-    """Verify all 17 module tools are registered (9 READ/ASSERT + 8 WRITE)."""
+    """Verify all 20 module tools are registered (3 PROCESS + 9 READ/ASSERT + 8 WRITE)."""
     tools = mcp_server._tool_manager._tools
     expected_module_tools = [
+        "isaac_sim_start",
+        "isaac_sim_stop",
+        "isaac_sim_restart",
         "stage_capture_snapshot",
         "stage_diff_snapshots",
         "stage_assert_prim_exists",
