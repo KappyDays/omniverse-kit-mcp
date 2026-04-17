@@ -60,6 +60,11 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 3. 관련 경계 (다른 CLAUDE.md 포인터)
 ```
 
+**Phase 완료 시 필수 업데이트**
+- 이 파일의 Phase 로드맵 상태 (`❌ 미시작` → `✅ 완료`)
+- 새 tool/endpoint/module이 추가됐다면 변경 파급 매트릭스에 행 추가
+- 관련 하위 CLAUDE.md의 tool 목록·endpoint 목록 동기화
+
 ## Scope-specific CLAUDE.md
 
 디렉토리별 세부 지침은 해당 `CLAUDE.md`를 참조. 서브 에이전트는 작업 디렉토리의 파일을 자동 로드한다.
@@ -74,7 +79,7 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 | `tests/CLAUDE.md` | pytest 단위 테스트 (mock 기반, live E2E 제외) |
 | `scenarios/CLAUDE.md` | YAML 시나리오 저작 가이드 |
 | `setup/CLAUDE.md` | 설치 스크립트 (`.env`, `~/.claude.json` 등록, Extension 활성화) |
-| `docs/references/CLAUDE.md` | Isaac Sim 레퍼런스 — 621 ext 카탈로그 + testbed 스냅샷 + nvidia-docs |
+| `docs/references/CLAUDE.md` | Isaac Sim 레퍼런스 — ext 카탈로그 + testbed 스냅샷 + nvidia-docs |
 
 ## 변경 파급 매트릭스
 
