@@ -41,6 +41,7 @@ CATEGORY_ORDER = [
 
 def _anchor(category: str) -> str:
     slug = category.lower()
+    slug = slug.replace("&", "")  # GitHub strips & before slugifying
     slug = _re.sub(r"[^\w\s-]", "", slug)
     slug = _re.sub(r"\s+", "-", slug.strip())
     slug = _re.sub(r"-+", "-", slug)
@@ -96,7 +97,10 @@ def _render_entry(entry: dict[str, Any]) -> str:
         for sym in entry["key_symbols"]:
             kind = sym.get("kind", "")
             desc = sym.get("desc", "")
-            lines.append(f"  - `{sym['name']}` ({kind}) — {desc}")
+            sym_line = f"  - `{sym['name']}` ({kind})"
+            if desc:
+                sym_line += f" — {desc}"
+            lines.append(sym_line)
 
     if entry.get("dependencies"):
         deps = ", ".join(f"`{d}`" for d in entry["dependencies"])
@@ -111,10 +115,11 @@ def _render_entry(entry: dict[str, Any]) -> str:
     if idea:
         lines.append(f"- **MCP 확장 아이디어**: {idea}")
 
-    if entry.get("enrichment_status") == "skipped":
+    status = entry.get("enrichment_status")
+    if status == "skipped":
         reason = entry.get("skipped_reason", "unknown")
         lines.append(f"- **상태**: skipped ({reason})")
-    elif entry.get("enrichment_status") == "bootstrap":
+    elif status == "bootstrap":
         lines.append("> ⚠️ 미검수 (bootstrap 만 완료)")
 
     lines.append("")
@@ -123,6 +128,10 @@ def _render_entry(entry: dict[str, Any]) -> str:
 
 def _render_category_section(cat: str, entries: list[dict[str, Any]]) -> str:
     lines = [f"## {cat}", ""]
+    if cat == "Deprecated (omni.isaac.*)":
+        lines.append("> ⚠️ **Deprecated Extensions** — Isaac Sim 5.x 에서 제거 예정.")
+        lines.append("> `extsDeprecated/` 디렉토리에 위치. 신규 코드에서 사용 금지.")
+        lines.append("")
     for e in sorted(entries, key=lambda x: x["name"]):
         lines.append(_render_entry(e))
     return "\n".join(lines)
