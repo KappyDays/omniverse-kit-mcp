@@ -55,6 +55,7 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 | `tests/CLAUDE.md` | pytest 단위 테스트 (mock 기반, live E2E 제외) |
 | `scenarios/CLAUDE.md` | YAML 시나리오 저작 가이드 |
 | `setup/CLAUDE.md` | 설치 스크립트 (`.env`, `~/.claude.json` 등록, Extension 활성화) |
+| `docs/references/CLAUDE.md` | Isaac Sim 레퍼런스 — 621 ext 카탈로그 + testbed 스냅샷 + nvidia-docs |
 
 ## Phase 로드맵
 
