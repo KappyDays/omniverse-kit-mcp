@@ -34,8 +34,6 @@ tests/
     └── stage/snapshot_after_add_cube.json
 ```
 
-현재 테스트 수: **34 (2026-04-17 기준)** — Phase A 사후 수정(F1–F5) 회귀 방지를 위해 8 건 추가.
-
 ## 테스트 전략
 
 - **Mock HTTP client**: `IsaacRestClient` / `LakehouseClient` 를 mock 하고 module이 올바른 endpoint 를 호출하는지, 응답을 typed 결과로 잘 변환하는지 검증

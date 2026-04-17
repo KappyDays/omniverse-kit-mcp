@@ -68,31 +68,6 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 
 각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조.
 
-### Extension 카탈로그 수정 (2026-04-18 적용 완료)
-
-`docs/references/` 코드 리뷰에서 발견한 4가지 수정 사항 반영:
-
-1. `extensions.json`: `enrichment_status` 비표준값 60개 (`internal_utility`/`test_harness`/`pip_meta`) → `"skipped"` 정규화. 허용값은 `enriched`/`skipped`/`bootstrap` 3가지뿐.
-2. `harvest-progress.json`: `per_source_counts` 실제 데이터 기반 재산출 (exts:97, extscache:452, extsDeprecated:72)
-3. `render_catalog_md.py`: Deprecated 섹션 경고 배너 추가, `key_symbols` 빈 desc 처리, `&` TOC 앵커 GitHub 호환 수정
-4. `scripts/update_progress.py` 삭제 (batch-1 하드코딩 잔재)
-
-### Phase A 사후 수정 (2026-04-17 적용 완료)
-
-검증 보고서(`docs/phase-a-validation-report.md`)에서 발견한 7 가지 수정 사항 전부 반영·라이브 검증:
-
-1. `_capture_via_replicator` detach 분리 + `omni.kit.viewport.utility.capture_viewport_to_file` fallback — Isaac Sim 5.1 HydraTexture 호환
-2. `ProcessModule.start()` stdout/stderr → `%TEMP%/isaacsim_mcp/kit_*.log` 리다이렉트, `startup_timeout` 240s 로 상향
-3. `(stage, diff_snapshots)` scenario action 추가 — `CONTEXT_AWARE_ACTIONS` 패턴으로 runner가 prior step snapshot 을 ctx 에서 resolve
-4. `isaac_sim_restart` 동작 검증 완료 (live: elapsed 11.7s, caches_cleared 3)
-5. `tests/unit/test_scenario_integration.py` — SimulationModule 라우팅, diff_snapshots, module enum 회귀 방지 (26 → 34 tests)
-6. MCP server import 캐시 문제 우회용 `scripts/run_scenario_standalone.py` / `scripts/run_process_module_standalone.py` 추가
-7. 시나리오 YAML schema enum 에 "simulation" 포함, scenarios/CLAUDE.md 동기화
-
-**Goal:**
-- Goal 1 (최우선): SimReady 로봇 A→B 이동, People 캐릭터 제어, Robot Arm 픽앤플레이스 → Phase B/C로 달성
-- Goal 2: Extension UI workflow 자동 테스트 → Phase D로 달성
-
 ## Key Decisions
 
 - LakehouseModule은 **query only** (inject/cleanup 없음) — 인터뷰 스펙 확정

@@ -21,7 +21,6 @@
 
 - `enrichment_status` 허용값: `"enriched"` / `"skipped"` / `"bootstrap"` 3가지만. 다른 값은 스펙 위반.
 - skipped 항목은 반드시 `skipped_reason` 필드도 함께 설정.
-- 현재 분포 (2026-04-18): enriched 516, skipped 105 (총 621).
 
 ## 카탈로그 재생성 시나리오
 
