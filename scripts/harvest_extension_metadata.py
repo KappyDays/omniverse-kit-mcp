@@ -109,3 +109,101 @@ def assign_category(name: str, source_dir_name: str) -> str:
             if pat.match(name):
                 return category
     return "Misc / Utilities"
+
+
+def extract_readme_excerpt(ext_dir: Path, max_len: int = 300) -> str | None:
+    """<ext>/docs/README.md 의 첫 비어있지 않은 단락을 최대 max_len 자 추출."""
+    readme = ext_dir / "docs" / "README.md"
+    if not readme.exists():
+        return None
+    try:
+        text = readme.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    for paragraph in text.split("\n\n"):
+        para = paragraph.strip()
+        if para and not para.startswith("#"):
+            return para[:max_len]
+    return None
+
+
+def parse_single_extension(ext_dir: Path, source_dir_name: str) -> dict[str, Any]:
+    toml_path = ext_dir / "config" / "extension.toml"
+    if not toml_path.exists():
+        raise FileNotFoundError(f"extension.toml not found in {ext_dir}")
+
+    with toml_path.open("rb") as f:
+        data = tomllib.load(f)
+
+    pkg = data.get("package", {})
+    name = strip_version_tag(ext_dir.name)
+    version = pkg.get("version")
+    title = pkg.get("title")
+    description = (pkg.get("description") or "").strip()
+    keywords = list(pkg.get("keywords", []) or [])
+
+    deps = list((data.get("dependencies") or {}).keys())
+
+    py_section = data.get("python", {}) or {}
+    py_modules_raw = list(py_section.get("module", [])) + list(py_section.get("modules", []))
+    py_modules = [m.get("name") for m in py_modules_raw if isinstance(m, dict) and m.get("name")]
+
+    readme_excerpt = extract_readme_excerpt(ext_dir)
+
+    if description:
+        summary = description
+    elif readme_excerpt:
+        summary = readme_excerpt
+    elif title:
+        summary = title
+    else:
+        summary = "(description not provided)"
+
+    return {
+        "name": name,
+        "version": version,
+        "source_dir": source_dir_name,
+        "path": f"{source_dir_name}/{ext_dir.name}",
+        "raw_dirname": ext_dir.name,
+        "category": assign_category(name, source_dir_name),
+        "title": title,
+        "summary": summary,
+        "public_modules": py_modules,
+        "key_symbols": [],
+        "dependencies": deps,
+        "keywords": keywords,
+        "raw_description": description,
+        "readme_excerpt": readme_excerpt,
+        "testbed_refs": [],
+        "mcp_extension_idea": None,
+        "enrichment_status": "bootstrap",
+        "skipped_reason": None,
+        "harvested_at": dt.datetime.now(dt.UTC).isoformat(),
+        "enriched_at": None,
+    }
+
+
+def make_error_entry(ext_dir: Path, source_dir_name: str, reason: str) -> dict[str, Any]:
+    name = strip_version_tag(ext_dir.name)
+    return {
+        "name": name,
+        "version": None,
+        "source_dir": source_dir_name,
+        "path": f"{source_dir_name}/{ext_dir.name}",
+        "raw_dirname": ext_dir.name,
+        "category": "Error",
+        "title": None,
+        "summary": f"PARSE FAILED: {reason}",
+        "public_modules": [],
+        "key_symbols": [],
+        "dependencies": [],
+        "keywords": [],
+        "raw_description": "",
+        "readme_excerpt": None,
+        "testbed_refs": [],
+        "mcp_extension_idea": None,
+        "enrichment_status": "skipped",
+        "skipped_reason": f"parse_failure: {reason}",
+        "harvested_at": dt.datetime.now(dt.UTC).isoformat(),
+        "enriched_at": None,
+    }
