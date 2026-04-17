@@ -206,3 +206,105 @@ class TestParseSingleExtension:
     def test_extsdeprecated_forces_deprecated_category(self, sample_ext_dir: Path) -> None:
         entry = harvest.parse_single_extension(sample_ext_dir, "extsDeprecated")
         assert entry["category"] == "Deprecated (omni.isaac.*)"
+
+
+@pytest.fixture
+def fake_isaac_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """최소 isaac-sim 디렉토리 구조 (3 source + 각 2 ext)."""
+    root = tmp_path / "isaac_sim"
+    for source_dir, exts in {
+        "exts": ["isaacsim.core.api", "isaacsim.robot.manipulators"],
+        "extscache": [
+            "omni.physx-107.3.26+107.3.3.wx64.r.cp311.u353",
+            "omni.anim.people-0.7.9+107.3.3",
+        ],
+        "extsDeprecated": ["omni.isaac.franka", "omni.isaac.cortex"],
+    }.items():
+        for ext_name in exts:
+            ext_dir = root / source_dir / ext_name
+            (ext_dir / "config").mkdir(parents=True)
+            (ext_dir / "config" / "extension.toml").write_text(
+                f'''
+[package]
+version = "1.0.0"
+title = "{ext_name}"
+description = "Fake description for {ext_name}."
+
+[dependencies]
+''',
+                encoding="utf-8",
+            )
+    return root
+
+
+class TestBootstrap:
+    def test_produces_all_entries(
+        self, fake_isaac_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(harvest, "ISAAC_SIM_ROOT", fake_isaac_root)
+        catalog_json = tmp_path / "extensions.json"
+        progress_json = tmp_path / "harvest-progress.json"
+        monkeypatch.setattr(harvest, "CATALOG_JSON", catalog_json)
+        monkeypatch.setattr(harvest, "PROGRESS_JSON", progress_json)
+
+        harvest.bootstrap(resume=False)
+
+        data = json.loads(catalog_json.read_text(encoding="utf-8"))
+        assert data["metadata"]["total_extensions"] == 6
+        assert data["metadata"]["source_counts"] == {
+            "exts": 2, "extscache": 2, "extsDeprecated": 2
+        }
+        names = sorted(e["name"] for e in data["extensions"])
+        assert names == sorted([
+            "isaacsim.core.api",
+            "isaacsim.robot.manipulators",
+            "omni.physx",
+            "omni.anim.people",
+            "omni.isaac.franka",
+            "omni.isaac.cortex",
+        ])
+        assert [e["name"] for e in data["extensions"]] == sorted(names)
+        cortex_entry = next(e for e in data["extensions"] if e["name"] == "omni.isaac.cortex")
+        assert cortex_entry["category"] == "Deprecated (omni.isaac.*)"
+
+    def test_resume_preserves_existing_entries(
+        self, fake_isaac_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(harvest, "ISAAC_SIM_ROOT", fake_isaac_root)
+        catalog_json = tmp_path / "extensions.json"
+        progress_json = tmp_path / "harvest-progress.json"
+        monkeypatch.setattr(harvest, "CATALOG_JSON", catalog_json)
+        monkeypatch.setattr(harvest, "PROGRESS_JSON", progress_json)
+
+        harvest.bootstrap(resume=False)
+        first = json.loads(catalog_json.read_text(encoding="utf-8"))
+        for e in first["extensions"]:
+            if e["name"] == "isaacsim.core.api":
+                e["mcp_extension_idea"] = "manual-test-marker"
+                e["enrichment_status"] = "enriched"
+        catalog_json.write_text(
+            json.dumps(first, indent=2, sort_keys=True, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        harvest.bootstrap(resume=True)
+        second = json.loads(catalog_json.read_text(encoding="utf-8"))
+        api_entry = next(e for e in second["extensions"] if e["name"] == "isaacsim.core.api")
+        assert api_entry["mcp_extension_idea"] == "manual-test-marker"
+        assert api_entry["enrichment_status"] == "enriched"
+
+    def test_progress_marked_complete(
+        self, fake_isaac_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(harvest, "ISAAC_SIM_ROOT", fake_isaac_root)
+        catalog_json = tmp_path / "extensions.json"
+        progress_json = tmp_path / "harvest-progress.json"
+        monkeypatch.setattr(harvest, "CATALOG_JSON", catalog_json)
+        monkeypatch.setattr(harvest, "PROGRESS_JSON", progress_json)
+
+        harvest.bootstrap(resume=False)
+
+        prog = json.loads(progress_json.read_text(encoding="utf-8"))
+        assert prog["phases"]["bootstrap"]["status"] == "complete"
+        assert prog["phases"]["bootstrap"]["processed"] == 6
+        assert prog["total_extensions"] == 6

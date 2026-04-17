@@ -207,3 +207,136 @@ def make_error_entry(ext_dir: Path, source_dir_name: str, reason: str) -> dict[s
         "harvested_at": dt.datetime.now(dt.UTC).isoformat(),
         "enriched_at": None,
     }
+
+
+def _build_catalog(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    source_counts = {"exts": 0, "extscache": 0, "extsDeprecated": 0}
+    for e in entries:
+        source_counts[e["source_dir"]] = source_counts.get(e["source_dir"], 0) + 1
+    return {
+        "metadata": {
+            "generated_at": dt.datetime.now(dt.UTC).isoformat(),
+            "generator_version": "harvest_extension_metadata.py@1.0",
+            "isaac_sim_root": ISAAC_SIM_ROOT.as_posix(),
+            "isaac_sim_version": "5.1.0-rc.19",
+            "kit_version": "107.3.3",
+            "total_extensions": len(entries),
+            "source_counts": source_counts,
+            "last_enriched_at": max(
+                (e.get("enriched_at") for e in entries if e.get("enriched_at")),
+                default=None,
+            ),
+        },
+        "extensions": entries,
+    }
+
+
+def _load_progress() -> dict[str, Any]:
+    if PROGRESS_JSON.exists():
+        return json.loads(PROGRESS_JSON.read_text(encoding="utf-8"))
+    return {
+        "schema_version": 1,
+        "started_at": dt.datetime.now(dt.UTC).isoformat(),
+        "updated_at": None,
+        "total_extensions": 0,
+        "phases": {
+            "sync_testbed_snapshot": {"status": "pending"},
+            "bootstrap": {"status": "pending", "processed": 0, "errors": []},
+            "enrichment": {
+                "status": "pending",
+                "processed": 0,
+                "remaining": 0,
+                "last_processed": None,
+                "per_source_counts": {
+                    s: {"total": EXPECTED_COUNTS[s], "processed": 0}
+                    for s in SOURCE_DIRS
+                },
+                "errors": [],
+            },
+            "render": {"status": "pending"},
+            "verify": {"status": "pending"},
+        },
+        "notes": "",
+    }
+
+
+def _flush(progress: dict[str, Any], catalog: dict[str, Any]) -> None:
+    progress["updated_at"] = dt.datetime.now(dt.UTC).isoformat()
+    PROGRESS_JSON.parent.mkdir(parents=True, exist_ok=True)
+    PROGRESS_JSON.write_text(
+        json.dumps(progress, indent=2, sort_keys=True, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    CATALOG_JSON.write_text(
+        json.dumps(catalog, indent=2, sort_keys=True, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def bootstrap(resume: bool = False) -> None:
+    CATALOG_JSON.parent.mkdir(parents=True, exist_ok=True)
+
+    progress = _load_progress()
+    progress["phases"]["bootstrap"]["status"] = "running"
+    progress["phases"]["bootstrap"]["errors"] = []
+
+    existing: dict[str, dict[str, Any]] = {}
+    if resume and CATALOG_JSON.exists():
+        prev = json.loads(CATALOG_JSON.read_text(encoding="utf-8"))
+        for e in prev.get("extensions", []):
+            existing[e["name"]] = e
+
+    entries: list[dict[str, Any]] = list(existing.values())
+    known_names = set(existing.keys())
+
+    for source_dir_name in SOURCE_DIRS:
+        source_dir = ISAAC_SIM_ROOT / source_dir_name
+        if not source_dir.exists():
+            progress["phases"]["bootstrap"]["errors"].append({
+                "ext": None, "message": f"source dir missing: {source_dir}",
+                "severity": "warning",
+            })
+            continue
+        for ext_dir in sorted(source_dir.iterdir()):
+            if not ext_dir.is_dir():
+                continue
+            candidate_name = strip_version_tag(ext_dir.name)
+            if candidate_name in known_names:
+                continue
+            try:
+                entry = parse_single_extension(ext_dir, source_dir_name)
+            except Exception as e:  # noqa: BLE001
+                progress["phases"]["bootstrap"]["errors"].append({
+                    "ext": ext_dir.name, "message": str(e), "severity": "error"
+                })
+                entry = make_error_entry(ext_dir, source_dir_name, str(e))
+            entries.append(entry)
+            known_names.add(entry["name"])
+            progress["phases"]["bootstrap"]["processed"] = len(entries)
+            if progress["phases"]["bootstrap"]["processed"] % 50 == 0:
+                _flush(progress, _build_catalog(sorted(entries, key=lambda x: x["name"])))
+
+    entries.sort(key=lambda e: e["name"])
+    catalog = _build_catalog(entries)
+    progress["phases"]["bootstrap"]["status"] = "complete"
+    progress["phases"]["bootstrap"]["completed_at"] = dt.datetime.now(dt.UTC).isoformat()
+    progress["total_extensions"] = len(entries)
+
+    pending = sum(1 for e in entries if e["enrichment_status"] == "bootstrap")
+    progress["phases"]["enrichment"]["remaining"] = pending
+
+    _flush(progress, catalog)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--resume", action="store_true",
+                        help="기존 extensions.json 의 엔트리 보존하고 누락된 것만 추가")
+    args = parser.parse_args()
+    bootstrap(resume=args.resume)
+    print(f"Bootstrap complete. See {CATALOG_JSON.as_posix()}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
