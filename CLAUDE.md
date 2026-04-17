@@ -37,9 +37,10 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 
 ## 설계 원칙
 
-**Isaac Sim 조작과 관련된 모든 기능은 MCP tool로 제공한다.**
-프로세스 실행/종료, Scene 조작, 시뮬레이션 제어, Viewport 캡처 등
-Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
+**Isaac Sim GUI 유저가 할 수 있는 모든 것을 Claude Code 도 MCP tool 로 할 수 있어야 한다.**
+Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File menu / Simready Explorer 등 어떤 경로로든 유저가 수행하는 동작은 MCP tool 로 동등하게 제공하며, 없으면 Phase 진행 과정에서 필요 시점에 바로 추가한다. 프로세스 실행/종료, Scene 조작, 시뮬레이션 제어, Viewport 캡처, 파일 입출력, 선택 상태 모두 Claude Code 가 완전 자율 제어할 수 있어야 한다.
+
+Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션, Extension UI 자동화 등) 도입 시, "GUI 유저가 할 수 있는 것 중 MCP 에 아직 없는 것"을 항상 먼저 식별하고 보완한다.
 
 ## CLAUDE.md 작성 규칙
 
@@ -75,7 +76,7 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 | `src/isaacsim_mcp/CLAUDE.md` | FastMCP 서버 패키지 루트 (entry flow, 타입 경계, clients 통신 규약) |
 | `src/isaacsim_mcp/modules/CLAUDE.md` | 도메인 모듈 — 모듈 책임 매트릭스, REST 응답 특성(Integration Facts), kit.exe 런타임 플래그 |
 | `src/isaacsim_mcp/scenario/CLAUDE.md` | 시나리오 엔진 — Arrange/Act/Assert/Cleanup 내부 |
-| `src/isaacsim_mcp/tools/CLAUDE.md` | MCP tool 등록 규약 + 전체 25개 tool 목록 |
+| `src/isaacsim_mcp/tools/CLAUDE.md` | MCP tool 등록 규약 + 전체 38개 tool 목록 |
 | `tests/CLAUDE.md` | pytest 단위 테스트 (mock 기반, live E2E 제외) |
 | `scenarios/CLAUDE.md` | YAML 시나리오 저작 가이드 |
 | `setup/CLAUDE.md` | 설치 스크립트 (`.env`, `~/.claude.json` 등록, Extension 활성화) |
@@ -87,10 +88,13 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 
 | 변경 대상 | 함께 수정해야 하는 곳 |
 |-----------|----------------------|
-| REST 엔드포인트 추가 (`isaac_extension/`) | `tools/` — MCP tool 등록 / `tests/` — tool 등록 테스트 |
-| 새 module 메서드 (`modules/`) | `scenario/action_registry.py` + `scenarios/schema/scenario.schema.json` + `scenario/schema.py` / `tests/` |
-| 새 MCP tool (`tools/`) | `isaac_extension/` — REST 엔드포인트 / `tests/unit/test_tools_registration.py` |
+| REST 엔드포인트 추가 (`isaac_extension/`) | `clients/isaac_rest_client.py` + `tools/` — MCP tool 등록 / `tests/` — tool 등록 테스트 |
+| 새 module 추가 (`modules/`) | `types/common.py` ModuleName enum + `scenario/schema.py` + `scenarios/schema/scenario.schema.json` enum + `scenario/runner.py` dispatch dict + `scenario_tools.py` register 시그니처 + `mcp/server.py` wiring |
+| 새 module 메서드 | `scenario/action_registry.py` (typed request 빌더) 또는 **kwargs 폴백 허용 / `tests/` |
+| 새 MCP tool (`tools/`) | `isaac_extension/` — REST 엔드포인트 / `tests/unit/test_tools_registration.py` 의 expected count 와 list |
 | scenario action 추가 | `action_registry.py` + `scenario.schema.json` + `schema.py` 3곳 동시 수정 / `tests/unit/test_scenario_integration.py` |
+| context-aware action 추가 | `action_registry.py` `CONTEXT_AWARE_ACTIONS` + `runner._execute_context_aware` 분기 / 필요 시 ctx 에서 선행 step data 해소 |
+| ASYNC Job 동작 추가 | Extension `services/job_service.py` 의 `start_job(coro_factory)` 사용 / try-except 필수 (silent catch 금지) / tool 은 job_id 반환, Claude Code 가 `job_status` 폴링 |
 | CLAUDE.md에 새 디렉토리 추가 | 이 매트릭스 업데이트 + 관련 경계 양방향 확인 |
 
 ## Phase 로드맵
@@ -98,9 +102,9 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 | Phase | 내용 | 상태 | 산출물 |
 |-------|------|------|--------|
 | **A** | Extension WRITE + REST 실구현, 25 MCP tool | ✅ 완료 + E2E 검증 (2026-04-17, `docs/phase-a-validation-report.md`) | 17 endpoint, 25 tool, scenario 엔진 simulation 모듈 주입, viewport/process 호환성 수정 |
-| **B** | 로봇 제어 (`SingleArticulation`) + ASYNC Job 패턴 | ❌ 미시작 | +5 tool 예정 (총 30) |
-| **C** | 캐릭터 + 애니메이션 (`CharacterUtil`, `AnimationGraph`) | ❌ 미시작 | +3 tool 예정 (총 33) |
-| **D** | Extension UI 자동화 (`omni.kit.ui_test`) — Goal 2 | ❌ 미시작 | +4 tool 예정 (총 37) |
+| **B** | 로봇 제어 (`SingleArticulation`) + ASYNC Job 패턴 + Asset Browser + GUI 동등성 (File/Selection/Camera) | ✅ 완료 (2026-04-18, `docs/phase-b-validation-report.md`) | +13 endpoint (30), +13 tool (38), Robot/Job/Asset 모듈, ModuleName.ROBOT/JOB/ASSET, `job.status` context-aware polling + `job_cancel`, articulation 사전 검증 (재귀) + 자동 initialize, REST 에러 detail 전파, `asset_list` (Asset Browser S3 카탈로그), `stage_save/open/new` + `stage_get/set_selection` + `viewport_set_active_camera` (GUI File menu / Stage panel / Viewport toolbar 동등) — Camera/DistantLight 도 `stage_create_prim` 으로 생성 가능, test SoT 전환, `continueOnFailure` terminal-status semantics 변경 |
+| **C** | 캐릭터 + 애니메이션 (`CharacterUtil`, `AnimationGraph`) | ❌ 미시작 | +3 tool 예정 (총 34) |
+| **D** | Extension UI 자동화 (`omni.kit.ui_test`) — Goal 2 | ❌ 미시작 | +4 tool 예정 (총 38) |
 
 각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조.
 
@@ -114,6 +118,11 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 - Stage WRITE 액션(`stage_load_usd`, `stage_set_property`, `stage_create_prim`, `stage_delete_prim`)은 `ModuleName.SIMULATION` 아래 등록 — 툴 layer 와 일치(SimulationModule 이 실제 구현)
 - **MCP server 는 Claude Code 세션 시작 시 Python import 를 캐시**. `src/isaacsim_mcp/` 코드 변경은 Claude Code 재시작 전까지 반영 안 됨. 세션 중 검증하려면 `scripts/run_scenario_standalone.py` / `scripts/run_process_module_standalone.py` 사용 (Extension 코드는 kit.exe 재기동으로 즉시 반영)
 - ProcessModule 은 kit.exe stdout/stderr 를 `%TEMP%/isaacsim_mcp/kit_<epoch>.log` 로 리다이렉트 — OS pipe 버퍼 포화로 인한 기동 정지 방지
+- **`continueOnFailure: true` 는 phase terminal status 에 영향 주지 않음** (2026-04-18 수정). 해당 step 이 FAILED/ERROR 여도 phase 는 계속 진행하고 terminal 판정에서 제외 — 옵셔널 동작 (articulation 없는 USD 에 `robot.set_joint_positions` 시도 등) 을 표현할 때 사용
+- **ASYNC Job 패턴**: Extension `JobService` 가 `asyncio.create_task` 로 background 실행, in-memory dict (`job_id → {status, progress, result, error}`) + TTL 1h cleanup. MCP tool `robot_navigate_to` 는 job_id 즉시 반환, `job_status` polling, `job_cancel` 로 취소. Scenario 에서는 `job.status` (context-aware) 가 `navigate_step_id` 로 ctx 의 RobotNavigateResult.job_id 를 resolve. Extension 재시작 시 in-flight job 전부 손실 (REST 404) — 장기 작업은 MCP 측에서 재시도 책임
+- **Articulation strict**: `robot.get/set_joint_positions` 는 Extension `robot_service._assert_articulation()` 으로 PhysxArticulationAPI 없으면 HTTP 400 raise. Silent no-op 방지 (Phase B live 에서 torus.usd 로 확인된 이슈). Optional step 은 scenario 에서 `continueOnFailure: true` 로 감쌀 것
+- **Test SoT 전환**: `test_tools_registration.py` 는 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset 을 SoT 로 두고 count assertion 은 `len()` 으로 유도. Phase 추가 시 list 만 수정 → literal count 추적 불필요
+- **Asset catalog 접근 (Phase B+)**: Isaac Sim 5.1 의 `isaacsim.storage.native.get_assets_root_path()` 가 기본으로 공개 S3 bucket (`https://omniverse-content-production.s3...amazonaws.com/Assets/Isaac/5.1`) 반환 — Nucleus 없이도 Franka / UR / Jetbot 등 공식 USD 접근 가능. `asset_list` MCP tool 이 `omni.client.list` 로 이 경로의 디렉토리 listing 을 MCP 경계로 노출 → GUI Asset Browser 와 동일한 카탈로그를 Claude Code 가 탐색할 수 있다. 카테고리: `robots` / `environments` / `props` / `people` / `materials` / `isaaclab` (mirror of `isaacsim.asset.browser` config)
 
 ## Environment Variables
 
@@ -131,8 +140,8 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 
 진행 순서:
 - **Step 1** — Phase A 도구 end-to-end 검증 ✅ 완료 (`docs/phase-a-validation-report.md`)
-- **Step 2** — Phase B 로봇 제어 + ASYNC Job 패턴  ← 다음 세션에서 여기서 시작
-- **Step 3** — Phase C 캐릭터 + AnimationGraph
+- **Step 2** — Phase B 로봇 제어 + ASYNC Job 패턴 ✅ 완료 (`docs/phase-b-validation-report.md`)
+- **Step 3** — Phase C 캐릭터 + AnimationGraph  ← 다음 세션에서 여기서 시작
 - **Step 4** — Phase D Extension UI 자동화 + KKR-A 실전 테스트
 
 새 세션 시작 시 작업 디렉토리(`~/workspace/Isaac-sim-MCP/`)의 이 CLAUDE.md가 자동 로드됨. testbed의 `src/isaac_sim_testbed/CLAUDE.md` (API 특이사항 1-17)는 Phase B/C 진입 시 별도 참조 필요.

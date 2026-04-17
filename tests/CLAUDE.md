@@ -24,8 +24,12 @@ tests/
 │   ├── test_lakehouse_module.py
 │   ├── test_stage_module.py
 │   ├── test_viewport_module.py
+│   ├── test_robot_module.py           # Phase B: load / get/set joints / navigate
+│   ├── test_job_module.py             # Phase B: async job status polling + cancel
+│   ├── test_asset_module.py           # Phase B+: S3 catalog listing (GUI Asset Browser 동등)
+│   └── (GUI-equiv live 검증은 scripts/live_test_gui_equiv.py — unit tests 는 mock 기반이라 save/open 등 파일시스템 의존 기능은 live 전용)
 │   ├── test_scenario_runner.py        # loader/compiler 단위
-│   ├── test_scenario_integration.py   # runner 통합 (SimulationModule routing, diff_snapshots ctx)
+│   ├── test_scenario_integration.py   # runner 통합 (SimulationModule routing, diff_snapshots ctx, robot/job)
 │   └── test_tools_registration.py
 └── fixtures/
     ├── lakehouse/query_result_single_row.json
@@ -38,8 +42,8 @@ tests/
 
 - **Mock HTTP client**: `IsaacRestClient` / `LakehouseClient` 를 mock 하고 module이 올바른 endpoint 를 호출하는지, 응답을 typed 결과로 잘 변환하는지 검증
 - **Fixture 파일**: 실 응답과 똑같은 JSON/YAML 스냅샷을 `fixtures/`에 두고 mock 반환값으로 주입
-- **Scenario runner**: 모든 모듈을 mock 한 상태로 state_machine 흐름(Arrange→Act→Assert→Cleanup, Cleanup finally 보장) 검증
-- **Tool registration**: `test_tools_registration.py` — 25개 tool이 FastMCP에 모두 등록되는지, 이름/docstring/signature 규약 준수 여부 확인
+- **Scenario runner**: 모든 모듈을 mock 한 상태로 state_machine 흐름(Arrange→Act→Assert→Cleanup, Cleanup finally 보장) 검증. `continueOnFailure: true` 는 phase terminal 에 영향 주지 않음 — helper `_phase_has_fatal_failure()` 로 분기
+- **Tool registration**: `test_tools_registration.py` — `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset 을 SoT 로 두고 registered set 과 정확히 일치하는지 검증. 누락/초과 모두 FAIL. count assertion 은 `len(EXPECTED_ALL_TOOLS)` 로 유도 → Phase 추가 시 literal 수정 불필요
 
 ## 범위 제한 (IMPORTANT)
 
