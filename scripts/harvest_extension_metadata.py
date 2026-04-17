@@ -127,13 +127,50 @@ def extract_readme_excerpt(ext_dir: Path, max_len: int = 300) -> str | None:
     return None
 
 
+def _parse_toml_raw_fallback(toml_path: Path) -> dict[str, Any]:
+    """tomllib.TOMLDecodeError 발생 시 raw 텍스트로 [package] 핵심 필드만 추출.
+
+    이중 선언 등 TOML 스펙 위반 파일에 대한 우회책. 첫 번째 등장 값만 취한다.
+    """
+    text = toml_path.read_text(encoding="utf-8", errors="replace")
+
+    def _str_val(key: str, src: str) -> str:
+        m = re.search(rf'^\s*{re.escape(key)}\s*=\s*["\']([^"\']*)["\']', src, re.MULTILINE)
+        return m.group(1).strip() if m else ""
+
+    pkg_m = re.search(r"^\[package\](.*?)(?=^\[|\Z)", text, re.MULTILINE | re.DOTALL)
+    pkg_text = pkg_m.group(1) if pkg_m else text
+
+    kw_m = re.search(r"^\s*keywords\s*=\s*\[([^\]]*)\]", pkg_text, re.MULTILINE | re.DOTALL)
+    keywords = re.findall(r'"([^"]+)"', kw_m.group(1)) if kw_m else []
+
+    deps_m = re.search(r"^\[dependencies\](.*?)(?=^\[|\Z)", text, re.MULTILINE | re.DOTALL)
+    deps = re.findall(r'^\s*"([^"]+)"\s*=', deps_m.group(1), re.MULTILINE) if deps_m else []
+
+    py_modules = re.findall(r'^\s*name\s*=\s*"([^"]+)"', text, re.MULTILINE)
+
+    return {
+        "package": {
+            "version": _str_val("version", pkg_text) or None,
+            "title": _str_val("title", pkg_text) or None,
+            "description": _str_val("description", pkg_text),
+            "keywords": keywords,
+        },
+        "dependencies": {d: {} for d in deps},
+        "python": {"module": [{"name": m} for m in py_modules]},
+    }
+
+
 def parse_single_extension(ext_dir: Path, source_dir_name: str) -> dict[str, Any]:
     toml_path = ext_dir / "config" / "extension.toml"
     if not toml_path.exists():
         raise FileNotFoundError(f"extension.toml not found in {ext_dir}")
 
-    with toml_path.open("rb") as f:
-        data = tomllib.load(f)
+    try:
+        with toml_path.open("rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError:
+        data = _parse_toml_raw_fallback(toml_path)
 
     pkg = data.get("package", {})
     name = strip_version_tag(ext_dir.name)

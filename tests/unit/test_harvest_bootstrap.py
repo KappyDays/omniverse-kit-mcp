@@ -207,6 +207,35 @@ class TestParseSingleExtension:
         entry = harvest.parse_single_extension(sample_ext_dir, "extsDeprecated")
         assert entry["category"] == "Deprecated (omni.isaac.*)"
 
+    def test_fallback_on_toml_decode_error(self, tmp_path: Path) -> None:
+        """TOML 이중 선언 등 파싱 실패 시 raw 텍스트 우회로 Error 카테고리가 되지 않는다."""
+        ext_dir = tmp_path / "omni.anim.broken-1.0.0"
+        (ext_dir / "config").mkdir(parents=True)
+        (ext_dir / "config" / "extension.toml").write_text(
+            "[package]\nversion = \"1.0.0\"\ntitle = \"Broken TOML\"\ndescription = \"duplicate section test\"\n\n"
+            "[package]\ndescription = \"duplicate — invalid TOML\"\n",
+            encoding="utf-8",
+        )
+        entry = harvest.parse_single_extension(ext_dir, "extscache")
+        assert entry["category"] != "Error"
+        assert entry["version"] == "1.0.0"
+        assert entry["title"] == "Broken TOML"
+        assert entry["enrichment_status"] == "bootstrap"
+
+    def test_fallback_extracts_dependencies(self, tmp_path: Path) -> None:
+        """raw fallback이 [dependencies] 섹션도 올바르게 추출한다."""
+        ext_dir = tmp_path / "omni.broken.deps-2.0.0"
+        (ext_dir / "config").mkdir(parents=True)
+        (ext_dir / "config" / "extension.toml").write_text(
+            "[package]\nversion = \"2.0.0\"\ntitle = \"Deps Test\"\n\n"
+            "[package]\ntitle = \"duplicate\"\n\n"
+            "[dependencies]\n\"omni.kit.core\" = {}\n\"omni.physx\" = {}\n",
+            encoding="utf-8",
+        )
+        entry = harvest.parse_single_extension(ext_dir, "extscache")
+        assert "omni.kit.core" in entry["dependencies"]
+        assert "omni.physx" in entry["dependencies"]
+
 
 @pytest.fixture
 def fake_isaac_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
