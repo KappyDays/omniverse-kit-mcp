@@ -93,6 +93,63 @@ class MockIsaacRestClient:
         self.calls.append(("extension_reset", request))
         return self.responses.get("extension_reset", {"enabled": True, "busy": False, "last_operation": None, "last_error": None, "reset_token": None, "state_version": 0})
 
+    # Stage WRITE operations (backed by SimulationModule in production)
+
+    async def stage_load_usd(self, request: dict) -> dict:
+        self.calls.append(("stage_load_usd", request))
+        return self.responses.get(
+            "stage_load_usd",
+            {"ok": True, "prim_path": request.get("prim_path", ""), "type_name": "Xform", "has_children": True},
+        )
+
+    async def stage_set_property(self, request: dict) -> dict:
+        self.calls.append(("stage_set_property", request))
+        return self.responses.get(
+            "stage_set_property",
+            {"ok": True, "prim_path": request.get("prim_path", ""), "property_name": request.get("property_name", ""), "value": request.get("value")},
+        )
+
+    async def stage_create_prim(self, request: dict) -> dict:
+        self.calls.append(("stage_create_prim", request))
+        return self.responses.get(
+            "stage_create_prim",
+            {"ok": True, "prim_path": request.get("prim_path", ""), "prim_type": request.get("prim_type", "Xform")},
+        )
+
+    async def stage_delete_prim(self, prim_path: str) -> dict:
+        self.calls.append(("stage_delete_prim", {"prim_path": prim_path}))
+        return self.responses.get("stage_delete_prim", {"ok": True, "prim_path": prim_path})
+
+    # Simulation timeline
+
+    async def simulation_play(self) -> dict:
+        self.calls.append(("simulation_play", {}))
+        return self.responses.get(
+            "simulation_play",
+            {"is_playing": True, "is_stopped": False, "current_time": 0.0, "start_time": 0.0, "end_time": 10.0, "time_codes_per_second": 24.0},
+        )
+
+    async def simulation_pause(self) -> dict:
+        self.calls.append(("simulation_pause", {}))
+        return self.responses.get(
+            "simulation_pause",
+            {"is_playing": False, "is_stopped": False, "current_time": 1.0, "start_time": 0.0, "end_time": 10.0, "time_codes_per_second": 24.0},
+        )
+
+    async def simulation_stop(self) -> dict:
+        self.calls.append(("simulation_stop", {}))
+        return self.responses.get(
+            "simulation_stop",
+            {"is_playing": False, "is_stopped": True, "current_time": 0.0, "start_time": 0.0, "end_time": 10.0, "time_codes_per_second": 24.0},
+        )
+
+    async def simulation_status(self) -> dict:
+        self.calls.append(("simulation_status", {}))
+        return self.responses.get(
+            "simulation_status",
+            {"is_playing": False, "is_stopped": True, "current_time": 0.0, "start_time": 0.0, "end_time": 10.0, "time_codes_per_second": 24.0},
+        )
+
     async def close(self) -> None:
         pass
 

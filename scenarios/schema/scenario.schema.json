@@ -46,7 +46,7 @@
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string" },
-        "module": { "type": "string", "enum": ["stage", "viewport", "lakehouse", "extension"] },
+        "module": { "type": "string", "enum": ["stage", "viewport", "lakehouse", "extension", "simulation"] },
         "action": { "type": "string" },
         "args": { "type": "object" },
         "timeoutSeconds": { "type": "number", "minimum": 1 },

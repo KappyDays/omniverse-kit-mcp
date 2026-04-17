@@ -1,0 +1,94 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: full_pipeline
+  name: "Smoke: Cube lifecycle (create → move → simulate → assert → cleanup)"
+  tags: [smoke, full-pipeline, phase-a]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 60
+    failFast: true
+
+  variables:
+    prim_path: "/World/TestCube"
+    initial_position: [0.0, 0.0, 0.0]
+    moved_position: [1.5, 2.5, 0.5]
+
+  arrange:
+    - id: create_cube
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.prim_path}
+        prim_type: Cube
+        position: ${variables.initial_position}
+
+    - id: snapshot_before_move
+      module: stage
+      action: capture_snapshot
+      args:
+        include_prim_patterns: ["/World/TestCube"]
+        include_properties: true
+
+  act:
+    - id: move_cube
+      module: simulation
+      action: stage_set_property
+      args:
+        prim_path: ${variables.prim_path}
+        property_name: xformOp:translate
+        value: ${variables.moved_position}
+        type_hint: Vec3d
+
+    - id: play_timeline
+      module: simulation
+      action: play
+      args: {}
+
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+  assert:
+    - id: cube_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+        expected_type_name: Cube
+
+    - id: cube_moved_to_target
+      module: stage
+      action: assert_property
+      args:
+        prim_path: ${variables.prim_path}
+        property_name: xformOp:translate
+        comparator: approx
+        expected_value: ${variables.moved_position}
+        tolerance: 0.001
+
+    - id: snapshot_after_move
+      module: stage
+      action: capture_snapshot
+      args:
+        include_prim_patterns: ["/World/TestCube"]
+        include_properties: true
+
+    - id: diff_before_after
+      module: stage
+      action: diff_snapshots
+      args:
+        before_step_id: snapshot_before_move
+        after_step_id: snapshot_after_move
+        min_changes: 1
+        max_changes: 50
+
+  cleanup:
+    - id: delete_cube
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}

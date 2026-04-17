@@ -6,7 +6,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
 
 $RepoUrl    = "https://github.com/KappyDays/Isaac-sim-MCP.git"
-$RepoDir    = Join-Path $env:USERPROFILE "workspace\branch\Isaac-sim-MCP"
+$RepoDir    = Join-Path $env:USERPROFILE "workspace\Isaac-sim-MCP"
 $ClaudeJson = Join-Path $env:USERPROFILE ".claude.json"
 $McpName    = "isaacsim-mcp"
 

@@ -1,0 +1,52 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: usd_load_robot
+  name: "Smoke: USD load (local asset) → prim exists → position verified"
+  tags: [smoke, usd-load, phase-a]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 90
+    failFast: true
+
+  variables:
+    # Local Isaac Sim asset — avoids Nucleus auth. Override with input_overrides
+    # to test Franka / SimReady USDs when omniverse:// is available.
+    usd_url: "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/exts/isaacsim.asset.importer.urdf/data/urdf/tests/test_usd/torus.usd"
+    prim_path: "/World/TestAsset"
+    load_position: [1.0, 2.0, 0.5]
+
+  arrange:
+    - id: load_robot_usd
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.usd_url}
+        prim_path: ${variables.prim_path}
+        position: ${variables.load_position}
+
+  assert:
+    - id: robot_prim_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+
+    - id: robot_position_verified
+      module: stage
+      action: assert_property
+      args:
+        prim_path: ${variables.prim_path}
+        property_name: xformOp:translate
+        comparator: approx
+        expected_value: ${variables.load_position}
+        tolerance: 0.001
+
+  cleanup:
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}
