@@ -76,6 +76,18 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 | `setup/CLAUDE.md` | 설치 스크립트 (`.env`, `~/.claude.json` 등록, Extension 활성화) |
 | `docs/references/CLAUDE.md` | Isaac Sim 레퍼런스 — 621 ext 카탈로그 + testbed 스냅샷 + nvidia-docs |
 
+## 변경 파급 매트릭스
+
+새 기능 추가 시 함께 수정해야 하는 곳. 서브에이전트 프롬프트 작성 전 확인.
+
+| 변경 대상 | 함께 수정해야 하는 곳 |
+|-----------|----------------------|
+| REST 엔드포인트 추가 (`isaac_extension/`) | `tools/` — MCP tool 등록 / `tests/` — tool 등록 테스트 |
+| 새 module 메서드 (`modules/`) | `scenario/action_registry.py` + `scenarios/schema/scenario.schema.json` + `scenario/schema.py` / `tests/` |
+| 새 MCP tool (`tools/`) | `isaac_extension/` — REST 엔드포인트 / `tests/unit/test_tools_registration.py` |
+| scenario action 추가 | `action_registry.py` + `scenario.schema.json` + `schema.py` 3곳 동시 수정 / `tests/unit/test_scenario_integration.py` |
+| CLAUDE.md에 새 디렉토리 추가 | 이 매트릭스 업데이트 + 관련 경계 양방향 확인 |
+
 ## Phase 로드맵
 
 | Phase | 내용 | 상태 | 산출물 |
