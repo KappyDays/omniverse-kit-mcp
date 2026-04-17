@@ -68,6 +68,15 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 
 각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조.
 
+### Extension 카탈로그 수정 (2026-04-18 적용 완료)
+
+`docs/references/` 코드 리뷰에서 발견한 4가지 수정 사항 반영:
+
+1. `extensions.json`: `enrichment_status` 비표준값 60개 (`internal_utility`/`test_harness`/`pip_meta`) → `"skipped"` 정규화. 허용값은 `enriched`/`skipped`/`bootstrap` 3가지뿐.
+2. `harvest-progress.json`: `per_source_counts` 실제 데이터 기반 재산출 (exts:97, extscache:452, extsDeprecated:72)
+3. `render_catalog_md.py`: Deprecated 섹션 경고 배너 추가, `key_symbols` 빈 desc 처리, `&` TOC 앵커 GitHub 호환 수정
+4. `scripts/update_progress.py` 삭제 (batch-1 하드코딩 잔재)
+
 ### Phase A 사후 수정 (2026-04-17 적용 완료)
 
 검증 보고서(`docs/phase-a-validation-report.md`)에서 발견한 7 가지 수정 사항 전부 반영·라이브 검증:

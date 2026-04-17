@@ -17,6 +17,12 @@
 - `testbed-snapshot/` 은 **읽기 전용**. 수정하면 `sync_testbed_snapshot.py` 재실행 시 손실됨.
 - `CLAUDE.md` (이 파일) 와 `testbed-snapshot/CLAUDE.md` 는 **다른 파일** — 후자는 testbed 원본 스냅샷.
 
+## extensions.json 스키마 주의사항
+
+- `enrichment_status` 허용값: `"enriched"` / `"skipped"` / `"bootstrap"` 3가지만. 다른 값은 스펙 위반.
+- skipped 항목은 반드시 `skipped_reason` 필드도 함께 설정.
+- 현재 분포 (2026-04-18): enriched 516, skipped 105 (총 621).
+
 ## 카탈로그 재생성 시나리오
 
 | 상황 | 명령 |
