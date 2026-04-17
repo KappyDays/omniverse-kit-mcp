@@ -41,6 +41,25 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 프로세스 실행/종료, Scene 조작, 시뮬레이션 제어, Viewport 캡처 등
 Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 
+## CLAUDE.md 작성 규칙
+
+**포함 기준** — 코드를 읽어도 알 수 없는 내용만 적는다.
+- 아키텍처 결정 + 그 이유 (이유 없는 결정은 판단 불가)
+- 비명시적 제약과 위험한 함정
+- 새 세션에서 이 디렉토리 작업을 시작할 때 반드시 먼저 알아야 하는 것
+
+**제외 기준**
+- 변경 이력 / 패치 노트 → git commit message
+- 시점 스냅샷 데이터 (테스트 수, 측정값, 날짜 기준 수치) → 항상 부정확해짐
+- 코드를 읽으면 알 수 있는 내용 → 코드 주석
+
+**각 하위 CLAUDE.md 구조**
+```
+1. 이 디렉토리가 하는 일 (1-2 문장)
+2. 비명시적 규칙 / 제약 / 결정 (이유 포함)
+3. 관련 경계 (다른 CLAUDE.md 포인터)
+```
+
 ## Scope-specific CLAUDE.md
 
 디렉토리별 세부 지침은 해당 `CLAUDE.md`를 참조. 서브 에이전트는 작업 디렉토리의 파일을 자동 로드한다.
@@ -91,7 +110,7 @@ Claude Code가 Isaac Sim을 완전 자율 제어할 수 있어야 한다.
 
 ## 다음 세션 작업
 
-각 Phase 진행은 별도 세션(컨텍스트 클린)에서 시작. 각 Step 프롬프트는 Notion **"Isaac Sim MCP"** 페이지 하단의 `# 다음 세션 프롬프트 — Phase A 검증 + Phase B/C/D 순차 진행 (2026-04-17)` 섹션 참조.
+각 Phase 진행은 별도 세션(컨텍스트 클린)에서 시작. 각 Step 프롬프트는 Notion **"Isaac Sim MCP"** 페이지 하단의 세부 페이지로 나뉘어 작성되어 있음.
 
 진행 순서:
 - **Step 1** — Phase A 도구 end-to-end 검증 ✅ 완료 (`docs/phase-a-validation-report.md`)
