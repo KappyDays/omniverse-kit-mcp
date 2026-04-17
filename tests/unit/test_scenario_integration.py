@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import pytest
 
+from isaacsim_mcp.modules.asset_module import AssetModule
 from isaacsim_mcp.modules.extension_module import ExtensionModule
+from isaacsim_mcp.modules.job_module import JobModule
 from isaacsim_mcp.modules.lakehouse_module import LakehouseModule
+from isaacsim_mcp.modules.robot_module import RobotModule
 from isaacsim_mcp.modules.simulation_module import SimulationModule
 from isaacsim_mcp.modules.stage_module import StageModule
 from isaacsim_mcp.modules.viewport_module import ViewportModule
@@ -29,7 +32,12 @@ def _build_runner(isaac_client, lakehouse_client):
     lakehouse = LakehouseModule(lakehouse_client)
     extension = ExtensionModule(isaac_client)
     simulation = SimulationModule(isaac_client)
-    return ScenarioRunner(stage, viewport, lakehouse, extension, simulation)
+    robot = RobotModule(isaac_client)
+    job = JobModule(isaac_client)
+    asset = AssetModule(isaac_client)
+    return ScenarioRunner(
+        stage, viewport, lakehouse, extension, simulation, robot, job, asset,
+    )
 
 
 def test_action_registry_routes_stage_writes_to_simulation():
@@ -176,3 +184,203 @@ async def test_diff_snapshots_missing_before_step_errors_out():
     diff_result = next(r for r in summary.step_results if r.step_id == "diff_missing")
     assert diff_result.status == ExecutionStatus.ERROR
     assert "no snapshot data" in (diff_result.message or "").lower()
+
+
+# ---------------------------------------------------------------------------
+# Phase B: Robot + Job routing + context-aware job.status
+# ---------------------------------------------------------------------------
+
+def test_module_enum_has_robot_and_job():
+    assert ModuleName.ROBOT.value == "robot"
+    assert ModuleName.JOB.value == "job"
+
+
+def test_action_registry_has_robot_builders():
+    assert build_request(
+        ModuleName.ROBOT, "load", {"usd_url": "a.usd", "prim_path": "/World/R"}
+    ) is not None
+    assert build_request(
+        ModuleName.ROBOT, "navigate_to",
+        {"prim_path": "/World/R", "target": [1.0, 0.0, 0.0]},
+    ) is not None
+    assert build_request(
+        ModuleName.ROBOT, "set_joint_positions",
+        {"prim_path": "/X", "positions": [0.0]},
+    ) is not None
+    # get_joint_positions is a single-arg call — kwargs fallback suffices
+    assert build_request(ModuleName.ROBOT, "get_joint_positions", {"prim_path": "/X"}) is None
+
+
+def test_job_status_is_context_aware():
+    assert (ModuleName.JOB, "status") in CONTEXT_AWARE_ACTIONS
+
+
+@pytest.mark.asyncio
+async def test_robot_set_joint_positions_routes_through_runner():
+    """robot.set_joint_positions uses **kwargs fallback — verify round-trip."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_set_joints", "name": "robot joints"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "set_joints",
+                    "module": "robot",
+                    "action": "set_joint_positions",
+                    "args": {"prim_path": "/World/R", "positions": [0.1, 0.2, 0.3]},
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    set_calls = [c for c in isaac_client.calls if c[0] == "robot_set_joint_positions"]
+    assert len(set_calls) == 1
+    assert set_calls[0][1]["positions"] == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.asyncio
+async def test_job_status_resolves_navigate_step_id_from_context():
+    """job.status context-aware: navigate_step_id → prior RobotNavigateResult.job_id."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["robot_navigate"] = {
+        "ok": True,
+        "job_id": "j_ctx_resolved",
+        "prim_path": "/World/R",
+        "target": [1.0, 0.0, 0.0],
+    }
+    isaac_client.responses["job_status"] = {
+        "job_id": "j_ctx_resolved",
+        "status": "done",
+        "progress": 1.0,
+        "result": {"final_position": [1.0, 0.0, 0.0]},
+        "error": None,
+        "created_at_epoch_ms": 1000,
+        "updated_at_epoch_ms": 2000,
+    }
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_job_ctx", "name": "job ctx"},
+        "spec": {
+            "act": [
+                {
+                    "id": "nav",
+                    "module": "robot",
+                    "action": "navigate_to",
+                    "args": {"prim_path": "/World/R", "target": [1.0, 0.0, 0.0]},
+                }
+            ],
+            "assert": [
+                {
+                    "id": "wait_job",
+                    "module": "job",
+                    "action": "status",
+                    "args": {
+                        "navigate_step_id": "nav",
+                        "expected_status": "done",
+                        "poll_interval_s": 0.01,
+                        "max_polls": 5,
+                    },
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    job_calls = [c for c in isaac_client.calls if c[0] == "job_status"]
+    assert len(job_calls) >= 1
+    assert job_calls[0][1]["job_id"] == "j_ctx_resolved"
+
+
+@pytest.mark.asyncio
+async def test_asset_list_routes_through_runner():
+    """asset.list uses kwargs fallback — verify YAML → module round-trip."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_asset", "name": "asset catalog"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "browse",
+                    "module": "asset",
+                    "action": "list",
+                    "args": {"category": "robots", "subpath": "FrankaRobotics"},
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    list_calls = [c for c in isaac_client.calls if c[0] == "asset_list"]
+    assert len(list_calls) == 1
+    assert list_calls[0][1]["category"] == "robots"
+    assert list_calls[0][1]["subpath"] == "FrankaRobotics"
+
+
+@pytest.mark.asyncio
+async def test_job_status_fails_on_unexpected_status():
+    """job.status with expected_status mismatch → FAILED step."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["job_status"] = {
+        "job_id": "j_err",
+        "status": "error",
+        "progress": 0.0,
+        "result": None,
+        "error": "simulated failure",
+        "created_at_epoch_ms": 1000,
+        "updated_at_epoch_ms": 2000,
+    }
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_job_err", "name": "job err"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "wait",
+                    "module": "job",
+                    "action": "status",
+                    "args": {
+                        "job_id": "j_err",
+                        "expected_status": "done",
+                        "poll_interval_s": 0.01,
+                        "max_polls": 3,
+                    },
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.FAILED, summary
+    step_result = next(r for r in summary.step_results if r.step_id == "wait")
+    assert step_result.status == ExecutionStatus.FAILED
+    assert "error" in (step_result.message or "").lower()

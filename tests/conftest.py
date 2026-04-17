@@ -150,6 +150,145 @@ class MockIsaacRestClient:
             {"is_playing": False, "is_stopped": True, "current_time": 0.0, "start_time": 0.0, "end_time": 10.0, "time_codes_per_second": 24.0},
         )
 
+    # Robot (Phase B)
+
+    async def robot_load(self, request: dict) -> dict:
+        self.calls.append(("robot_load", request))
+        return self.responses.get(
+            "robot_load",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "usd_url": request.get("usd_url", ""),
+                "type_name": "Xform",
+                "has_articulation": True,
+            },
+        )
+
+    async def robot_get_joint_positions(self, prim_path: str) -> dict:
+        self.calls.append(("robot_get_joint_positions", {"prim_path": prim_path}))
+        return self.responses.get(
+            "robot_get_joint_positions",
+            {"ok": True, "prim_path": prim_path, "positions": [0.0] * 7},
+        )
+
+    async def robot_set_joint_positions(self, request: dict) -> dict:
+        self.calls.append(("robot_set_joint_positions", request))
+        return self.responses.get(
+            "robot_set_joint_positions",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "positions_count": len(request.get("positions", [])),
+            },
+        )
+
+    async def robot_navigate(self, request: dict) -> dict:
+        self.calls.append(("robot_navigate", request))
+        return self.responses.get(
+            "robot_navigate",
+            {
+                "ok": True,
+                "job_id": "job_test_0001",
+                "prim_path": request.get("prim_path", ""),
+                "target": request.get("target", [0.0, 0.0, 0.0]),
+            },
+        )
+
+    # Jobs (Phase B)
+
+    async def job_status(self, job_id: str) -> dict:
+        self.calls.append(("job_status", {"job_id": job_id}))
+        default = {
+            "job_id": job_id,
+            "status": "done",
+            "progress": 1.0,
+            "result": {"final_position": [1.0, 0.0, 0.0], "steps": 60, "elapsed_s": 1.0},
+            "error": None,
+            "created_at_epoch_ms": 1000,
+            "updated_at_epoch_ms": 2000,
+        }
+        return self.responses.get("job_status", default)
+
+    async def job_cancel(self, job_id: str) -> dict:
+        self.calls.append(("job_cancel", {"job_id": job_id}))
+        default = {
+            "job_id": job_id,
+            "status": "canceled",
+            "progress": 0.5,
+            "result": None,
+            "error": "Job canceled by user",
+            "created_at_epoch_ms": 1000,
+            "updated_at_epoch_ms": 2000,
+        }
+        return self.responses.get("job_cancel", default)
+
+    # File / Selection / Camera (Phase B+)
+
+    async def stage_save(self, path: str | None = None) -> dict:
+        self.calls.append(("stage_save", {"path": path}))
+        return self.responses.get("stage_save", {"ok": True, "path": path or "inline", "mode": "save_as" if path else "save"})
+
+    async def stage_open(self, url: str) -> dict:
+        self.calls.append(("stage_open", {"url": url}))
+        return self.responses.get("stage_open", {"ok": True, "url": url, "root_layer": url})
+
+    async def stage_new(self) -> dict:
+        self.calls.append(("stage_new", {}))
+        return self.responses.get("stage_new", {"ok": True, "root_layer": "anon:new"})
+
+    async def stage_get_selection(self) -> dict:
+        self.calls.append(("stage_get_selection", {}))
+        return self.responses.get("stage_get_selection", {"ok": True, "selected_prim_paths": [], "count": 0})
+
+    async def stage_set_selection(self, prim_paths: list, expand_in_stage: bool = True) -> dict:
+        self.calls.append(("stage_set_selection", {"prim_paths": prim_paths, "expand_in_stage": expand_in_stage}))
+        return self.responses.get("stage_set_selection", {"ok": True, "selected_prim_paths": prim_paths, "count": len(prim_paths)})
+
+    async def viewport_set_active_camera(self, camera_path: str, viewport_name: str = "Viewport") -> dict:
+        self.calls.append(("viewport_set_active_camera", {"camera_path": camera_path, "viewport_name": viewport_name}))
+        return self.responses.get("viewport_set_active_camera", {"ok": True, "camera_path": camera_path, "viewport_name": viewport_name})
+
+    # Assets (Phase B+)
+
+    async def asset_list(
+        self,
+        category: str | None = None,
+        subpath: str = "",
+        recursive: bool = False,
+        max_depth: int = 2,
+        max_entries: int = 500,
+    ) -> dict:
+        self.calls.append(
+            ("asset_list", {
+                "category": category,
+                "subpath": subpath,
+                "recursive": recursive,
+                "max_depth": max_depth,
+                "max_entries": max_entries,
+            })
+        )
+        if category is None:
+            return self.responses.get("asset_list_categories", {
+                "ok": True,
+                "assets_root": "https://example/Isaac/5.1",
+                "categories": [
+                    {"name": "robots", "url": "https://example/Isaac/5.1/Isaac/Robots"},
+                ],
+            })
+        return self.responses.get("asset_list", {
+            "ok": True,
+            "category": category,
+            "subpath": subpath,
+            "base_url": f"https://example/Isaac/5.1/Isaac/{category.capitalize()}",
+            "target_url": f"https://example/Isaac/5.1/Isaac/{category.capitalize()}/{subpath}".rstrip("/"),
+            "items": [
+                {"name": "Franka", "url": "https://example/.../Franka", "is_folder": True, "size": None},
+                {"name": "franka.usd", "url": "https://example/.../franka.usd", "is_folder": False, "size": 1024},
+            ],
+            "count": 2,
+        })
+
     async def close(self) -> None:
         pass
 

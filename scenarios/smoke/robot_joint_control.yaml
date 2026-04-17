@@ -1,0 +1,118 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: robot_joint_control
+  name: "Phase B smoke: browse catalog → load Franka → joints → navigate → job"
+  tags: [smoke, robot, phase-b, asset-browser]
+
+spec:
+  defaults:
+    # First run downloads franka.usd from the public S3 bucket — give it headroom.
+    # Subsequent runs use the HTTP cache and are much faster.
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    # Default URL matches isaacsim.asset.browser's public S3 root — no Nucleus
+    # connection needed. Override via input_overrides to point elsewhere.
+    franka_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
+    prim_path: "/World/Franka"
+    spawn_position: [0.0, 0.0, 0.0]
+    # Franka Panda home-like pose: 7 arm joints + 2 gripper fingers = 9 DOF.
+    # set_joint_positions array length must match the articulation's DOF count
+    # (SingleArticulation wraps the underlying PhysX articulation view).
+    joint_positions: [0.0, -0.3, 0.0, -1.9, 0.0, 1.6, 0.8, 0.04, 0.04]
+    navigate_target: [1.0, 0.5, 0.0]
+
+  arrange:
+    - id: browse_robot_catalog
+      module: asset
+      action: list
+      args:
+        category: robots
+        subpath: FrankaRobotics/FrankaPanda
+        max_entries: 50
+
+    - id: load_franka
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.franka_url}
+        prim_path: ${variables.prim_path}
+        position: ${variables.spawn_position}
+
+  act:
+    # Play + pause runs a single physics step so the articulation is
+    # initialized — without this, SingleArticulation.get_joint_positions
+    # returns None even though the USD has an ArticulationRoot applied.
+    - id: warm_up_physics
+      module: simulation
+      action: play
+      args: {}
+
+    - id: pause_physics
+      module: simulation
+      action: pause
+      args: {}
+
+    - id: set_joints
+      module: robot
+      action: set_joint_positions
+      args:
+        prim_path: ${variables.prim_path}
+        positions: ${variables.joint_positions}
+
+    - id: navigate
+      module: robot
+      action: navigate_to
+      args:
+        prim_path: ${variables.prim_path}
+        target: ${variables.navigate_target}
+        duration_s: 1.0
+
+    - id: wait_navigate
+      module: job
+      action: status
+      args:
+        navigate_step_id: navigate
+        expected_status: done
+        poll_interval_s: 0.25
+        max_polls: 40
+
+  assert:
+    - id: franka_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+
+    - id: read_joints_back
+      module: robot
+      action: get_joint_positions
+      args:
+        prim_path: ${variables.prim_path}
+
+    - id: franka_at_target
+      module: stage
+      action: assert_property
+      args:
+        prim_path: ${variables.prim_path}
+        property_name: xformOp:translate
+        comparator: approx
+        expected_value: ${variables.navigate_target}
+        tolerance: 0.01
+
+    - id: viewport_after_nav
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+  cleanup:
+    - id: remove_franka
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}

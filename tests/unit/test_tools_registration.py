@@ -1,4 +1,8 @@
-"""Unit tests verifying all 22 tools are registered and no inject/cleanup tools exist."""
+"""Unit tests verifying all MCP tools are registered.
+
+Expected tool names are a **single source of truth** (below) — Phase C/D
+additions only need to update these lists, no count literal to chase.
+"""
 
 from __future__ import annotations
 
@@ -8,59 +12,95 @@ from isaacsim_mcp.config import AppConfig
 from isaacsim_mcp.mcp.server import create_mcp_server
 
 
+EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
+    # Process
+    "isaac_sim_start",
+    "isaac_sim_stop",
+    "isaac_sim_restart",
+    # Stage READ/ASSERT
+    "stage_capture_snapshot",
+    "stage_diff_snapshots",
+    "stage_assert_prim_exists",
+    "stage_assert_property",
+    # Stage WRITE (→ SimulationModule)
+    "stage_load_usd",
+    "stage_set_property",
+    "stage_create_prim",
+    "stage_delete_prim",
+    # Simulation
+    "simulation_play",
+    "simulation_pause",
+    "simulation_stop",
+    "simulation_get_status",
+    # Viewport
+    "viewport_capture",
+    "viewport_compare_ssim",
+    # Extension
+    "extension_trigger",
+    "extension_get_state",
+    # Lakehouse
+    "lakehouse_query",
+    # Phase B — Robot
+    "robot_load",
+    "robot_get_joint_positions",
+    "robot_set_joint_positions",
+    "robot_navigate_to",
+    # Phase B — Job
+    "job_status",
+    "job_cancel",
+    # Phase B+ — Asset catalog (GUI Asset Browser equivalent)
+    "asset_list",
+    # Phase B+ — File / Selection / Camera (GUI File menu + Stage panel)
+    "stage_save",
+    "stage_open",
+    "stage_new",
+    "stage_get_selection",
+    "stage_set_selection",
+    "viewport_set_active_camera",
+})
+
+EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({
+    "scenario_validate",
+    "scenario_plan",
+    "scenario_list",
+    "scenario_schema",
+    "scenario_last_report",
+})
+
+EXPECTED_ALL_TOOLS: frozenset[str] = EXPECTED_MODULE_TOOLS | EXPECTED_SCENARIO_TOOLS
+
+
 @pytest.fixture
 def mcp_server():
     config = AppConfig()
     return create_mcp_server(config)
 
 
-def test_25_tools_registered(mcp_server):
-    """Verify exactly 25 tools are registered."""
-    tools = mcp_server._tool_manager._tools
-    assert len(tools) == 25, f"Expected 25 tools, got {len(tools)}: {list(tools.keys())}"
+def test_registered_tools_match_expected_set(mcp_server):
+    """Every tool in EXPECTED_ALL_TOOLS is registered, nothing extra."""
+    registered = frozenset(mcp_server._tool_manager._tools)
+    missing = EXPECTED_ALL_TOOLS - registered
+    unexpected = registered - EXPECTED_ALL_TOOLS
+    assert not missing, f"Missing tools: {sorted(missing)}"
+    assert not unexpected, f"Unexpected tools: {sorted(unexpected)}"
+
+
+def test_tool_count_matches_expected_list(mcp_server):
+    """Count is derived from the SoT list — no literal to update per Phase."""
+    registered = mcp_server._tool_manager._tools
+    assert len(registered) == len(EXPECTED_ALL_TOOLS)
 
 
 def test_module_tools_present(mcp_server):
-    """Verify all 20 module tools are registered (3 PROCESS + 9 READ/ASSERT + 8 WRITE)."""
     tools = mcp_server._tool_manager._tools
-    expected_module_tools = [
-        "isaac_sim_start",
-        "isaac_sim_stop",
-        "isaac_sim_restart",
-        "stage_capture_snapshot",
-        "stage_diff_snapshots",
-        "stage_assert_prim_exists",
-        "stage_assert_property",
-        "viewport_capture",
-        "viewport_compare_ssim",
-        "lakehouse_query",
-        "extension_trigger",
-        "extension_get_state",
-        "stage_load_usd",
-        "stage_set_property",
-        "stage_create_prim",
-        "stage_delete_prim",
-        "simulation_play",
-        "simulation_pause",
-        "simulation_stop",
-        "simulation_get_status",
-    ]
-    for tool_name in expected_module_tools:
-        assert tool_name in tools, f"Missing module tool: {tool_name}"
+    for name in EXPECTED_MODULE_TOOLS:
+        assert name in tools, f"Missing module tool: {name}"
 
 
 def test_scenario_tools_present(mcp_server):
-    """Verify all 5 scenario tools are registered."""
     tools = mcp_server._tool_manager._tools
-    expected_scenario_tools = [
-        "scenario_validate",
-        "scenario_plan",
-        "scenario_list",
-        "scenario_schema",
-        "scenario_last_report",
-    ]
-    for tool_name in expected_scenario_tools:
-        assert tool_name in tools, f"Missing scenario tool: {tool_name}"
+    for name in EXPECTED_SCENARIO_TOOLS:
+        assert name in tools, f"Missing scenario tool: {name}"
 
 
 def test_no_inject_cleanup_tools(mcp_server):
