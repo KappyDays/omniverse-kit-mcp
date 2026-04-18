@@ -83,6 +83,15 @@ spec:
 
 **Phase C+ 추가 — 캐릭터/애니메이션**: `character.*` action 으로 Biped_Setup rig 로드 + AnimationGraph bind + NavMesh navigate 가 YAML 한 파일로 표현된다. `scenarios/smoke/character_control.yaml` 이 canonical 예시 — 15-step (load → play Walk → set_position → navigate_to → job.status polling → get_state assert → cleanup) smoke scenario. NavMesh 기반 `navigate_to` 는 Robot 과 동일한 JobService 를 재사용하므로 `job.status` context-aware polling 이 그대로 동작하고, cleanup 의 `simulation.play → stop` 이 AnimGraph shutdown hang (testbed #14) 을 예방한다.
 
+**Character scenario 작성 규칙 (Phase C, 2026-04-18 live 확인)**:
+
+1. **navigate_to 는 timeline playing 필수** — `character.navigate_to` dispatch 후 `simulation.play` 를 act 에 명시하지 않으면 AnimGraph / NavMesh 가 tick 하지 않아 0m 이동. Job 은 30s timeout 후 `done` 으로 끝나지만 실제 위치는 변하지 않음. traversal 검증 시나리오는 반드시 `simulation.play` → navigate → `job.status` → `simulation.pause` 순서로 배치.
+2. **set_position 은 시각 이동 아님** — AnimGraph 가 bound 된 캐릭터의 root transform 은 AnimGraph 가 매 tick 덮어씀. `character.set_position` 은 USD 레벨 set 은 성공하지만 다음 tick 에 복원된다. 시각 이동이 필요하면 `character.navigate_to` 사용. `stage.assert_property` 로 `xformOp:translate` 를 즉시 검증하는 건 의미 없다 — 다음 tick 기준으로 위치를 확인하려면 `character.get_state.position` 을 assert 대상으로 쓸 것.
+3. **get_state.action 신뢰 금지** — AnimGraph `get_variable("Action")` serialization 이슈로 현재는 항상 `"[]"`. `is_navigating` 도 항상 `false`. scenario assertion 에서 `action` / `is_navigating` 필드에 의존하지 말 것 — position/rotation 만 신뢰 가능. (MCP 측에서 마지막 set 값 추적하는 fix 는 Phase C+ polish 후보)
+4. **Viewport capture baseline 설정** — `Biped_Setup.usd` 는 lighting / camera 없이 로드된다. 유의미한 viewport capture 가 필요하면 arrange 에 `simulation.stage_create_prim(prim_type="DomeLight")` 로 조명을 명시 추가하고, capture 전 `viewport.set_active_camera(camera_path="/OmniverseKit_Persp")` 로 Isaac Sim 의 기본 페르스펙티브 카메라로 전환. 직접 만든 Camera prim 은 `xformOp:rotateXYZ` 기본 attribute 가 없어 look-at 설정이 어렵다 — 가능하면 `/OmniverseKit_Persp` 재사용.
+5. **viewport capture 재캐시 주의** — Isaac Sim 5.1 의 viewport capture 는 연속 호출 시 동일 PNG 를 반환할 수 있다 (sha256 동일). 장면 변화를 찍어야 하는 경우 호출 사이에 `simulation.play` → (짧은 sleep) → capture 패턴을 사용해 프레임을 강제로 advance 시킬 것. smoke scenario 의 `wait_navigate` step 이 자연스럽게 이 역할을 해준다.
+6. **캐릭터 선택은 asset_list 기반** — `asset.list(category="people", subpath="Characters")` 로 실제 캐릭터 25+ 종 (F_Business_02, M_Medical_01 등) 이 나온다. `asset.list(category="people", subpath="DH_Characters_Extended")` 로는 UUID-named 캐릭터들. DH UUID 캐릭터 prim_path 는 하이픈 포함하지만 `character.load` 가 내부적으로 `_sanitize_prim_name` 적용 (→ `c_` 접두 + 하이픈 → 밑줄) — scenario 는 input 하이픈 경로를 그대로 써도 되지만 후속 step 은 `sanitized_prim_path` (response 에 포함) 기준.
+
 **주의**: Stage 상태를 바꾸는 모든 action(USD 로드, prim 생성/삭제, property 변경)은 `module: simulation` 으로 기록한다. `module: stage` 는 READ/ASSERT 전용. Robot USD 를 Articulation 과 함께 로드할 때도 동일하게 `module: robot`, `action: load` 사용 (내부적으로 `CreateReferenceCommand` 호출은 `SimulationModule.stage_load_usd` 와 같지만 application 의도가 다르므로 분리 — articulation 탐지 결과를 `has_articulation` 필드로 반환).
 
 ## Context-aware action: `stage.diff_snapshots`
