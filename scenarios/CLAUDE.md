@@ -60,7 +60,7 @@ spec:
   cleanup: [...]
 ```
 
-- `module` 는 `{stage, viewport, lakehouse, extension, simulation, robot, job, asset}` 중 하나 — schema enum 기준
+- `module` 는 `{stage, viewport, lakehouse, extension, simulation, robot, job, asset, character}` 중 하나 — schema enum 기준 (9 entries)
 - `action` 은 해당 모듈의 메서드 이름. 매핑 규약은 `../src/isaacsim_mcp/scenario/CLAUDE.md` 의 action_registry 참조
 - `args` 형식은 `schema/scenario.schema.json` 의 action별 정의를 그대로 따름
 - **Cleanup 은 assert 실패 여부와 무관하게 항상 실행된다** (finally)
@@ -77,8 +77,11 @@ spec:
 | `robot` | `load`, `get_joint_positions`, `set_joint_positions`, `navigate_to` | navigate_to 는 ASYNC — job_id 즉시 반환. get/set_joint_positions 는 articulation 없으면 400 FAIL (Phase B strict). joint I/O 전에 `simulation.play → pause` 로 articulation 초기화 필수 |
 | `job` | `status`, `cancel` | status 는 context-aware polling (navigate_step_id 또는 job_id). cancel 은 `robot.navigate_to` 등의 in-flight job 중단 |
 | `asset` | `list` | GUI Asset Browser 동등 — category 없으면 카테고리 목록, 있으면 S3 directory listing. Franka 등 공식 asset URL 을 하드코드 없이 확보 가능 |
+| `character` | `load`, `play_animation`, `set_position`, `stop_animation`, `navigate_to`, `get_state` | navigate_to 는 ASYNC — job_id 반환, job.status 가 navigate_step_id 로 resolve 가능. Biped_Setup.usd 자동 로드 + AnimationGraph bind. animation_name ∈ {Idle, Walk, Run, Sit} (Extension Pydantic Literal). 재생 전 `simulation.play → pause` warm-up 필수 (testbed #13, 자동 retry 있지만 명시 권장). Cleanup 에 `simulation.play → stop` 추가하여 shutdown hang 방지 (testbed #14) |
 
 **Phase B+ 추가 — GUI 동등 File/Selection/Camera**: `simulation.stage_save` / `simulation.stage_open` / `simulation.stage_new` 로 File menu, `stage.get_selection` / `stage.set_selection` 으로 Stage 패널 선택, `viewport.set_active_camera` 로 viewport 툴바의 카메라 전환이 scenario step 에서 직접 가능. `stage.create_prim` 의 `prim_type` 은 Cube/Sphere 뿐 아니라 `Camera` / `DistantLight` / `DomeLight` / `SphereLight` / `RectLight` 등 UsdLux·UsdGeom 타입 전부 수용한다.
+
+**Phase C+ 추가 — 캐릭터/애니메이션**: `character.*` action 으로 Biped_Setup rig 로드 + AnimationGraph bind + NavMesh navigate 가 YAML 한 파일로 표현된다. `scenarios/smoke/character_control.yaml` 이 canonical 예시 — 15-step (load → play Walk → set_position → navigate_to → job.status polling → get_state assert → cleanup) smoke scenario. NavMesh 기반 `navigate_to` 는 Robot 과 동일한 JobService 를 재사용하므로 `job.status` context-aware polling 이 그대로 동작하고, cleanup 의 `simulation.play → stop` 이 AnimGraph shutdown hang (testbed #14) 을 예방한다.
 
 **주의**: Stage 상태를 바꾸는 모든 action(USD 로드, prim 생성/삭제, property 변경)은 `module: simulation` 으로 기록한다. `module: stage` 는 READ/ASSERT 전용. Robot USD 를 Articulation 과 함께 로드할 때도 동일하게 `module: robot`, `action: load` 사용 (내부적으로 `CreateReferenceCommand` 호출은 `SimulationModule.stage_load_usd` 와 같지만 application 의도가 다르므로 분리 — articulation 탐지 결과를 `has_articulation` 필드로 반환).
 

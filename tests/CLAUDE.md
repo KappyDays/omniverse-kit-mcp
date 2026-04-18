@@ -27,6 +27,7 @@ tests/
 │   ├── test_robot_module.py           # Phase B: load / get/set joints / navigate
 │   ├── test_job_module.py             # Phase B: async job status polling + cancel
 │   ├── test_asset_module.py           # Phase B+: S3 catalog listing (GUI Asset Browser 동등)
+│   ├── test_character_module.py      # Phase C: load / play_animation / set_position / navigate / get_state
 │   └── (GUI-equiv live 검증은 scripts/live_test_gui_equiv.py — unit tests 는 mock 기반이라 save/open 등 파일시스템 의존 기능은 live 전용)
 │   ├── test_scenario_runner.py        # loader/compiler 단위
 │   ├── test_scenario_integration.py   # runner 통합 (SimulationModule routing, diff_snapshots ctx, robot/job)

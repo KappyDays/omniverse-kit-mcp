@@ -76,7 +76,7 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 | `src/isaacsim_mcp/CLAUDE.md` | FastMCP 서버 패키지 루트 (entry flow, 타입 경계, clients 통신 규약) |
 | `src/isaacsim_mcp/modules/CLAUDE.md` | 도메인 모듈 — 모듈 책임 매트릭스, REST 응답 특성(Integration Facts), kit.exe 런타임 플래그 |
 | `src/isaacsim_mcp/scenario/CLAUDE.md` | 시나리오 엔진 — Arrange/Act/Assert/Cleanup 내부 |
-| `src/isaacsim_mcp/tools/CLAUDE.md` | MCP tool 등록 규약 + 전체 38개 tool 목록 |
+| `src/isaacsim_mcp/tools/CLAUDE.md` | MCP tool 등록 규약 + 전체 44개 tool 목록 |
 | `tests/CLAUDE.md` | pytest 단위 테스트 (mock 기반, live E2E 제외) |
 | `scenarios/CLAUDE.md` | YAML 시나리오 저작 가이드 |
 | `setup/CLAUDE.md` | 설치 스크립트 (`.env`, `~/.claude.json` 등록, Extension 활성화) |
@@ -103,8 +103,8 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 |-------|------|------|--------|
 | **A** | Extension WRITE + REST 실구현, 25 MCP tool | ✅ 완료 + E2E 검증 (2026-04-17, `docs/phase-a-validation-report.md`) | 17 endpoint, 25 tool, scenario 엔진 simulation 모듈 주입, viewport/process 호환성 수정 |
 | **B** | 로봇 제어 (`SingleArticulation`) + ASYNC Job 패턴 + Asset Browser + GUI 동등성 (File/Selection/Camera) | ✅ 완료 (2026-04-18, `docs/phase-b-validation-report.md`) | +13 endpoint (30), +13 tool (38), Robot/Job/Asset 모듈, ModuleName.ROBOT/JOB/ASSET, `job.status` context-aware polling + `job_cancel`, articulation 사전 검증 (재귀) + 자동 initialize, REST 에러 detail 전파, `asset_list` (Asset Browser S3 카탈로그), `stage_save/open/new` + `stage_get/set_selection` + `viewport_set_active_camera` (GUI File menu / Stage panel / Viewport toolbar 동등) — Camera/DistantLight 도 `stage_create_prim` 으로 생성 가능, test SoT 전환, `continueOnFailure` terminal-status semantics 변경 |
-| **C** | 캐릭터 + 애니메이션 (`CharacterUtil`, `AnimationGraph`) | ❌ 미시작 | +3 tool 예정 (총 34) |
-| **D** | Extension UI 자동화 (`omni.kit.ui_test`) — Goal 2 | ❌ 미시작 | +4 tool 예정 (총 38) |
+| **C** | 캐릭터 + 애니메이션 (`CharacterUtil`, `AnimationGraph`) | ✅ 완료 (2026-04-18, `docs/phase-c-validation-report.md`) | +6 tool (총 44), +6 endpoint (총 36), CharacterModule + ModuleName.CHARACTER, JobService 재사용, ProcessModule extra_ext_ids 로 kit 의존성 3개 추가 (anim.graph/navigation/replicator.agent.core), testbed #13-#17 완화 (AnimGraph ready retry, shutdown 안전, SkelRoot 재검증, DH UUID sanitize, C2 cancel finally) |
+| **D** | Extension UI 자동화 (`omni.kit.ui_test`) — Goal 2 | ⏸ 대기 (Phase C 완료 — 다음 세션에서 시작) | +4 tool 예정 (총 48) |
 
 각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조.
 
@@ -123,6 +123,9 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 - **Articulation strict**: `robot.get/set_joint_positions` 는 Extension `robot_service._assert_articulation()` 으로 PhysxArticulationAPI 없으면 HTTP 400 raise. Silent no-op 방지 (Phase B live 에서 torus.usd 로 확인된 이슈). Optional step 은 scenario 에서 `continueOnFailure: true` 로 감쌀 것
 - **Test SoT 전환**: `test_tools_registration.py` 는 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset 을 SoT 로 두고 count assertion 은 `len()` 으로 유도. Phase 추가 시 list 만 수정 → literal count 추적 불필요
 - **Asset catalog 접근 (Phase B+)**: Isaac Sim 5.1 의 `isaacsim.storage.native.get_assets_root_path()` 가 기본으로 공개 S3 bucket (`https://omniverse-content-production.s3...amazonaws.com/Assets/Isaac/5.1`) 반환 — Nucleus 없이도 Franka / UR / Jetbot 등 공식 USD 접근 가능. `asset_list` MCP tool 이 `omni.client.list` 로 이 경로의 디렉토리 listing 을 MCP 경계로 노출 → GUI Asset Browser 와 동일한 카탈로그를 Claude Code 가 탐색할 수 있다. 카테고리: `robots` / `environments` / `props` / `people` / `materials` / `isaaclab` (mirror of `isaacsim.asset.browser` config)
+- **Character placement (Phase C)**: `character.load` 는 항상 `/World/Characters/<sanitized_name>` 아래에 prim 을 배치한다 (`CharacterUtil.load_character_usd_to_stage` 내부 규약). response 의 `sanitized_prim_path` 가 실제 배치 경로이고, `prim_path` 는 caller 가 요청한 값을 그대로 에코. 후속 `set_position` / `play_animation` / `get_state` 는 `sanitized_prim_path` 기준. Biped_Setup rig 은 `/World/Characters/Biped_Setup` 아래에 1회 로드되고 모든 캐릭터가 공유
+- **AnimGraph shutdown safety (Phase C)**: `simulation.play → step → stop` (최종 physics tick) 을 `isaac_sim_stop` 이전에 반드시 실행. 생략 시 AnimGraph / NavMesh 내부 핸들 정리 타이밍 문제로 kit.exe 셔다운 hang 발생 (testbed #14). scenario cleanup 에 이 패턴을 베이크 — `scenarios/smoke/character_control.yaml` 참조
+- **AnimGraph ready retry (Phase C)**: `_ensure_animation_ready` 는 Extension 내부에서 `ag.get_character(prim_path)` 가 None 을 반환할 때 (testbed #13 — world.reset 직후 graph registry populate 지연) 1-frame `simulation_play → pause` warm-up 을 자동 재시도. 하지만 scenario 는 명시적으로 `simulation.play → pause` 를 arrange 에 넣는 것을 권장 — 결정적 타이밍 확보
 
 ## Environment Variables
 
@@ -130,6 +133,7 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 |------|--------|------|
 | `ISAAC_SIM_BASE_URL` | `http://localhost:8011` | Isaac Sim REST API |
 | `ISAAC_SIM_STARTUP_TIMEOUT` | `240.0` | `ProcessModule.start()` health 대기 상한(초) — Isaac Sim 첫 기동 셰이더 컴파일 고려 |
+| `ISAAC_SIM_EXTRA_EXT_IDS` | `["omni.anim.graph.bundle","omni.anim.navigation.bundle","isaacsim.replicator.agent.core"]` | kit.exe 런치 시 추가 활성화 extension (JSON array only, pydantic-settings v2 limitation) |
 | `LAKEHOUSE_BASE_URL` | `http://localhost:9000` | Lakehouse REST API |
 | `MCP_SERVER_PORT` | `8080` | MCP 서버 포트 |
 | `SCENARIOS_DIR` | `scenarios` | 시나리오 YAML 루트 경로 |
@@ -141,7 +145,7 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 진행 순서:
 - **Step 1** — Phase A 도구 end-to-end 검증 ✅ 완료 (`docs/phase-a-validation-report.md`)
 - **Step 2** — Phase B 로봇 제어 + ASYNC Job 패턴 ✅ 완료 (`docs/phase-b-validation-report.md`)
-- **Step 3** — Phase C 캐릭터 + AnimationGraph  ← 다음 세션에서 여기서 시작
-- **Step 4** — Phase D Extension UI 자동화 + KKR-A 실전 테스트
+- **Step 3** — Phase C 캐릭터 + AnimationGraph ✅ 완료 (`docs/phase-c-validation-report.md`)
+- **Step 4** — Phase D Extension UI 자동화 + KKR-A 실전 테스트  ← 다음 세션에서 여기서 시작
 
 새 세션 시작 시 작업 디렉토리(`~/workspace/Isaac-sim-MCP/`)의 이 CLAUDE.md가 자동 로드됨. testbed의 `src/isaac_sim_testbed/CLAUDE.md` (API 특이사항 1-17)는 Phase B/C 진입 시 별도 참조 필요.
