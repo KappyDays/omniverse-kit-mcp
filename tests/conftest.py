@@ -488,8 +488,13 @@ class MockIsaacRestClient:
             "action": ["omni.kit.x", "X"], "created_prims": [],
         })
 
-    async def navigation_bake(self, volume_scale: float = 40.0) -> dict:
-        self.calls.append(("navigation_bake", {"volume_scale": volume_scale}))
+    async def navigation_bake(
+        self, volume_scale: float = 40.0, timeout_s: float = 300.0,
+    ) -> dict:
+        self.calls.append((
+            "navigation_bake",
+            {"volume_scale": volume_scale, "timeout_s": timeout_s},
+        ))
         return self.responses.get("navigation_bake", {
             "ok": True, "agent_max_radius": 0.25, "area_count": 1,
             "mesh_signature": "abc", "volume_prim_path": "/World/NavMeshVolume",

@@ -243,24 +243,64 @@ def run() -> int:
         report["steps"]["9_menu_trigger_cube"] = menu_trigger
         print(f"[9] Create/Mesh/Cube -> created_prims={menu_trigger.get('created_prims')}")
 
-        # 10. Navigation pipeline — covered by unit tests (see
-        # tests/unit/test_navigation_module.py). Live validation is currently
-        # skipped because `start_navmesh_baking_and_wait()` blocks Kit's
-        # Python event loop, which then starves the HTTP router for every
-        # subsequent call in the same session. Tracking Phase F: wrap the
-        # bake in asyncio.to_thread so live validation can run end-to-end.
-        report["steps"]["10_nav_live_skipped"] = {
-            "skipped": True,
-            "reason": "NavMesh bake blocks Kit event loop. NavigationModule is "
-                      "fully covered by tests/unit/test_navigation_module.py.",
-        }
-        print("[10] navigation live-check skipped (bake blocking — unit tested)")
+        # 10. Navigation pipeline — stop timeline, bake (non-blocking polling),
+        # query path, add exclude. Since the service now yields to the Kit
+        # event loop during `is_navmesh_baking()` polling, the HTTP router
+        # stays responsive even for multi-minute bakes.
+        _post(c, "/simulation/stop")
 
-        # Create a cube so the scene has something interesting to capture
+        # Create a cube BEFORE bake so the exclude target exists
         _post(c, "/stage/create_prim", json={
             "prim_path": "/World/PhaseE_Chair", "prim_type": "Cube",
             "position": [1.0, 0.0, 0.5],
         })
+
+        bake = _post(
+            c, "/navigation/bake",
+            params={"volume_scale": "8.0", "timeout_s": "300.0"},
+            timeout=360.0,
+        )
+        report["steps"]["10_nav_bake"] = bake
+        print(
+            f"[10] navmesh baked: ok={bake.get('ok')} "
+            f"area_count={bake.get('area_count')} "
+            f"agent_max_radius={bake.get('agent_max_radius')}"
+        )
+        if not bake.get("ok"):
+            print(f"  !! bake not ok: {bake.get('reason')}", file=sys.stderr)
+            status_ok = False
+
+        query = _post(
+            c, "/navigation/query_path",
+            json={
+                "start": [0.0, 0.0, 0.0],
+                "end": [3.0, 3.0, 0.0],
+                "agent_radius": 0.3,
+                "agent_height": 1.8,
+                "straighten": True,
+            },
+            timeout=120.0,
+        )
+        report["steps"]["10_nav_query"] = query
+        points = query.get("points") or []
+        print(f"[10] query_path ok={query.get('ok')} points={len(points)}")
+        if not query.get("ok"):
+            print(f"  !! query_path not ok: {query.get('reason')}", file=sys.stderr)
+            status_ok = False
+
+        exclude = _post(
+            c, "/navigation/add_exclude_volume",
+            params={"prim_path": "/World/PhaseE_Chair", "padding": "0.2"},
+            timeout=60.0,
+        )
+        report["steps"]["10_nav_exclude"] = exclude
+        print(
+            f"[10] exclude volume -> "
+            f"{exclude.get('volume_path') or exclude.get('volume_prim_path')}"
+        )
+        if not exclude.get("ok"):
+            print(f"  !! exclude not ok: {exclude.get('reason')}", file=sys.stderr)
+            status_ok = False
 
         # 11. MCP-direct scene viewport snapshot (Phase E)
         _post(c, "/stage/create_prim", json={

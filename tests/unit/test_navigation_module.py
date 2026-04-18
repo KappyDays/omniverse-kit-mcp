@@ -36,14 +36,14 @@ async def test_bake_default(nav_module, mock_client, meta):
     assert result.data.agent_max_radius == 0.25
 
     _, payload = mock_client.calls[-1]
-    assert payload == {"volume_scale": 40.0}
+    assert payload == {"volume_scale": 40.0, "timeout_s": 300.0}
 
 
 @pytest.mark.asyncio
 async def test_bake_custom_scale(nav_module, mock_client, meta):
-    await nav_module.bake(meta, volume_scale=12.5)
+    await nav_module.bake(meta, volume_scale=12.5, timeout_s=45.0)
     _, payload = mock_client.calls[-1]
-    assert payload == {"volume_scale": 12.5}
+    assert payload == {"volume_scale": 12.5, "timeout_s": 45.0}
 
 
 @pytest.mark.asyncio
