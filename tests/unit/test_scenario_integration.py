@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from isaacsim_mcp.modules.asset_module import AssetModule
+from isaacsim_mcp.modules.character_module import CharacterModule
 from isaacsim_mcp.modules.extension_module import ExtensionModule
 from isaacsim_mcp.modules.job_module import JobModule
 from isaacsim_mcp.modules.lakehouse_module import LakehouseModule
@@ -35,8 +36,9 @@ def _build_runner(isaac_client, lakehouse_client):
     robot = RobotModule(isaac_client)
     job = JobModule(isaac_client)
     asset = AssetModule(isaac_client)
+    character = CharacterModule(isaac_client)
     return ScenarioRunner(
-        stage, viewport, lakehouse, extension, simulation, robot, job, asset,
+        stage, viewport, lakehouse, extension, simulation, robot, job, asset, character,
     )
 
 
@@ -384,3 +386,125 @@ async def test_job_status_fails_on_unexpected_status():
     step_result = next(r for r in summary.step_results if r.step_id == "wait")
     assert step_result.status == ExecutionStatus.FAILED
     assert "error" in (step_result.message or "").lower()
+
+
+# ---------------------------------------------------------------------------
+# Phase C: Character routing
+# ---------------------------------------------------------------------------
+
+def test_module_enum_has_character():
+    """Phase C — ModuleName enum must include CHARACTER."""
+    assert ModuleName.CHARACTER.value == "character"
+
+
+def test_scenario_runner_accepts_character_module():
+    """ScenarioRunner must register CHARACTER in its module dispatch dict."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+    assert ModuleName.CHARACTER in runner._modules
+    assert isinstance(runner._modules[ModuleName.CHARACTER], CharacterModule)
+
+
+@pytest.mark.asyncio
+async def test_character_load_routes_through_runner():
+    """End-to-end: YAML module:'character' action:'load' → runner → CharacterModule.load → mock REST."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_char_routing", "name": "char routing test"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "load_char",
+                    "module": "character",
+                    "action": "load",
+                    "args": {
+                        "usd_url": "https://example/biped.usd",
+                        "prim_path": "/World/Characters/c_1",
+                        "position": [0.0, 0.0, 0.0],
+                        "yaw": 0.0,
+                    },
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+    summary = await runner.run(scenario)
+    assert summary.status == ExecutionStatus.PASSED, summary
+    load_calls = [c for c in isaac_client.calls if c[0] == "character_load"]
+    assert len(load_calls) == 1
+    assert load_calls[0][1]["prim_path"] == "/World/Characters/c_1"
+
+
+@pytest.mark.asyncio
+async def test_character_navigate_to_job_status_context_aware():
+    """character.navigate_to → context-aware job.status resolves job_id from CharacterNavigateResult."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["character_navigate"] = {
+        "ok": True,
+        "job_id": "job_char_xyz",
+        "prim_path": "/World/Characters/c_1",
+        "target": [1.0, 0.0, 0.0],
+    }
+    # Stub job_status to return terminal "done" on first poll
+    isaac_client.responses["job_status"] = {
+        "job_id": "job_char_xyz",
+        "status": "done",
+        "progress": 1.0,
+        "result": {"final_position": [1.0, 0.0, 0.0], "elapsed_s": 0.5},
+        "error": None,
+        "created_at_epoch_ms": 1000,
+        "updated_at_epoch_ms": 2000,
+    }
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_char_nav_job", "name": "char nav job test"},
+        "spec": {
+            "act": [
+                {
+                    "id": "nav",
+                    "module": "character",
+                    "action": "navigate_to",
+                    "args": {
+                        "prim_path": "/World/Characters/c_1",
+                        "target": [1.0, 0.0, 0.0],
+                        "speed": 1.0,
+                    },
+                },
+                {
+                    "id": "wait_nav",
+                    "module": "job",
+                    "action": "status",
+                    "args": {
+                        "navigate_step_id": "nav",
+                        "expected_status": "done",
+                        "poll_interval_s": 0.01,
+                        "max_polls": 5,
+                    },
+                },
+            ],
+            "assert": [
+                {
+                    "id": "noop",
+                    "module": "stage",
+                    "action": "assert_prim_exists",
+                    "args": {"prim_path": "/World"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+    summary = await runner.run(scenario)
+    assert summary.status == ExecutionStatus.PASSED, summary
+    # Verify the job polling call used the character navigate's job_id
+    job_calls = [c for c in isaac_client.calls if c[0] == "job_status"]
+    assert len(job_calls) == 1
+    assert job_calls[0][1]["job_id"] == "job_char_xyz"

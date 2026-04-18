@@ -223,6 +223,85 @@ class MockIsaacRestClient:
         }
         return self.responses.get("job_cancel", default)
 
+    # Character (Phase C)
+
+    async def character_load(self, request: dict) -> dict:
+        self.calls.append(("character_load", request))
+        return self.responses.get(
+            "character_load",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path") or "/World/Characters/Biped_Setup",
+                "skel_root_path": "/World/Characters/Biped_Setup/SkelRoot",
+                "sanitized_prim_path": request.get("prim_path") or "/World/Characters/Biped_Setup",
+                "has_skeleton": True,
+                "anim_graph_bound": True,
+            },
+        )
+
+    async def character_play_animation(self, request: dict) -> dict:
+        self.calls.append(("character_play_animation", request))
+        return self.responses.get(
+            "character_play_animation",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "action": request.get("animation_name", "Idle"),
+                "speed": float(request.get("speed", 1.0)),
+                "bound_graph": request.get("prim_path", "") + "/SkelRoot",
+            },
+        )
+
+    async def character_set_position(self, request: dict) -> dict:
+        self.calls.append(("character_set_position", request))
+        return self.responses.get(
+            "character_set_position",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "position": request.get("position", [0.0, 0.0, 0.0]),
+                "orientation": request.get("orientation") or [1.0, 0.0, 0.0, 0.0],
+            },
+        )
+
+    async def character_stop_animation(self, request: dict) -> dict:
+        self.calls.append(("character_stop_animation", request))
+        return self.responses.get(
+            "character_stop_animation",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "action": "Idle",
+                "speed": 0.0,
+            },
+        )
+
+    async def character_navigate(self, request: dict) -> dict:
+        self.calls.append(("character_navigate", request))
+        return self.responses.get(
+            "character_navigate",
+            {
+                "ok": True,
+                "job_id": "job_char_0001",
+                "prim_path": request.get("prim_path", ""),
+                "target": request.get("target", [0.0, 0.0, 0.0]),
+            },
+        )
+
+    async def character_get_state(self, prim_path: str) -> dict:
+        self.calls.append(("character_get_state", {"prim_path": prim_path}))
+        return self.responses.get(
+            "character_get_state",
+            {
+                "ok": True,
+                "prim_path": prim_path,
+                "position": [0.0, 0.0, 0.0],
+                "rotation": [1.0, 0.0, 0.0, 0.0],
+                "action": "Idle",
+                "is_navigating": False,
+            },
+        )
+
     # File / Selection / Camera (Phase B+)
 
     async def stage_save(self, path: str | None = None) -> dict:
