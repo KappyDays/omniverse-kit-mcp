@@ -81,6 +81,7 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 | `scenarios/CLAUDE.md` | YAML 시나리오 저작 가이드 |
 | `setup/CLAUDE.md` | 설치 스크립트 (`.env`, `~/.claude.json` 등록, Extension 활성화) |
 | `docs/references/CLAUDE.md` | Isaac Sim 레퍼런스 — ext 카탈로그 + testbed 스냅샷 + nvidia-docs |
+| `docs/tool-catalog.md` | MCP tool 전체 카탈로그 (signature + description + 파라미터) — `scripts/generate_tool_catalog.py` 로 auto-generate, `tests/unit/test_tool_catalog_sync.py` 가 frozenset SoT 와 동기화 검증. 외부 세션에서 "쓸 수 있는 tool 목록 한눈에 보기" 용 |
 
 ## 변경 파급 매트릭스
 
@@ -106,7 +107,7 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 | **C** | 캐릭터 + 애니메이션 (`CharacterUtil`, `AnimationGraph`) | ✅ 완료 (`docs/phase-c-validation-report.md`) | CharacterModule + ModuleName.CHARACTER, JobService 재사용, `extra_ext_ids` 로 anim/navigation/replicator bundle 자동 활성화 |
 | **D** | Extension UI 자동화 (`omni.kit.ui_test`, `carb.logging` 캡처) — Goal 2 | ✅ 완료 (`docs/phase-d-validation-report.md`) | ExtensionModule +4 method (`activate` / `get_ui_tree` / `ui_invoke` / `capture_logs`), `services/ui_service.py` + `services/log_capture_service.py`, `omni.mycompany.ui_demo` 데모 extension, `omni.kit.ui_test` + `omni.mycompany.ui_demo` 를 `extra_ext_ids` 기본 포함 |
 
-각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조. tool/endpoint 개수는 `tests/unit/test_tools_registration.py` 의 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset 이 SoT.
+각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조. tool/endpoint 개수는 `tests/unit/test_tools_registration.py` 의 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset 이 SoT. 사람이 읽는 카탈로그는 `docs/tool-catalog.md` (auto-generated; 변경 후 `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` 실행).
 
 ## Project-wide Validation Rules (필수 준수)
 
@@ -166,3 +167,4 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 1. **Robot 진정한 wheel-torque navigation** — 현재 `robot.navigate_to` / `navigate_path` 는 `xformOp:translate` kinematic override. OmniGraph `DifferentialController` 통합으로 PhysX 휠 마찰 기반 주행. R2 주석 참조. 로봇별 articulation spec 매핑이 가장 큰 작업
 2. **실전 Extension workflow 자동 검증** — `omni.mycompany.ui_demo` / `ui_demo_advanced` 가 아닌, KKR-A 같은 실제 생산용 Extension 에 `extension_get_ui_tree` / `extension_ui_invoke` / `window_menu_trigger` / `extension_capture_logs` 조합을 적용. `_WIDGET_TYPES` 가 커버 못 하는 custom widget class 를 실전에서 발견하고 allow-list 확장
 3. **Scenario engine variable templating 강화** — 현재 `${variable}` 치환은 compile time. 실행 중 step output 을 다음 step args 에 주입하는 패턴 (예: `captured_artifact_path`) 이 아직 없음 — context-aware action 패턴 확대
+4. **NavMesh bake 한계 해결됨** — `start_navmesh_baking_and_wait` 블로킹은 `start_navmesh_baking` + `is_navmesh_baking` 폴링으로 대체. `navigation_bake` / `query_path` / `add_exclude_volume` 모두 live 검증 통과. `timeout_s` 파라미터로 폴링 상한 조정
