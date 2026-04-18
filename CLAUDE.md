@@ -1,5 +1,20 @@
 # Isaac-sim-MCP — Project Instructions
 
+## 현재 MCP 표면 확인 (새 세션에서 먼저 볼 것)
+
+| 무엇을 보려고 | 어디를 본다 |
+|---------------|-------------|
+| 지금 호출 가능한 모든 MCP tool 목록 + 시그니처 + 파라미터 | `docs/tool-catalog.md` — auto-generated, 사람이 읽는 카탈로그 |
+| tool 이름의 단일 진실 (SoT) | `tests/unit/test_tools_registration.py` 의 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset |
+| Phase 별 구현 히스토리 (왜 / 어떻게 / 제약) | `docs/phase-a-validation-report.md` … `phase-e-validation-report.md` |
+| 도메인별 비자명한 제약 | `src/isaacsim_mcp/modules/CLAUDE.md` (모듈 책임) · `isaac_extension/CLAUDE.md` (Kit SDK 실측) · `src/isaacsim_mcp/tools/CLAUDE.md` (tool group caveat) |
+
+세션 시작 절차:
+1. 루트 CLAUDE.md (이 파일) 로 전역 결정 / 검증 규칙 파악
+2. `docs/tool-catalog.md` 로 지금 쓸 수 있는 tool 서피스 확인
+3. 관련 도메인의 하위 CLAUDE.md 에서 제약 / 실측 사실 확인
+4. Phase 히스토리 필요 시 해당 `phase-*-validation-report.md` 만 국소적으로 확인
+
 ## Quick Start
 
 ```bash
@@ -62,9 +77,12 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 ```
 
 **Phase 완료 시 필수 업데이트**
-- 이 파일의 Phase 로드맵 상태 (`❌ 미시작` → `✅ 완료`)
-- 새 tool/endpoint/module이 추가됐다면 변경 파급 매트릭스에 행 추가
-- 관련 하위 CLAUDE.md의 tool 목록·endpoint 목록 동기화
+- 이 파일의 Phase 로드맵 상태 (`❌ 미시작` → `✅ 완료`) + 핵심 산출물 열
+- 새 tool/endpoint/module 이 추가됐다면 변경 파급 매트릭스에 행 추가
+- 관련 하위 CLAUDE.md 의 tool 목록·endpoint 목록 동기화
+- `docs/phase-{N}-validation-report.md` 신규 — 해당 Phase 의 구현 결정 / 라이브 검증 결과 / 남은 한계
+- `scripts/generate_tool_catalog.py` 재실행 (`docs/tool-catalog.md` 갱신) — 또는 `scripts/verify_mcp_sync.py` 가 이를 자동으로 수행
+- `uv run pytest tests/` 전체 PASS 확인
 
 ## Scope-specific CLAUDE.md
 
@@ -81,7 +99,9 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 | `scenarios/CLAUDE.md` | YAML 시나리오 저작 가이드 |
 | `setup/CLAUDE.md` | 설치 스크립트 (`.env`, `~/.claude.json` 등록, Extension 활성화) |
 | `docs/references/CLAUDE.md` | Isaac Sim 레퍼런스 — ext 카탈로그 + testbed 스냅샷 + nvidia-docs |
+| `docs/CLAUDE.md` | 문서 루트 — Phase 히스토리 vs live tool 카탈로그 분리, phase report 작성 규칙, tool-catalog regen 절차 |
 | `docs/tool-catalog.md` | MCP tool 전체 카탈로그 (signature + description + 파라미터) — `scripts/generate_tool_catalog.py` 로 auto-generate, `tests/unit/test_tool_catalog_sync.py` 가 frozenset SoT 와 동기화 검증. 외부 세션에서 "쓸 수 있는 tool 목록 한눈에 보기" 용 |
+| `scripts/CLAUDE.md` | 개발 스크립트 (lifecycle / live 검증 / catalog regen / verify_mcp_sync) 목적 + 실행 조건 |
 
 ## 변경 파급 매트릭스
 
@@ -89,14 +109,17 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 
 | 변경 대상 | 함께 수정해야 하는 곳 |
 |-----------|----------------------|
-| REST 엔드포인트 추가 (`isaac_extension/`) | `clients/isaac_rest_client.py` + `tools/` — MCP tool 등록 / `tests/` — tool 등록 테스트 |
-| 새 module 추가 (`modules/`) | `types/common.py` ModuleName enum + `scenario/schema.py` + `scenarios/schema/scenario.schema.json` enum + `scenario/runner.py` dispatch dict + `scenario_tools.py` register 시그니처 + `mcp/server.py` wiring |
+| REST 엔드포인트 추가 (`isaac_extension/`) | `clients/isaac_rest_client.py` + `tools/` — MCP tool 등록 / `tests/` — tool 등록 테스트 / `isaac_extension/CLAUDE.md` 관련 섹션 (HTTP status · 비자명한 제약) |
+| 새 module 추가 (`modules/`) | `types/common.py` ModuleName enum + `scenario/schema.py` + `scenarios/schema/scenario.schema.json` enum + `scenario/runner.py` dispatch dict + `scenario_tools.py` register 시그니처 + `mcp/server.py` wiring + `modules/CLAUDE.md` 책임 매트릭스 |
 | 새 module 메서드 | `scenario/action_registry.py` (typed request 빌더) 또는 **kwargs 폴백 허용 / `tests/` |
-| 새 MCP tool (`tools/`) | `isaac_extension/` — REST 엔드포인트 / `tests/unit/test_tools_registration.py` 의 expected count 와 list |
-| scenario action 추가 | `action_registry.py` + `scenario.schema.json` + `schema.py` 3곳 동시 수정 / `tests/unit/test_scenario_integration.py` |
+| **새 MCP tool (`tools/`)** | **⓵ `isaac_extension/` REST 엔드포인트 · `clients/isaac_rest_client.py` · `tools/module_tools.py` @mcp.tool() · `tests/conftest.py` MockIsaacRestClient +메서드 · `tests/unit/test_tools_registration.py` EXPECTED_{MODULE,SCENARIO}_TOOLS frozenset · `tools/CLAUDE.md` 그룹 caveat**<br>**⓶ 반드시 재생성**: `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` (또는 `scripts/verify_mcp_sync.py`)<br>**⓷ drift 검증**: `uv run pytest tests/unit/test_tools_registration.py tests/unit/test_tool_catalog_sync.py` |
+| scenario action 추가 | `action_registry.py` + `scenario.schema.json` + `schema.py` 3곳 동시 수정 / `tests/unit/test_scenario_integration.py` / `scenarios/CLAUDE.md` 모듈별 액션 가이드 |
 | context-aware action 추가 | `action_registry.py` `CONTEXT_AWARE_ACTIONS` + `runner._execute_context_aware` 분기 / 필요 시 ctx 에서 선행 step data 해소 |
 | ASYNC Job 동작 추가 | Extension `services/job_service.py` 의 `start_job(coro_factory)` 사용 / try-except 필수 (silent catch 금지) / tool 은 job_id 반환, Claude Code 가 `job_status` 폴링 |
-| CLAUDE.md에 새 디렉토리 추가 | 이 매트릭스 업데이트 + 관련 경계 양방향 확인 |
+| CLAUDE.md에 새 디렉토리 추가 | 이 매트릭스 업데이트 + 관련 경계 양방향 확인 + 루트 CLAUDE.md "Scope-specific CLAUDE.md" 표 갱신 |
+| Phase 완료 | `docs/phase-{N}-validation-report.md` 신규 · 이 파일의 Phase 로드맵 표 행 갱신 · `scripts/generate_tool_catalog.py` 재실행 · 관련 하위 CLAUDE.md tool/endpoint 목록 동기화 · `uv run pytest tests/` 전체 green |
+
+**한 줄 요약**: "새 tool 등록 = 서피스 변경 + auto-regen 카탈로그 + drift test 통과". 이 세 가지 중 하나라도 빠지면 `test_tool_catalog_sync` 또는 `test_tools_registration` 이 fail 한다. 배경 자동화가 없으므로 개발자가 `scripts/verify_mcp_sync.py` 를 **반드시** 수동으로 1 회 실행해야 한다 (이 스크립트는 regen + drift test 를 한 번에 돌린다).
 
 ## Phase 로드맵
 
