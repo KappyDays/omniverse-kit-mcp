@@ -346,9 +346,14 @@ class MockIsaacRestClient:
         )
 
     async def extension_ui_tree(
-        self, ext_id: str | None = None, window: str | None = None,
+        self,
+        ext_id: str | None = None,
+        window: str | None = None,
+        widget_types: list[str] | None = None,
     ) -> dict:
-        self.calls.append(("extension_ui_tree", {"ext_id": ext_id, "window": window}))
+        self.calls.append(("extension_ui_tree", {
+            "ext_id": ext_id, "window": window, "widget_types": widget_types,
+        }))
         return self.responses.get(
             "extension_ui_tree",
             {
@@ -405,6 +410,116 @@ class MockIsaacRestClient:
                 },
             },
         )
+
+    async def extension_clear_logs(self) -> dict:
+        self.calls.append(("extension_clear_logs", {}))
+        return self.responses.get("extension_clear_logs", {"ok": True, "removed": 42})
+
+    async def window_capture(self, request: dict) -> dict:
+        self.calls.append(("window_capture", request))
+        default = {
+            "ok": True,
+            "artifact_id": "win_abc",
+            "path": "/tmp/window_abc.png",
+            "width": 1920,
+            "height": 1080,
+            "hwnd": 123456,
+            "title": "Isaac Sim Full",
+            "class_name": "GLFW30",
+            "mode": request.get("mode", "kit"),
+            "used_printwindow": True,
+            "used_bitblt_fallback": False,
+            "sha256": "deadbeef",
+            "wait_stable": request.get("wait_stable", False),
+            "created_at_epoch_ms": 1,
+        }
+        return self.responses.get("window_capture", default)
+
+    async def window_list(self) -> dict:
+        self.calls.append(("window_list", {}))
+        return self.responses.get("window_list", {
+            "ok": True, "pid": "<process-id>", "count": 1,
+            "windows": [
+                {"hwnd": 1, "title": "Isaac Sim Full", "class_name": "GLFW30",
+                 "width": 1920, "height": 1080},
+            ],
+        })
+
+    async def window_ui_list(self, name_filter: str | None = None) -> dict:
+        self.calls.append(("window_ui_list", {"name_filter": name_filter}))
+        return self.responses.get("window_ui_list", {
+            "ok": True, "count": 2, "filter": name_filter,
+            "windows": [
+                {"title": "Viewport", "visible": True, "docked": False,
+                 "dock_id": 0, "width": 800, "height": 600},
+                {"title": "Stage", "visible": True, "docked": True,
+                 "dock_id": 42, "width": 300, "height": 600},
+            ],
+        })
+
+    async def window_ui_show(
+        self, name: str, visible: bool = True, focus: bool = True, settle_frames: int = 5,
+    ) -> dict:
+        self.calls.append(("window_ui_show", {
+            "name": name, "visible": visible, "focus": focus, "settle_frames": settle_frames,
+        }))
+        return self.responses.get("window_ui_show", {
+            "ok": True, "name": name, "resolved_name": name, "resolved_via": "exact",
+            "requested_visible": visible, "found": True, "focused": focus,
+            "visible_after": visible, "docked": False, "dock_id": 0,
+        })
+
+    async def window_menu_list(self, menu_path: str | None = None) -> dict:
+        self.calls.append(("window_menu_list", {"menu_path": menu_path}))
+        return self.responses.get("window_menu_list", {
+            "ok": True, "count": 1, "menu_path": menu_path,
+            "items": [
+                {"path": "Window/Viewport", "name": "Viewport", "has_submenu": False,
+                 "enabled": True, "onclick_action": ["omni.kit.viewport", "Viewport"],
+                 "action_prefix": "omni.kit.viewport"},
+            ],
+            "diag": {},
+        })
+
+    async def window_menu_trigger(self, menu_path: str) -> dict:
+        self.calls.append(("window_menu_trigger", {"menu_path": menu_path}))
+        return self.responses.get("window_menu_trigger", {
+            "ok": True, "menu_path": menu_path,
+            "action": ["omni.kit.x", "X"], "created_prims": [],
+        })
+
+    async def navigation_bake(self, volume_scale: float = 40.0) -> dict:
+        self.calls.append(("navigation_bake", {"volume_scale": volume_scale}))
+        return self.responses.get("navigation_bake", {
+            "ok": True, "agent_max_radius": 0.25, "area_count": 1,
+            "mesh_signature": "abc", "volume_prim_path": "/World/NavMeshVolume",
+            "volume_created": True, "volume_scale": volume_scale,
+        })
+
+    async def navigation_query_path(self, request: dict) -> dict:
+        self.calls.append(("navigation_query_path", request))
+        return self.responses.get("navigation_query_path", {
+            "ok": True,
+            "points": [request["start"], request["end"]],
+            "length": 5.0,
+            "straight": request.get("straighten", True),
+            "auto_baked": False,
+            "agent_radius": request.get("agent_radius", 0.25),
+            "agent_height": request.get("agent_height", 1.8),
+        })
+
+    async def navigation_add_exclude_volume(
+        self, prim_path: str | None = None, padding: float = 0.1,
+    ) -> dict:
+        self.calls.append((
+            "navigation_add_exclude_volume",
+            {"prim_path": prim_path, "padding": padding},
+        ))
+        return self.responses.get("navigation_add_exclude_volume", {
+            "ok": True, "volume_prim_path": "/World/NavMeshExclude_1",
+            "bbox_min": [-0.5, -0.5, 0.0], "bbox_max": [0.5, 0.5, 1.0],
+            "padding": padding, "source_prim_path": prim_path,
+        })
 
     async def extension_logs(
         self,

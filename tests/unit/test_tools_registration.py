@@ -69,6 +69,19 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "extension_get_ui_tree",
     "extension_ui_invoke",
     "extension_capture_logs",
+    # Phase E — log ring buffer management
+    "extension_clear_logs",
+    # Phase E — Window (Kit GUI / menu / omni.ui.Window)
+    "window_capture",
+    "window_list",
+    "window_ui_list",
+    "window_ui_show",
+    "window_menu_list",
+    "window_menu_trigger",
+    # Phase E — NavMesh
+    "navigation_bake",
+    "navigation_query_path",
+    "navigation_add_exclude_volume",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({

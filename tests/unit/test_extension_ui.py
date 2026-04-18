@@ -97,7 +97,7 @@ async def test_get_ui_tree_default_payload(ext_module, mock_client, meta):
     # Verify client was called with the right query
     name, payload = mock_client.calls[-1]
     assert name == "extension_ui_tree"
-    assert payload == {"ext_id": None, "window": "UI Demo"}
+    assert payload == {"ext_id": None, "window": "UI Demo", "widget_types": None}
 
 
 @pytest.mark.asyncio
@@ -224,3 +224,24 @@ async def test_capture_logs_error(ext_module, mock_client, meta):
     result = await ext_module.capture_logs(meta)
     assert result.ok is False
     assert result.error_code == "EXTENSION_LOGS_ERROR"
+
+
+# --- extension_clear_logs ------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_clear_logs_returns_count(ext_module, mock_client, meta):
+    result = await ext_module.clear_logs(meta)
+    assert result.ok is True
+    assert result.data == {"ok": True, "removed": 42}
+    name, _payload = mock_client.calls[-1]
+    assert name == "extension_clear_logs"
+
+
+@pytest.mark.asyncio
+async def test_clear_logs_error(ext_module, mock_client, meta):
+    async def _boom(*_a, **_kw):
+        raise RuntimeError("clear failed")
+    mock_client.extension_clear_logs = _boom
+    result = await ext_module.clear_logs(meta)
+    assert result.ok is False
+    assert result.error_code == "EXTENSION_LOGS_CLEAR_ERROR"
