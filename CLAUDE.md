@@ -40,7 +40,7 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 **Isaac Sim GUI 유저가 할 수 있는 모든 것을 Claude Code 도 MCP tool 로 할 수 있어야 한다.**
 Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File menu / Simready Explorer 등 어떤 경로로든 유저가 수행하는 동작은 MCP tool 로 동등하게 제공하며, 없으면 Phase 진행 과정에서 필요 시점에 바로 추가한다. 프로세스 실행/종료, Scene 조작, 시뮬레이션 제어, Viewport 캡처, 파일 입출력, 선택 상태 모두 Claude Code 가 완전 자율 제어할 수 있어야 한다.
 
-Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션, Extension UI 자동화 등) 도입 시, "GUI 유저가 할 수 있는 것 중 MCP 에 아직 없는 것"을 항상 먼저 식별하고 보완한다.
+새 도메인 (캐릭터/애니메이션, Extension UI 자동화, 실전 Extension 검증 등) 도입 시 "GUI 유저가 할 수 있는 것 중 MCP 에 아직 없는 것"을 항상 먼저 식별하고 보완한다. 자연어로 받은 엔드투엔드 지시 (예: "새 Extension 만들고 버튼 클릭 동작을 스스로 검증") 는 MCP tool 조합만으로 실행 가능해야 한다.
 
 ## CLAUDE.md 작성 규칙
 
@@ -159,8 +159,10 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 
 ## 다음 세션 작업
 
-각 Phase 진행은 별도 세션(컨텍스트 클린)에서 시작. 각 Step 프롬프트는 Notion **"Isaac Sim MCP"** 페이지 하단의 세부 페이지로 나뉘어 작성되어 있음. 다음은 **Phase D — Extension UI 자동화 + KKR-A 실전 테스트**.
-
 새 세션 시작 시 작업 디렉토리(`~/workspace/Isaac-sim-MCP/`)의 이 CLAUDE.md가 자동 로드됨. testbed 의 `src/isaac_sim_testbed/CLAUDE.md` (API 특이사항 #1-#17) 는 로봇/캐릭터 도메인 작업 시 별도 참조.
 
-> **2026-04-19 갱신**: Phase D 완료. 44 → 48 tool, 36 → 40 endpoint, 154 → 175 unit tests. ExtensionModule 에 `activate` / `get_ui_tree` / `ui_invoke` / `capture_logs` 추가, 신규 `services/ui_service.py` + `services/log_capture_service.py`, 데모 extension `omni.mycompany.ui_demo` 추가. Live validation: `scripts/live_test_extension_ui.py` (PhaseD/ 에 01-05 PNG + phase_d_live_report.json 기록). 상세: [Phase D 완료 이력](docs/phase-d-validation-report.md).
+후보 backlog (우선순위 순):
+
+1. **Robot 진정한 wheel-torque navigation** — 현재 `robot.navigate_to` / `navigate_path` 는 `xformOp:translate` kinematic override. OmniGraph `DifferentialController` 통합으로 PhysX 휠 마찰 기반 주행. R2 주석 참조. 로봇별 articulation spec 매핑이 가장 큰 작업
+2. **실전 Extension workflow 자동 검증** — `omni.mycompany.ui_demo` / `ui_demo_advanced` 가 아닌, KKR-A 같은 실제 생산용 Extension 에 `extension_get_ui_tree` / `extension_ui_invoke` / `window_menu_trigger` / `extension_capture_logs` 조합을 적용. `_WIDGET_TYPES` 가 커버 못 하는 custom widget class 를 실전에서 발견하고 allow-list 확장
+3. **Scenario engine variable templating 강화** — 현재 `${variable}` 치환은 compile time. 실행 중 step output 을 다음 step args 에 주입하는 패턴 (예: `captured_artifact_path`) 이 아직 없음 — context-aware action 패턴 확대

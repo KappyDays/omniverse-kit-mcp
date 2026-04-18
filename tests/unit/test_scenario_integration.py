@@ -28,6 +28,9 @@ from isaacsim_mcp.types.common import ExecutionStatus, ModuleName
 
 
 def _build_runner(isaac_client, lakehouse_client):
+    from isaacsim_mcp.modules.navigation_module import NavigationModule
+    from isaacsim_mcp.modules.window_module import WindowModule
+
     stage = StageModule(isaac_client)
     viewport = ViewportModule(isaac_client)
     lakehouse = LakehouseModule(lakehouse_client)
@@ -37,8 +40,11 @@ def _build_runner(isaac_client, lakehouse_client):
     job = JobModule(isaac_client)
     asset = AssetModule(isaac_client)
     character = CharacterModule(isaac_client)
+    window = WindowModule(isaac_client)
+    navigation = NavigationModule(isaac_client)
     return ScenarioRunner(
         stage, viewport, lakehouse, extension, simulation, robot, job, asset, character,
+        window, navigation,
     )
 
 
