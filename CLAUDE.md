@@ -104,9 +104,17 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 | **A** | Extension WRITE + REST 실구현 | ✅ 완료 (`docs/phase-a-validation-report.md`) | scenario 엔진, simulation 모듈 Stage WRITE 라우팅, viewport/process 호환성 |
 | **B** | 로봇 제어 + ASYNC Job + Asset Browser + GUI 동등 (File/Selection/Camera) | ✅ 완료 (`docs/phase-b-validation-report.md`) | Robot/Job/Asset 모듈, `job.status` context-aware polling, articulation 사전 검증, `asset_list`, `stage_save/open/new`, `stage_get/set_selection`, `viewport_set_active_camera` |
 | **C** | 캐릭터 + 애니메이션 (`CharacterUtil`, `AnimationGraph`) | ✅ 완료 (`docs/phase-c-validation-report.md`) | CharacterModule + ModuleName.CHARACTER, JobService 재사용, `extra_ext_ids` 로 anim/navigation/replicator bundle 자동 활성화 |
-| **D** | Extension UI 자동화 (`omni.kit.ui_test`) — Goal 2 | ⏸ 대기 | — |
+| **D** | Extension UI 자동화 (`omni.kit.ui_test`) — Goal 2 | ⏸ 대기 (widget 레벨 click. 선행 `window/*` REST 6 개 — `capture` · `list` · `ui_list` · `ui_show` · `menu_list` · `menu_trigger` — 는 이미 Extension 에 탑재) | — |
 
 각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조. tool/endpoint 개수는 `tests/unit/test_tools_registration.py` 의 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset 이 SoT.
+
+## Project-wide Validation Rules (필수 준수)
+
+**R1. 모든 Isaac Sim 검증은 실제 로드 가능한 asset 으로 수행.** `Cube` / `Sphere` 같은 primitive 를 "의자 대용 / 로봇 대용" 으로 사용한 검증은 **무효**. 동작 확인은 반드시 `/assets/list` 로 탐색하거나 알려진 S3 경로 (예: `.../Environments/Office/Props/SM_Armchair.usd`, `.../Robots/NVIDIA/NovaCarter/nova_carter.usd`, `.../People/Characters/Biped_Setup.usd`) 에서 로드한 실제 USD 로. 이유: primitive 는 bbox · pivot · forward axis · physics material · mesh topology 특성이 실 asset 과 전혀 다르다 → Cube 로 통과한 로직이 실제 asset 에서 실패하는 False Positive 를 빈번히 발생시킨다. 해당 실패는 예전 세션의 chair sit 검증에서 실측됨 (Cube 에선 동작, 실 Armchair 에선 NavMesh step-up 문제 노출).
+
+**R1a. NavMesh bake 는 R2 와 정반대로 timeline stopped 상태에서만 성공.** `navigation.bake` 는 playing 중엔 `get_navmesh()` 가 None (bake 자체는 True 반환하는 False Positive 존재). `stage.load_usd` · `robot.load` · `stage.create_prim` · `stage.set_property` · `viewport.capture`(settle_frames) · `window.capture` 는 모두 timeline 을 advance 시키므로, stage mutation 이후 bake 직전에 반드시 `simulation.stop` 을 한 번 더 호출. 표준 Robot navigation 시퀀스: `load → stop → bake → query_path → play → navigate_path`. Extension 내부에 precondition 체크 없음 — 호출자 (scenario / script) 책임.
+
+**R2. Robot 관련 모든 동작은 `simulation.play` 상태에서만 검증.** `robot.load` 는 예외지만, `robot.set_joint_positions` / `robot.navigate_to` / `robot.navigate_path` 등 **움직임 / 관절 / 물리 상호작용 모든 동작** 은 timeline 이 playing 일 때만 실행한다. 이유: PhysX articulation view 는 physics step 이 돌아야 populate 되고, 휠 회전·마찰·충돌·중력이 active 하지 않으면 결과가 실제 시뮬레이션과 괴리된다. Extension `robot_service.navigate_path` 는 `omni.timeline.is_playing()` 을 사전 검증하고 아니면 HTTP 400 으로 거부한다. scenario 는 `act` 단계 진입 전 `simulation.play` 를 arrange 에 필수 배치. 참고: 현재 `navigate_path` 는 `xformOp:translate` kinematic override 방식이므로 physics 가 active 해도 robot 자체는 kinematic 이동 — 진정한 wheel torque 기반 navigation 은 Phase D+ 에서 OmniGraph Differential Controller 로 확장 예정.
 
 ## Key Decisions
 
@@ -128,6 +136,11 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 - **AnimGraph ready retry (testbed #13)**: `ag.get_character(prim_path)` 는 `world.reset` 직후 graph registry populate 지연으로 None 을 반환할 수 있음. Extension `_ensure_animation_ready` 가 1-frame `simulation_play → pause` warm-up 후 재시도로 보완하지만, scenario arrange 에 `simulation.play → pause` 를 명시하는 것이 결정적 타이밍 확보상 권장
 - **AnimGraph 가 root transform override**: character 가 `ApplyAnimationGraphAPICommand` 로 bound 되면 AnimGraph 가 매 tick `xformOp:translate` 를 덮어쓴다. `character.set_position` 은 USD 레벨 write 성공 + 다음 tick 에 AnimGraph 복원 (response 의 position 은 정상이지만 시각적 이동 X). visible move 가 필요하면 `character.navigate_to` 사용 또는 load 시 `position` 으로 초기 위치 지정
 - **Character navigate 는 timeline playing 필수**: `character.navigate_to` Job 은 AnimGraph / NavMesh tick 에 의존. `simulation.stop` / `pause` 상태에서는 0m 이동 후 30s timeout → done. traversal 검증 시나리오는 navigate 전 `simulation.play`, 완료 후 `simulation.pause` 를 act 에 배치
+- **Window capture vs Viewport capture 는 별개 도메인**: `/viewport/capture` 는 3D 카메라 RTX 렌더 (scene 검증용). `/window/capture` 는 kit.exe 메인 윈도우를 **Win32 PrintWindow** 로 OS 레벨 스크린샷 — Stage / Property / Content / Timeline 등 GUI chrome 전체 포함 (튜토리얼·문서·메뉴 검증용). 둘 다 GUI 모드 필수 (headless 는 빈 결과). 상세: `isaac_extension/CLAUDE.md` "Window capture & UI automation"
+- **`isaacsim.exp.full.kit` preset 은 `isaacsim.asset.browser` 를 포함하지 않음**: `Window > Browsers > Isaac Sim Assets` 메뉴 항목은 존재하지만 창을 실제 생성하는 `isaacsim.asset.browser` 가 preset 에 없어서 기본 기동 시 창이 안 뜨고 `menu_trigger` 도 silent no-op. 이 창이 필요하면 `ISAAC_SIM_EXTRA_EXT_IDS` 에 `isaacsim.asset.browser` 추가 (ProcessModule 이 이를 `--enable` 플래그로 전개). 실제 창 title 은 `Isaac Sim Assets [Beta]` — 메뉴 label 과 상이하므로 아래 UI Window title 규칙 참조
+- **UI Window title ≠ 메뉴 label**: Kit 의 Browser 계열 창은 자주 `[Beta]`/`[Experimental]` 등 suffix 를 달고 등록된다 (예: 메뉴 "Isaac Sim Assets" → 창 `Isaac Sim Assets [Beta]`). `/window/ui_show` 는 exact title 실패 시 case-insensitive substring fallback 을 자동 시도 (응답 `resolved_via: "exact"|"substring"`). 신규 UI 자동화 코드는 menu label 로 창을 가정하지 말고 fallback 결과를 신뢰할 것
+- **Browser 창은 lazy-instantiated**: `omni.ui.Workspace.get_windows()` 는 이미 인스턴스화된 창만 반환. Browser 패널은 첫 `show_window` 호출 전까지 목록에 안 보인다. 전체 Browser 를 enumerate 하려면 `menu_list → menu_trigger 각 항목 → ui_list 재조회` 순서 필수
+- **Browser 썸네일 로딩은 extension 별로 상이**: `isaacsim.asset.browser` (`Isaac Sim Assets [Beta]`) 는 첫 open 시 NVIDIA 공개 S3 를 실시간 crawl 하여 카테고리별 썸네일을 async fetch — 즉시 capture 시 빈 그리드로 찍힌다. `omni.kit.browser.asset` (`NVIDIA Assets`), `omni.simready.explorer` (`SimReady Explorer`) 는 cached catalog 포함 → 즉시 populate. S3-crawl 브라우저의 의미 있는 스크린샷은 show 후 10–30 s 추가 settle 또는 명시적 카테고리 click (Phase D UI automation 영역) 필요
 
 ## Environment Variables
 
