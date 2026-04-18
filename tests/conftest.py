@@ -330,6 +330,123 @@ class MockIsaacRestClient:
 
     # Assets (Phase B+)
 
+    # Phase D — Extension UI automation + carb log capture
+
+    async def extension_activate(self, ext_id: str, reload: bool = False) -> dict:
+        self.calls.append(("extension_activate", {"ext_id": ext_id, "reload": reload}))
+        return self.responses.get(
+            "extension_activate",
+            {
+                "ok": True,
+                "ext_id": ext_id,
+                "was_enabled": False,
+                "enabled": True,
+                "reloaded": reload,
+            },
+        )
+
+    async def extension_ui_tree(
+        self, ext_id: str | None = None, window: str | None = None,
+    ) -> dict:
+        self.calls.append(("extension_ui_tree", {"ext_id": ext_id, "window": window}))
+        return self.responses.get(
+            "extension_ui_tree",
+            {
+                "ok": True,
+                "ext_id": ext_id,
+                "window": window,
+                "matched_windows": [window] if window else [],
+                "windows": [
+                    {"title": "UI Demo", "visible": True, "docked": False},
+                ],
+                "widgets": [
+                    {
+                        "path": "UI Demo//Frame/VStack/Button[0]",
+                        "label": "Trigger",
+                        "type": "Button",
+                        "enabled": True,
+                        "visible": True,
+                        "value": None,
+                    },
+                    {
+                        "path": "UI Demo//Frame/VStack/StringField[0]",
+                        "label": "",
+                        "type": "StringField",
+                        "enabled": True,
+                        "visible": True,
+                        "value": "",
+                    },
+                ],
+                "widget_count": 2,
+                "walk_errors": [],
+            },
+        )
+
+    async def extension_ui_invoke(
+        self, widget_path: str, action: str, value=None,
+    ) -> dict:
+        self.calls.append(
+            ("extension_ui_invoke", {"widget_path": widget_path, "action": action, "value": value})
+        )
+        return self.responses.get(
+            "extension_ui_invoke",
+            {
+                "ok": True,
+                "widget_path": widget_path,
+                "action_performed": action,
+                "value": value,
+                "post_state": {
+                    "path": widget_path,
+                    "label": "Clicked 1 times",
+                    "type": "Button",
+                    "enabled": True,
+                    "visible": True,
+                    "value": None,
+                },
+            },
+        )
+
+    async def extension_logs(
+        self,
+        ext_id: str | None = None,
+        since_ms: int | None = None,
+        level: str = "INFO",
+        limit: int = 1000,
+    ) -> dict:
+        self.calls.append(
+            (
+                "extension_logs",
+                {
+                    "ext_id": ext_id,
+                    "since_ms": since_ms,
+                    "level": level,
+                    "limit": limit,
+                },
+            )
+        )
+        return self.responses.get(
+            "extension_logs",
+            {
+                "ok": True,
+                "entries": [
+                    {
+                        "ts_ms": 1700000000000,
+                        "level": "INFO",
+                        "level_int": -1,
+                        "source": "omni.mycompany.ui_demo",
+                        "filename": "extension.py",
+                        "line": 42,
+                        "msg": "hello",
+                    },
+                ],
+                "count": 1,
+                "truncated": False,
+                "level_filter": level,
+                "since_ms": since_ms,
+                "source_filter": ext_id,
+            },
+        )
+
     async def asset_list(
         self,
         category: str | None = None,

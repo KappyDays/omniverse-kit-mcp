@@ -104,7 +104,7 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 | **A** | Extension WRITE + REST 실구현 | ✅ 완료 (`docs/phase-a-validation-report.md`) | scenario 엔진, simulation 모듈 Stage WRITE 라우팅, viewport/process 호환성 |
 | **B** | 로봇 제어 + ASYNC Job + Asset Browser + GUI 동등 (File/Selection/Camera) | ✅ 완료 (`docs/phase-b-validation-report.md`) | Robot/Job/Asset 모듈, `job.status` context-aware polling, articulation 사전 검증, `asset_list`, `stage_save/open/new`, `stage_get/set_selection`, `viewport_set_active_camera` |
 | **C** | 캐릭터 + 애니메이션 (`CharacterUtil`, `AnimationGraph`) | ✅ 완료 (`docs/phase-c-validation-report.md`) | CharacterModule + ModuleName.CHARACTER, JobService 재사용, `extra_ext_ids` 로 anim/navigation/replicator bundle 자동 활성화 |
-| **D** | Extension UI 자동화 (`omni.kit.ui_test`) — Goal 2 | ⏸ 대기 (widget 레벨 click. 선행 `window/*` REST 6 개 — `capture` · `list` · `ui_list` · `ui_show` · `menu_list` · `menu_trigger` — 는 이미 Extension 에 탑재) | — |
+| **D** | Extension UI 자동화 (`omni.kit.ui_test`, `carb.logging` 캡처) — Goal 2 | ✅ 완료 (`docs/phase-d-validation-report.md`) | ExtensionModule +4 method (`activate` / `get_ui_tree` / `ui_invoke` / `capture_logs`), `services/ui_service.py` + `services/log_capture_service.py`, `omni.mycompany.ui_demo` 데모 extension, `omni.kit.ui_test` + `omni.mycompany.ui_demo` 를 `extra_ext_ids` 기본 포함 |
 
 각 Phase의 상세 진행 프롬프트는 Notion "Isaac Sim MCP" 페이지 하단 참조. tool/endpoint 개수는 `tests/unit/test_tools_registration.py` 의 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset 이 SoT.
 
@@ -141,6 +141,10 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 - **UI Window title ≠ 메뉴 label**: Kit 의 Browser 계열 창은 자주 `[Beta]`/`[Experimental]` 등 suffix 를 달고 등록된다 (예: 메뉴 "Isaac Sim Assets" → 창 `Isaac Sim Assets [Beta]`). `/window/ui_show` 는 exact title 실패 시 case-insensitive substring fallback 을 자동 시도 (응답 `resolved_via: "exact"|"substring"`). 신규 UI 자동화 코드는 menu label 로 창을 가정하지 말고 fallback 결과를 신뢰할 것
 - **Browser 창은 lazy-instantiated**: `omni.ui.Workspace.get_windows()` 는 이미 인스턴스화된 창만 반환. Browser 패널은 첫 `show_window` 호출 전까지 목록에 안 보인다. 전체 Browser 를 enumerate 하려면 `menu_list → menu_trigger 각 항목 → ui_list 재조회` 순서 필수
 - **Browser 썸네일 로딩은 extension 별로 상이**: `isaacsim.asset.browser` (`Isaac Sim Assets [Beta]`) 는 첫 open 시 NVIDIA 공개 S3 를 실시간 crawl 하여 카테고리별 썸네일을 async fetch — 즉시 capture 시 빈 그리드로 찍힌다. `omni.kit.browser.asset` (`NVIDIA Assets`), `omni.simready.explorer` (`SimReady Explorer`) 는 cached catalog 포함 → 즉시 populate. S3-crawl 브라우저의 의미 있는 스크린샷은 show 후 10–30 s 추가 settle 또는 명시적 카테고리 click (Phase D UI automation 영역) 필요
+- **`omni.kit.ui_test` path grammar 는 typed — wildcard `**/*` 불통**: `find("Win//**/*")` 같은 쿼리는 `*` 가 인덱스 wildcard (`[*]`) 로만 해석되어 0 매치. 전체 walk 가 필요하면 `{window}//Frame/**/{WidgetType}[*]` 를 Button/Label/StringField/CheckBox/ComboBox/Float*/Int*/ToolButton/RadioButton/Image 등으로 **타입 리스트 iterate**. `services/ui_service.py._WIDGET_TYPES` 가 기본 enumerate 대상 — 누락된 custom widget 은 추가 필요. `ui_test.find()` / `find_all()` 은 sync 함수이나 반환된 `WidgetRef.click()` / `.double_click()` / `.input(text)` 는 async (await 필요)
+- **`ExtensionManager.get_extension_dict(ext_id)` 는 full-qualified id (`{name}-{version}`) 필요**: Kit 107.3 에서 `get_extension_dict("omni.mycompany.ui_demo")` 는 None. `is_extension_enabled(ext_id)` 와 `set_extension_enabled_immediate(ext_id, True)` 반환값으로 유효성 판단 — `omni.mycompany.validation_api/services/extension_service.py.activate` 가 canonical pattern
+- **carb log hook signature 는 5-arg**: `carb.logging.acquire_logging().add_logger(cb)` 의 콜백은 `(source, level, filename, line, msg)` 순. 공식 문서의 6-arg 예제 (tid 포함) 는 이전 버전 기준 — testbed #4. Level: VERBOSE=-2, INFO=-1, WARN=0, ERROR=1, FATAL=2. handle 은 반드시 `on_shutdown` 에서 `remove_logger` — 생략 시 Extension reload 간 callback 이 dangling 되어 중복 엔트리 발생. 콜백은 carb thread 에서 호출되므로 **절대 raise 금지** (try/except 로 swallow)
+- **log ring buffer 는 peek (drain 아님)**: `LogCaptureService.query(since_ms=..., limit=...)` 는 deque 를 snapshot read 만. `capture_logs` 를 여러 번 호출하면 동일 range 에서 같은 엔트리를 반복 반환 — "다음 호출부터 new" 패턴 필요하면 호출자가 이전 응답의 마지막 `ts_ms` + 1 을 `since_ms` 로 전달. `maxlen=10000` 기본 — Kit console 은 많이 chatty 하므로 ext_id substring filter 조합 필수
 
 ## Environment Variables
 
@@ -158,3 +162,5 @@ Phase C/D 에서도 이 원칙 유지: 새 도메인 (캐릭터/애니메이션,
 각 Phase 진행은 별도 세션(컨텍스트 클린)에서 시작. 각 Step 프롬프트는 Notion **"Isaac Sim MCP"** 페이지 하단의 세부 페이지로 나뉘어 작성되어 있음. 다음은 **Phase D — Extension UI 자동화 + KKR-A 실전 테스트**.
 
 새 세션 시작 시 작업 디렉토리(`~/workspace/Isaac-sim-MCP/`)의 이 CLAUDE.md가 자동 로드됨. testbed 의 `src/isaac_sim_testbed/CLAUDE.md` (API 특이사항 #1-#17) 는 로봇/캐릭터 도메인 작업 시 별도 참조.
+
+> **2026-04-19 갱신**: Phase D 완료. 44 → 48 tool, 36 → 40 endpoint, 154 → 175 unit tests. ExtensionModule 에 `activate` / `get_ui_tree` / `ui_invoke` / `capture_logs` 추가, 신규 `services/ui_service.py` + `services/log_capture_service.py`, 데모 extension `omni.mycompany.ui_demo` 추가. Live validation: `scripts/live_test_extension_ui.py` (PhaseD/ 에 01-05 PNG + phase_d_live_report.json 기록). 상세: [Phase D 완료 이력](docs/phase-d-validation-report.md).
