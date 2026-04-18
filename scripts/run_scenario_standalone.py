@@ -20,6 +20,7 @@ from isaacsim_mcp.clients.isaac_rest_client import IsaacRestClient
 from isaacsim_mcp.clients.lakehouse_client import LakehouseClient
 from isaacsim_mcp.config import AppConfig
 from isaacsim_mcp.modules.asset_module import AssetModule
+from isaacsim_mcp.modules.character_module import CharacterModule
 from isaacsim_mcp.modules.extension_module import ExtensionModule
 from isaacsim_mcp.modules.job_module import JobModule
 from isaacsim_mcp.modules.lakehouse_module import LakehouseModule
@@ -47,9 +48,11 @@ async def run(scenario_path: str) -> int:
         robot = RobotModule(isaac_client)
         job = JobModule(isaac_client)
         asset = AssetModule(isaac_client)
+        character = CharacterModule(isaac_client)
 
         runner = ScenarioRunner(
-            stage, viewport, lakehouse, extension, simulation, robot, job, asset,
+            stage, viewport, lakehouse, extension, simulation,
+            robot, job, asset, character,
         )
 
         raw = load_scenario(resolved_path)
