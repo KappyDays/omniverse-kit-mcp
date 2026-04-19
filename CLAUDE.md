@@ -101,7 +101,12 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 | `docs/references/CLAUDE.md` | Isaac Sim 레퍼런스 — ext 카탈로그 + testbed 스냅샷 + nvidia-docs |
 | `docs/CLAUDE.md` | 문서 루트 — Phase 히스토리 vs live tool 카탈로그 분리, phase report 작성 규칙, tool-catalog regen 절차 |
 | `docs/tool-catalog.md` | MCP tool 전체 카탈로그 (signature + description + 파라미터) — `scripts/generate_tool_catalog.py` 로 auto-generate, `tests/unit/test_tool_catalog_sync.py` 가 frozenset SoT 와 동기화 검증. 외부 세션에서 "쓸 수 있는 tool 목록 한눈에 보기" 용 |
+| `docs/phase-progress.md` | Phase E~H + PPTX 세션의 Task 별 체크박스 + 타임스탬프. 각 세션은 시작 시 여기서 현재 위치 파악, 완료 시 해당 Task 를 ✅ 로 갱신 |
 | `scripts/CLAUDE.md` | 개발 스크립트 (lifecycle / live 검증 / catalog regen / verify_mcp_sync) 목적 + 실행 조건 |
+| `isaac_course/CLAUDE.md` | **Isaac Sim Digital Twin 튜토리얼 프로젝트** (28-슬라이드 PPTX + 3 Twin USD + 전 캡처) 루트 규칙 (R1~R9). 산출물은 세션 2 에서 생성 |
+| `isaac_course/docs/asset_inventory.md` | 3 Twin 에 사용하는 Isaac Sim 공식 S3 + SimReady Explorer asset 의 확정 USD 경로 단일 원천. 세션 1 실측, 세션 2 참조 |
+| `last-prompt.md` | Phase E~H + PPTX 전체 마스터 네비게이션 — 5 세션 구조·공통 규칙·문서 맵 |
+| `prompts/{phase-e,pptx,phase-f,phase-g,phase-h}.md` | **각 세션 전용 주입 프롬프트** — 새 세션에 해당 파일을 주입하면 해당 Phase/PPTX 를 end-to-end 자율 수행. 각 프롬프트가 프로젝트 전체 맥락·이전/다음 Phase 관계·자율 규칙을 포함해 문맥 연결성 보장 |
 
 ## 변경 파급 매트릭스
 
@@ -165,10 +170,7 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 - **UI Window title ≠ 메뉴 label**: Kit 의 Browser 계열 창은 자주 `[Beta]`/`[Experimental]` 등 suffix 를 달고 등록된다 (예: 메뉴 "Isaac Sim Assets" → 창 `Isaac Sim Assets [Beta]`). `/window/ui_show` 는 exact title 실패 시 case-insensitive substring fallback 을 자동 시도 (응답 `resolved_via: "exact"|"substring"`). 신규 UI 자동화 코드는 menu label 로 창을 가정하지 말고 fallback 결과를 신뢰할 것
 - **Browser 창은 lazy-instantiated**: `omni.ui.Workspace.get_windows()` 는 이미 인스턴스화된 창만 반환. Browser 패널은 첫 `show_window` 호출 전까지 목록에 안 보인다. 전체 Browser 를 enumerate 하려면 `menu_list → menu_trigger 각 항목 → ui_list 재조회` 순서 필수
 - **Browser 썸네일 로딩은 extension 별로 상이**: `isaacsim.asset.browser` (`Isaac Sim Assets [Beta]`) 는 첫 open 시 NVIDIA 공개 S3 를 실시간 crawl 하여 카테고리별 썸네일을 async fetch — 즉시 capture 시 빈 그리드로 찍힌다. `omni.kit.browser.asset` (`NVIDIA Assets`), `omni.simready.explorer` (`SimReady Explorer`) 는 cached catalog 포함 → 즉시 populate. S3-crawl 브라우저의 의미 있는 스크린샷은 show 후 10–30 s 추가 settle 또는 명시적 카테고리 click (Phase D UI automation 영역) 필요
-- **`omni.kit.ui_test` path grammar 는 typed — wildcard `**/*` 불통**: `find("Win//**/*")` 같은 쿼리는 `*` 가 인덱스 wildcard (`[*]`) 로만 해석되어 0 매치. 전체 walk 가 필요하면 `{window}//Frame/**/{WidgetType}[*]` 를 Button/Label/StringField/CheckBox/ComboBox/Float*/Int*/ToolButton/RadioButton/Image 등으로 **타입 리스트 iterate**. `services/ui_service.py._WIDGET_TYPES` 가 기본 enumerate 대상 — 누락된 custom widget 은 추가 필요. `ui_test.find()` / `find_all()` 은 sync 함수이나 반환된 `WidgetRef.click()` / `.double_click()` / `.input(text)` 는 async (await 필요)
-- **`ExtensionManager.get_extension_dict(ext_id)` 는 full-qualified id (`{name}-{version}`) 필요**: Kit 107.3 에서 `get_extension_dict("omni.mycompany.ui_demo")` 는 None. `is_extension_enabled(ext_id)` 와 `set_extension_enabled_immediate(ext_id, True)` 반환값으로 유효성 판단 — `omni.mycompany.validation_api/services/extension_service.py.activate` 가 canonical pattern
-- **carb log hook signature 는 5-arg**: `carb.logging.acquire_logging().add_logger(cb)` 의 콜백은 `(source, level, filename, line, msg)` 순. 공식 문서의 6-arg 예제 (tid 포함) 는 이전 버전 기준 — testbed #4. Level: VERBOSE=-2, INFO=-1, WARN=0, ERROR=1, FATAL=2. handle 은 반드시 `on_shutdown` 에서 `remove_logger` — 생략 시 Extension reload 간 callback 이 dangling 되어 중복 엔트리 발생. 콜백은 carb thread 에서 호출되므로 **절대 raise 금지** (try/except 로 swallow)
-- **log ring buffer 는 peek (drain 아님)**: `LogCaptureService.query(since_ms=..., limit=...)` 는 deque 를 snapshot read 만. `capture_logs` 를 여러 번 호출하면 동일 range 에서 같은 엔트리를 반복 반환 — "다음 호출부터 new" 패턴 필요하면 호출자가 이전 응답의 마지막 `ts_ms` + 1 을 `since_ms` 로 전달. `maxlen=10000` 기본 — Kit console 은 많이 chatty 하므로 ext_id substring filter 조합 필수
+- **Kit SDK 실측 사실 (`omni.kit.ui_test` path grammar · `ExtensionManager.set_extension_enabled_immediate` · `carb.logging` 5-arg 콜백 · `LogCaptureService` peek 규약) 은 `isaac_extension/CLAUDE.md` 가 authoritative** — Extension 코드 작업 시 해당 파일 로드
 
 ## Environment Variables
 
@@ -190,4 +192,3 @@ Isaac Sim App 의 Asset Browser / Viewport Create menu / Stage 패널 / File men
 1. **Robot 진정한 wheel-torque navigation** — 현재 `robot.navigate_to` / `navigate_path` 는 `xformOp:translate` kinematic override. OmniGraph `DifferentialController` 통합으로 PhysX 휠 마찰 기반 주행. R2 주석 참조. 로봇별 articulation spec 매핑이 가장 큰 작업
 2. **실전 Extension workflow 자동 검증** — `omni.mycompany.ui_demo` / `ui_demo_advanced` 가 아닌, KKR-A 같은 실제 생산용 Extension 에 `extension_get_ui_tree` / `extension_ui_invoke` / `window_menu_trigger` / `extension_capture_logs` 조합을 적용. `_WIDGET_TYPES` 가 커버 못 하는 custom widget class 를 실전에서 발견하고 allow-list 확장
 3. **Scenario engine variable templating 강화** — 현재 `${variable}` 치환은 compile time. 실행 중 step output 을 다음 step args 에 주입하는 패턴 (예: `captured_artifact_path`) 이 아직 없음 — context-aware action 패턴 확대
-4. **NavMesh bake 한계 해결됨** — `start_navmesh_baking_and_wait` 블로킹은 `start_navmesh_baking` + `is_navmesh_baking` 폴링으로 대체. `navigation_bake` / `query_path` / `add_exclude_volume` 모두 live 검증 통과. `timeout_s` 파라미터로 폴링 상한 조정
