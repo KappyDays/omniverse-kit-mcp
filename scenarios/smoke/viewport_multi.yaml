@@ -1,0 +1,98 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: viewport_multi
+  name: "Phase E smoke: multi-viewport create/destroy bound to sensor cameras"
+  tags: [smoke, viewport, phase-e, multi-viewport]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    warehouse_prim: "/World/Warehouse"
+    robot_prim: "/World/Robot/NovaCarter"
+    rgb_prim: "/World/Robot/NovaCarter/FrontRGB"
+    aux_viewport_name: "Viewport_FrontRGB"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: ${variables.warehouse_prim}
+
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.robot_url}
+        prim_path: ${variables.robot_prim}
+
+    - id: attach_rgb_camera
+      module: sensor
+      action: attach_rtx_camera
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.3, 0.0, 0.8]
+        mount_rotation: [0.0, 0.0, 0.0]
+        resolution: [1280, 720]
+        sensor_name: FrontRGB
+
+  act:
+    - id: create_aux_viewport
+      module: viewport
+      action: create
+      args:
+        viewport_name: ${variables.aux_viewport_name}
+        camera_path: ${variables.rgb_prim}
+        width: 960
+        height: 540
+        docked: false
+
+  assert:
+    - id: capture_aux_viewport
+      module: viewport
+      action: capture
+      args:
+        viewport_name: ${variables.aux_viewport_name}
+        camera_prim_path: ${variables.rgb_prim}
+        width: 960
+        height: 540
+
+  cleanup:
+    - id: destroy_aux_viewport
+      module: viewport
+      action: destroy
+      args:
+        viewport_name: ${variables.aux_viewport_name}
+      continueOnFailure: true
+
+    - id: final_sim_stop
+      module: simulation
+      action: stop
+      args: {}
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.robot_prim}
+      continueOnFailure: true
+
+    - id: remove_warehouse
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.warehouse_prim}
+      continueOnFailure: true

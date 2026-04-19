@@ -526,6 +526,86 @@ class MockIsaacRestClient:
             "padding": padding, "source_prim_path": prim_path,
         })
 
+    async def navigation_set_visualization(self, request: dict) -> dict:
+        self.calls.append(("navigation_set_visualization", request))
+        return self.responses.get("navigation_set_visualization", {
+            "ok": True,
+            "mode": request.get("mode", "walkable"),
+            "backend": "carb_settings",
+            "setting_path": "/persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh",
+        })
+
+    # Sensor (Phase E) — RTX Camera / Lidar / Depth + viz
+
+    async def sensor_attach_rtx_camera(self, request: dict) -> dict:
+        self.calls.append(("sensor_attach_rtx_camera", request))
+        parent = request.get("robot_prim", "/World/Robot")
+        name = request.get("sensor_name", "RtxCamera")
+        return self.responses.get("sensor_attach_rtx_camera", {
+            "ok": True,
+            "sensor_prim_path": f"{parent}/{name}",
+            "parent_prim": parent,
+            "sensor_type": "rtx_camera",
+            "resolution": request.get("resolution", [1280, 720]),
+        })
+
+    async def sensor_attach_rtx_lidar(self, request: dict) -> dict:
+        self.calls.append(("sensor_attach_rtx_lidar", request))
+        parent = request.get("robot_prim", "/World/Robot")
+        name = request.get("sensor_name", "RtxLidar")
+        return self.responses.get("sensor_attach_rtx_lidar", {
+            "ok": True,
+            "sensor_prim_path": f"{parent}/{name}",
+            "parent_prim": parent,
+            "sensor_type": "rtx_lidar",
+            "config_preset": request.get("config_preset", "Example_Rotary"),
+            "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+        })
+
+    async def sensor_attach_rtx_depth_camera(self, request: dict) -> dict:
+        self.calls.append(("sensor_attach_rtx_depth_camera", request))
+        parent = request.get("robot_prim", "/World/Robot")
+        name = request.get("sensor_name", "RtxDepthCamera")
+        return self.responses.get("sensor_attach_rtx_depth_camera", {
+            "ok": True,
+            "sensor_prim_path": f"{parent}/{name}",
+            "parent_prim": parent,
+            "sensor_type": "rtx_depth_camera",
+            "resolution": request.get("resolution", [1280, 720]),
+            "annotator": "distance_to_camera",
+        })
+
+    async def sensor_set_visualization(self, request: dict) -> dict:
+        self.calls.append(("sensor_set_visualization", request))
+        return self.responses.get("sensor_set_visualization", {
+            "ok": True,
+            "sensor_prim": request.get("sensor_prim", ""),
+            "mode": request.get("mode", "on"),
+            "sensor_type": "rtx_lidar",
+        })
+
+    # Viewport multi (Phase E) — create / destroy
+
+    async def viewport_create(self, request: dict) -> dict:
+        self.calls.append(("viewport_create", request))
+        return self.responses.get("viewport_create", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", "Viewport_Aux"),
+            "existed": False,
+            "camera_path": request.get("camera_path"),
+            "width": request.get("width", 1280),
+            "height": request.get("height", 720),
+            "docked": request.get("docked", False),
+        })
+
+    async def viewport_destroy(self, request: dict) -> dict:
+        self.calls.append(("viewport_destroy", request))
+        return self.responses.get("viewport_destroy", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", ""),
+            "destroyed": True,
+        })
+
     async def extension_logs(
         self,
         ext_id: str | None = None,

@@ -82,6 +82,16 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "navigation_bake",
     "navigation_query_path",
     "navigation_add_exclude_volume",
+    # Phase E — Sensor (RTX Camera / Lidar / Depth) + visualization
+    "sensor_attach_rtx_camera",
+    "sensor_attach_rtx_lidar",
+    "sensor_attach_rtx_depth_camera",
+    "sensor_set_visualization",
+    # Phase E — Viewport multi (create / destroy)
+    "viewport_create",
+    "viewport_destroy",
+    # Phase E — NavMesh visualization overlay
+    "navigation_set_visualization",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({

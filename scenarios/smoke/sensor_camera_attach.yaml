@@ -1,0 +1,101 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: sensor_camera_attach
+  name: "Phase E smoke: RTX Camera attach under a Nova Carter chassis"
+  tags: [smoke, sensor, phase-e, rtx-camera]
+
+spec:
+  defaults:
+    # First-run cold load pulls Simple_Warehouse + NovaCarter USDs from the
+    # public S3 bucket; give it headroom so the scenario doesn't false-fail
+    # on network latency alone.
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    warehouse_prim: "/World/Warehouse"
+    robot_prim: "/World/Robot/NovaCarter"
+    sensor_name: "FrontRGB"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: ${variables.warehouse_prim}
+
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.robot_url}
+        prim_path: ${variables.robot_prim}
+        position: [0.0, 0.0, 0.0]
+
+    # Warm-up tick so PhysX + viewport state are initialized; keep timeline
+    # stopped after — sensor attach does NOT require playing state.
+    - id: warm_up_play
+      module: simulation
+      action: play
+      args: {}
+
+    - id: warm_up_stop
+      module: simulation
+      action: stop
+      args: {}
+
+  act:
+    - id: attach_rgb_camera
+      module: sensor
+      action: attach_rtx_camera
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.3, 0.0, 0.8]
+        mount_rotation: [0.0, 0.0, 0.0]
+        resolution: [1280, 720]
+        sensor_name: ${variables.sensor_name}
+
+  assert:
+    - id: sensor_prim_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/Robot/NovaCarter/FrontRGB
+        should_exist: true
+
+    - id: capture_main_viewport
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+  cleanup:
+    - id: final_sim_stop
+      module: simulation
+      action: stop
+      args: {}
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.robot_prim}
+      continueOnFailure: true
+
+    - id: remove_warehouse
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.warehouse_prim}
+      continueOnFailure: true
