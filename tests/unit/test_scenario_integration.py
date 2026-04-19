@@ -29,6 +29,7 @@ from isaacsim_mcp.types.common import ExecutionStatus, ModuleName
 
 def _build_runner(isaac_client, lakehouse_client):
     from isaacsim_mcp.modules.navigation_module import NavigationModule
+    from isaacsim_mcp.modules.sensor_module import SensorModule
     from isaacsim_mcp.modules.window_module import WindowModule
 
     stage = StageModule(isaac_client)
@@ -42,9 +43,10 @@ def _build_runner(isaac_client, lakehouse_client):
     character = CharacterModule(isaac_client)
     window = WindowModule(isaac_client)
     navigation = NavigationModule(isaac_client)
+    sensor = SensorModule(isaac_client)
     return ScenarioRunner(
         stage, viewport, lakehouse, extension, simulation, robot, job, asset, character,
-        window, navigation,
+        window, navigation, sensor,
     )
 
 

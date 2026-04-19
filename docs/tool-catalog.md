@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 58
+**Tool count**: 65
 
 ## Table of contents
 
@@ -10,7 +10,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Stage — READ / ASSERT / file & selection](#stage--read--assert--file--selection) — 6 tools
 - [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
 - [Simulation — timeline](#simulation--timeline) — 4 tools
-- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 3 tools
+- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 5 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 6 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 7 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
@@ -18,8 +18,9 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 1 tools
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 6 tools
-- [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 3 tools
+- [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 4 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 5 tools
+- Unclassified (4)
 
 ## Process — Isaac Sim kit.exe lifecycle
 
@@ -331,6 +332,42 @@ and pass/fail result. Use to verify visual changes or stability.
 | `candidate_artifact_path` | `string` | `'—'` | ✓ |
 | `min_ssim` | `number` | `0.99` |  |
 | `crop` | `list[integer] \| None` | `None` |  |
+
+### `viewport_create`
+
+```python
+viewport_create(viewport_name: 'str', camera_path: 'str | None' = None, width: 'int' = 1280, height: 'int' = 720, docked: 'bool' = False) -> 'str'
+```
+
+Create a secondary omni.kit.viewport.window bound to *camera_path* if provided. Multi-viewport
+scenes (Lidar + RGB + Depth + main) are the canonical use case. If a viewport with
+*viewport_name* already exists, the response has existed=true and the viewport is reused (no
+duplicate window created).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `viewport_name` | `string` | `'—'` | ✓ |
+| `camera_path` | `string \| None` | `None` |  |
+| `width` | `integer` | `1280` |  |
+| `height` | `integer` | `720` |  |
+| `docked` | `boolean` | `False` |  |
+
+### `viewport_destroy`
+
+```python
+viewport_destroy(viewport_name: 'str') -> 'str'
+```
+
+Destroy a secondary viewport window by name. Idempotent — destroyed=False if the viewport did
+not exist (no error). Safe to call in scenario cleanup without pre-checking existence.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `viewport_name` | `string` | `'—'` | ✓ |
 
 ### `viewport_set_active_camera`
 
@@ -884,6 +921,25 @@ line segments — shorter waypoint list for robot/character navigate_path caller
 | `agent_height` | `number` | `1.8` |  |
 | `straighten` | `boolean` | `True` |  |
 
+### `navigation_set_visualization`
+
+```python
+navigation_set_visualization(mode: 'str') -> 'str'
+```
+
+Toggle the NavMesh overlay in the viewport. mode ∈ {walkable, obstacles, off}. 'walkable'
+highlights the baked NavMesh surface so callers can eyeball whether the bake succeeded;
+'obstacles' shows only excluded regions; 'off' hides the overlay. Backend defaults to
+carb.settings (`/persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh`) —
+response.backend reports which path actually took effect (setting vs debug draw vs prim
+visibility).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `mode` | `string` | `'—'` | ✓ |
+
 ## Scenario — YAML Arrange / Act / Assert / Cleanup runner
 
 ### `scenario_last_report`
@@ -960,3 +1016,86 @@ scenario variables (e.g. {"prim_path": "/World/Box"}).
 | `dry_run` | `boolean` | `False` |  |
 | `fail_fast` | `boolean \| None` | `None` |  |
 | `input_overrides` | `object \| None` | `None` |  |
+
+## Unclassified
+
+### `sensor_attach_rtx_camera`
+
+```python
+sensor_attach_rtx_camera(robot_prim: 'str', mount_offset: 'list[float]', mount_rotation: 'list[float]', resolution: 'list[int] | None' = None, sensor_name: 'str' = 'RtxCamera') -> 'str'
+```
+
+Attach an RTX Camera prim as a child xform under a robot chassis. mount_offset / mount_rotation
+are relative to the parent robot prim (translation in meters, rotation in degrees XYZ). Returns
+the sensor prim path — bind it to a secondary viewport via viewport_create + camera_path for a
+1st-person RGB panel.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `robot_prim` | `string` | `'—'` | ✓ |
+| `mount_offset` | `list[number]` | `'—'` | ✓ |
+| `mount_rotation` | `list[number]` | `'—'` | ✓ |
+| `resolution` | `list[integer] \| None` | `None` |  |
+| `sensor_name` | `string` | `'RtxCamera'` |  |
+
+### `sensor_attach_rtx_depth_camera`
+
+```python
+sensor_attach_rtx_depth_camera(robot_prim: 'str', mount_offset: 'list[float]', mount_rotation: 'list[float]', resolution: 'list[int] | None' = None, sensor_name: 'str' = 'RtxDepthCamera') -> 'str'
+```
+
+Attach an RTX Camera with a depth annotator (distance_to_camera) as a child xform — output is a
+grayscale distance map, not RGB color. Same mount_offset / mount_rotation convention as
+sensor_attach_rtx_camera. Pair with viewport_create to render the depth panel next to the main
+viewport.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `robot_prim` | `string` | `'—'` | ✓ |
+| `mount_offset` | `list[number]` | `'—'` | ✓ |
+| `mount_rotation` | `list[number]` | `'—'` | ✓ |
+| `resolution` | `list[integer] \| None` | `None` |  |
+| `sensor_name` | `string` | `'RtxDepthCamera'` |  |
+
+### `sensor_attach_rtx_lidar`
+
+```python
+sensor_attach_rtx_lidar(robot_prim: 'str', mount_offset: 'list[float]', mount_rotation: 'list[float]', config_preset: 'str' = 'Example_Rotary', sensor_name: 'str' = 'RtxLidar') -> 'str'
+```
+
+Attach an RTX Lidar prim under a robot chassis with an annotator for point-cloud capture.
+config_preset selects a built-in Lidar profile (Example_Rotary / Velodyne_VLS128 / ...).
+Response contains the sensor prim path and annotator id — use
+sensor_set_visualization(sensor_prim, 'on') to render the point cloud in the viewport.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `robot_prim` | `string` | `'—'` | ✓ |
+| `mount_offset` | `list[number]` | `'—'` | ✓ |
+| `mount_rotation` | `list[number]` | `'—'` | ✓ |
+| `config_preset` | `string` | `'Example_Rotary'` |  |
+| `sensor_name` | `string` | `'RtxLidar'` |  |
+
+### `sensor_set_visualization`
+
+```python
+sensor_set_visualization(sensor_prim: 'str', mode: 'str' = 'on') -> 'str'
+```
+
+Toggle the Debug Draw overlay for a previously attached sensor. For Lidar this shows the point
+cloud; for Camera / Depth it reveals the frustum lines and preview overlay. mode ∈ {on, off}.
+Response includes sensor_type so the caller can tell which overlay backend the Extension
+picked.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `sensor_prim` | `string` | `'—'` | ✓ |
+| `mode` | `string` | `'on'` |  |

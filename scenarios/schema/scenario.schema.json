@@ -46,7 +46,7 @@
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string" },
-        "module": { "type": "string", "enum": ["stage", "viewport", "lakehouse", "extension", "simulation", "robot", "job", "asset", "character", "window", "navigation"] },
+        "module": { "type": "string", "enum": ["stage", "viewport", "lakehouse", "extension", "simulation", "robot", "job", "asset", "character", "window", "navigation", "sensor"] },
         "action": { "type": "string" },
         "args": { "type": "object" },
         "timeoutSeconds": { "type": "number", "minimum": 1 },

@@ -20,7 +20,7 @@
 | B | 로봇/Job/Asset/GUI 동등 | 기존 | 기존 | — | ✅ 완료 (`docs/phase-b-validation-report.md`) |
 | C | 캐릭터/애니메이션 | 기존 | 58 | — | ✅ 완료 (`docs/phase-c-validation-report.md`) |
 | D | Extension UI 자동화 | — | 58 | — | ⏸ 대기 (본 프로젝트 범위 밖) |
-| **E** | Sensor · Multi-viewport · NavMesh Viz | +7 | 65 | `plans/2026-04-19-phase-e-sensor-viewport-navmesh-plan.md` | ⏳ 세션 1 대기 |
+| **E** | Sensor · Multi-viewport · NavMesh Viz | +7 | 65 | `plans/2026-04-19-phase-e-sensor-viewport-navmesh-plan.md` | ✅ 완료 (`docs/phase-e-validation-report.md` Part 1) |
 | **PPTX** | 28-슬라이드 튜토리얼 제작 | — | 65 | `plans/2026-04-19-pptx-tutorial-production-plan.md` | ⏳ 세션 2 대기 |
 | **F** | Physics · Lighting · Material · Render | +19 | 84 | `plans/2026-04-19-phase-f-physics-lighting-material-render-plan.md` | ⏳ 세션 3 대기 |
 | **G** | Robot · Character · Sensor · Timeline 심화 | +10 | 94 | `plans/2026-04-19-phase-g-robot-character-timeline-plan.md` | ⏳ 세션 4 대기 |
@@ -29,33 +29,33 @@
 ## 현재 상태
 
 ```
-Phase: (아직 시작 안 함)
-Task: —
-Progress: 0 / 0
-Tools added: 0 (기준 58)
-Last update: 2026-04-19 (초기화)
+Phase: E (세션 1 재검증 완료)
+Task: 16 / 16 (전 Task ✅) + deep-validation round 2
+Progress: 16 / 16
+Tools added: +7 (누적 65, 58 → 65)
+Last update: 2026-04-19 12:00 (2차 재검증 완료, PhaseE/phaseE_verify_*.png ×7 확보, regression 3 건 투명 기록, 세션 2 PPTX 대기)
 ```
 
 ## Phase E 진행 (Task 1 ~ 16)
 
 | Task | 제목 | 상태 | 타임스탬프 | 비고 |
 |---|---|---|---|---|
-| 1 | Prerequisite 상태 확인 | ⏳ | — | pytest/sync/phase A~C 참조 |
-| 2 | NavMesh Viz API 3 후보 조사 | ⏳ | — | `isaac_course/docs/navmesh_viz_research.md` 작성 |
-| 3 | sensor_module 골격 | ⏳ | — | ModuleName.SENSOR 추가 |
-| 4 | sensor_attach_rtx_camera | ⏳ | — | +1 tool |
-| 5 | sensor_attach_rtx_lidar | ⏳ | — | +1 tool |
-| 6 | sensor_attach_rtx_depth_camera | ⏳ | — | +1 tool |
-| 7 | sensor_set_visualization | ⏳ | — | +1 tool |
-| 8 | viewport_create + viewport_destroy | ⏳ | — | +2 tool |
-| 9 | navigation_set_visualization | ⏳ | — | +1 tool |
-| 10 | Scenario YAML smoke + integration | ⏳ | — | 6 YAML |
-| 11 | Live 검증 스크립트 | ⏳ | — | 3 스크립트 |
-| 12 | 전체 pytest 통과 | ⏳ | — | — |
-| 13 | Catalog sync (58→65) | ⏳ | — | `verify_mcp_sync.py` |
-| 14 | 도메인 CLAUDE.md 동기화 | ⏳ | — | `modules/`, `isaac_extension/` |
-| 15 | phase-e-validation-report.md | ⏳ | — | — |
-| 16 | Phase E 완료 체크 + 보고 | ⏳ | — | — |
+| 1 | Prerequisite 상태 확인 | ✅ | 2026-04-19 09:25 | pytest 194 passed, verify_mcp_sync OK (58 tool baseline) |
+| 2 | NavMesh Viz API 3 후보 조사 | ✅ | 2026-04-19 10:25 | `isaac_course/docs/navmesh_viz_research.md` 작성, carb.settings + prim-visibility 폴백 채택 |
+| 3 | sensor_module 골격 | ✅ | 2026-04-19 09:45 | ModuleName.SENSOR + scenario wiring 완료 |
+| 4 | sensor_attach_rtx_camera | ✅ | 2026-04-19 09:50 | +1 tool (59) |
+| 5 | sensor_attach_rtx_lidar | ✅ | 2026-04-19 09:50 | +1 tool (60) |
+| 6 | sensor_attach_rtx_depth_camera | ✅ | 2026-04-19 09:50 | +1 tool (61) |
+| 7 | sensor_set_visualization | ✅ | 2026-04-19 09:55 | +1 tool (62) |
+| 8 | viewport_create + viewport_destroy | ✅ | 2026-04-19 09:55 | +2 tool (64) |
+| 9 | navigation_set_visualization | ✅ | 2026-04-19 09:55 | +1 tool (65) |
+| 10 | Scenario YAML smoke + integration | ✅ | 2026-04-19 10:05 | 6 YAML, 86 steps 컴파일 통과 |
+| 11 | Live 검증 스크립트 | ✅ | 2026-04-19 11:55 (재검증) | 3 스크립트 작성 + `LIVE_HEAVY_ENV` / `LIVE_ROBOT` env 옵션화 + minimal mode 로 7 endpoint 종단 재검증. `PhaseE/phaseE_verify_*.png` 7 장 확보 (sensor viz on/off, aux viewport, navmesh walkable/obstacles/off + baked variant). `robot/load` 600 s block + `navigation/bake` regression 은 implementation_issues.md 상세 기록 |
+| 12 | 전체 pytest 통과 | ✅ | 2026-04-19 10:24 | 212 passed |
+| 13 | Catalog sync (58→65) | ✅ | 2026-04-19 10:24 | `verify_mcp_sync.py` green |
+| 14 | 도메인 CLAUDE.md 동기화 | ✅ | 2026-04-19 10:26 | `modules/CLAUDE.md`, `isaac_extension/CLAUDE.md` sensor/viewport-multi/navmesh-viz 섹션 추가 |
+| 15 | phase-e-validation-report.md | ✅ | 2026-04-19 10:28 | Part 1 (신규) + Part 2 (이전 세션 Window/Navigation) 통합 작성 |
+| 16 | Phase E 완료 체크 + 보고 | ✅ | 2026-04-19 10:28 | 세션 종료 보고 |
 
 ## PPTX 진행 (Task 1 ~ 15)
 
@@ -116,7 +116,9 @@ Last update: 2026-04-19 (초기화)
 
 | Phase | Tool/Step | 사유 요약 |
 |---|---|---|
-| — | — | (아직 없음) |
+| E (out-of-scope Part 1) | `robot/load` / `stage/load_usd` live end-to-end | Nova Carter 와 Jetbot 모두 600 s timeout — Kit `open_stage_async` + `_wait_stage_loading()` 에서 USD reference resolution 이 완료되지 않음. 네트워크 baseline 정상 (HEAD 0.83 s), Kit CPU 는 지속 증가 (hang 아님), Phase E 신규 7 tool 과 무관. 스크립트는 `LIVE_ROBOT` / `LIVE_HEAVY_ENV` env 로 옵션화되어 minimal mode 로 end-to-end 실행됨 (`PhaseE/phaseE_verify_*.png` 7 장) |
+| E (Part 2 regression) | `navigation_bake` | fresh Kit clean state 에서도 `start_navmesh_baking()` 이 False 반환 — response reason: "no volume / navmesh cache locked / disabled in settings". `_ensure_navmesh_volume` 은 성공 (`volume_path: /NavMeshVolume` echo). Phase E Part 2 `phase_e_live_report.json` 에서는 성공했던 증거 있음. Extension `navigation_service.bake` 에 진단 로깅 + `start_navmesh_baking_and_wait` fallback 추가가 Phase F/G 작업 |
+| E (minor response bug) | `simulation/stop` 응답 body | stop 명령은 정상 수락되지만 응답 body 의 `is_playing`/`is_stopped` 가 직전 state 를 echo — 1 프레임 후 `simulation/status` 재호출로 올바르게 반영. 호출자가 status polling 으로 우회 가능 |
 
 ---
 

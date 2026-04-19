@@ -1,0 +1,114 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: sensor_lidar_attach
+  name: "Phase E smoke: RTX Lidar attach + Debug Draw toggle"
+  tags: [smoke, sensor, phase-e, rtx-lidar]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    warehouse_prim: "/World/Warehouse"
+    robot_prim: "/World/Robot/NovaCarter"
+    sensor_name: "TopLidar"
+    sensor_full_path: "/World/Robot/NovaCarter/TopLidar"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: ${variables.warehouse_prim}
+
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.robot_url}
+        prim_path: ${variables.robot_prim}
+
+    - id: warm_up_play
+      module: simulation
+      action: play
+      args: {}
+
+    - id: warm_up_stop
+      module: simulation
+      action: stop
+      args: {}
+
+  act:
+    - id: attach_top_lidar
+      module: sensor
+      action: attach_rtx_lidar
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.0, 0.0, 1.2]
+        mount_rotation: [0.0, 0.0, 0.0]
+        config_preset: Example_Rotary
+        sensor_name: ${variables.sensor_name}
+
+    # Turn on Debug Draw so viewport captures can visually show the point cloud
+    # — the Extension internally toggles the RtxSensorCpuIsaacCreateRTXLidarScanBuffer
+    # annotator's DebugDraw overlay.
+    - id: viz_on
+      module: sensor
+      action: set_visualization
+      args:
+        sensor_prim: ${variables.sensor_full_path}
+        mode: "on"
+
+  assert:
+    - id: sensor_prim_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.sensor_full_path}
+        should_exist: true
+
+    - id: capture_main_viewport
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+  cleanup:
+    - id: viz_off
+      module: sensor
+      action: set_visualization
+      args:
+        sensor_prim: ${variables.sensor_full_path}
+        mode: "off"
+      continueOnFailure: true
+
+    - id: final_sim_stop
+      module: simulation
+      action: stop
+      args: {}
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.robot_prim}
+      continueOnFailure: true
+
+    - id: remove_warehouse
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.warehouse_prim}
+      continueOnFailure: true

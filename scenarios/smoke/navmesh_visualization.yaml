@@ -1,0 +1,103 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: navmesh_visualization
+  name: "Phase E smoke: NavMesh bake + walkable overlay toggle"
+  tags: [smoke, navigation, phase-e, navmesh-viz]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 360
+    failFast: true
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    warehouse_prim: "/World/Warehouse"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: ${variables.warehouse_prim}
+
+    # R1a — bake requires timeline stopped. stage_load_usd advances the
+    # timeline internally, so enforce stopped state explicitly.
+    - id: force_timeline_stop
+      module: simulation
+      action: stop
+      args: {}
+
+  act:
+    - id: bake_navmesh
+      module: navigation
+      action: bake
+      args:
+        volume_scale: 40.0
+
+    - id: viz_walkable
+      module: navigation
+      action: set_visualization
+      args:
+        mode: walkable
+
+    - id: capture_walkable
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+    - id: viz_obstacles
+      module: navigation
+      action: set_visualization
+      args:
+        mode: obstacles
+
+    - id: capture_obstacles
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+    - id: viz_off
+      module: navigation
+      action: set_visualization
+      args:
+        mode: off
+
+  assert:
+    - id: capture_after_off
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+  cleanup:
+    - id: reset_to_off
+      module: navigation
+      action: set_visualization
+      args:
+        mode: off
+      continueOnFailure: true
+
+    - id: final_sim_stop
+      module: simulation
+      action: stop
+      args: {}
+      continueOnFailure: true
+
+    - id: remove_warehouse
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.warehouse_prim}
+      continueOnFailure: true

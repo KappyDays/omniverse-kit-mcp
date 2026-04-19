@@ -1,0 +1,246 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: phase_e_combined
+  name: "Phase E integration: 3-Sensor Combo + NavMesh viz + multi-viewport"
+  tags: [integration, sensor, viewport, navigation, phase-e, twin1-warehouse]
+
+spec:
+  defaults:
+    # Integration scenario touches every Phase E surface — warehouse load +
+    # robot load + 3 sensor attach + 3 viewport create + NavMesh bake + viz
+    # toggle + viewport captures. Stay generous with the step budget so cold
+    # cache runs don't trip the gates.
+    stepTimeoutSeconds: 420
+    failFast: true
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    warehouse_prim: "/World/Warehouse"
+    robot_prim: "/World/Robot/NovaCarter"
+    rgb_prim: "/World/Robot/NovaCarter/FrontRGB"
+    lidar_prim: "/World/Robot/NovaCarter/TopLidar"
+    depth_prim: "/World/Robot/NovaCarter/DepthSide"
+    vp_rgb: "Viewport_RGB"
+    vp_lidar: "Viewport_Lidar"
+    vp_depth: "Viewport_Depth"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: ${variables.warehouse_prim}
+
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.robot_url}
+        prim_path: ${variables.robot_prim}
+        position: [0.0, 0.0, 0.0]
+
+    - id: force_stop_before_bake
+      module: simulation
+      action: stop
+      args: {}
+
+  act:
+    # --- NavMesh bake + walkable overlay ---
+    - id: bake_navmesh
+      module: navigation
+      action: bake
+      args:
+        volume_scale: 40.0
+
+    - id: viz_walkable
+      module: navigation
+      action: set_visualization
+      args:
+        mode: walkable
+
+    # --- 3-Sensor Combo ---
+    - id: attach_rgb
+      module: sensor
+      action: attach_rtx_camera
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.3, 0.0, 0.8]
+        mount_rotation: [0.0, 0.0, 0.0]
+        resolution: [1280, 720]
+        sensor_name: FrontRGB
+
+    - id: attach_lidar
+      module: sensor
+      action: attach_rtx_lidar
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.0, 0.0, 1.2]
+        mount_rotation: [0.0, 0.0, 0.0]
+        config_preset: Example_Rotary
+        sensor_name: TopLidar
+
+    - id: attach_depth
+      module: sensor
+      action: attach_rtx_depth_camera
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.0, 0.3, 0.7]
+        mount_rotation: [0.0, 0.0, 90.0]
+        resolution: [1280, 720]
+        sensor_name: DepthSide
+
+    - id: lidar_viz_on
+      module: sensor
+      action: set_visualization
+      args:
+        sensor_prim: ${variables.lidar_prim}
+        mode: "on"
+
+    # --- 3 Aux viewports ---
+    - id: create_vp_rgb
+      module: viewport
+      action: create
+      args:
+        viewport_name: ${variables.vp_rgb}
+        camera_path: ${variables.rgb_prim}
+        width: 960
+        height: 540
+
+    - id: create_vp_lidar
+      module: viewport
+      action: create
+      args:
+        viewport_name: ${variables.vp_lidar}
+        camera_path: ${variables.lidar_prim}
+        width: 960
+        height: 540
+
+    - id: create_vp_depth
+      module: viewport
+      action: create
+      args:
+        viewport_name: ${variables.vp_depth}
+        camera_path: ${variables.depth_prim}
+        width: 960
+        height: 540
+
+  assert:
+    - id: all_sensors_exist
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.rgb_prim}
+        should_exist: true
+
+    - id: lidar_sensor_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.lidar_prim}
+        should_exist: true
+
+    - id: depth_sensor_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.depth_prim}
+        should_exist: true
+
+    - id: capture_main
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+    - id: capture_rgb_panel
+      module: viewport
+      action: capture
+      args:
+        viewport_name: ${variables.vp_rgb}
+        camera_prim_path: ${variables.rgb_prim}
+        width: 960
+        height: 540
+
+    - id: capture_lidar_panel
+      module: viewport
+      action: capture
+      args:
+        viewport_name: ${variables.vp_lidar}
+        camera_prim_path: ${variables.lidar_prim}
+        width: 960
+        height: 540
+
+    - id: capture_depth_panel
+      module: viewport
+      action: capture
+      args:
+        viewport_name: ${variables.vp_depth}
+        camera_prim_path: ${variables.depth_prim}
+        width: 960
+        height: 540
+
+  cleanup:
+    - id: lidar_viz_off
+      module: sensor
+      action: set_visualization
+      args:
+        sensor_prim: ${variables.lidar_prim}
+        mode: "off"
+      continueOnFailure: true
+
+    - id: nav_viz_off
+      module: navigation
+      action: set_visualization
+      args:
+        mode: off
+      continueOnFailure: true
+
+    - id: destroy_vp_rgb
+      module: viewport
+      action: destroy
+      args:
+        viewport_name: ${variables.vp_rgb}
+      continueOnFailure: true
+
+    - id: destroy_vp_lidar
+      module: viewport
+      action: destroy
+      args:
+        viewport_name: ${variables.vp_lidar}
+      continueOnFailure: true
+
+    - id: destroy_vp_depth
+      module: viewport
+      action: destroy
+      args:
+        viewport_name: ${variables.vp_depth}
+      continueOnFailure: true
+
+    - id: final_sim_stop
+      module: simulation
+      action: stop
+      args: {}
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.robot_prim}
+      continueOnFailure: true
+
+    - id: remove_warehouse
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.warehouse_prim}
+      continueOnFailure: true
