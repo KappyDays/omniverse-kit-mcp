@@ -1,0 +1,88 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: robot_navigate_path
+  name: "Phase G: NavMesh path → robot_navigate_path async Job"
+  tags: [smoke, robot, phase-g, navigate-path]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    nova_carter_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    prim_path: "/World/NovaCarter"
+    spawn_position: [0.0, 0.0, 0.0]
+    waypoints:
+      - [0.0, 0.0, 0.0]
+      - [1.5, 0.0, 0.0]
+      - [2.5, 1.5, 0.0]
+      - [3.0, 2.5, 0.0]
+
+  arrange:
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.nova_carter_url}
+        prim_path: ${variables.prim_path}
+        position: ${variables.spawn_position}
+
+    - id: ensure_stopped
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: play_timeline
+      module: simulation
+      action: play
+      args: {}
+
+  act:
+    - id: navigate_path
+      module: robot
+      action: navigate_path
+      args:
+        prim_path: ${variables.prim_path}
+        waypoints: ${variables.waypoints}
+        duration_s: 6.0
+
+    - id: wait_path
+      module: job
+      action: status
+      args:
+        navigate_step_id: navigate_path
+        expected_status: done
+        poll_interval_s: 0.5
+        max_polls: 30
+
+  assert:
+    - id: robot_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+
+    - id: robot_at_last_waypoint
+      module: stage
+      action: assert_property
+      args:
+        prim_path: ${variables.prim_path}
+        property_name: xformOp:translate
+        comparator: approx
+        expected_value: [3.0, 2.5, 0.0]
+        tolerance: 0.2
+
+  cleanup:
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}

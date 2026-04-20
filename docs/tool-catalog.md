@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 84
+**Tool count**: 94
 
 ## Table of contents
 
@@ -14,13 +14,13 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 6 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 7 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
-- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 4 tools
+- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 7 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 1 tools
-- [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 6 tools
+- [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 4 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 5 tools
-- Unclassified (19)
+- Unclassified (24)
 
 ## Process — Isaac Sim kit.exe lifecycle
 
@@ -714,6 +714,25 @@ Get the current joint positions of an articulation (via SingleArticulation).
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
 
+### `robot_gripper_control`
+
+```python
+robot_gripper_control(prim_path: 'str', action: 'str', target: 'float | None' = None) -> 'str'
+```
+
+Open/close/set gripper joints on an articulation (Phase G). action ∈ {open, close, set}. Auto-
+detects gripper joints by matching 'finger'/'gripper' substring in DOF names. For 'set', target
+is the desired joint position; 'open'/'close' use joint limits (fallback: Franka 0.04/0.0).
+Requires simulation playing (articulation view must be populated).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `action` | `string` | `'—'` | ✓ |
+| `target` | `number \| None` | `None` |  |
+
 ### `robot_load`
 
 ```python
@@ -732,6 +751,25 @@ loaded prim has a PhysX Articulation API applied (required for joint control).
 | `position` | `list[number] \| None` | `None` |  |
 | `rotation` | `list[number] \| None` | `None` |  |
 
+### `robot_navigate_path`
+
+```python
+robot_navigate_path(prim_path: 'str', waypoints: 'list[list[float]]', duration_s: 'float' = 5.0) -> 'str'
+```
+
+Dispatch a multi-waypoint navigate as an async Job (Phase G). Pair with navigation_query_path
+for NavMesh-aware traversal: load → simulation_stop → navigation_bake → navigation_query_path →
+simulation_play → robot_navigate_path. Each waypoint is [x,y,z] in world space; duration_s is
+the total traversal time (segments weighted by length). Requires timeline playing.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `waypoints` | `list[list[number]]` | `'—'` | ✓ |
+| `duration_s` | `number` | `5.0` |  |
+
 ### `robot_navigate_to`
 
 ```python
@@ -748,6 +786,26 @@ job_status(job_id) until status='done'.
 | `prim_path` | `string` | `'—'` | ✓ |
 | `target` | `list[number]` | `'—'` | ✓ |
 | `duration_s` | `number` | `1.0` |  |
+
+### `robot_set_ee_target`
+
+```python
+robot_set_ee_target(prim_path: 'str', target_pose: 'list[float]', robot_description: 'str' = 'Franka', end_effector_frame: 'str | None' = None) -> 'str'
+```
+
+Solve IK for an end-effector pose [x,y,z,qw,qx,qy,qz] and write the joint positions (Phase G).
+Uses Lula IK. Franka config ships with Isaac Sim — generic articulations without a Lula config
+raise HTTP 400 (skip-candidate). end_effector_frame overrides the default URDF frame (Franka:
+'right_gripper').
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `target_pose` | `list[number]` | `'—'` | ✓ |
+| `robot_description` | `string` | `'Franka'` |  |
+| `end_effector_frame` | `string \| None` | `None` |  |
 
 ### `robot_set_joint_positions`
 
@@ -857,6 +915,28 @@ path. Sanitizes UUID-based filenames to USD-legal prim names.
 | `position` | `list[number] \| None` | `None` |  |
 | `yaw` | `number` | `0.0` |  |
 
+### `character_load_crowd`
+
+```python
+character_load_crowd(count: 'int', layout: 'str' = 'grid', spacing: 'float' = 2.0, base_name: 'str' = 'Crowd', center: 'list[float] | None' = None, usd_url: 'str | None' = None) -> 'str'
+```
+
+Batch-load N characters in a layout (Phase G). layout ∈ {grid, line, random}. count 1-100,
+spacing in meters. Defaults to Biped_Setup.usd — override usd_url for a custom skin. Per-
+character failures are captured in response.loaded (non-fatal). Positions are offset from
+center ([0,0,0] by default).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `count` | `integer` | `'—'` | ✓ |
+| `layout` | `string` | `'grid'` |  |
+| `spacing` | `number` | `2.0` |  |
+| `base_name` | `string` | `'Crowd'` |  |
+| `center` | `list[number] \| None` | `None` |  |
+| `usd_url` | `string \| None` | `None` |  |
+
 ### `character_navigate_to`
 
 ```python
@@ -890,6 +970,27 @@ AnimationGraph PathPoints variable.
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
 | `animation_name` | `string` | `'—'` | ✓ |
+| `speed` | `number` | `1.0` |  |
+| `target_position` | `list[number] \| None` | `None` |  |
+
+### `character_play_animation_variant`
+
+```python
+character_play_animation_variant(prim_path: 'str', variant: 'str', speed: 'float' = 1.0, target_position: 'list[float] | None' = None) -> 'str'
+```
+
+Play an AnimationGraph variant via BlendSpace variables (Phase G). Variant names:
+SitIdle/SitTalk/SitReading → Action=Sit + sit_style=<tail>; WalkFast/WalkSlow → Action=Walk +
+walk_style=<tail> + Walk=speed; RunLow/RunHigh similarly. Plain 'Sit'/'Walk'/'Run'/'Idle' are
+passed through. Unwired style variables are silently skipped (response.variables_set lists
+actually-set keys).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `variant` | `string` | `'—'` | ✓ |
 | `speed` | `number` | `1.0` |  |
 | `target_position` | `list[number] \| None` | `None` |  |
 
@@ -1348,6 +1449,49 @@ clears all managed carb /physics/visualization* keys, then enables the requested
 |------|------|---------|----------|
 | `mode` | `string` | `'—'` | ✓ |
 
+### `sensor_attach_contact`
+
+```python
+sensor_attach_contact(prim_path: 'str', sensor_name: 'str' = 'ContactSensor', frequency: 'int' = 60, translation: 'list[float] | None' = None, radius: 'float' = -1.0) -> 'str'
+```
+
+Attach an isaacsim.sensors.physics.ContactSensor child prim (Phase G). Reports contact forces /
+collision events on the parent rigid body once simulation is playing. translation=[x,y,z]
+relative to parent. Returns sensor_prim_path for later readout. Falls back to a plain Xform
+prim with customData.sensor_type='contact' when the physics sensor module is unavailable
+(backend field reports which path ran).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `sensor_name` | `string` | `'ContactSensor'` |  |
+| `frequency` | `integer` | `60` |  |
+| `translation` | `list[number] \| None` | `None` |  |
+| `radius` | `number` | `-1.0` |  |
+
+### `sensor_attach_imu`
+
+```python
+sensor_attach_imu(prim_path: 'str', sensor_name: 'str' = 'IMUSensor', frequency: 'int' = 200, mount_offset: 'list[float] | None' = None, mount_orientation: 'list[float] | None' = None) -> 'str'
+```
+
+Attach an isaacsim.sensors.physics.IMUSensor child prim (Phase G). Emits linear acceleration /
+angular velocity / orientation readings at the configured frequency. mount_offset=[x,y,z] +
+mount_orientation=[qw,qx,qy,qz] position the IMU in the parent frame. Same fallback-to-Xform
+behavior as sensor_attach_contact.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `sensor_name` | `string` | `'IMUSensor'` |  |
+| `frequency` | `integer` | `200` |  |
+| `mount_offset` | `list[number] \| None` | `None` |  |
+| `mount_orientation` | `list[number] \| None` | `None` |  |
+
 ### `sensor_attach_rtx_camera`
 
 ```python
@@ -1411,6 +1555,27 @@ sensor_set_visualization(sensor_prim, 'on') to render the point cloud in the vie
 | `config_preset` | `string` | `'Example_Rotary'` |  |
 | `sensor_name` | `string` | `'RtxLidar'` |  |
 
+### `sensor_set_annotator`
+
+```python
+sensor_set_annotator(sensor_prim: 'str', annotators: 'list[str]', resolution: 'list[int] | None' = None) -> 'str'
+```
+
+Configure replicator annotators on a sensor camera prim (Phase G). Valid annotators: rgb,
+depth, semantic_segmentation, instance_segmentation, normals, motion_vectors,
+distance_to_camera, distance_to_image_plane. Creates a render product for the sensor and
+attaches each annotator via omni.replicator.core.AnnotatorRegistry. resolution=[w,h] sets the
+render product size. Response.skipped lists annotators that failed to attach (e.g. missing
+module).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `sensor_prim` | `string` | `'—'` | ✓ |
+| `annotators` | `list[string]` | `'—'` | ✓ |
+| `resolution` | `list[integer] \| None` | `None` |  |
+
 ### `sensor_set_visualization`
 
 ```python
@@ -1428,3 +1593,36 @@ picked.
 |------|------|---------|----------|
 | `sensor_prim` | `string` | `'—'` | ✓ |
 | `mode` | `string` | `'on'` |  |
+
+### `simulation_set_time`
+
+```python
+simulation_set_time(time_seconds: 'float') -> 'str'
+```
+
+Seek the timeline to *time_seconds* (Phase G). Wraps omni.timeline.set_current_time(). Honours
+the current play/stop state: seeking while playing continues playing from the new position;
+seeking while stopped stays stopped.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `time_seconds` | `number` | `'—'` | ✓ |
+
+### `simulation_step`
+
+```python
+simulation_step(frames: 'int' = 1) -> 'str'
+```
+
+Advance the timeline by *frames* ticks (Phase G). Uses omni.timeline.forward_one_frame() per
+tick when available; else falls back to a short play → next_update_async burst → pause
+(preserves prior play state). Use this instead of simulation_play + sleep for deterministic
+frame-count advances.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `frames` | `integer` | `1` |  |

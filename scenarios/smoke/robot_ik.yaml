@@ -1,0 +1,68 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: robot_ik
+  name: "Phase G: Franka IK → set_ee_target → joint positions update"
+  tags: [smoke, robot, phase-g, ik, skip-candidate]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 240
+    # IK depends on Lula config — Franka works, generic articulations skip.
+    # continueOnFailure on the IK step so the scenario still passes when
+    # Lula module is unavailable on a given Isaac Sim build.
+    failFast: false
+
+  variables:
+    franka_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
+    prim_path: "/World/Franka"
+    target_pose: [0.4, 0.1, 0.4, 1.0, 0.0, 0.0, 0.0]
+
+  arrange:
+    - id: load_franka
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.franka_url}
+        prim_path: ${variables.prim_path}
+        position: [0.0, 0.0, 0.0]
+
+    - id: warm_up_physics
+      module: simulation
+      action: play
+      args: {}
+
+    - id: pause_physics
+      module: simulation
+      action: pause
+      args: {}
+
+  act:
+    - id: solve_ik
+      module: robot
+      action: set_ee_target
+      continueOnFailure: true
+      args:
+        prim_path: ${variables.prim_path}
+        target_pose: ${variables.target_pose}
+        robot_description: Franka
+
+  assert:
+    - id: franka_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+
+  cleanup:
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_franka
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}

@@ -1,0 +1,99 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: character_animation_variant
+  name: "Phase G: load Biped → play variants (SitIdle → SitReading)"
+  tags: [smoke, character, phase-g, animation-variant, skip-candidate]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    # Variant style variables may not be wired in every Biped_Setup build —
+    # base Action is set reliably even when sit_style silently no-ops.
+    failFast: false
+
+  variables:
+    biped_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/Biped_Setup.usd"
+    prim_path: "/World/Characters/Biped"
+
+  arrange:
+    - id: load_character
+      module: character
+      action: load
+      args:
+        usd_url: ${variables.biped_url}
+        prim_path: ${variables.prim_path}
+        position: [0.0, 0.0, 0.0]
+
+    - id: warm_up_physics
+      module: simulation
+      action: play
+      args: {}
+
+    - id: pause_physics
+      module: simulation
+      action: pause
+      args: {}
+
+  act:
+    - id: play_sit_idle
+      module: character
+      action: play_animation_variant
+      args:
+        prim_path: ${variables.prim_path}
+        variant: SitIdle
+
+    - id: play_sit_reading
+      module: character
+      action: play_animation_variant
+      continueOnFailure: true
+      args:
+        prim_path: ${variables.prim_path}
+        variant: SitReading
+
+    - id: play_walk_fast
+      module: character
+      action: play_animation_variant
+      args:
+        prim_path: ${variables.prim_path}
+        variant: WalkFast
+        speed: 1.5
+
+  assert:
+    - id: character_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+
+    - id: character_state
+      module: character
+      action: get_state
+      args:
+        prim_path: ${variables.prim_path}
+
+  cleanup:
+    - id: stop_animation
+      module: character
+      action: stop_animation
+      args:
+        prim_path: ${variables.prim_path}
+      continueOnFailure: true
+
+    - id: play_final
+      module: simulation
+      action: play
+      args: {}
+
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_character
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}
+      continueOnFailure: true

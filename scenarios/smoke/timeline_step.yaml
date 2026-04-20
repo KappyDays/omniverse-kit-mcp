@@ -1,0 +1,56 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: timeline_step
+  name: "Phase G: simulation_step (30 frames) → simulation_set_time (5.0 s)"
+  tags: [smoke, simulation, phase-g, timeline]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 120
+    failFast: true
+
+  variables:
+    step_frames: 30
+    seek_time: 5.0
+
+  arrange:
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+  act:
+    - id: play_for_step
+      module: simulation
+      action: play
+      args: {}
+
+    - id: advance_30_frames
+      module: simulation
+      action: step
+      args:
+        frames: ${variables.step_frames}
+
+    - id: pause_after_step
+      module: simulation
+      action: pause
+      args: {}
+
+    - id: seek_to_5s
+      module: simulation
+      action: set_time
+      args:
+        time_seconds: ${variables.seek_time}
+
+  assert:
+    - id: status_after_seek
+      module: simulation
+      action: get_status
+      args: {}
+
+  cleanup:
+    - id: stop_final
+      module: simulation
+      action: stop
+      args: {}

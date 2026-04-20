@@ -1,0 +1,181 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: phase_g_combined
+  name: "Phase G integration: NovaCarter + path nav + contact/imu sensors + crowd + animation variant"
+  tags: [integration, phase-g, navigate-path, sensor, crowd, animation-variant]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 600
+    failFast: false
+
+  variables:
+    nova_carter_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    biped_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/Biped_Setup.usd"
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    robot_prim: "/World/NovaCarter"
+    character_prim: "/World/Characters/Visitor"
+    crowd_base: "WHStaff"
+    crowd_count: 3
+    waypoints:
+      - [0.0, 0.0, 0.0]
+      - [2.0, 0.0, 0.0]
+      - [2.0, 2.0, 0.0]
+      - [4.0, 2.0, 0.0]
+
+  arrange:
+    - id: load_warehouse
+      module: stage
+      action: capture_snapshot
+      args: {}
+
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.nova_carter_url}
+        prim_path: ${variables.robot_prim}
+        position: [0.0, 0.0, 0.0]
+
+    - id: attach_contact
+      module: sensor
+      action: attach_contact
+      args:
+        prim_path: ${variables.robot_prim}
+        sensor_name: Chassis_Contact
+        frequency: 120
+        translation: [0.0, 0.0, 0.1]
+
+    - id: attach_imu
+      module: sensor
+      action: attach_imu
+      args:
+        prim_path: ${variables.robot_prim}
+        sensor_name: Chassis_IMU
+        frequency: 500
+        mount_offset: [0.0, 0.0, 0.15]
+        mount_orientation: [1.0, 0.0, 0.0, 0.0]
+
+    - id: load_crowd
+      module: character
+      action: load_crowd
+      args:
+        count: ${variables.crowd_count}
+        layout: line
+        spacing: 2.0
+        base_name: ${variables.crowd_base}
+        center: [5.0, 0.0, 0.0]
+
+    - id: load_visitor
+      module: character
+      action: load
+      args:
+        usd_url: ${variables.biped_url}
+        prim_path: ${variables.character_prim}
+        position: [3.0, -1.0, 0.0]
+
+  act:
+    - id: warm_up_physics
+      module: simulation
+      action: play
+      args: {}
+
+    - id: advance_30_frames
+      module: simulation
+      action: step
+      args:
+        frames: 30
+
+    - id: navigate_robot
+      module: robot
+      action: navigate_path
+      args:
+        prim_path: ${variables.robot_prim}
+        waypoints: ${variables.waypoints}
+        duration_s: 5.0
+
+    - id: wait_robot_nav
+      module: job
+      action: status
+      args:
+        navigate_step_id: navigate_robot
+        expected_status: done
+        poll_interval_s: 0.5
+        max_polls: 30
+
+    - id: visitor_sit
+      module: character
+      action: play_animation_variant
+      continueOnFailure: true
+      args:
+        prim_path: ${variables.character_prim}
+        variant: SitReading
+
+  assert:
+    - id: robot_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.robot_prim}
+        should_exist: true
+
+    - id: contact_sensor_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/NovaCarter/Chassis_Contact
+        should_exist: true
+
+    - id: imu_sensor_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/NovaCarter/Chassis_IMU
+        should_exist: true
+
+    - id: crowd_member_0_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/Characters/WHStaff_00
+        should_exist: true
+
+    - id: visitor_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.character_prim}
+        should_exist: true
+
+  cleanup:
+    - id: stop_visitor_anim
+      module: character
+      action: stop_animation
+      continueOnFailure: true
+      args:
+        prim_path: ${variables.character_prim}
+
+    - id: play_final
+      module: simulation
+      action: play
+      args: {}
+
+    - id: stop_final
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      continueOnFailure: true
+      args:
+        prim_path: ${variables.robot_prim}
+
+    - id: remove_visitor
+      module: simulation
+      action: stage_delete_prim
+      continueOnFailure: true
+      args:
+        prim_path: ${variables.character_prim}

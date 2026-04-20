@@ -23,17 +23,17 @@
 | **E** | Sensor · Multi-viewport · NavMesh Viz | +7 | 65 | `plans/2026-04-19-phase-e-sensor-viewport-navmesh-plan.md` | ✅ 완료 (`docs/phase-e-validation-report.md` Part 1) |
 | **PPTX** | 28-슬라이드 튜토리얼 제작 | — | 65 | `plans/2026-04-19-pptx-tutorial-production-plan.md` | ⏳ 세션 2 대기 |
 | **F** | Physics · Lighting · Material · Render | +19 | 84 | `plans/2026-04-19-phase-f-physics-lighting-material-render-plan.md` | ✅ 완료 (`docs/phase-f-validation-report.md`) |
-| **G** | Robot · Character · Sensor · Timeline 심화 | +10 | 94 | `plans/2026-04-19-phase-g-robot-character-timeline-plan.md` | ⏳ 세션 4 대기 |
+| **G** | Robot · Character · Sensor · Timeline 심화 | +10 | 94 | `plans/2026-04-19-phase-g-robot-character-timeline-plan.md` | ✅ 완료 (`docs/phase-g-validation-report.md`) |
 | **H** | Replicator · OmniGraph · Content · Extension | +14 | 108 | `plans/2026-04-19-phase-h-replicator-omnigraph-content-extension-plan.md` | ⏳ 세션 5 대기 |
 
 ## 현재 상태
 
 ```
-Phase: F (완료) — 세션 3 Phase F 자율 실행 완료
-Task: 20 / 20
-Progress: 20 / 20
-Tools added: +19 (65 → 84) · 3 new domains (Physics/Lighting/Material) + 4 Viewport render extensions
-Last update: 2026-04-21 (세션 3 Phase F 실행: types/modules/services/models/router/client/tools/scenario wiring/tests 19 tool + 6 scenarios + 4 live test scripts + validation report. pytest 212→261, catalog 65→84, live sweep 4/4 PASS)
+Phase: G (완료) — 세션 4 Phase G 자율 실행 완료
+Task: 11 / 11
+Progress: 11 / 11
+Tools added: +10 (84 → 94) · Robot +3 (navigate_path/gripper_control/set_ee_target) · Character +2 (animation_variant/load_crowd) · Sensor +3 (contact/imu/annotator) · Simulation +2 (step/set_time)
+Last update: 2026-04-21 (세션 4 Phase G 실행: extension models/services/router 9 new routes + MCP client/types/modules/tools/conftest/EXPECTED 10 tool + scenario action_registry + 4 새 ext test 파일 23 tests + 9 smoke YAML + phase_g_combined.yaml + 4 live scripts + validation report. pytest 261→284, catalog 84→94, 10/10 scenario compile PASS)
 ```
 
 ## Phase E 진행 (Task 1 ~ 16)
@@ -92,12 +92,17 @@ Last update: 2026-04-21 (세션 3 Phase F 실행: types/modules/services/models/
 
 | Task | 제목 | 상태 | 타임스탬프 |
 |---|---|---|---|
-| 1 | Prerequisite (84 tool) | ⏳ | — |
-| 2–4 | Robot 확장 3 tool | ⏳ | — |
-| 5–6 | Character 확장 2 tool | ⏳ | — |
-| 7–9 | Sensor 확장 3 tool | ⏳ | — |
-| 10 | Timeline 확장 2 tool | ⏳ | — |
-| 11 | 통합 검증 + sync (84→94) + 리포트 | ⏳ | — |
+| 1 | Prerequisite (84 tool) | ✅ | 2026-04-21 |
+| 2 | robot_navigate_path (expose existing REST) | ✅ | 2026-04-21 |
+| 3 | robot_gripper_control | ✅ | 2026-04-21 |
+| 4 | robot_set_ee_target (IK) | ✅ | 2026-04-21 |
+| 5 | character_play_animation_variant | ✅ | 2026-04-21 |
+| 6 | character_load_crowd | ✅ | 2026-04-21 |
+| 7 | sensor_attach_contact | ✅ | 2026-04-21 |
+| 8 | sensor_attach_imu | ✅ | 2026-04-21 |
+| 9 | sensor_set_annotator | ✅ | 2026-04-21 |
+| 10 | simulation_step + simulation_set_time | ✅ | 2026-04-21 |
+| 11 | 통합 검증 + sync (84→94) + 리포트 | ✅ | 2026-04-21 |
 
 ## Phase H 진행 (Task 1 ~ 11)
 
