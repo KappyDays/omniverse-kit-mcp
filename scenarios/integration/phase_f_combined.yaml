@@ -1,0 +1,190 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: phase_f_combined
+  name: "Phase F integration: physics + lighting + material + render end-to-end"
+  tags: [integration, physics, lighting, material, render, phase-f]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 180
+    failFast: true
+
+  variables:
+    box_prim: "/World/PhaseF/Box"
+    ground_prim: "/World/PhaseF/Ground"
+    dome_path: "/World/PhaseF/Dome"
+    distant_path: "/World/PhaseF/Sun"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: scene
+      module: physics
+      action: set_scene
+      args:
+        gravity: [0.0, 0.0, -9.81]
+
+    - id: ground
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.ground_prim}
+        prim_type: Cube
+        position: [0.0, 0.0, -0.5]
+
+    - id: ground_collider
+      module: physics
+      action: apply_collider
+      args:
+        prim_path: ${variables.ground_prim}
+        approximation: box
+
+    - id: box
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.box_prim}
+        prim_type: Cube
+        position: [0.0, 0.0, 2.5]
+
+  act:
+    - id: box_rb
+      module: physics
+      action: apply_rigid_body
+      args:
+        prim_path: ${variables.box_prim}
+        mass: 1.5
+        dynamic: true
+
+    - id: box_collider
+      module: physics
+      action: apply_collider
+      args:
+        prim_path: ${variables.box_prim}
+        approximation: box
+
+    - id: box_phys_mat
+      module: physics
+      action: apply_material
+      args:
+        prim_path: ${variables.box_prim}
+        friction: 0.6
+        restitution: 0.3
+        density: 800.0
+
+    - id: dome
+      module: lighting
+      action: create_dome
+      args:
+        prim_path: ${variables.dome_path}
+        intensity: 1000.0
+
+    - id: sun
+      module: lighting
+      action: create_distant
+      args:
+        prim_path: ${variables.distant_path}
+        intensity: 2500.0
+        angle_deg: 0.5
+
+    - id: box_mdl
+      module: material
+      action: assign_mdl
+      args:
+        prim_path: ${variables.box_prim}
+        mdl_url: OmniPBR.mdl
+        material_name: OmniPBR_Phase_F
+
+    - id: rt_mode
+      module: viewport
+      action: set_render_mode
+      args:
+        viewport_name: Viewport
+        mode: RealTime
+
+    - id: overlay_stats
+      module: viewport
+      action: toggle_overlay
+      args:
+        viewport_name: Viewport
+        overlay: stats
+        visible: true
+
+    - id: viz_collision
+      module: physics
+      action: visualize
+      args:
+        mode: collision
+
+  assert:
+    - id: box_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.box_prim}
+        should_exist: true
+
+    - id: dome_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.dome_path}
+        should_exist: true
+        expected_type_name: DomeLight
+
+    - id: material_bound
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: "/World/Materials/OmniPBR_Phase_F"
+        should_exist: true
+
+  cleanup:
+    - id: viz_off
+      module: physics
+      action: visualize
+      args: { mode: off }
+      continueOnFailure: true
+
+    - id: overlay_off
+      module: viewport
+      action: toggle_overlay
+      args:
+        viewport_name: Viewport
+        overlay: stats
+        visible: false
+      continueOnFailure: true
+
+    - id: remove_material
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "/World/Materials/OmniPBR_Phase_F" }
+      continueOnFailure: true
+
+    - id: remove_box
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.box_prim}" }
+      continueOnFailure: true
+
+    - id: remove_ground
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.ground_prim}" }
+      continueOnFailure: true
+
+    - id: remove_dome
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.dome_path}" }
+      continueOnFailure: true
+
+    - id: remove_sun
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.distant_path}" }
+      continueOnFailure: true

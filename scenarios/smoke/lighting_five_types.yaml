@@ -1,0 +1,134 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: lighting_five_types
+  name: "Phase F smoke: all 5 UsdLux types + exposure toggle"
+  tags: [smoke, lighting, phase-f]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 60
+    failFast: true
+
+  variables:
+    dome_path: "/World/Lights/Dome"
+    distant_path: "/World/Lights/Sun"
+    disk_path: "/World/Lights/Disk"
+    rect_path: "/World/Lights/Rect"
+    sphere_path: "/World/Lights/Sphere"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+  act:
+    - id: make_dome
+      module: lighting
+      action: create_dome
+      args:
+        prim_path: ${variables.dome_path}
+        intensity: 800.0
+
+    - id: make_distant
+      module: lighting
+      action: create_distant
+      args:
+        prim_path: ${variables.distant_path}
+        intensity: 1500.0
+        angle_deg: 0.53
+
+    - id: make_disk
+      module: lighting
+      action: create_disk
+      args:
+        prim_path: ${variables.disk_path}
+        intensity: 500.0
+        radius: 0.6
+
+    - id: make_rect
+      module: lighting
+      action: create_rect
+      args:
+        prim_path: ${variables.rect_path}
+        intensity: 700.0
+        width: 2.0
+        height: 1.0
+
+    - id: make_sphere
+      module: lighting
+      action: create_sphere
+      args:
+        prim_path: ${variables.sphere_path}
+        intensity: 400.0
+        radius: 0.1
+
+    - id: bump_exposure
+      module: lighting
+      action: set_exposure
+      args:
+        exposure: 1.2
+
+  assert:
+    - id: dome_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.dome_path}
+        should_exist: true
+        expected_type_name: DomeLight
+
+    - id: distant_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.distant_path}
+        should_exist: true
+        expected_type_name: DistantLight
+
+    - id: rect_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.rect_path}
+        should_exist: true
+        expected_type_name: RectLight
+
+  cleanup:
+    - id: reset_exposure
+      module: lighting
+      action: set_exposure
+      args:
+        exposure: 0.0
+      continueOnFailure: true
+
+    - id: remove_dome
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.dome_path}" }
+      continueOnFailure: true
+
+    - id: remove_distant
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.distant_path}" }
+      continueOnFailure: true
+
+    - id: remove_disk
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.disk_path}" }
+      continueOnFailure: true
+
+    - id: remove_rect
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.rect_path}" }
+      continueOnFailure: true
+
+    - id: remove_sphere
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.sphere_path}" }
+      continueOnFailure: true

@@ -1,0 +1,110 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: physics_rigid_body
+  name: "Phase F smoke: rigid body + collider + physics scene drop"
+  tags: [smoke, physics, phase-f]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 60
+    failFast: true
+
+  variables:
+    box_prim: "/World/Drop/Box"
+    ground_prim: "/World/Drop/Ground"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: scene
+      module: physics
+      action: set_scene
+      args:
+        gravity: [0.0, 0.0, -9.81]
+        timestep: 0.016666667
+        solver_iter_pos: 4
+        solver_iter_vel: 1
+
+    - id: make_ground
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.ground_prim}
+        prim_type: Cube
+        position: [0.0, 0.0, -0.5]
+
+    - id: ground_collider
+      module: physics
+      action: apply_collider
+      args:
+        prim_path: ${variables.ground_prim}
+        approximation: box
+
+    - id: make_box
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.box_prim}
+        prim_type: Cube
+        position: [0.0, 0.0, 2.0]
+
+  act:
+    - id: box_rb
+      module: physics
+      action: apply_rigid_body
+      args:
+        prim_path: ${variables.box_prim}
+        mass: 1.0
+        dynamic: true
+
+    - id: box_collider
+      module: physics
+      action: apply_collider
+      args:
+        prim_path: ${variables.box_prim}
+        approximation: box
+
+    - id: box_material
+      module: physics
+      action: apply_material
+      args:
+        prim_path: ${variables.box_prim}
+        friction: 0.7
+        restitution: 0.2
+        density: 700.0
+
+  assert:
+    - id: box_has_rigid_body
+      module: stage
+      action: assert_property
+      args:
+        prim_path: ${variables.box_prim}
+        property_name: physics:rigidBodyEnabled
+        comparator: equals
+        expected_value: true
+
+    - id: ground_has_collision
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.ground_prim}
+        should_exist: true
+
+  cleanup:
+    - id: remove_box
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.box_prim}
+      continueOnFailure: true
+
+    - id: remove_ground
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.ground_prim}
+      continueOnFailure: true

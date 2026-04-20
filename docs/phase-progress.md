@@ -22,18 +22,18 @@
 | D | Extension UI 자동화 | — | 58 | — | ⏸ 대기 (본 프로젝트 범위 밖) |
 | **E** | Sensor · Multi-viewport · NavMesh Viz | +7 | 65 | `plans/2026-04-19-phase-e-sensor-viewport-navmesh-plan.md` | ✅ 완료 (`docs/phase-e-validation-report.md` Part 1) |
 | **PPTX** | 28-슬라이드 튜토리얼 제작 | — | 65 | `plans/2026-04-19-pptx-tutorial-production-plan.md` | ⏳ 세션 2 대기 |
-| **F** | Physics · Lighting · Material · Render | +19 | 84 | `plans/2026-04-19-phase-f-physics-lighting-material-render-plan.md` | ⏳ 세션 3 대기 |
+| **F** | Physics · Lighting · Material · Render | +19 | 84 | `plans/2026-04-19-phase-f-physics-lighting-material-render-plan.md` | ✅ 완료 (`docs/phase-f-validation-report.md`) |
 | **G** | Robot · Character · Sensor · Timeline 심화 | +10 | 94 | `plans/2026-04-19-phase-g-robot-character-timeline-plan.md` | ⏳ 세션 4 대기 |
 | **H** | Replicator · OmniGraph · Content · Extension | +14 | 108 | `plans/2026-04-19-phase-h-replicator-omnigraph-content-extension-plan.md` | ⏳ 세션 5 대기 |
 
 ## 현재 상태
 
 ```
-Phase: PPTX (세션 3 — Task 12 까지 완료, Task 13 pptxgenjs /pptx 스킬 대기)
-Task: 12 / 15 완료
-Progress: 12 / 15
-Tools added: 0 (65 유지) · Extension config.py ui_demo 2개 기본값 제거
-Last update: 2026-04-21 (세션 3: Task 5 재수행 (실 S3 + NavMesh obstacles before/after) + Task 6~12 산출 + sensor_menu_catalog.md 체계화 + ui_demo auto-activate 비활성 + Twin 1/2/3 USD + asset_sampler.usd 저장 + slide 17 4-panel composite + slide 27 3-twin comparison composite)
+Phase: F (완료) — 세션 3 Phase F 자율 실행 완료
+Task: 20 / 20
+Progress: 20 / 20
+Tools added: +19 (65 → 84) · 3 new domains (Physics/Lighting/Material) + 4 Viewport render extensions
+Last update: 2026-04-21 (세션 3 Phase F 실행: types/modules/services/models/router/client/tools/scenario wiring/tests 19 tool + 6 scenarios + 4 live test scripts + validation report. pytest 212→261, catalog 65→84, live sweep 4/4 PASS)
 ```
 
 ## Phase E 진행 (Task 1 ~ 16)
@@ -79,14 +79,14 @@ Last update: 2026-04-21 (세션 3: Task 5 재수행 (실 S3 + NavMesh obstacles 
 
 ## Phase F 진행 (Task 1 ~ 20)
 
-| Task | 제목 | 상태 | 타임스탬프 |
-|---|---|---|---|
-| 1 | Prerequisite 확인 (65 tool 기준) | ⏳ | — |
-| 2–7 | Physics 6 tool | ⏳ | — |
-| 8–13 | Lighting 6 tool | ⏳ | — |
-| 14–16 | Material 3 tool | ⏳ | — |
-| 17–19 | Render 확장 4 tool | ⏳ | — |
-| 20 | 통합 검증 + sync (65→84) + 리포트 | ⏳ | — |
+| Task | 제목 | 상태 | 타임스탬프 | 비고 |
+|---|---|---|---|---|
+| 1 | Prerequisite 확인 (65 tool 기준) | ✅ | 2026-04-21 | pytest 212 passed baseline, `verify_mcp_sync.py` green |
+| 2–7 | Physics 6 tool | ✅ | 2026-04-21 | `physics_apply_rigid_body`/`_collider`/`_material`/`_create_joint`/`_set_scene`/`_visualize` |
+| 8–13 | Lighting 6 tool | ✅ | 2026-04-21 | `lighting_create_{dome,distant,disk,rect,sphere}` + `lighting_set_exposure` |
+| 14–16 | Material 3 tool | ✅ | 2026-04-21 | `material_list_mdl` + `material_assign_mdl` + `material_get_bound`. Live `DirectBinding.GetBindingStrength` regression → static accessor 사용으로 해결 |
+| 17–19 | Render 확장 4 tool | ✅ | 2026-04-21 | `viewport_set_render_mode` / `_set_render_quality` / `_toggle_overlay` / `_set_fov`. Live `set_fov` 에서 `/OmniverseKit_Persp` 미존재 → candidate camera walk (viewport → Kit builtins → authored Camera) 도입 |
+| 20 | 통합 검증 + sync (65→84) + 리포트 | ✅ | 2026-04-21 | pytest 261 passed, `verify_mcp_sync.py` green (84 tool), 6 scenario YAML 컴파일 OK, 4 live 스크립트 PASS, `docs/phase-f-validation-report.md` 작성 |
 
 ## Phase G 진행 (Task 1 ~ 11)
 
@@ -119,6 +119,7 @@ Last update: 2026-04-21 (세션 3: Task 5 재수행 (실 S3 + NavMesh obstacles 
 | E (out-of-scope Part 1) | `robot/load` / `stage/load_usd` live end-to-end | Nova Carter 와 Jetbot 모두 600 s timeout — Kit `open_stage_async` + `_wait_stage_loading()` 에서 USD reference resolution 이 완료되지 않음. 네트워크 baseline 정상 (HEAD 0.83 s), Kit CPU 는 지속 증가 (hang 아님), Phase E 신규 7 tool 과 무관. 스크립트는 `LIVE_ROBOT` / `LIVE_HEAVY_ENV` env 로 옵션화되어 minimal mode 로 end-to-end 실행됨 (`PhaseE/phaseE_verify_*.png` 7 장) |
 | E (Part 2 regression) | `navigation_bake` | fresh Kit clean state 에서도 `start_navmesh_baking()` 이 False 반환 — response reason: "no volume / navmesh cache locked / disabled in settings". `_ensure_navmesh_volume` 은 성공 (`volume_path: /NavMeshVolume` echo). Phase E Part 2 `phase_e_live_report.json` 에서는 성공했던 증거 있음. Extension `navigation_service.bake` 에 진단 로깅 + `start_navmesh_baking_and_wait` fallback 추가가 Phase F/G 작업 |
 | E (minor response bug) | `simulation/stop` 응답 body | stop 명령은 정상 수락되지만 응답 body 의 `is_playing`/`is_stopped` 가 직전 state 를 echo — 1 프레임 후 `simulation/status` 재호출로 올바르게 반영. 호출자가 status polling 으로 우회 가능 |
+| F (deferred) | Viewport capture SSIM across render-mode / material assignment | `stage/new` + prim 생성 직후 `viewport/capture` 가 `Viewport capture returned empty data` 반환 (Kit 이 아직 frame tick 안 함). Phase E 동일 class 한계. Phase F 신규 surface 는 모두 carb.settings + USD write 기반이므로 "설정 성공" 으로 검증 충분; 이미지 비교는 warm-stage PPTX 세션 또는 Phase G 에서 재수행 |
 
 ---
 
