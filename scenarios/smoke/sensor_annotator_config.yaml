@@ -1,0 +1,74 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: sensor_annotator_config
+  name: "Phase G: NovaCarter → attach RTX Camera → set annotators (rgb/depth/semantic_segmentation)"
+  tags: [smoke, sensor, phase-g, annotator]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    nova_carter_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    prim_path: "/World/NovaCarter"
+    sensor_prim: "/World/NovaCarter/FrontCam"
+
+  arrange:
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.nova_carter_url}
+        prim_path: ${variables.prim_path}
+        position: [0.0, 0.0, 0.0]
+
+    - id: attach_front_cam
+      module: sensor
+      action: attach_rtx_camera
+      args:
+        robot_prim: ${variables.prim_path}
+        mount_offset: [0.3, 0.0, 0.5]
+        mount_rotation: [0.0, 0.0, 0.0]
+        resolution: [1280, 720]
+        sensor_name: FrontCam
+
+  act:
+    - id: configure_annotators
+      module: sensor
+      action: set_annotator
+      args:
+        sensor_prim: ${variables.sensor_prim}
+        annotators:
+          - rgb
+          - depth
+          - semantic_segmentation
+        resolution: [1280, 720]
+
+  assert:
+    - id: sensor_prim_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.sensor_prim}
+        should_exist: true
+
+  cleanup:
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_sensor
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.sensor_prim}
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}

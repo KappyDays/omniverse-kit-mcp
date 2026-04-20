@@ -1,0 +1,92 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: character_crowd
+  name: "Phase G: load 4 characters in grid → assert each prim exists"
+  tags: [smoke, character, phase-g, crowd]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    crowd_count: 4
+    crowd_spacing: 2.5
+    crowd_base: "Shopper"
+
+  arrange:
+    - id: load_crowd
+      module: character
+      action: load_crowd
+      args:
+        count: ${variables.crowd_count}
+        layout: grid
+        spacing: ${variables.crowd_spacing}
+        base_name: ${variables.crowd_base}
+        center: [0.0, 0.0, 0.0]
+
+  act:
+    - id: warm_up_physics
+      module: simulation
+      action: play
+      args: {}
+
+    - id: pause_physics
+      module: simulation
+      action: pause
+      args: {}
+
+  assert:
+    - id: shopper_00_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/Characters/Shopper_00
+        should_exist: true
+
+    - id: shopper_03_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/Characters/Shopper_03
+        should_exist: true
+
+  cleanup:
+    - id: play_final
+      module: simulation
+      action: play
+      args: {}
+
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_shopper_00
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: /World/Characters/Shopper_00
+      continueOnFailure: true
+
+    - id: remove_shopper_01
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: /World/Characters/Shopper_01
+      continueOnFailure: true
+
+    - id: remove_shopper_02
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: /World/Characters/Shopper_02
+      continueOnFailure: true
+
+    - id: remove_shopper_03
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: /World/Characters/Shopper_03
+      continueOnFailure: true

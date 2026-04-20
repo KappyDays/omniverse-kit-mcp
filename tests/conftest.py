@@ -150,6 +150,39 @@ class MockIsaacRestClient:
             {"is_playing": False, "is_stopped": True, "current_time": 0.0, "start_time": 0.0, "end_time": 10.0, "time_codes_per_second": 24.0},
         )
 
+    # Simulation (Phase G)
+
+    async def simulation_step(self, request: dict) -> dict:
+        self.calls.append(("simulation_step", request))
+        frames = int(request.get("frames", 1))
+        return self.responses.get("simulation_step", {
+            "ok": True,
+            "is_playing": False,
+            "is_stopped": False,
+            "current_time": frames / 60.0,
+            "start_time": 0.0,
+            "end_time": 10.0,
+            "time_codes_per_second": 60.0,
+            "frames": frames,
+            "advance_mode": "forward_one_frame",
+            "was_playing": False,
+        })
+
+    async def simulation_set_time(self, request: dict) -> dict:
+        self.calls.append(("simulation_set_time", request))
+        target = float(request.get("time_seconds", 0.0))
+        return self.responses.get("simulation_set_time", {
+            "ok": True,
+            "is_playing": False,
+            "is_stopped": False,
+            "current_time": target,
+            "start_time": 0.0,
+            "end_time": 10.0,
+            "time_codes_per_second": 60.0,
+            "requested_time": target,
+            "previous_time": 0.0,
+        })
+
     # Robot (Phase B)
 
     async def robot_load(self, request: dict) -> dict:
@@ -192,6 +225,62 @@ class MockIsaacRestClient:
                 "job_id": "job_test_0001",
                 "prim_path": request.get("prim_path", ""),
                 "target": request.get("target", [0.0, 0.0, 0.0]),
+            },
+        )
+
+    # Robot (Phase G)
+
+    async def robot_navigate_path(self, request: dict) -> dict:
+        self.calls.append(("robot_navigate_path", request))
+        points = request.get("points") or []
+        return self.responses.get(
+            "robot_navigate_path",
+            {
+                "ok": True,
+                "job_id": "job_test_path_0001",
+                "prim_path": request.get("prim_path", ""),
+                "num_waypoints": len(points),
+                "duration_s": float(request.get("duration_s", 5.0)),
+            },
+        )
+
+    async def robot_gripper_control(self, request: dict) -> dict:
+        self.calls.append(("robot_gripper_control", request))
+        action = request.get("action", "open")
+        target = request.get("target")
+        if action == "open":
+            value = 0.04
+        elif action == "close":
+            value = 0.0
+        else:
+            value = float(target) if target is not None else 0.0
+        return self.responses.get(
+            "robot_gripper_control",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "action": action,
+                "target_value": value,
+                "gripper_joint_names": ["panda_finger_joint1", "panda_finger_joint2"],
+                "gripper_joint_indices": [7, 8],
+                "dof_count": 9,
+            },
+        )
+
+    async def robot_set_ee_target(self, request: dict) -> dict:
+        self.calls.append(("robot_set_ee_target", request))
+        pose = request.get("target_pose") or [0.0] * 7
+        return self.responses.get(
+            "robot_set_ee_target",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "target_pose": list(pose),
+                "robot_description": request.get("robot_description", "Franka"),
+                "end_effector_frame": request.get("end_effector_frame") or "right_gripper",
+                "lula_import_path": "isaacsim.robot_motion",
+                "ik_success": True,
+                "solution": [0.0, -0.5, 0.0, -2.0, 0.0, 1.5, 0.8],
             },
         )
 
@@ -299,6 +388,80 @@ class MockIsaacRestClient:
                 "rotation": [1.0, 0.0, 0.0, 0.0],
                 "action": "Idle",
                 "is_navigating": False,
+            },
+        )
+
+    # Character (Phase G)
+
+    async def character_play_animation_variant(self, request: dict) -> dict:
+        self.calls.append(("character_play_animation_variant", request))
+        variant = request.get("variant", "Idle")
+        # Derive the base action from the variant prefix (same logic as Extension)
+        for base in ("Sit", "Walk", "Run", "Idle"):
+            if variant == base or variant.startswith(base):
+                base_action = base
+                tail = variant[len(base):].lower() or ""
+                break
+        else:
+            base_action = variant
+            tail = ""
+        variables_set: dict = {"Action": base_action}
+        if tail:
+            variables_set[f"{base_action.lower()}_style"] = tail
+        if base_action in ("Walk", "Run"):
+            variables_set["Walk"] = float(request.get("speed", 1.0))
+        return self.responses.get(
+            "character_play_animation_variant",
+            {
+                "ok": True,
+                "prim_path": request.get("prim_path", ""),
+                "variant": variant,
+                "base_action": base_action,
+                "speed": float(request.get("speed", 1.0)),
+                "variables_set": variables_set,
+                "bound_graph": request.get("prim_path", "") + "/SkelRoot",
+            },
+        )
+
+    async def character_load_crowd(self, request: dict) -> dict:
+        self.calls.append(("character_load_crowd", request))
+        count = int(request.get("count", 0))
+        base = request.get("base_name", "Crowd")
+        spacing = float(request.get("spacing", 2.0))
+        center = request.get("center") or [0.0, 0.0, 0.0]
+        layout = request.get("layout", "grid")
+        loaded = []
+        import math
+        cols = max(1, int(math.ceil(math.sqrt(count)))) if layout == "grid" else count
+        for i in range(count):
+            if layout == "grid":
+                row = i // cols
+                col = i % cols
+                x = center[0] + (col - (cols - 1) / 2.0) * spacing
+                y = center[1] + (row - (cols - 1) / 2.0) * spacing
+            elif layout == "line":
+                x = center[0] + (i - (count - 1) / 2.0) * spacing
+                y = center[1]
+            else:
+                x = center[0]
+                y = center[1]
+            loaded.append({
+                "index": i,
+                "prim_path": f"/World/Characters/{base}_{i:02d}",
+                "position": [x, y, center[2]],
+            })
+        return self.responses.get(
+            "character_load_crowd",
+            {
+                "ok": count > 0,
+                "count": count,
+                "success_count": count,
+                "layout": layout,
+                "spacing": spacing,
+                "base_name": base,
+                "center": list(center),
+                "usd_url": request.get("usd_url") or "https://example/Biped_Setup.usd",
+                "loaded": loaded,
             },
         )
 
@@ -582,6 +745,52 @@ class MockIsaacRestClient:
             "sensor_prim": request.get("sensor_prim", ""),
             "mode": request.get("mode", "on"),
             "sensor_type": "rtx_lidar",
+        })
+
+    # Sensor (Phase G)
+
+    async def sensor_attach_contact(self, request: dict) -> dict:
+        self.calls.append(("sensor_attach_contact", request))
+        parent = request.get("prim_path", "/World/Robot")
+        name = request.get("sensor_name", "ContactSensor")
+        return self.responses.get("sensor_attach_contact", {
+            "ok": True,
+            "sensor_prim_path": f"{parent}/{name}",
+            "parent_prim": parent,
+            "sensor_type": "contact",
+            "frequency": int(request.get("frequency", 60)),
+            "translation": request.get("translation", [0.0, 0.0, 0.0]),
+            "radius": float(request.get("radius", -1.0)),
+            "backend": "isaacsim.sensors.physics",
+        })
+
+    async def sensor_attach_imu(self, request: dict) -> dict:
+        self.calls.append(("sensor_attach_imu", request))
+        parent = request.get("prim_path", "/World/Robot")
+        name = request.get("sensor_name", "IMUSensor")
+        return self.responses.get("sensor_attach_imu", {
+            "ok": True,
+            "sensor_prim_path": f"{parent}/{name}",
+            "parent_prim": parent,
+            "sensor_type": "imu",
+            "frequency": int(request.get("frequency", 200)),
+            "mount_offset": request.get("mount_offset", [0.0, 0.0, 0.0]),
+            "mount_orientation": request.get("mount_orientation", [1.0, 0.0, 0.0, 0.0]),
+            "backend": "isaacsim.sensors.physics",
+        })
+
+    async def sensor_set_annotator(self, request: dict) -> dict:
+        self.calls.append(("sensor_set_annotator", request))
+        annotators = request.get("annotators") or []
+        resolution = request.get("resolution") or [1280, 720]
+        return self.responses.get("sensor_set_annotator", {
+            "ok": True,
+            "sensor_prim": request.get("sensor_prim", ""),
+            "annotators": list(annotators),
+            "skipped": {},
+            "resolution": [int(resolution[0]), int(resolution[1])],
+            "backend": "omni.replicator.core",
+            "render_product": "/Render/RenderProduct_Mock_0",
         })
 
     # Physics (Phase F) — rigid body / collider / material / joint / scene / viz

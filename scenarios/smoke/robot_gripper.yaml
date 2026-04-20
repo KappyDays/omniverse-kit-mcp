@@ -1,0 +1,83 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: robot_gripper
+  name: "Phase G: Franka gripper open → close → set"
+  tags: [smoke, robot, phase-g, gripper]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 240
+    failFast: true
+
+  variables:
+    franka_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
+    prim_path: "/World/Franka"
+
+  arrange:
+    - id: load_franka
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.franka_url}
+        prim_path: ${variables.prim_path}
+        position: [0.0, 0.0, 0.0]
+
+    - id: warm_up_physics
+      module: simulation
+      action: play
+      args: {}
+
+    - id: pause_physics
+      module: simulation
+      action: pause
+      args: {}
+
+  act:
+    - id: open_gripper
+      module: robot
+      action: gripper_control
+      args:
+        prim_path: ${variables.prim_path}
+        action: open
+
+    - id: close_gripper
+      module: robot
+      action: gripper_control
+      args:
+        prim_path: ${variables.prim_path}
+        action: close
+
+    - id: set_gripper_half
+      module: robot
+      action: gripper_control
+      args:
+        prim_path: ${variables.prim_path}
+        action: set
+        target: 0.02
+
+  assert:
+    - id: franka_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+
+    - id: joints_readable
+      module: robot
+      action: get_joint_positions
+      args:
+        prim_path: ${variables.prim_path}
+
+  cleanup:
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_franka
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}

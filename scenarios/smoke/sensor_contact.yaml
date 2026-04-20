@@ -1,0 +1,61 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: sensor_contact
+  name: "Phase G: NovaCarter chassis → attach ContactSensor → assert prim exists"
+  tags: [smoke, sensor, phase-g, contact]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    nova_carter_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    prim_path: "/World/NovaCarter"
+
+  arrange:
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.nova_carter_url}
+        prim_path: ${variables.prim_path}
+        position: [0.0, 0.0, 0.0]
+
+  act:
+    - id: attach_contact_sensor
+      module: sensor
+      action: attach_contact
+      args:
+        prim_path: ${variables.prim_path}
+        sensor_name: ChassisContact
+        frequency: 120
+        translation: [0.0, 0.0, 0.1]
+
+  assert:
+    - id: sensor_prim_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/NovaCarter/ChassisContact
+        should_exist: true
+
+  cleanup:
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: remove_sensor
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: /World/NovaCarter/ChassisContact
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.prim_path}

@@ -115,6 +115,20 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "viewport_set_render_quality",
     "viewport_toggle_overlay",
     "viewport_set_fov",
+    # Phase G — Robot extensions (navigate_path / gripper_control / set_ee_target)
+    "robot_navigate_path",
+    "robot_gripper_control",
+    "robot_set_ee_target",
+    # Phase G — Character extensions (animation variant / crowd load)
+    "character_play_animation_variant",
+    "character_load_crowd",
+    # Phase G — Sensor extensions (contact / imu / annotator)
+    "sensor_attach_contact",
+    "sensor_attach_imu",
+    "sensor_set_annotator",
+    # Phase G — Simulation timeline extensions (step / set_time)
+    "simulation_step",
+    "simulation_set_time",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({
