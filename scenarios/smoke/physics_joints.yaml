@@ -1,0 +1,99 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: physics_joints
+  name: "Phase F smoke: revolute + prismatic joint between two cubes"
+  tags: [smoke, physics, phase-f, joint]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 60
+    failFast: true
+
+  variables:
+    cube_a: "/World/Joints/CubeA"
+    cube_b: "/World/Joints/CubeB"
+    revolute_path: "/World/PhysicsJoints/RevoluteTest"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: scene
+      module: physics
+      action: set_scene
+      args: {}
+
+    - id: make_cube_a
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.cube_a}
+        prim_type: Cube
+        position: [0.0, 0.0, 1.0]
+
+    - id: make_cube_b
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.cube_b}
+        prim_type: Cube
+        position: [1.0, 0.0, 1.0]
+
+    - id: rb_a
+      module: physics
+      action: apply_rigid_body
+      args:
+        prim_path: ${variables.cube_a}
+        dynamic: false
+
+    - id: rb_b
+      module: physics
+      action: apply_rigid_body
+      args:
+        prim_path: ${variables.cube_b}
+        dynamic: true
+
+  act:
+    - id: joint
+      module: physics
+      action: create_joint
+      args:
+        joint_type: Revolute
+        body_a: ${variables.cube_a}
+        body_b: ${variables.cube_b}
+        anchor: [0.5, 0.0, 0.0]
+        axis: [0.0, 0.0, 1.0]
+        joint_prim_path: ${variables.revolute_path}
+
+  assert:
+    - id: joint_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.revolute_path}
+        should_exist: true
+
+  cleanup:
+    - id: remove_joint
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.revolute_path}
+      continueOnFailure: true
+
+    - id: remove_cube_b
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.cube_b}
+      continueOnFailure: true
+
+    - id: remove_cube_a
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.cube_a}
+      continueOnFailure: true

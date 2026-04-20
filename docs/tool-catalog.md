@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 65
+**Tool count**: 84
 
 ## Table of contents
 
@@ -10,7 +10,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Stage — READ / ASSERT / file & selection](#stage--read--assert--file--selection) — 6 tools
 - [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
 - [Simulation — timeline](#simulation--timeline) — 4 tools
-- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 5 tools
+- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 9 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 6 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 7 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 6 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 4 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 5 tools
-- Unclassified (4)
+- Unclassified (19)
 
 ## Process — Isaac Sim kit.exe lifecycle
 
@@ -383,6 +383,73 @@ Switch the viewport's active camera — GUI viewport toolbar camera selector.
 |------|------|---------|----------|
 | `camera_path` | `string` | `'—'` | ✓ |
 | `viewport_name` | `string` | `'Viewport'` |  |
+
+### `viewport_set_fov`
+
+```python
+viewport_set_fov(viewport_name: 'str' = 'Viewport', fov_deg: 'float' = 60.0) -> 'str'
+```
+
+Set the viewport camera's horizontal field-of-view by converting *fov_deg* into focalLength =
+(horizontalAperture / 2) / tan(fov / 2). Writes to the active camera prim returned by
+`omni.kit.viewport.utility.get_viewport_from_window_name` (falls back to /OmniverseKit_Persp).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `viewport_name` | `string` | `'Viewport'` |  |
+| `fov_deg` | `number` | `60.0` |  |
+
+### `viewport_set_render_mode`
+
+```python
+viewport_set_render_mode(viewport_name: 'str' = 'Viewport', mode: 'str' = 'RealTime') -> 'str'
+```
+
+Switch the RTX renderer mode via carb.settings /rtx/rendermode. *mode* ∈ {RealTime,
+PathTracing}. PathTracing yields physically accurate reflections / GI but is significantly
+slower.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `viewport_name` | `string` | `'Viewport'` |  |
+| `mode` | `string` | `'RealTime'` |  |
+
+### `viewport_set_render_quality`
+
+```python
+viewport_set_render_quality(samples: 'int' = 1, denoiser: 'str' = 'auto') -> 'str'
+```
+
+Tune RTX render quality via /rtx/pathtracing/spp (samples per pixel) and /rtx/post/aa/op
+(denoiser / AA). *denoiser* ∈ {auto, DLSS, NRD, off}.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `samples` | `integer` | `1` |  |
+| `denoiser` | `string` | `'auto'` |  |
+
+### `viewport_toggle_overlay`
+
+```python
+viewport_toggle_overlay(viewport_name: 'str' = 'Viewport', overlay: 'str' = 'gridlines', visible: 'bool' = True) -> 'str'
+```
+
+Toggle a viewport overlay via carb.settings. *overlay* ∈ {gridlines, axis, stats}.
+Gridlines/axis use the persistent viewport display options; stats toggles the RTX FPS overlay.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `viewport_name` | `string` | `'Viewport'` |  |
+| `overlay` | `string` | `'gridlines'` |  |
+| `visible` | `boolean` | `True` |  |
 
 ## Window — Kit GUI (app window / menus / omni.ui windows)
 
@@ -1018,6 +1085,268 @@ scenario variables (e.g. {"prim_path": "/World/Box"}).
 | `input_overrides` | `object \| None` | `None` |  |
 
 ## Unclassified
+
+### `lighting_create_disk`
+
+```python
+lighting_create_disk(prim_path: 'str', intensity: 'float' = 1000.0, radius: 'float' = 1.0) -> 'str'
+```
+
+Create a UsdLux.DiskLight at *prim_path*. Emission originates from a disk of radius *radius*
+(meters).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `radius` | `number` | `1.0` |  |
+
+### `lighting_create_distant`
+
+```python
+lighting_create_distant(prim_path: 'str', intensity: 'float' = 1000.0, angle_deg: 'float' = 0.53) -> 'str'
+```
+
+Create a UsdLux.DistantLight (directional) at *prim_path*. *angle_deg* widens the shadow
+penumbra (sun ≈ 0.53°).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `angle_deg` | `number` | `0.53` |  |
+
+### `lighting_create_dome`
+
+```python
+lighting_create_dome(prim_path: 'str', intensity: 'float' = 1000.0, texture: 'str | None' = None) -> 'str'
+```
+
+Create a UsdLux.DomeLight at *prim_path* for HDRI environment lighting. Optionally bind a
+*texture* (HDR/EXR URL or local path).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `texture` | `string \| None` | `None` |  |
+
+### `lighting_create_rect`
+
+```python
+lighting_create_rect(prim_path: 'str', intensity: 'float' = 1000.0, width: 'float' = 1.0, height: 'float' = 1.0) -> 'str'
+```
+
+Create a UsdLux.RectLight at *prim_path* with a *width* × *height* emission surface (meters).
+Typical softbox / window light.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `width` | `number` | `1.0` |  |
+| `height` | `number` | `1.0` |  |
+
+### `lighting_create_sphere`
+
+```python
+lighting_create_sphere(prim_path: 'str', intensity: 'float' = 1000.0, radius: 'float' = 1.0) -> 'str'
+```
+
+Create a UsdLux.SphereLight at *prim_path* with *radius* (meters). Represents a point-ish bulb
+with finite area for soft shadows.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `radius` | `number` | `1.0` |  |
+
+### `lighting_set_exposure`
+
+```python
+lighting_set_exposure(exposure: 'float') -> 'str'
+```
+
+Set the RTX tonemap exposure via carb.settings `/rtx/post/tonemap/exposure`. Positive values
+brighten, negative darken. Applies globally across all viewports.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `exposure` | `number` | `'—'` | ✓ |
+
+### `material_assign_mdl`
+
+```python
+material_assign_mdl(prim_path: 'str', mdl_url: 'str', material_name: 'str') -> 'str'
+```
+
+Create a UsdShade.Material prim under /World/Materials that wraps the MDL identified by
+*mdl_url* + *material_name*, then bind it to *prim_path* with strongerThanDescendants strength.
+Uses `omni.kit.commands` CreateMdlMaterialPrimCommand + BindMaterialCommand.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `mdl_url` | `string` | `'—'` | ✓ |
+| `material_name` | `string` | `'—'` | ✓ |
+
+### `material_get_bound`
+
+```python
+material_get_bound(prim_path: 'str') -> 'str'
+```
+
+Read the direct material binding for *prim_path* via
+UsdShade.MaterialBindingAPI.GetDirectBinding(). Returns {material_path, binding_strength} —
+both None when nothing is bound.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+
+### `material_list_mdl`
+
+```python
+material_list_mdl(library: 'str' = 'default') -> 'str'
+```
+
+Enumerate `.mdl` modules available under the Kit install. *library* is an alias (default) or
+absolute path. Returns {name, url, library} entries — pass a url to material_assign_mdl.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `library` | `string` | `'default'` |  |
+
+### `physics_apply_collider`
+
+```python
+physics_apply_collider(prim_path: 'str', approximation: 'str' = 'convexHull') -> 'str'
+```
+
+Apply UsdPhysics.CollisionAPI to *prim_path*. For mesh prims also applies MeshCollisionAPI with
+*approximation* ∈ {convexHull, triangleMesh, sdf, box, sphere, none}. Pair with
+physics_apply_rigid_body for dynamic interaction.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `approximation` | `string` | `'convexHull'` |  |
+
+### `physics_apply_material`
+
+```python
+physics_apply_material(prim_path: 'str', friction: 'float' = 0.5, restitution: 'float' = 0.0, density: 'float' = 1000.0, material_name: 'str | None' = None) -> 'str'
+```
+
+Create a PhysicsMaterial prim under /World/PhysicsMaterials and bind it to *prim_path* with
+physics purpose. *friction* drives both static and dynamic friction; *restitution* must be in
+[0,1].
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `friction` | `number` | `0.5` |  |
+| `restitution` | `number` | `0.0` |  |
+| `density` | `number` | `1000.0` |  |
+| `material_name` | `string \| None` | `None` |  |
+
+### `physics_apply_rigid_body`
+
+```python
+physics_apply_rigid_body(prim_path: 'str', mass: 'float' = 1.0, dynamic: 'bool' = True) -> 'str'
+```
+
+Apply UsdPhysics.RigidBodyAPI + MassAPI to *prim_path*. *dynamic=False* creates a
+kinematic/static body. Requires a PhysicsScene (physics_set_scene) before simulation_play will
+advance it.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `mass` | `number` | `1.0` |  |
+| `dynamic` | `boolean` | `True` |  |
+
+### `physics_create_joint`
+
+```python
+physics_create_joint(joint_type: 'str', body_a: 'str', body_b: 'str', anchor: 'list[float] | None' = None, axis: 'list[float] | None' = None, joint_prim_path: 'str | None' = None) -> 'str'
+```
+
+Create a UsdPhysics joint between *body_a* and *body_b*. *joint_type* ∈ {Fixed, Revolute,
+Prismatic, Spherical}. *anchor* sets localPos0 (relative to body_a). For Revolute/Prismatic the
+dominant component of *axis* selects the X/Y/Z primary axis token.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `joint_type` | `string` | `'—'` | ✓ |
+| `body_a` | `string` | `'—'` | ✓ |
+| `body_b` | `string` | `'—'` | ✓ |
+| `anchor` | `list[number] \| None` | `None` |  |
+| `axis` | `list[number] \| None` | `None` |  |
+| `joint_prim_path` | `string \| None` | `None` |  |
+
+### `physics_set_scene`
+
+```python
+physics_set_scene(gravity: 'list[float] | None' = None, timestep: 'float' = 0.016666666666666666, solver_iter_pos: 'int' = 4, solver_iter_vel: 'int' = 1, scene_prim_path: 'str' = '/World/PhysicsScene') -> 'str'
+```
+
+Define a UsdPhysics.Scene prim and configure gravity + solver iterations + carb
+/physics/timeStepsPerSecond. *gravity* is [gx,gy,gz] (m/s²); default is [0, 0, -9.81]. Required
+once before rigid bodies will accelerate under gravity.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `gravity` | `list[number] \| None` | `None` |  |
+| `timestep` | `number` | `0.016666666666666666` |  |
+| `solver_iter_pos` | `integer` | `4` |  |
+| `solver_iter_vel` | `integer` | `1` |  |
+| `scene_prim_path` | `string` | `'/World/PhysicsScene'` |  |
+
+### `physics_visualize`
+
+```python
+physics_visualize(mode: 'str') -> 'str'
+```
+
+Toggle PhysX debug visualization. *mode* ∈ {collision, joint, mass, off}. Every call first
+clears all managed carb /physics/visualization* keys, then enables the requested channel —
+'off' leaves them all cleared.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `mode` | `string` | `'—'` | ✓ |
 
 ### `sensor_attach_rtx_camera`
 

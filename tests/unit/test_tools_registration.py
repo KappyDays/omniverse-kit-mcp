@@ -92,6 +92,29 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "viewport_destroy",
     # Phase E — NavMesh visualization overlay
     "navigation_set_visualization",
+    # Phase F — Physics (rigid body / collider / material / joint / scene / viz)
+    "physics_apply_rigid_body",
+    "physics_apply_collider",
+    "physics_apply_material",
+    "physics_create_joint",
+    "physics_set_scene",
+    "physics_visualize",
+    # Phase F — Lighting (UsdLux Dome/Distant/Disk/Rect/Sphere + exposure)
+    "lighting_create_dome",
+    "lighting_create_distant",
+    "lighting_create_disk",
+    "lighting_create_rect",
+    "lighting_create_sphere",
+    "lighting_set_exposure",
+    # Phase F — Material (MDL list / assign / bound)
+    "material_list_mdl",
+    "material_assign_mdl",
+    "material_get_bound",
+    # Phase F — Viewport render extension (mode / quality / overlay / fov)
+    "viewport_set_render_mode",
+    "viewport_set_render_quality",
+    "viewport_toggle_overlay",
+    "viewport_set_fov",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({

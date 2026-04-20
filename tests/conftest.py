@@ -584,6 +584,196 @@ class MockIsaacRestClient:
             "sensor_type": "rtx_lidar",
         })
 
+    # Physics (Phase F) — rigid body / collider / material / joint / scene / viz
+
+    async def physics_apply_rigid_body(self, request: dict) -> dict:
+        self.calls.append(("physics_apply_rigid_body", request))
+        return self.responses.get("physics_apply_rigid_body", {
+            "ok": True,
+            "prim_path": request.get("prim_path", ""),
+            "mass": request.get("mass", 1.0),
+            "dynamic": request.get("dynamic", True),
+            "applied_apis": ["PhysicsRigidBodyAPI", "PhysicsMassAPI"],
+        })
+
+    async def physics_apply_collider(self, request: dict) -> dict:
+        self.calls.append(("physics_apply_collider", request))
+        return self.responses.get("physics_apply_collider", {
+            "ok": True,
+            "prim_path": request.get("prim_path", ""),
+            "approximation": request.get("approximation", "convexHull"),
+            "applied_apis": ["PhysicsCollisionAPI", "PhysicsMeshCollisionAPI"],
+        })
+
+    async def physics_apply_material(self, request: dict) -> dict:
+        self.calls.append(("physics_apply_material", request))
+        return self.responses.get("physics_apply_material", {
+            "ok": True,
+            "prim_path": request.get("prim_path", ""),
+            "material_prim_path": "/World/PhysicsMaterials/M_mock",
+            "friction": request.get("friction", 0.5),
+            "restitution": request.get("restitution", 0.0),
+            "density": request.get("density", 1000.0),
+        })
+
+    async def physics_create_joint(self, request: dict) -> dict:
+        self.calls.append(("physics_create_joint", request))
+        return self.responses.get("physics_create_joint", {
+            "ok": True,
+            "joint_prim_path": request.get("joint_prim_path")
+                or f"/World/PhysicsJoints/{request.get('joint_type', 'Joint')}_mock",
+            "joint_type": request.get("joint_type", "Fixed"),
+            "body_a": request.get("body_a", ""),
+            "body_b": request.get("body_b", ""),
+        })
+
+    async def physics_set_scene(self, request: dict) -> dict:
+        self.calls.append(("physics_set_scene", request))
+        gravity = request.get("gravity") or [0.0, 0.0, -9.81]
+        timestep = request.get("timestep", 1.0 / 60.0)
+        return self.responses.get("physics_set_scene", {
+            "ok": True,
+            "scene_prim_path": request.get("scene_prim_path", "/World/PhysicsScene"),
+            "gravity": list(gravity),
+            "gravity_magnitude": 9.81,
+            "timestep": timestep,
+            "time_steps_per_second": int(round(1.0 / timestep)) if timestep > 0 else 60,
+            "solver_iter_pos": request.get("solver_iter_pos", 4),
+            "solver_iter_vel": request.get("solver_iter_vel", 1),
+        })
+
+    async def physics_visualize(self, request: dict) -> dict:
+        self.calls.append(("physics_visualize", request))
+        mode = request.get("mode", "off")
+        active = [] if mode == "off" else [f"/physics/visualization_{mode}"]
+        return self.responses.get("physics_visualize", {
+            "ok": True,
+            "mode": mode,
+            "active_settings": active,
+        })
+
+    # Lighting (Phase F) — UsdLux creators + exposure
+
+    async def lighting_create(self, kind: str, request: dict) -> dict:
+        self.calls.append((f"lighting_create_{kind}", request))
+        type_map = {
+            "dome": "DomeLight",
+            "distant": "DistantLight",
+            "disk": "DiskLight",
+            "rect": "RectLight",
+            "sphere": "SphereLight",
+        }
+        extra: dict = {}
+        if kind == "dome":
+            extra["texture"] = request.get("texture")
+        elif kind == "distant":
+            extra["angle_deg"] = request.get("angle_deg", 0.53)
+        elif kind == "disk":
+            extra["radius"] = request.get("radius", 1.0)
+        elif kind == "rect":
+            extra["width"] = request.get("width", 1.0)
+            extra["height"] = request.get("height", 1.0)
+        elif kind == "sphere":
+            extra["radius"] = request.get("radius", 1.0)
+        return self.responses.get(f"lighting_create_{kind}", {
+            "ok": True,
+            "prim_path": request.get("prim_path", ""),
+            "light_type": type_map.get(kind, "DomeLight"),
+            "intensity": request.get("intensity", 1000.0),
+            "extra": extra,
+        })
+
+    async def lighting_set_exposure(self, request: dict) -> dict:
+        self.calls.append(("lighting_set_exposure", request))
+        return self.responses.get("lighting_set_exposure", {
+            "ok": True,
+            "exposure": request.get("exposure", 0.0),
+            "setting_path": "/rtx/post/tonemap/exposure",
+        })
+
+    # Material (Phase F) — MDL list / assign / bound
+
+    async def material_list_mdl(self, library: str = "default") -> dict:
+        self.calls.append(("material_list_mdl", {"library": library}))
+        return self.responses.get("material_list_mdl", {
+            "ok": True,
+            "library": library,
+            "count": 3,
+            "entries": [
+                {"name": "OmniPBR", "url": "/mock/OmniPBR.mdl", "library": library},
+                {"name": "OmniGlass", "url": "/mock/OmniGlass.mdl", "library": library},
+                {"name": "OmniSurface", "url": "/mock/OmniSurface.mdl", "library": library},
+            ],
+        })
+
+    async def material_assign_mdl(self, request: dict) -> dict:
+        self.calls.append(("material_assign_mdl", request))
+        return self.responses.get("material_assign_mdl", {
+            "ok": True,
+            "prim_path": request.get("prim_path", ""),
+            "material_prim_path": f"/World/Materials/{request.get('material_name', 'M')}",
+            "mdl_url": request.get("mdl_url", ""),
+            "material_name": request.get("material_name", ""),
+        })
+
+    async def material_get_bound(self, prim_path: str) -> dict:
+        self.calls.append(("material_get_bound", {"prim_path": prim_path}))
+        return self.responses.get("material_get_bound", {
+            "ok": True,
+            "prim_path": prim_path,
+            "material_path": "/World/Materials/OmniPBR",
+            "binding_strength": "strongerThanDescendants",
+        })
+
+    # Viewport render (Phase F) — mode / quality / overlay / fov
+
+    async def viewport_set_render_mode(self, request: dict) -> dict:
+        self.calls.append(("viewport_set_render_mode", request))
+        mode = request.get("mode", "RealTime")
+        return self.responses.get("viewport_set_render_mode", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", "Viewport"),
+            "mode": mode,
+            "setting_value": "PathTracing" if mode == "PathTracing" else "RaytracedLighting",
+        })
+
+    async def viewport_set_render_quality(self, request: dict) -> dict:
+        self.calls.append(("viewport_set_render_quality", request))
+        op_map = {"auto": 3, "DLSS": 4, "NRD": 5, "off": 0}
+        return self.responses.get("viewport_set_render_quality", {
+            "ok": True,
+            "samples": request.get("samples", 1),
+            "denoiser": request.get("denoiser", "auto"),
+            "aa_op": op_map.get(request.get("denoiser", "auto"), 3),
+        })
+
+    async def viewport_toggle_overlay(self, request: dict) -> dict:
+        self.calls.append(("viewport_toggle_overlay", request))
+        overlay = request.get("overlay", "gridlines")
+        path_map = {
+            "gridlines": "/persistent/app/viewport/grid/enabled",
+            "axis": "/persistent/app/viewport/displayOptions/axis",
+            "stats": "/rtx/stats/enable",
+        }
+        return self.responses.get("viewport_toggle_overlay", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", "Viewport"),
+            "overlay": overlay,
+            "visible": request.get("visible", True),
+            "setting_path": path_map.get(overlay, ""),
+        })
+
+    async def viewport_set_fov(self, request: dict) -> dict:
+        self.calls.append(("viewport_set_fov", request))
+        return self.responses.get("viewport_set_fov", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", "Viewport"),
+            "camera_path": "/OmniverseKit_Persp",
+            "fov_deg": request.get("fov_deg", 60.0),
+            "focal_length": 18.1466,
+            "horizontal_aperture": 20.955,
+        })
+
     # Viewport multi (Phase E) — create / destroy
 
     async def viewport_create(self, request: dict) -> dict:

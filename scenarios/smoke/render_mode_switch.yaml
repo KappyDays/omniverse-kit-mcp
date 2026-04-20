@@ -1,0 +1,115 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: render_mode_switch
+  name: "Phase F smoke: switch RealTime ↔ PathTracing + quality / overlay / fov"
+  tags: [smoke, viewport, render, phase-f]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 120
+    failFast: true
+
+  variables:
+    cube_path: "/World/RenderProbe/Cube"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: make_cube
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.cube_path}
+        prim_type: Cube
+        position: [0.0, 0.0, 0.5]
+
+    - id: make_dome
+      module: lighting
+      action: create_dome
+      args:
+        prim_path: "/World/RenderProbe/Dome"
+        intensity: 1000.0
+
+  act:
+    - id: set_rt
+      module: viewport
+      action: set_render_mode
+      args:
+        viewport_name: Viewport
+        mode: RealTime
+
+    - id: quality_low
+      module: viewport
+      action: set_render_quality
+      args:
+        samples: 1
+        denoiser: auto
+
+    - id: overlay_grid
+      module: viewport
+      action: toggle_overlay
+      args:
+        viewport_name: Viewport
+        overlay: gridlines
+        visible: true
+
+    - id: fov_wide
+      module: viewport
+      action: set_fov
+      args:
+        viewport_name: Viewport
+        fov_deg: 75.0
+
+    - id: set_pt
+      module: viewport
+      action: set_render_mode
+      args:
+        viewport_name: Viewport
+        mode: PathTracing
+
+    - id: quality_high
+      module: viewport
+      action: set_render_quality
+      args:
+        samples: 16
+        denoiser: NRD
+
+  assert:
+    - id: cube_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.cube_path}
+        should_exist: true
+
+  cleanup:
+    - id: restore_rt
+      module: viewport
+      action: set_render_mode
+      args: { viewport_name: Viewport, mode: RealTime }
+      continueOnFailure: true
+
+    - id: overlay_off
+      module: viewport
+      action: toggle_overlay
+      args:
+        viewport_name: Viewport
+        overlay: gridlines
+        visible: false
+      continueOnFailure: true
+
+    - id: remove_cube
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.cube_path}" }
+      continueOnFailure: true
+
+    - id: remove_dome
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "/World/RenderProbe/Dome" }
+      continueOnFailure: true

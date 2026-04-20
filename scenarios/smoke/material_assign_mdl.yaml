@@ -1,0 +1,79 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: material_assign_mdl
+  name: "Phase F smoke: assign OmniPBR MDL + readback"
+  tags: [smoke, material, mdl, phase-f]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 60
+    failFast: true
+
+  variables:
+    target_prim: "/World/MaterialCube"
+    mdl_url: "OmniPBR.mdl"
+    material_name: "OmniPBR_Test"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: make_cube
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.target_prim}
+        prim_type: Cube
+        position: [0.0, 0.0, 0.5]
+
+  act:
+    - id: list_mdl
+      module: material
+      action: list_mdl
+      args:
+        library: default
+
+    - id: assign
+      module: material
+      action: assign_mdl
+      args:
+        prim_path: ${variables.target_prim}
+        mdl_url: ${variables.mdl_url}
+        material_name: ${variables.material_name}
+
+    - id: readback
+      module: material
+      action: get_bound
+      args:
+        prim_path: ${variables.target_prim}
+
+  assert:
+    - id: cube_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.target_prim}
+        should_exist: true
+
+    - id: material_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: "/World/Materials/OmniPBR_Test"
+        should_exist: true
+
+  cleanup:
+    - id: remove_cube
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "${variables.target_prim}" }
+      continueOnFailure: true
+
+    - id: remove_material
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: "/World/Materials/OmniPBR_Test" }
+      continueOnFailure: true
