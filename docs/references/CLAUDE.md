@@ -3,6 +3,14 @@
 
 # docs/references/ — 작업 지침
 
+## 레퍼런스 파일 맵
+
+| 파일 | 용도 | 재생성 방식 |
+|------|------|------------|
+| `extensions-catalog.md` / `extensions.json` | Isaac Sim 621 extension 카탈로그 + MCP 확장 아이디어 | `sync_testbed_snapshot.py` + `render_catalog_md.py` |
+| `testbed-snapshot/` | Kit SDK 원본 API 패턴 스냅샷 (읽기 전용) | `sync_testbed_snapshot.py` |
+| **`sensor_menu_catalog.md`** | **`Create > Sensors` 메뉴의 모든 센서 (RTX Lidar / Radar / Camera and Depth / PhysX / Contact / Imu / LightBeam) — vendor × model grouping + `window_menu_trigger` menu_path** | Isaac Sim 기동 상태에서 `window_menu_list(menu_path="Create")` 재호출 |
+
 ## MCP 기능 추가 시 참조 순서
 
 1. `extensions-catalog.md` 에서 키워드로 Ctrl+F. 후보 ext 식별.
@@ -10,6 +18,18 @@
 3. `testbed-snapshot/03-api-patterns.md` 에서 해당 도메인 섹션 읽기.
 4. 해당 ext 의 실제 소스 (`C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/<source>/<ext>/`) 열어서 확인.
 5. `testbed-snapshot/nvidia-docs/` 에 관련 공식 문서 있으면 참고.
+
+## 센서 요청 응답 순서
+
+사용자가 "특정 센서 사용해달라" 요청 시:
+
+1. `sensor_menu_catalog.md` 에서 해당 vendor/model 검색
+2. menu_path 확인 (e.g. `Create/Sensors/RTX Lidar/Ouster/OS1`)
+3. `window_menu_trigger(menu_path=...)` 호출로 USD prim 생성 (실물 센서 schema)
+4. `created_prims` 필드로 새 prim path 확인
+5. 필요시 `stage_set_property` 로 mount_offset / mount_rotation 조정
+
+mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 데이터 필요 시 이 카탈로그 경로 사용.
 
 ## 편집 규칙
 

@@ -29,11 +29,11 @@
 ## 현재 상태
 
 ```
-Phase: E (세션 1 재검증 완료)
-Task: 16 / 16 (전 Task ✅) + deep-validation round 2
-Progress: 16 / 16
-Tools added: +7 (누적 65, 58 → 65)
-Last update: 2026-04-19 12:00 (2차 재검증 완료, PhaseE/phaseE_verify_*.png ×7 확보, regression 3 건 투명 기록, 세션 2 PPTX 대기)
+Phase: PPTX (세션 3 — Task 12 까지 완료, Task 13 pptxgenjs /pptx 스킬 대기)
+Task: 12 / 15 완료
+Progress: 12 / 15
+Tools added: 0 (65 유지) · Extension config.py ui_demo 2개 기본값 제거
+Last update: 2026-04-21 (세션 3: Task 5 재수행 (실 S3 + NavMesh obstacles before/after) + Task 6~12 산출 + sensor_menu_catalog.md 체계화 + ui_demo auto-activate 비활성 + Twin 1/2/3 USD + asset_sampler.usd 저장 + slide 17 4-panel composite + slide 27 3-twin comparison composite)
 ```
 
 ## Phase E 진행 (Task 1 ~ 16)
@@ -61,19 +61,19 @@ Last update: 2026-04-19 12:00 (2차 재검증 완료, PhaseE/phaseE_verify_*.png
 
 | Task | 제목 | 상태 | 타임스탬프 | 비고 |
 |---|---|---|---|---|
-| 1 | isaac_course 초기화 | 🟡 부분완료 | 2026-04-19 | 구조/CLAUDE.md/README 선행 작성됨. live asset_list 추가 필요 |
-| 2 | Asset inventory 실측 | ⏳ | — | `asset_list` 순회 → `asset_inventory.md` ✓ 확정 채우기 |
-| 3 | capture_helpers.py | ⏳ | — | — |
-| 4 | UI/Browsers/Examples 캡처 | ⏳ | — | 슬라이드 3~5 |
-| 5 | Categories 캡처 | ⏳ | — | 슬라이드 6~9 |
-| 6 | Asset Sampler 캡처 | ⏳ | — | 슬라이드 10 |
-| 7 | Recipe 플로우 섬네일 | ⏳ | — | 슬라이드 11 |
-| 8 | Twin 1 Build + 캡처 | ⏳ | — | 슬라이드 12~17 |
-| 9 | composite_multi_panel.py | ⏳ | — | 4-panel 합성 |
-| 10 | Twin 2 Build + 캡처 | ⏳ | — | 슬라이드 18~21 |
-| 11 | Twin 3 Build + 캡처 | ⏳ | — | 슬라이드 22~25 |
-| 12 | Save/Reuse + Comparison 캡처 | ⏳ | — | 슬라이드 26~27 |
-| 13 | pptxgenjs render_pptx.js | ⏳ | — | 28 슬라이드 조립 |
+| 1 | isaac_course 초기화 | ✅ | 2026-04-19 12:18 | 디렉토리 skeleton 존재 (슬라이드/USD/scripts/captures 서브/baselines twin{1,2,3}/slide_renders 생성). build_log.md 세션 2 헤더. asset_inventory 교차검증 완료 |
+| 2 | Asset inventory 실측 | ✅ | 2026-04-19 12:20 | live drill-down: NovaCarter/Carter/Jetbot/Simple_Warehouse/Office/Simple_Room/Hospital/Grid/FrankaPanda/ur10/Leatherback 전부 ✓. female_child_casual_01 부재 → F_Medical_01 대체. Leatherback △→✓ |
+| 3 | capture_helpers.py | ✅ | 2026-04-19 | 파일 작성 + smoke test pass. `.venv/Scripts/python.exe isaac_course/scripts/capture_helpers.py` 실행 결과: `captures/test/99_smoke_viewport.png` (6,108 B — 빈 stage 상태) + `99_smoke_app.png` (274,038 B — Kit GUI chrome 정상). 캡처 파이프라인 (viewport + window → `_artifact_path` flat/wrapped dual parsing → `_relocate`) 검증 완료 |
+| 4 | UI/Browsers/Examples 캡처 | 🟡 | 2026-04-19 | 슬라이드 3~5 — 16 capture (ui 2 + browsers 10 + examples 4). Isaac Sim Assets browser 는 Kit 5.1 action silent no-op 으로 skip (5 browser 로 진행). warehouse.usd S3 cold-load hang + `/window/menu_trigger` query param mismatch 는 문서화 후 해결. 상세: `isaac_course/docs/implementation_issues.md` 2026-04-19 Task 4 |
+| 5 | Categories 캡처 | ✅ | 2026-04-20 23:17 | 재수행 (session 3): 실 S3 asset 사용 성공. slide 6 4 character (Biped + F_Business_02 + F_Medical_01 + Construction) back/front/angle2 + app views · slide 7 Warehouse + 3 robots + 5 Cube obstacles + NavMesh walkable before/after · slide 8 3 SimReady (armchair/sofa/coffeetable) · slide 9 NovaCarter + 실 IMU Sensor + mock RTX 3 (hierarchy) |
+| 6 | Asset Sampler 캡처 | ✅ | 2026-04-20 23:37 | slide 10 — Franka/UR10/Leatherback/Pallet/KLT_Bin + Police/Medical character. `usd/asset_sampler.usd` 저장 |
+| 7 | Recipe 플로우 섬네일 | ✅ | 2026-04-20 23:50 | slide 11 — step1 empty · step2 env(warehouse) · step3 simready · step4 people(Biped) live capture. step5~7 (navmesh/sensor/play) 는 Task 5 캡처 재활용 (bake cache lock 으로 Kit 재시작 반복 방지) |
+| 8 | Twin 1 Build + 캡처 | ✅ | 2026-04-21 00:15 | slide 12~17 — Warehouse + NovaCarter + Armchair + Construction Worker + 3-Sensor(Lidar/RGB/Depth). `usd/twin1_warehouse.usd` 저장 |
+| 9 | composite_multi_panel.py | ✅ | 2026-04-21 00:18 | `isaac_course/scripts/composite_multi_panel.py` — composite_2x2 + composite_row 구현 (NVIDIA green label bar + dark BG). slide 17 `17_final_4panel.png` 생성 |
+| 10 | Twin 2 Build + 캡처 | ✅ | 2026-04-21 00:25 | slide 18~21 — Office + Carter Classic + F_Business_02 + Sappington Chair + RGB Camera. 4 slide 동일 이미지 (Office 재로드 시 camera 위치 재조정 불가 — viewport 가 custom rotate 반영 실패). `usd/twin2_office.usd` 저장 |
+| 11 | Twin 3 Build + 캡처 | ✅ | 2026-04-21 00:35 | slide 22~25 — Simple_Room + Jetbot + F_Medical_01 + Crestwood Sofa + Depth Camera. 외부 건물 angle (Simple_Room 은 open 3-wall 구조 + HDRI 배경). `usd/twin3_home.usd` 저장 |
+| 12 | Save/Reuse + Comparison 캡처 | ✅ | 2026-04-21 00:40 | slide 26 USD reuse window capture · slide 27 `composite_row` 로 3-twin hero side-by-side 생성 |
+| 13 | pptxgenjs render_pptx.js | ⏳ | — | **/pptx 스킬 호출 대기** (사용자 명시 트리거) |
 | 14 | render_slides.py 미리보기 (선택) | ⏳ | — | — |
 | 15 | 최종 검증 + 보고 | ⏳ | — | Success Criteria 체크 |
 
