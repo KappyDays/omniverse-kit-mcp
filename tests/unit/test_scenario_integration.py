@@ -28,10 +28,13 @@ from isaacsim_mcp.types.common import ExecutionStatus, ModuleName
 
 
 def _build_runner(isaac_client, lakehouse_client):
+    from isaacsim_mcp.modules.content_module import ContentModule
     from isaacsim_mcp.modules.lighting_module import LightingModule
     from isaacsim_mcp.modules.material_module import MaterialModule
     from isaacsim_mcp.modules.navigation_module import NavigationModule
+    from isaacsim_mcp.modules.omnigraph_module import OmnigraphModule
     from isaacsim_mcp.modules.physics_module import PhysicsModule
+    from isaacsim_mcp.modules.replicator_module import ReplicatorModule
     from isaacsim_mcp.modules.sensor_module import SensorModule
     from isaacsim_mcp.modules.window_module import WindowModule
 
@@ -50,9 +53,13 @@ def _build_runner(isaac_client, lakehouse_client):
     physics = PhysicsModule(isaac_client)
     lighting = LightingModule(isaac_client)
     material = MaterialModule(isaac_client)
+    replicator = ReplicatorModule(isaac_client)
+    omnigraph = OmnigraphModule(isaac_client)
+    content = ContentModule(isaac_client)
     return ScenarioRunner(
         stage, viewport, lakehouse, extension, simulation, robot, job, asset, character,
         window, navigation, sensor, physics, lighting, material,
+        replicator, omnigraph, content,
     )
 
 

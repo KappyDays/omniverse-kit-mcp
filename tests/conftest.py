@@ -1084,6 +1084,214 @@ class MockIsaacRestClient:
             "count": 2,
         })
 
+    # --- Phase H — Replicator ---
+
+    async def replicator_create_writer(self, request: dict) -> dict:
+        self.calls.append(("replicator_create_writer", request))
+        return self.responses.get("replicator_create_writer", {
+            "ok": True,
+            "writer_id": "writer_mock01",
+            "writer_type": request.get("writer_type", "BasicWriter"),
+            "output_dir": request.get("output_dir", ""),
+            "channels": {
+                "rgb": bool(request.get("rgb", True)),
+                "depth": bool(request.get("depth", False)),
+                "semantic_segmentation": bool(
+                    request.get("semantic_segmentation", False),
+                ),
+            },
+            "backend": "omni.replicator.core",
+        })
+
+    async def replicator_register_randomizer(self, request: dict) -> dict:
+        self.calls.append(("replicator_register_randomizer", request))
+        return self.responses.get("replicator_register_randomizer", {
+            "ok": True,
+            "randomizer_id": "rand_mock01",
+            "type": request.get("type", "position"),
+            "target": request.get("target", "/World/Boxes/*"),
+            "config": dict(request.get("config") or {}),
+            "backend": "omni.replicator.core",
+        })
+
+    async def replicator_trigger_once(self, request: dict) -> dict:
+        self.calls.append(("replicator_trigger_once", request))
+        frames = int(request.get("num_frames", 1))
+        return self.responses.get("replicator_trigger_once", {
+            "ok": True,
+            "num_frames": frames,
+            "frames_ran": frames,
+            "writer_count": 1,
+            "randomizer_count": 1,
+            "backend": "omni.replicator.core",
+        })
+
+    async def replicator_trigger_on_time(self, request: dict) -> dict:
+        self.calls.append(("replicator_trigger_on_time", request))
+        return self.responses.get("replicator_trigger_on_time", {
+            "ok": True,
+            "trigger_id": "trig_mock01",
+            "interval_s": float(request.get("interval_s", 0.5)),
+            "backend": "omni.replicator.core",
+        })
+
+    # --- Phase H — OmniGraph ---
+
+    async def omnigraph_create_node(self, request: dict) -> dict:
+        self.calls.append(("omnigraph_create_node", request))
+        node_type = request.get("node_type", "")
+        node_name = request.get("node_name") or node_type.rsplit(".", 1)[-1]
+        return self.responses.get("omnigraph_create_node", {
+            "ok": True,
+            "graph_path": request.get("graph_path", "/ActionGraph"),
+            "graph_existed": False,
+            "node_type": node_type,
+            "node_name": node_name,
+            "node_path": f"{request.get('graph_path', '/ActionGraph')}/{node_name}",
+            "backend": "omni.graph.core",
+        })
+
+    async def omnigraph_connect(self, request: dict) -> dict:
+        self.calls.append(("omnigraph_connect", request))
+        return self.responses.get("omnigraph_connect", {
+            "ok": True,
+            "src_attr": request.get("src_attr", ""),
+            "dst_attr": request.get("dst_attr", ""),
+            "backend": "omni.graph.core",
+        })
+
+    async def omnigraph_execute(self, request: dict) -> dict:
+        self.calls.append(("omnigraph_execute", request))
+        return self.responses.get("omnigraph_execute", {
+            "ok": True,
+            "graph_path": request.get("graph_path", "/ActionGraph"),
+            "evaluated": True,
+            "backend": "omni.graph.core",
+        })
+
+    async def omnigraph_create_ros2_publisher(self, request: dict) -> dict:
+        self.calls.append(("omnigraph_create_ros2_publisher", request))
+        graph = request.get("graph_path", "/ActionGraph")
+        return self.responses.get("omnigraph_create_ros2_publisher", {
+            "ok": True,
+            "graph_path": graph,
+            "topic": request.get("topic", "/camera/image_raw"),
+            "source_prim": request.get("source_prim", "/World/Camera"),
+            "msg_type": request.get("msg_type", "sensor_msgs/msg/Image"),
+            "ros2_available": False,
+            "nodes_created": [
+                {"name": "OnTick", "type": "omni.graph.action.OnTick", "path": f"{graph}/OnTick"},
+                {"name": "RenderProduct", "type": "isaacsim.core.nodes.IsaacCreateRenderProduct", "path": f"{graph}/RenderProduct"},
+                {"name": "PublishImage", "type": "isaacsim.ros2.bridge.ROS2PublishImage", "path": f"{graph}/PublishImage"},
+            ],
+            "edges_created": [
+                {"src": f"{graph}/OnTick.outputs:tick", "dst": f"{graph}/RenderProduct.inputs:execIn"},
+                {"src": f"{graph}/RenderProduct.outputs:execOut", "dst": f"{graph}/PublishImage.inputs:execIn"},
+            ],
+            "backend": "omni.graph.core",
+        })
+
+    # --- Phase H — Content browser ---
+
+    async def content_browse(self, request: dict) -> dict:
+        self.calls.append(("content_browse", request))
+        url = request.get("url", "")
+        return self.responses.get("content_browse", {
+            "ok": True,
+            "url": url,
+            "recursive": bool(request.get("recursive", False)),
+            "entries": [
+                {"url": f"{url}/folderA", "name": "folderA", "is_folder": True, "size": None, "modified_time_ns": 0, "flags": 16},
+                {"url": f"{url}/file.usd", "name": "file.usd", "is_folder": False, "size": 1024, "modified_time_ns": 0, "flags": 0},
+            ],
+            "entry_count": 2,
+            "truncated": False,
+            "backend": "omni.client",
+        })
+
+    async def content_preview(self, request: dict) -> dict:
+        self.calls.append(("content_preview", request))
+        url = request.get("url", "")
+        return self.responses.get("content_preview", {
+            "ok": True,
+            "url": url,
+            "info": {
+                "url": url,
+                "name": url.rsplit("/", 1)[-1],
+                "is_folder": False,
+                "size": 2048,
+                "modified_time_ns": 0,
+                "flags": 0,
+            },
+            "backend": "omni.client",
+        })
+
+    async def content_resolve(self, request: dict) -> dict:
+        self.calls.append(("content_resolve", request))
+        url = request.get("url", "")
+        return self.responses.get("content_resolve", {
+            "ok": True,
+            "url": url,
+            "resolved": url,
+            "backend": "omni.client",
+        })
+
+    # --- Phase H — Extension management extensions ---
+
+    async def extension_deactivate(self, ext_id: str) -> dict:
+        self.calls.append(("extension_deactivate", {"ext_id": ext_id}))
+        return self.responses.get("extension_deactivate", {
+            "ok": True,
+            "ext_id": ext_id,
+            "was_enabled": True,
+            "enabled": False,
+        })
+
+    async def extension_list_all(self, enabled_only: bool = False) -> dict:
+        self.calls.append(("extension_list_all", {"enabled_only": enabled_only}))
+        return self.responses.get("extension_list_all", {
+            "ok": True,
+            "enabled_only": enabled_only,
+            "count": 2,
+            "extensions": [
+                {
+                    "id": "omni.kit.menu.utils",
+                    "full_id": "omni.kit.menu.utils-1.2.3",
+                    "name": "omni.kit.menu.utils",
+                    "version": "1.2.3",
+                    "enabled": True,
+                    "path": "C:/Kit/ext/omni.kit.menu.utils",
+                    "title": "Menu Utils",
+                },
+                {
+                    "id": "omni.mycompany.ui_demo",
+                    "full_id": "omni.mycompany.ui_demo-0.1.0",
+                    "name": "omni.mycompany.ui_demo",
+                    "version": "0.1.0",
+                    "enabled": False,
+                    "path": "C:/Kit/ext/omni.mycompany.ui_demo",
+                    "title": "UI Demo",
+                },
+            ],
+        })
+
+    async def extension_get_info(self, ext_id: str) -> dict:
+        self.calls.append(("extension_get_info", {"ext_id": ext_id}))
+        return self.responses.get("extension_get_info", {
+            "ok": True,
+            "ext_id": ext_id,
+            "info": {
+                "id": ext_id,
+                "full_id": f"{ext_id}-1.0.0",
+                "name": ext_id,
+                "version": "1.0.0",
+                "enabled": True,
+                "path": f"C:/Kit/ext/{ext_id}",
+                "title": ext_id,
+                "dependencies": ["omni.kit.app"],
+            },
+        })
+
     async def close(self) -> None:
         pass
 

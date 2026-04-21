@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 94
+**Tool count**: 108
 
 ## Table of contents
 
@@ -12,7 +12,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Simulation — timeline](#simulation--timeline) — 4 tools
 - [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 9 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 6 tools
-- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 7 tools
+- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 10 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
 - [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 7 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 4 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 5 tools
-- Unclassified (24)
+- Unclassified (35)
 
 ## Process — Isaac Sim kit.exe lifecycle
 
@@ -609,6 +609,37 @@ extension_clear_logs() -> 'str'
 Drop every buffered carb log entry from the ring buffer. Returns the count removed. Use to mark
 a "new session" so subsequent extension_capture_logs only sees entries from after this call.
 
+### `extension_deactivate`
+
+```python
+extension_deactivate(ext_id: 'str') -> 'str'
+```
+
+Disable a Kit Extension by id (Phase H). Equivalent to un-checking Window → Extensions. Python
+module imports survive — re-import the package with extension_activate(ext_id, reload=True).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `ext_id` | `string` | `'—'` | ✓ |
+
+### `extension_get_info`
+
+```python
+extension_get_info(ext_id: 'str') -> 'str'
+```
+
+Return the full ExtensionManager dict for *ext_id* (Phase H). Iterates get_extensions() to
+match bare id (Kit 107 returns None from get_extension_dict(bare_id)). 404 if the id is not
+registered.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `ext_id` | `string` | `'—'` | ✓ |
+
 ### `extension_get_state`
 
 ```python
@@ -639,6 +670,22 @@ misses.
 | `ext_id` | `string \| None` | `None` |  |
 | `window` | `string \| None` | `None` |  |
 | `widget_types` | `list[string] \| None` | `None` |  |
+
+### `extension_list_all`
+
+```python
+extension_list_all(enabled_only: 'bool' = False) -> 'str'
+```
+
+Enumerate every Kit extension known to the ExtensionManager (Phase H). enabled_only=True
+returns only currently-enabled. Response item shape: {id, full_id, name, version, enabled,
+path, title}.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `enabled_only` | `boolean` | `False` |  |
 
 ### `extension_trigger`
 
@@ -1187,6 +1234,56 @@ scenario variables (e.g. {"prim_path": "/World/Box"}).
 
 ## Unclassified
 
+### `content_browse`
+
+```python
+content_browse(url: 'str', recursive: 'bool' = False, max_depth: 'int' = 2, max_entries: 'int' = 500) -> 'str'
+```
+
+List immediate children of *url* (Phase H). Supports omniverse://, https://, s3://, file:///,
+and plain absolute local paths — whatever ``omni.client`` can resolve. recursive=True walks
+subfolders bounded by max_depth. Entry shape: {url, name, is_folder, size, modified_time_ns,
+flags}. truncated=True when max_entries hit.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
+| `recursive` | `boolean` | `False` |  |
+| `max_depth` | `integer` | `2` |  |
+| `max_entries` | `integer` | `500` |  |
+
+### `content_preview`
+
+```python
+content_preview(url: 'str') -> 'str'
+```
+
+Stat a single URL (Phase H). Returns the same entry shape as content_browse for a single
+file/folder — size, mtime, folder flag, etc. Useful before downloading / opening an asset.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
+
+### `content_resolve`
+
+```python
+content_resolve(url: 'str') -> 'str'
+```
+
+Normalize a URL via omni.client.normalize_url (Phase H). Collapses relative components,
+canonicalizes scheme, resolves Nucleus prefix. Useful for stable cache keys.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
+
 ### `lighting_create_disk`
 
 ```python
@@ -1337,6 +1434,77 @@ absolute path. Returns {name, url, library} entries — pass a url to material_a
 |------|------|---------|----------|
 | `library` | `string` | `'default'` |  |
 
+### `omnigraph_connect`
+
+```python
+omnigraph_connect(src_attr: 'str', dst_attr: 'str') -> 'str'
+```
+
+Connect two OmniGraph attributes (Phase H). Attribute path grammar —
+'/GraphPath/NodeName.outputs:<attr>' → '/GraphPath/NodeName.inputs:<attr>'. Both compute and
+execution edges use the same API.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `src_attr` | `string` | `'—'` | ✓ |
+| `dst_attr` | `string` | `'—'` | ✓ |
+
+### `omnigraph_create_node`
+
+```python
+omnigraph_create_node(graph_path: 'str', node_type: 'str', node_name: 'str | None' = None) -> 'str'
+```
+
+Create a single OmniGraph node inside *graph_path* (Phase H). Creates the graph if it does not
+already exist (execution evaluator). node_type example: 'omni.graph.action.OnTick' /
+'isaacsim.ros2.bridge.ROS2PublishImage'. node_name defaults to the last segment of node_type.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `graph_path` | `string` | `'—'` | ✓ |
+| `node_type` | `string` | `'—'` | ✓ |
+| `node_name` | `string \| None` | `None` |  |
+
+### `omnigraph_create_ros2_publisher`
+
+```python
+omnigraph_create_ros2_publisher(graph_path: 'str', topic: 'str', source_prim: 'str', msg_type: 'str' = 'sensor_msgs/msg/Image') -> 'str'
+```
+
+Assemble an ActionGraph publishing a camera image to a ROS2 topic (Phase H). Creates OnTick →
+IsaacCreateRenderProduct → ROS2PublishImage and wires them. source_prim is the Camera prim
+path. Response includes ros2_available — False means graph structure is present but live
+publishing requires rclpy + an active ROS2 daemon.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `graph_path` | `string` | `'—'` | ✓ |
+| `topic` | `string` | `'—'` | ✓ |
+| `source_prim` | `string` | `'—'` | ✓ |
+| `msg_type` | `string` | `'sensor_msgs/msg/Image'` |  |
+
+### `omnigraph_execute`
+
+```python
+omnigraph_execute(graph_path: 'str') -> 'str'
+```
+
+Evaluate *graph_path* once (Phase H). For ActionGraphs (execution evaluator) this fires OnTick
++ downstream nodes manually — required when the scene event that would normally trigger the
+graph isn't firing (e.g. simulation stopped).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `graph_path` | `string` | `'—'` | ✓ |
+
 ### `physics_apply_collider`
 
 ```python
@@ -1448,6 +1616,78 @@ clears all managed carb /physics/visualization* keys, then enables the requested
 | name | type | default | required |
 |------|------|---------|----------|
 | `mode` | `string` | `'—'` | ✓ |
+
+### `replicator_create_writer`
+
+```python
+replicator_create_writer(writer_type: 'str', output_dir: 'str', rgb: 'bool' = True, depth: 'bool' = False, semantic_segmentation: 'bool' = False) -> 'str'
+```
+
+Create a replicator writer (Phase H). writer_type ∈ {BasicWriter, KittiWriter, CocoWriter}.
+Writes to output_dir once the orchestrator steps; rgb/depth/semantic_segmentation toggle
+channels on the BasicWriter. Returns writer_id — keep it around for log / GC by downstream
+callers. Requires omni.replicator.core extension enabled.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `writer_type` | `string` | `'—'` | ✓ |
+| `output_dir` | `string` | `'—'` | ✓ |
+| `rgb` | `boolean` | `True` |  |
+| `depth` | `boolean` | `False` |  |
+| `semantic_segmentation` | `boolean` | `False` |  |
+
+### `replicator_register_randomizer`
+
+```python
+replicator_register_randomizer(type: 'str', target: 'str', config: 'dict[str, Any] | None' = None) -> 'str'
+```
+
+Register a replicator randomizer (Phase H). type ∈ {position, rotation, lighting}. target is a
+prim-path pattern (glob, e.g. "/World/Boxes/*"). config depends on type: position={volume:
+[min_xyz, max_xyz]}, rotation={min_rot/max_rot: [rx,ry,rz]}, lighting={min_int, max_int}. Hook
+fires once per orchestrator frame. Returns randomizer_id.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `type` | `string` | `'—'` | ✓ |
+| `target` | `string` | `'—'` | ✓ |
+| `config` | `object \| None` | `None` |  |
+
+### `replicator_trigger_on_time`
+
+```python
+replicator_trigger_on_time(interval_s: 'float') -> 'str'
+```
+
+Register a periodic orchestrator trigger at *interval_s* seconds (Phase H). Kit fires the
+orchestrator step hook at each tick — keep interval_s > simulation tick (0.016 s) to avoid
+queue buildup. Returns trigger_id.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `interval_s` | `number` | `'—'` | ✓ |
+
+### `replicator_trigger_once`
+
+```python
+replicator_trigger_once(num_frames: 'int' = 1) -> 'str'
+```
+
+Run the replicator orchestrator for *num_frames* frames (Phase H). Each frame: fire registered
+randomizers, step attached writers. Use this instead of simulation_play when generating a
+fixed-size dataset — Timeline play alone does NOT trigger replicator writers.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `num_frames` | `integer` | `1` |  |
 
 ### `sensor_attach_contact`
 
