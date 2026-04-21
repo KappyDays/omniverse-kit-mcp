@@ -11,14 +11,14 @@
 | `verify_mcp_sync.py` | regen + drift test 1 command | tool 변경 commit 전에 실행해 drift 사전 차단 |
 | `run_process_module_standalone.py <start\|stop\|restart>` | kit.exe lifecycle 를 MCP 서버 import cache 없이 직접 제어 | Extension 코드 변경 후 Isaac Sim 재기동 필요할 때 (MCP 세션 재시작 회피) |
 | `run_scenario_standalone.py <scenario_path>` | scenario runner 를 최신 `src/` 코드로 실행 | MCP import cache 를 우회하고 scenario 수정 live 검증 |
-| `live_test_phase_d.py` · `live_test_phase_e.py` · `live_test_gui_equiv.py` · `live_test_extension_ui.py` | Phase 별 live E2E 검증 | Phase 완료 시 — PhaseD/ · PhaseE/ 에 아티팩트 저장 |
-| `live_test_replicator.py` · `live_test_omnigraph.py` · `live_test_content.py` · `live_test_extension_ext.py` | Phase H 도메인 별 live REST 검증 | Isaac Sim 기동 중 14 신규 tool 의 Extension route 를 직접 호출 — 결과 JSON 은 `PhaseH/` 디렉토리에 저장 |
+| `live_test_phase_d.py` · `live_test_phase_e.py` · `live_test_gui_equiv.py` · `live_test_extension_ui.py` | Phase 별 live E2E 검증 | Phase 완료 시 — `docs/artifacts/phase-{d,e}/` 에 아티팩트 저장 |
+| `live_test_replicator.py` · `live_test_omnigraph.py` · `live_test_content.py` · `live_test_extension_ext.py` | Phase H 도메인 별 live REST 검증 | Isaac Sim 기동 중 14 신규 tool 의 Extension route 를 직접 호출 — 결과 JSON 은 `docs/artifacts/phase-h/` 디렉토리에 저장 |
 | `harvest_extension_metadata.py` · `render_catalog_md.py` · `sync_testbed_snapshot.py` | Kit Extension 레퍼런스 재수집 | `docs/references/extensions-catalog.md` 업데이트 시 |
 
 ## 추가 규칙
 
 - **MCP import cache 우회**: `src/isaacsim_mcp/` 코드를 수정하면 Claude Code 재시작 전까지 MCP tool 호출로는 반영되지 않는다. `run_scenario_standalone.py` / `run_process_module_standalone.py` 는 매 실행마다 fresh Python process 로 import 하므로 최신 코드가 즉시 반영됨. Extension 코드 변경 (`isaac_extension/`) 은 `isaac_sim_restart` 로 즉시 반영.
-- **Live 스크립트 산출물**: `PhaseE/` 같은 프로젝트 루트 디렉토리에 저장. `%TEMP%/validation_api_captures/` 에 저장된 원본 캡처를 의미 있는 이름으로 복사.
+- **Live 스크립트 산출물**: `docs/artifacts/phase-{id}/` (예: `docs/artifacts/phase-e/`) 에 저장. 각 스크립트의 `PHASE_*_DIR` 상수가 이 경로로 설정됨. `%TEMP%/validation_api_captures/` 에 저장된 원본 캡처를 의미 있는 이름으로 복사.
 - **verify_mcp_sync.py 는 0 exit 필수**: 새 tool 을 커밋하기 전에 이 스크립트가 0 으로 끝나야 한다. Non-zero 면 regen 또는 frozenset 업데이트 누락.
 
 ## 새 스크립트 추가 절차

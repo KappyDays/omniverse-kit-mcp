@@ -5,7 +5,7 @@ RTX Camera attached via Phase E sensor_attach_rtx_camera), captures from each,
 then destroys them. Proves the Extension can materialize extra
 ``omni.kit.viewport.window`` instances and bind them to per-sensor cameras.
 
-Artifacts saved to ``./PhaseE/`` for later review.
+Artifacts saved to ``./docs/artifacts/phase-e/`` for later review.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PHASE_E_DIR = PROJECT_ROOT / "PhaseE"
+PHASE_E_DIR = PROJECT_ROOT / "docs/artifacts/phase-e"
 
 WAREHOUSE_URL = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
@@ -158,7 +158,7 @@ def main() -> int:
         })
 
     path = _save_json("viewport_multi_live_report.json", report)
-    print(f"[live_test_viewport_multi] PhaseE report: {path}")
+    print(f"[live_test_viewport_multi] Phase E report: {path}")
     return 0
 
 

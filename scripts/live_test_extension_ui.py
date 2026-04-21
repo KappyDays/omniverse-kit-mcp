@@ -10,7 +10,7 @@ Covers the four new REST endpoints exposed as MCP tools:
 Plus cross-checks: window/capture for visual evidence, window/ui_show to
 focus the demo window, and window/list so we can see the Kit HWND picked.
 
-Every visual artifact is copied into ./PhaseD/ with a descriptive name so
+Every visual artifact is copied into ./docs/artifacts/phase-d/ with a descriptive name so
 the MCP agent can re-read them without touching %TEMP%.
 
 Usage:
@@ -30,7 +30,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PHASE_D_DIR = PROJECT_ROOT / "PhaseD"
+PHASE_D_DIR = PROJECT_ROOT / "docs/artifacts/phase-d"
 DEMO_EXT_ID = "omni.mycompany.ui_demo"
 DEMO_WINDOW = "UI Demo"
 
@@ -48,7 +48,7 @@ def _get(c: httpx.Client, path: str, *, params=None):
 
 
 def _copy_capture(src_path: str, dest_name: str) -> str:
-    """Copy a capture produced under %TEMP%/validation_api_captures/ into PhaseD/."""
+    """Copy a capture produced under %TEMP%/validation_api_captures/ into docs/artifacts/phase-d/."""
     PHASE_D_DIR.mkdir(parents=True, exist_ok=True)
     dest = PHASE_D_DIR / dest_name
     shutil.copy2(src_path, dest)
@@ -241,7 +241,7 @@ def run() -> int:
             }
             print(f"[12] negative: {exc.response.status_code} (expected 400)")
 
-        # 13. Viewport capture so PhaseD/ also has a 3D scene snapshot
+        # 13. Viewport capture so docs/artifacts/phase-d/ also has a 3D scene snapshot
         vp = _post(c, "/viewport/capture", json={
             "viewport_name": "Viewport", "width": 1024, "height": 576, "output_format": "png",
         })
@@ -286,7 +286,7 @@ def run() -> int:
 
     summary_path = _save_json("phase_d_live_report.json", report)
     print(f"\nSUMMARY -> {summary_path}")
-    print(f"PhaseD artifacts -> {PHASE_D_DIR}")
+    print(f"Phase D artifacts -> {PHASE_D_DIR}")
     return 0 if status_ok else 1
 
 

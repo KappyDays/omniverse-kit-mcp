@@ -7,7 +7,7 @@ Exercises the 4 sensor REST endpoints against a running Isaac Sim:
 - POST /sensor/attach_rtx_depth_camera  (sensor_attach_rtx_depth_camera tool)
 - POST /sensor/set_visualization        (sensor_set_visualization tool)
 
-Artifacts written to ``./PhaseE/`` so they can be reviewed from a regular
+Artifacts written to ``./docs/artifacts/phase-e/`` so they can be reviewed from a regular
 terminal (the Extension writes original PNGs to ``%TEMP%/validation_api_captures/``).
 
 Usage:
@@ -26,7 +26,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PHASE_E_DIR = PROJECT_ROOT / "PhaseE"
+PHASE_E_DIR = PROJECT_ROOT / "docs/artifacts/phase-e"
 
 WAREHOUSE_URL = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
@@ -179,7 +179,7 @@ def main() -> int:
         report["stage_snapshot_sensor_children"] = snap
 
     path = _save_json("sensor_live_report.json", report)
-    print(f"[live_test_sensor] PhaseE report: {path}")
+    print(f"[live_test_sensor] Phase E report: {path}")
     print(json.dumps({k: report[k].get("ok", "?") for k in report if isinstance(report[k], dict)}, indent=2))
     return 0
 

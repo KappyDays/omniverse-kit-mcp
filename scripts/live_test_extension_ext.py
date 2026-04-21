@@ -20,7 +20,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PHASE_H_DIR = PROJECT_ROOT / "PhaseH"
+PHASE_H_DIR = PROJECT_ROOT / "docs/artifacts/phase-h"
 
 PROBE_EXT = "omni.kit.menu.utils"  # safe, widely-available core ext for get_info probe
 DEMO_EXT = "omni.mycompany.ui_demo"  # safe to toggle — dev-local extension

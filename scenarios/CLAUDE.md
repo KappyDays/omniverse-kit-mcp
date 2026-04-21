@@ -83,14 +83,14 @@ spec:
 
 **캐릭터/애니메이션**: `character.*` action 으로 Biped_Setup rig 로드 + AnimationGraph bind + NavMesh navigate 가 YAML 한 파일로 표현. `scenarios/smoke/character_control.yaml` 이 canonical 예시 (load → play → set_position → navigate_to → job.status → get_state assert → cleanup). NavMesh navigate 는 Robot 과 동일 JobService 를 재사용 → `job.status` context-aware polling 그대로 동작. cleanup 의 `simulation.play → stop` 이 AnimGraph shutdown hang (testbed #14) 예방.
 
-**Character scenario 작성 규칙 (live 확인된 함정)**:
+**Character scenario 작성 시 주의 — YAML 저작 관점만**:
 
-1. **navigate_to 는 timeline playing 필수** — `simulation.stop` / `pause` 상태에서는 AnimGraph / NavMesh 가 tick 하지 않아 0m 이동 후 30s timeout 으로 `done`. Traversal 검증은 반드시 `simulation.play` → navigate → `job.status` → `simulation.pause` 순서.
-2. **set_position 은 시각 이동 아님** — AnimGraph 가 매 tick root transform 을 덮어씀. USD 레벨 write 는 성공하지만 다음 tick 에 복원. 시각 이동은 `character.navigate_to`. `stage.assert_property` 로 `xformOp:translate` 즉시 검증은 무의미 — 위치 확인은 `character.get_state.position` 사용.
-3. **get_state.action 은 이제 신뢰 가능** — `CharacterService` 가 `play_animation` / `stop_animation` 기준으로 캐시. `is_navigating = action in ("Walk","Run")` 도 올바르게 계산됨. scenario assertion 에서 사용 가능.
-4. **Viewport capture baseline** — `Biped_Setup.usd` 는 lighting / camera 없이 로드. 유의미한 capture 가 필요하면 arrange 에 `simulation.stage_create_prim(prim_type="DomeLight")` 조명 추가 + `viewport.set_active_camera(camera_path="/OmniverseKit_Persp")` (직접 만든 Camera prim 은 `xformOp:rotateXYZ` 가 없어 look-at 설정 어려움 — 기본 perspective 재사용 권장)
-5. **Viewport capture 재캐시** — 연속 호출 시 동일 PNG 가능 (sha256 동일). 장면 변화 capture 시 호출 사이에 `simulation.play` 로 프레임 강제 advance (`wait_navigate` step 이 자연스럽게 이 역할)
-6. **캐릭터 선택은 asset_list 기반** — `asset.list(category="people", subpath="Characters")` 로 명명 캐릭터 (F_Business_02 등), `subpath="DH_Characters_Extended"` 로 UUID-named 캐릭터. DH UUID prim_path 는 하이픈 포함하지만 `character.load` 가 내부적으로 `_sanitize_prim_name` 적용 (`c_` 접두 + 하이픈 → 밑줄). input 하이픈 경로 그대로 써도 되지만 후속 step 은 response 의 `sanitized_prim_path` 기준.
+1. **navigate_to 전후**: arrange 에 `simulation.play` 필수 (stop/pause 상태면 0m 이동 후 30s timeout). 순서: `play → navigate → job.status → pause`
+2. **Viewport capture baseline**: `Biped_Setup.usd` 는 lighting/camera 없이 로드 → arrange 에 `DomeLight` + `viewport.set_active_camera("/OmniverseKit_Persp")` 추가
+3. **Viewport capture 재캐시**: 연속 호출 시 동일 PNG 가능 → 사이에 `simulation.play` 로 frame advance 강제 (`wait_navigate` step 이 자연 역할)
+4. **캐릭터 선택**: `asset.list(category="people")` 로 탐색. DH UUID 이름은 `character.load` 가 `_sanitize_prim_name` 자동 적용 — 후속 step 은 response `sanitized_prim_path` 기준
+
+**AnimGraph / NavMesh 런타임 제약 상세** (set_position 이 시각 이동 아닌 이유, get_state.action 캐시 메커니즘, shutdown hang 방지 등): `../src/isaacsim_mcp/modules/CLAUDE.md §"Character domain constraints"` 가 단일 원천. scenario 작성 시 해당 섹션의 preconditions 를 arrange / cleanup 에 반영할 것.
 
 **주의**: Stage 상태를 바꾸는 모든 action (USD 로드, prim 생성/삭제, property 변경) 은 `module: simulation`. `module: stage` 는 READ/ASSERT 전용. Robot USD 는 Articulation 탐지가 필요하므로 `module: robot, action: load` 사용 (내부적으로 `stage_load_usd` 와 동일 커맨드이지만 response 에 `has_articulation` 포함).
 
@@ -111,7 +111,7 @@ spec:
 
 runner 가 `CONTEXT_AWARE_ACTIONS` 집합을 검사하여 해당 액션을 만나면 `ctx.get_step_data(<step_id>)` 로 snapshot dataclass 를 꺼내 `StageModule.diff_snapshots(meta, before, after)` 를 호출한다. 새 context-aware 액션 추가 규약은 `../src/isaacsim_mcp/scenario/CLAUDE.md` 참조.
 
-## Context-aware action: `job.status` (Phase B)
+## Context-aware action: `job.status`
 
 ASYNC Job polling. 선행 `robot.navigate_to` (또는 다른 job-생성 step) 의 결과에서 `job_id` 를 해소한 뒤 Extension 의 `/jobs/{job_id}` 를 폴링한다. 예시:
 
