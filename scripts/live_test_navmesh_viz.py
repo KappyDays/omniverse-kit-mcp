@@ -5,7 +5,7 @@ and cycles the overlay through {walkable → obstacles → off}, capturing the
 viewport after each toggle so callers can visually confirm the backend
 (carb_settings vs prim_visibility fallback) produces distinct output.
 
-Artifacts saved to ``./PhaseE/`` as:
+Artifacts saved to ``./docs/artifacts/phase-e/`` as:
 - navmesh_walkable.png
 - navmesh_obstacles.png
 - navmesh_off.png
@@ -24,7 +24,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PHASE_E_DIR = PROJECT_ROOT / "PhaseE"
+PHASE_E_DIR = PROJECT_ROOT / "docs/artifacts/phase-e"
 
 WAREHOUSE_URL = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
@@ -133,7 +133,7 @@ def main() -> int:
         report["capture_off"] = _capture(c, "off")
 
     path = _save_json("navmesh_viz_live_report.json", report)
-    print(f"[live_test_navmesh_viz] PhaseE report: {path}")
+    print(f"[live_test_navmesh_viz] Phase E report: {path}")
     backends = {k: report[k].get("backend") for k in ("viz_walkable", "viz_obstacles", "viz_off")}
     print(f"[live_test_navmesh_viz] backends: {backends}")
     return 0

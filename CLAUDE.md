@@ -2,27 +2,23 @@
 
 ## 세션 시작 절차 — 필독 CLAUDE.md
 
-**모든 세션은 시작 시점에 아래 "필수 3 개" 를 먼저 읽는다.** 작업 종류가 정해진 세션은 해당 scope 파일도 **선제 로드** — 문제 발생 후에 뒤늦게 grep 으로 찾지 말 것. 이 프로젝트에서 이미 발생한 사례: `modules/CLAUDE.md` 의 "ProcessModule hang recovery" 섹션을 몰라 Isaac Sim 기동 이슈 debugging 에 불필요한 시간 낭비.
+**공통 트리오** (모든 세션 시작 시 로드): 루트 `CLAUDE.md` (이 파일) · `docs/tool-catalog.md` · `docs/phase-progress.md`.
 
-### 필수 (모든 세션)
-- 루트 `CLAUDE.md` (이 파일)
-- `docs/tool-catalog.md` — 지금 호출 가능한 모든 MCP tool (signature + parameters)
-- `docs/phase-progress.md` — 현재 Phase / Task 진행 상태
+**작업별 추가 필독** (문제 발생 전 선제 로드):
 
-### 작업 종류별 필독
+| 작업 | 진입 문서 |
+|---|---|
+| Isaac Sim 기동/종료 hang | `src/isaacsim_mcp/modules/CLAUDE.md` **"ProcessModule hang recovery"** |
+| USD 로드 (stage/robot/character `*_load`, `stage_open`) | 이 파일 §**USD 로드 핵심 제약** → `modules/CLAUDE.md` |
+| 새 MCP tool / module | `src/isaacsim_mcp/CLAUDE.md` → `modules/CLAUDE.md` → `tools/CLAUDE.md` |
+| Extension REST / services / Kit SDK | `isaac_extension/CLAUDE.md` |
+| Scenario YAML | `scenarios/CLAUDE.md` (저작) + `src/isaacsim_mcp/scenario/CLAUDE.md` (엔진) |
+| MCP resource 추가/이동 | `src/isaacsim_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py` |
+| 테스트 | `tests/CLAUDE.md` |
+| Setup / 신규 PC | `setup/CLAUDE.md` |
+| PPTX 튜토리얼 | `isaac_course/CLAUDE.md` |
 
-| 작업 종류 | 필독 CLAUDE.md |
-|-----------|----------------|
-| Isaac Sim 기동 / 종료 / 라이프사이클 | `src/isaacsim_mcp/modules/CLAUDE.md` (**"ProcessModule hang recovery" 섹션 필독**) |
-| **USD 로드 (stage_load_usd / stage_open / robot_load / character_load)** | **이 파일 "kit.exe USD 로드 — 근본 원인 + 해결 프로토콜 (변경 금지)" 섹션 필독** — S3 URL 필수 (`file:///` 금지), Extension `log_capture.start()` 는 MDL resolver loop 시 carb thread 와 Kit main loop deadlock 유발하므로 **반드시 disable 유지**, 좀비 시 `cmd //c "taskkill /F /IM kit.exe /T"` |
-| MCP 코드 수정 (새 tool · module · client) | `src/isaacsim_mcp/CLAUDE.md` + `modules/CLAUDE.md` + `src/isaacsim_mcp/tools/CLAUDE.md` |
-| Extension 내부 (REST router · service · Kit SDK) | `isaac_extension/CLAUDE.md` |
-| Scenario YAML 저작 | `scenarios/CLAUDE.md` + `src/isaacsim_mcp/scenario/CLAUDE.md` |
-| 테스트 작성 | `tests/CLAUDE.md` |
-| Setup / `.env` / 새 PC | `setup/CLAUDE.md` |
-| PPTX · 튜토리얼 산출물 | `isaac_course/CLAUDE.md` + `isaac_course/docs/asset_inventory.md` |
-
-Phase 히스토리 / 구현 결정 / 과거 실측은 `docs/phase-{a..e}-validation-report.md` (필요시만). tool 이름 SoT 는 `tests/unit/test_tools_registration.py` 의 `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset.
+Phase 히스토리 / 실측 결과 선택 참조: `docs/phase-{a..h}-validation-report.md`. Tool name SoT 는 `tests/unit/test_tools_registration.py` frozenset.
 
 ## Foundation — Isaac Sim App 기동이 모든 MCP tool 의 전제
 
@@ -47,79 +43,20 @@ Phase 히스토리 / 구현 결정 / 과거 실측은 `docs/phase-{a..e}-validat
 
 **회복 절차 (timeout 재발)**: `src/isaacsim_mcp/modules/CLAUDE.md` 의 "ProcessModule hang recovery" — 좀비 판정 지표 · 강제 종료 · Minimal ext 수동 런치 · log 분석 순서 기록됨.
 
-## kit.exe USD 로드 — 근본 원인 + 해결 프로토콜 (변경 금지)
+## USD 로드 핵심 제약
 
-> **2026-04-20 세션 2 근본 해결 확정**. 사용자 실증: isaac-sim.bat 기동 Kit (Extension 없음) + GUI drag&drop 성공 vs ProcessModule 기동 Kit (validation_api ext 포함) + GUI drag&drop **조차 hang**. → Extension 자체가 범인.
+`stage_load_usd` / `stage_open` / `robot_load` / `character_load` 를 쓸 때 반드시 지켜야 하는 4 조건. 하나라도 깨지면 MDL resolver + carb log callback deadlock 으로 Kit 이벤트 루프 정지 → 모든 MCP tool 92s timeout.
 
-### 근본 원인 (재발 시 동일 증상 확인 필수)
-**`LogCaptureService` 의 carb log callback** (`carb.logging.add_logger(cb)`) 이 등록된 상태에서 Kit 5.1 MDL resolver 가 S3 asset 의 Materials.usd 를 열면 `"Disabling base URL to resolve MDL identifier 'OmniPBR.mdl'"` 메시지를 수십 번 반복 → 매번 Python callback 이 carb thread 에 GIL 경합 → Kit main event loop 와 deadlock → 모든 MCP tool 92 s timeout.
+1. **S3 URL 필수** — `file:///` 로컬 캐시 금지 (`isaac_course/cache_usd/` 재생성 금지). SoT: `isaac_course/docs/asset_inventory.md`
+2. **`log_capture.start()` 호출 금지** — Extension `on_startup` 에서 `_log_capture = None` 유지 (request-scoped refactor 전까지). MDL 로더 loop 가 carb thread 와 GIL 경합을 일으켰던 검증된 증상
+3. **`ISAAC_SIM_EXTRA_EXT_IDS` 에 browser ext 금지** — `isaacsim.asset.browser` / `omni.kit.window.content_browser` 의 S3 crawl thread 가 MDL resolver 와 경합하여 hang 확률 급증
+4. **좀비 복구는 `cmd //c "taskkill /F /IM kit.exe /T"` 만 작동** — `powershell Stop-Process` 는 Access Denied 확정. 편의 스크립트: `scripts/kill_kit_zombie.sh`
 
-### 해결 3 요소 (변경 금지)
+**stage_open vs stage_load_usd 용도 구분**
+- `stage_open(url)` — root stage 전체 교체 (scene 전환)
+- `stage_load_usd(url, prim_path)` — 기존 stage 에 `/World/<name>` Payload 추가 (multi-asset composition)
 
-**1. Extension `log_capture.start()` 호출 disable** (`isaac_extension/.../extension.py`):
-```python
-# on_startup 에서:
-self._log_capture = None   # NOT: get_log_capture_service().start()
-```
-→ `extension_capture_logs` / `extension_clear_logs` MCP tool 은 **no-op 상태**. 필요 시 per-request start/peek/stop 으로 refactor.
-
-**2. stage_service `load_usd` 는 run_coroutine + wrap_future** (`isaac_extension/.../services/stage_service.py`):
-```python
-import omni.kit.async_engine
-future = omni.kit.async_engine.run_coroutine(_main_loop_impl())
-prim = await asyncio.wrap_future(future)
-```
-→ FastAPI event loop ≠ Kit main event loop. coroutine 을 Kit main loop 에 명시적 schedule + asyncio 방식 await → FastAPI loop 는 free, Kit main loop 는 자기 tick 진행.
-
-**3. `CreatePayloadCommand(instanceable=True)` 사용** — GUI drag&drop scene_drop_delegate 와 동등:
-```python
-omni.kit.commands.execute(
-    "CreatePayloadCommand",
-    usd_context=ctx, path_to=prim_path, asset_path=s3_url, instanceable=True,
-)
-```
-
-### 원칙
-
-Isaac Sim MCP 로 GUI 를 유저처럼 조작할 때 **S3 URL 필수** (`file:///` 금지):
-- Isaac Sim Assets: `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/...`
-- SimReady: `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/common_assets/props/...`
-- NVIDIA Assets: `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/{ArchVis,DigitalTwin,Vegetation}/...`
-
-URL SoT: `isaac_course/docs/asset_inventory.md` + `isaac_course/docs/user_asset_check.md`.
-
-### stage_open vs stage_load_usd (용도 구분)
-
-- **`stage_open(url)`** = root stage 전체 교체 (File → Open, **scene 전환**용). 단일 asset 을 새 stage 로 열기.
-- **`stage_load_usd(url, prim_path)`** = 기존 stage 에 `/World/<name>` Payload 추가 (**multi-asset composition**). 한 stage 에 여러 asset 배치.
-
-### 실측 (2026-04-20, hang 해결 후)
-
-| Asset (size) | Load | 비고 |
-|---|---|---|
-| Simple_Warehouse (1.6 MB) | 2.4 s | MDL-heavy OK |
-| NovaCarter | 3.1 s | Payload + multi-variant |
-| Biped_Setup | 2.6 s | — |
-| SimReady (cold) | 10~57 s | 첫 load 느림, 이후 2~3 s |
-| multi-asset in same stage | ✅ | Warehouse + NovaCarter + Biped 3장 합성 확인 |
-
-### 재발 시 진단
-
-1. Kit log `C:\Users\<you>\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\5.1\kit_*.log` 마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 + 이후 silent = deadlock 확정
-2. `simulation_get_status` 가 92 s timeout → Kit main loop 차단
-3. Kit 좀비 복구: `cmd //c "taskkill /F /IM kit.exe /T"` 만 성공 (`powershell Stop-Process` 는 Access Denied 확정)
-4. Fresh restart: `.venv/Scripts/python.exe scripts/run_process_module_standalone.py start`
-
-### 금지 사항
-- **`log_capture.start()` 재활성 금지** (request-scoped refactor 전에는 MDL-heavy asset load 불가)
-- **`file:///` 로컬 캐시 경로 금지** (`isaac_course/cache_usd/` 재생성 금지)
-- **`.env ISAAC_SIM_EXTRA_EXT_IDS` 에 browser ext (`isaacsim.asset.browser`, `omni.kit.window.content_browser`) 추가 금지** (background S3 crawl thread 경합)
-- **S3 load 실패 시 skip/fallback/placeholder 대체 금지** — 근본 원인 분석 후 반드시 성공시킬 것
-
-### 편의 스크립트
-- `scripts/kill_kit_zombie.sh` — taskkill 래퍼
-- `scripts/run_process_module_standalone.py start|stop|restart` — ProcessModule 직접 호출 (MCP 서버 재시작 없이 최신 Extension 코드 반영)
-- `isaac_course/pre-test/run_pretest.py` — 50 asset S3 load 자동화 (근본 해결 후 16/16 성공 실측)
+**상세**: 근본 원인 분석 (MDL resolver → carb callback → Kit main loop deadlock), 해결 3 요소 (log_capture disable, `run_coroutine + wrap_future`, `CreatePayloadCommand(instanceable=True)`), hang 재발 진단 순서는 `src/isaacsim_mcp/modules/CLAUDE.md` §"Integration Facts → Stage / USD 로드 프로토콜" 참조. **S3 load 실패 시 skip/fallback 대체 금지** — 근본 원인 분석 후 반드시 성공시킬 것.
 
 ---
 
@@ -191,8 +128,9 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 | `scripts/CLAUDE.md` | 개발 스크립트 (lifecycle · live 검증 · catalog regen · verify_mcp_sync) |
 | `isaac_course/CLAUDE.md` | Digital Twin 튜토리얼 PPTX 루트 규칙 (R1~R9) |
 | `isaac_course/docs/asset_inventory.md` | 3 Twin 사용 asset 의 확정 USD 경로 |
-| `last-prompt.md` | Phase E~H + PPTX 전체 마스터 네비게이션 |
-| `prompts/{pptx,phase-e,phase-f,phase-g,phase-h}.md` | 각 세션 전용 주입 프롬프트 (end-to-end 자율 실행) |
+| `archive/last-prompt.md` | Phase E~H + PPTX 전체 마스터 네비게이션 — **프로젝트 완료 상태 (전 Phase ✅)**. archive 는 완료된 세션의 재현/역사 자료 저장소 |
+| `archive/prompts/{pptx,phase-e,phase-f,phase-g,phase-h}.md` | 각 세션 전용 주입 프롬프트 — **프로젝트 완료, 재실행 불필요**. historical 자료로만 유지 |
+| `archive/session-3-captures/` | 세션 3 (PPTX) 중간 단계 캡처 7장 — 최종본은 `isaac_course/captures/` 에 있고 이 디렉토리는 과정 증빙 |
 
 ## 변경 파급 매트릭스
 
@@ -204,6 +142,7 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 | 새 module 추가 (`modules/`) | `types/common.py` ModuleName enum + `scenario/schema.py` + `scenarios/schema/scenario.schema.json` + `scenario/runner.py` dispatch dict + `scenario_tools.py` register + `mcp/server.py` wiring + `modules/CLAUDE.md` 책임 매트릭스 |
 | 새 module 메서드 | `scenario/action_registry.py` (typed request 빌더) / `tests/` |
 | **새 MCP tool (`tools/`)** | **⓵ `isaac_extension/` REST · `clients/isaac_rest_client.py` · `tools/module_tools.py` @mcp.tool() · `tests/conftest.py` MockIsaacRestClient +메서드 · `tests/unit/test_tools_registration.py` EXPECTED_{MODULE,SCENARIO}_TOOLS frozenset · `tools/CLAUDE.md` 그룹 caveat**<br>**⓶ 재생성**: `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` (또는 `scripts/verify_mcp_sync.py`)<br>**⓷ drift 검증**: `uv run pytest tests/unit/test_tools_registration.py tests/unit/test_tool_catalog_sync.py` |
+| **MCP resource 추가/이동 (`mcp/resources.py`)** | **⓵ `@mcp.resource(uri=...)` 데코레이터 함수 추가/수정 + `RESOURCE_SOURCES` dict 매핑 갱신 (file-backed 는 `Path`, Python-backed 는 `None`)**<br>**⓶ `tests/unit/test_resources_paths.py::EXPECTED_RESOURCES` 에 URI 추가/제거**<br>**⓷ drift 검증**: `uv run pytest tests/unit/test_resources_paths.py` — 원본 파일이 이동했거나 매핑이 어긋나면 FAIL |
 | scenario action 추가 | `action_registry.py` + `scenario.schema.json` + `schema.py` 3곳 동시 + `tests/unit/test_scenario_integration.py` + `scenarios/CLAUDE.md` |
 | ASYNC Job 동작 추가 | Extension `services/job_service.py` 의 `start_job(coro_factory)` 사용 / try-except 필수 (silent catch 금지) / tool 은 job_id 반환, Claude Code 가 `job_status` 폴링 |
 | Phase 완료 | `docs/phase-{N}-validation-report.md` 신규 · `docs/phase-progress.md` 해당 Phase 행 ✅ · `scripts/generate_tool_catalog.py` 재실행 · 관련 하위 CLAUDE.md tool/endpoint 동기화 · `uv run pytest tests/` 전체 green |

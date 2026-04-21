@@ -50,7 +50,7 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 | 8 | viewport_create + viewport_destroy | ✅ | 2026-04-19 09:55 | +2 tool (64) |
 | 9 | navigation_set_visualization | ✅ | 2026-04-19 09:55 | +1 tool (65) |
 | 10 | Scenario YAML smoke + integration | ✅ | 2026-04-19 10:05 | 6 YAML, 86 steps 컴파일 통과 |
-| 11 | Live 검증 스크립트 | ✅ | 2026-04-19 11:55 (재검증) | 3 스크립트 작성 + `LIVE_HEAVY_ENV` / `LIVE_ROBOT` env 옵션화 + minimal mode 로 7 endpoint 종단 재검증. `PhaseE/phaseE_verify_*.png` 7 장 확보 (sensor viz on/off, aux viewport, navmesh walkable/obstacles/off + baked variant). `robot/load` 600 s block + `navigation/bake` regression 은 implementation_issues.md 상세 기록 |
+| 11 | Live 검증 스크립트 | ✅ | 2026-04-19 11:55 (재검증) | 3 스크립트 작성 + `LIVE_HEAVY_ENV` / `LIVE_ROBOT` env 옵션화 + minimal mode 로 7 endpoint 종단 재검증. `docs/artifacts/phase-e/phaseE_verify_*.png` 7 장 확보 (sensor viz on/off, aux viewport, navmesh walkable/obstacles/off + baked variant). `robot/load` 600 s block + `navigation/bake` regression 은 implementation_issues.md 상세 기록 |
 | 12 | 전체 pytest 통과 | ✅ | 2026-04-19 10:24 | 212 passed |
 | 13 | Catalog sync (58→65) | ✅ | 2026-04-19 10:24 | `verify_mcp_sync.py` green |
 | 14 | 도메인 CLAUDE.md 동기화 | ✅ | 2026-04-19 10:26 | `modules/CLAUDE.md`, `isaac_extension/CLAUDE.md` sensor/viewport-multi/navmesh-viz 섹션 추가 |
@@ -130,7 +130,7 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 
 | Phase | Tool/Step | 사유 요약 |
 |---|---|---|
-| E (out-of-scope Part 1) | `robot/load` / `stage/load_usd` live end-to-end | Nova Carter 와 Jetbot 모두 600 s timeout — Kit `open_stage_async` + `_wait_stage_loading()` 에서 USD reference resolution 이 완료되지 않음. 네트워크 baseline 정상 (HEAD 0.83 s), Kit CPU 는 지속 증가 (hang 아님), Phase E 신규 7 tool 과 무관. 스크립트는 `LIVE_ROBOT` / `LIVE_HEAVY_ENV` env 로 옵션화되어 minimal mode 로 end-to-end 실행됨 (`PhaseE/phaseE_verify_*.png` 7 장) |
+| E (out-of-scope Part 1) | `robot/load` / `stage/load_usd` live end-to-end | Nova Carter 와 Jetbot 모두 600 s timeout — Kit `open_stage_async` + `_wait_stage_loading()` 에서 USD reference resolution 이 완료되지 않음. 네트워크 baseline 정상 (HEAD 0.83 s), Kit CPU 는 지속 증가 (hang 아님), Phase E 신규 7 tool 과 무관. 스크립트는 `LIVE_ROBOT` / `LIVE_HEAVY_ENV` env 로 옵션화되어 minimal mode 로 end-to-end 실행됨 (`docs/artifacts/phase-e/phaseE_verify_*.png` 7 장) |
 | E (Part 2 regression) | `navigation_bake` | fresh Kit clean state 에서도 `start_navmesh_baking()` 이 False 반환 — response reason: "no volume / navmesh cache locked / disabled in settings". `_ensure_navmesh_volume` 은 성공 (`volume_path: /NavMeshVolume` echo). Phase E Part 2 `phase_e_live_report.json` 에서는 성공했던 증거 있음. Extension `navigation_service.bake` 에 진단 로깅 + `start_navmesh_baking_and_wait` fallback 추가가 Phase F/G 작업 |
 | E (minor response bug) | `simulation/stop` 응답 body | stop 명령은 정상 수락되지만 응답 body 의 `is_playing`/`is_stopped` 가 직전 state 를 echo — 1 프레임 후 `simulation/status` 재호출로 올바르게 반영. 호출자가 status polling 으로 우회 가능 |
 | F (deferred) | Viewport capture SSIM across render-mode / material assignment | `stage/new` + prim 생성 직후 `viewport/capture` 가 `Viewport capture returned empty data` 반환 (Kit 이 아직 frame tick 안 함). Phase E 동일 class 한계. Phase F 신규 surface 는 모두 carb.settings + USD write 기반이므로 "설정 성공" 으로 검증 충분; 이미지 비교는 warm-stage PPTX 세션 또는 Phase G 에서 재수행 |

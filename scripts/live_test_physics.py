@@ -13,7 +13,7 @@ Run:
     .venv/Scripts/python.exe scripts/live_test_physics.py
 
 Requires a running Isaac Sim (``ProcessModule.start()``) and a permissive
-``/validation/v1`` router. Writes JSON results to ``./PhaseF/live_physics_*.json``.
+``/validation/v1`` router. Writes JSON results to ``./docs/artifacts/phase-f/live_physics_*.json``.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = PROJECT_ROOT / "PhaseF"
+OUT_DIR = PROJECT_ROOT / "docs/artifacts/phase-f"
 BOX_PRIM = "/World/PhaseF/Box"
 GROUND_PRIM = "/World/PhaseF/Ground"
 CUBE_A = "/World/PhaseF/JointA"

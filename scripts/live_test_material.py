@@ -20,7 +20,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = PROJECT_ROOT / "PhaseF"
+OUT_DIR = PROJECT_ROOT / "docs/artifacts/phase-f"
 
 
 def _save(name: str, payload) -> None:

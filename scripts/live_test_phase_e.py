@@ -18,7 +18,7 @@ And drives the advanced demo extension (`omni.mycompany.ui_demo_advanced`)
 through Combo/Slider/CheckBox/Button interactions to prove the expanded
 widget enumeration actually walks CollapsableFrame / TreeView / ScrollingFrame.
 
-Every visual artifact is copied into `./PhaseE/` with a descriptive name.
+Every visual artifact is copied into `./docs/artifacts/phase-e/` with a descriptive name.
 
 Usage:
     .venv/Scripts/python.exe scripts/live_test_phase_e.py
@@ -37,7 +37,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PHASE_E_DIR = PROJECT_ROOT / "PhaseE"
+PHASE_E_DIR = PROJECT_ROOT / "docs/artifacts/phase-e"
 
 DEMO_SIMPLE_EXT = "omni.mycompany.ui_demo"
 DEMO_SIMPLE_WINDOW = "UI Demo"
@@ -353,7 +353,7 @@ def run() -> int:
 
     summary_path = _save_json("phase_e_live_report.json", report)
     print(f"\nSUMMARY -> {summary_path}")
-    print(f"PhaseE artifacts -> {PHASE_E_DIR}")
+    print(f"Phase E artifacts -> {PHASE_E_DIR}")
     return 0 if status_ok else 1
 
 

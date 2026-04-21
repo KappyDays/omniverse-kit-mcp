@@ -19,7 +19,7 @@ import httpx
 
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PHASE_H_DIR = PROJECT_ROOT / "PhaseH"
+PHASE_H_DIR = PROJECT_ROOT / "docs/artifacts/phase-h"
 
 S3_ASSETS_ROOT = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"

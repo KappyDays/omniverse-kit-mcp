@@ -1,7 +1,10 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: Isaac Sim extension 카탈로그 탐색 + MCP 확장 아이디어 참조 -->
+<!-- Scope: docs/references/ 편집 규칙 + 재생성 파이프라인 (extensions-catalog · sensor_menu_catalog 관리) -->
+<!-- Sibling: testbed-snapshot/CLAUDE.md (읽기 순서 가이드 — 모듈 구현 시 어떤 파일부터 볼지) -->
 
-# docs/references/ — 작업 지침
+# docs/references/ — 편집 규칙 & 재생성 파이프라인
+
+> 이 파일은 **편집 / 재생성 규칙**. 읽기 순서 (모듈 구현 시 어느 문서부터 볼지) 는 `testbed-snapshot/CLAUDE.md` 참조.
 
 ## 레퍼런스 파일 맵
 

@@ -26,7 +26,7 @@ import httpx
 BASE = "http://localhost:8011/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = PROJECT_ROOT / "_temp_sdg" / "replicator_live"
-PHASE_H_DIR = PROJECT_ROOT / "PhaseH"
+PHASE_H_DIR = PROJECT_ROOT / "docs/artifacts/phase-h"
 
 
 def main() -> int:
