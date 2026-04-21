@@ -1,0 +1,58 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: omnigraph_basic
+  name: "Phase H: create ActionGraph + OnTick + Counter, connect, evaluate"
+  tags: [smoke, omnigraph, phase-h]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 120
+    failFast: true
+
+  arrange: []
+
+  act:
+    - id: make_on_tick
+      module: omnigraph
+      action: create_node
+      args:
+        graph_path: /World/ActionGraph
+        node_type: omni.graph.action.OnTick
+        node_name: OnTick
+
+    - id: make_counter
+      module: omnigraph
+      action: create_node
+      args:
+        graph_path: /World/ActionGraph
+        node_type: omni.graph.nodes.Counter
+        node_name: Counter
+
+    - id: connect_tick_counter
+      module: omnigraph
+      action: connect
+      args:
+        src_attr: /World/ActionGraph/OnTick.outputs:tick
+        dst_attr: /World/ActionGraph/Counter.inputs:execIn
+
+    - id: eval_graph
+      module: omnigraph
+      action: execute
+      args:
+        graph_path: /World/ActionGraph
+
+  assert:
+    - id: on_tick_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/ActionGraph/OnTick
+        should_exist: true
+
+  cleanup:
+    - id: remove_graph
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/ActionGraph }
+      continueOnFailure: true

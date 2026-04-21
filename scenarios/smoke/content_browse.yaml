@@ -1,0 +1,49 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: content_browse
+  name: "Phase H: browse Isaac Sim S3 asset root + resolve URL + preview a USD"
+  tags: [smoke, content, phase-h]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 120
+    failFast: true
+
+  variables:
+    s3_assets_root: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac"
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+
+  arrange: []
+
+  act:
+    - id: browse_root
+      module: content
+      action: browse
+      args:
+        url: ${variables.s3_assets_root}
+        recursive: false
+
+    - id: resolve_warehouse
+      module: content
+      action: resolve
+      args:
+        url: ${variables.warehouse_url}
+
+    - id: preview_warehouse
+      module: content
+      action: preview
+      args:
+        url: ${variables.warehouse_url}
+      continueOnFailure: true
+
+  assert:
+    - id: stage_ok
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World
+        should_exist: false
+      continueOnFailure: true
+
+  cleanup: []

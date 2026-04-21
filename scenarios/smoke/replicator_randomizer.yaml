@@ -1,0 +1,86 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: replicator_randomizer
+  name: "Phase H: register position + lighting randomizers on 5 cubes"
+  tags: [smoke, replicator, phase-h, sdg, randomizer]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 180
+    failFast: true
+
+  variables:
+    dome_path: /World/Lighting/Dome
+
+  arrange:
+    - id: cube_one
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_0, prim_type: Cube }
+    - id: cube_two
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_1, prim_type: Cube }
+    - id: cube_three
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_2, prim_type: Cube }
+    - id: cube_four
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_3, prim_type: Cube }
+    - id: cube_five
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_4, prim_type: Cube }
+
+    - id: dome_light
+      module: lighting
+      action: create_dome
+      args: { prim_path: /World/Lighting/Dome, intensity: 1500.0 }
+
+  act:
+    - id: reg_position
+      module: replicator
+      action: register_randomizer
+      args:
+        type: position
+        target: /World/Boxes/*
+        config:
+          volume:
+            - [-2.0, -2.0, 0.0]
+            - [2.0, 2.0, 1.0]
+
+    - id: reg_lighting
+      module: replicator
+      action: register_randomizer
+      args:
+        type: lighting
+        target: /World/Lighting/*
+        config:
+          min_int: 800.0
+          max_int: 2000.0
+
+  assert:
+    - id: cube_0_exists
+      module: stage
+      action: assert_prim_exists
+      args: { prim_path: /World/Boxes/Box_0, should_exist: true }
+
+    - id: dome_exists
+      module: stage
+      action: assert_prim_exists
+      args: { prim_path: /World/Lighting/Dome, should_exist: true }
+
+  cleanup:
+    - id: cleanup_boxes
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/Boxes }
+      continueOnFailure: true
+    - id: cleanup_lighting
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/Lighting }
+      continueOnFailure: true

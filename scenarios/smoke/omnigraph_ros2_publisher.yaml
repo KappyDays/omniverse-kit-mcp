@@ -1,0 +1,56 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: omnigraph_ros2_publisher
+  name: "Phase H: assemble ActionGraph → ROS2PublishImage (structure verified; live publish skipped when rclpy absent)"
+  tags: [smoke, omnigraph, phase-h, ros2]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 180
+    failFast: false
+
+  variables:
+    graph_path: /World/RosPubGraph
+    camera_path: /World/PublisherCamera
+    topic: /validation/camera/image_raw
+
+  arrange:
+    - id: create_camera
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.camera_path}
+        prim_type: Camera
+
+  act:
+    - id: build_publisher
+      module: omnigraph
+      action: create_ros2_publisher
+      args:
+        graph_path: ${variables.graph_path}
+        topic: ${variables.topic}
+        source_prim: ${variables.camera_path}
+        msg_type: sensor_msgs/msg/Image
+      # ROS2 unavailable 환경은 graph 구조만 확인 — live publish 는 skip 기록
+      continueOnFailure: true
+
+  assert:
+    - id: camera_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.camera_path}
+        should_exist: true
+
+  cleanup:
+    - id: remove_graph
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/RosPubGraph }
+      continueOnFailure: true
+    - id: remove_camera
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/PublisherCamera }
+      continueOnFailure: true

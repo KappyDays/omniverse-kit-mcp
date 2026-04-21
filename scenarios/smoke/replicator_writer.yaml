@@ -1,0 +1,61 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: replicator_writer
+  name: "Phase H: create BasicWriter + trigger 2 frames on warehouse"
+  tags: [smoke, replicator, phase-h, sdg]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    output_dir: "C:/Users/<you>/workspace/Isaac-sim-MCP/_temp_sdg/writer"
+
+  arrange:
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: /World/Warehouse
+
+    - id: stop_timeline_before_bake
+      module: simulation
+      action: stop
+      args: {}
+
+  act:
+    - id: make_writer
+      module: replicator
+      action: create_writer
+      args:
+        writer_type: BasicWriter
+        output_dir: ${variables.output_dir}
+        rgb: true
+        depth: true
+        semantic_segmentation: false
+
+    - id: trigger_two_frames
+      module: replicator
+      action: trigger_once
+      args:
+        num_frames: 2
+
+  assert:
+    - id: warehouse_loaded
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/Warehouse
+        should_exist: true
+
+  cleanup:
+    - id: cleanup_warehouse
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: /World/Warehouse
+      continueOnFailure: true

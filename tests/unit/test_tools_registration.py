@@ -129,6 +129,24 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Phase G — Simulation timeline extensions (step / set_time)
     "simulation_step",
     "simulation_set_time",
+    # Phase H — Replicator (writer / randomizer / trigger)
+    "replicator_create_writer",
+    "replicator_register_randomizer",
+    "replicator_trigger_once",
+    "replicator_trigger_on_time",
+    # Phase H — OmniGraph (node / connect / execute + ROS2 publisher)
+    "omnigraph_create_node",
+    "omnigraph_connect",
+    "omnigraph_execute",
+    "omnigraph_create_ros2_publisher",
+    # Phase H — Content browser (browse / preview / resolve)
+    "content_browse",
+    "content_preview",
+    "content_resolve",
+    # Phase H — Extension management (deactivate / list_all / get_info)
+    "extension_deactivate",
+    "extension_list_all",
+    "extension_get_info",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({

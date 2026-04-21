@@ -1,0 +1,186 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: phase_h_combined
+  name: "Phase H integration — Warehouse + 5 rigid cubes + Randomizer + Writer + OmniGraph per-frame trigger"
+  tags: [integration, phase-h, replicator, omnigraph, content]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 600
+    failFast: false
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    output_dir: "C:/Users/<you>/workspace/Isaac-sim-MCP/_temp_sdg/phase_h_combined"
+    graph_path: /World/FrameTriggerGraph
+
+  arrange:
+    # Content inventory — confirm the S3 warehouse asset is reachable before we load it
+    - id: probe_warehouse
+      module: content
+      action: preview
+      args:
+        url: ${variables.warehouse_url}
+      continueOnFailure: true
+
+    # Load environment
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: /World/Warehouse
+
+    # 5 rigid-body cubes for randomizer target
+    - id: cube0
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_0, prim_type: Cube }
+    - id: cube1
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_1, prim_type: Cube }
+    - id: cube2
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_2, prim_type: Cube }
+    - id: cube3
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_3, prim_type: Cube }
+    - id: cube4
+      module: simulation
+      action: stage_create_prim
+      args: { prim_path: /World/Boxes/Box_4, prim_type: Cube }
+
+    - id: scene_physics
+      module: physics
+      action: set_scene
+      args: { gravity: [0.0, 0.0, -9.81] }
+
+    - id: rigid0
+      module: physics
+      action: apply_rigid_body
+      args: { prim_path: /World/Boxes/Box_0, dynamic: true, mass: 1.0 }
+    - id: rigid1
+      module: physics
+      action: apply_rigid_body
+      args: { prim_path: /World/Boxes/Box_1, dynamic: true, mass: 1.0 }
+    - id: rigid2
+      module: physics
+      action: apply_rigid_body
+      args: { prim_path: /World/Boxes/Box_2, dynamic: true, mass: 1.0 }
+    - id: rigid3
+      module: physics
+      action: apply_rigid_body
+      args: { prim_path: /World/Boxes/Box_3, dynamic: true, mass: 1.0 }
+    - id: rigid4
+      module: physics
+      action: apply_rigid_body
+      args: { prim_path: /World/Boxes/Box_4, dynamic: true, mass: 1.0 }
+
+    # Lighting (so replicator writer has usable imagery)
+    - id: dome
+      module: lighting
+      action: create_dome
+      args: { prim_path: /World/Lighting/Dome, intensity: 1500.0 }
+
+    # OmniGraph ActionGraph — OnTick as a manual per-frame trigger hook
+    - id: graph_on_tick
+      module: omnigraph
+      action: create_node
+      args:
+        graph_path: ${variables.graph_path}
+        node_type: omni.graph.action.OnTick
+        node_name: OnTick
+
+  act:
+    # Register randomizers
+    - id: random_positions
+      module: replicator
+      action: register_randomizer
+      args:
+        type: position
+        target: /World/Boxes/*
+        config:
+          volume:
+            - [-2.0, -2.0, 1.0]
+            - [2.0, 2.0, 3.0]
+
+    - id: random_lights
+      module: replicator
+      action: register_randomizer
+      args:
+        type: lighting
+        target: /World/Lighting/*
+        config:
+          min_int: 900.0
+          max_int: 2200.0
+
+    # Create BasicWriter
+    - id: make_writer
+      module: replicator
+      action: create_writer
+      args:
+        writer_type: BasicWriter
+        output_dir: ${variables.output_dir}
+        rgb: true
+        depth: true
+        semantic_segmentation: true
+
+    # Manually evaluate the graph once (OnTick fires) to prove the graph path
+    - id: evaluate_graph
+      module: omnigraph
+      action: execute
+      args:
+        graph_path: ${variables.graph_path}
+
+    # Run the orchestrator for 10 frames
+    - id: run_ten_frames
+      module: replicator
+      action: trigger_once
+      args:
+        num_frames: 10
+
+  assert:
+    - id: warehouse_loaded
+      module: stage
+      action: assert_prim_exists
+      args: { prim_path: /World/Warehouse, should_exist: true }
+
+    - id: boxes_loaded
+      module: stage
+      action: assert_prim_exists
+      args: { prim_path: /World/Boxes/Box_0, should_exist: true }
+
+    - id: graph_on_tick_created
+      module: stage
+      action: assert_prim_exists
+      args: { prim_path: /World/FrameTriggerGraph/OnTick, should_exist: true }
+
+  cleanup:
+    - id: stop_timeline
+      module: simulation
+      action: stop
+      args: {}
+    - id: cleanup_boxes
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/Boxes }
+      continueOnFailure: true
+    - id: cleanup_lighting
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/Lighting }
+      continueOnFailure: true
+    - id: cleanup_graph
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/FrameTriggerGraph }
+      continueOnFailure: true
+    - id: cleanup_warehouse
+      module: simulation
+      action: stage_delete_prim
+      args: { prim_path: /World/Warehouse }
+      continueOnFailure: true

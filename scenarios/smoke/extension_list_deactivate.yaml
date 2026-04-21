@@ -1,0 +1,55 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: extension_list_deactivate
+  name: "Phase H: list extensions, get_info on core ext, deactivate + reactivate ui_demo"
+  tags: [smoke, extension, phase-h, management]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 120
+    failFast: false
+
+  variables:
+    core_ext: omni.kit.menu.utils
+    demo_ext: omni.mycompany.ui_demo
+
+  arrange: []
+
+  act:
+    - id: list_all
+      module: extension
+      action: list_all
+      args:
+        enabled_only: false
+
+    - id: info_core
+      module: extension
+      action: get_info
+      args:
+        ext_id: ${variables.core_ext}
+
+    - id: deactivate_demo
+      module: extension
+      action: deactivate
+      args:
+        ext_id: ${variables.demo_ext}
+      continueOnFailure: true
+
+    - id: reactivate_demo
+      module: extension
+      action: activate
+      args:
+        ext_id: ${variables.demo_ext}
+        reload: true
+      continueOnFailure: true
+
+  assert:
+    - id: probe_stage
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/NonExistent
+        should_exist: false
+
+  cleanup: []

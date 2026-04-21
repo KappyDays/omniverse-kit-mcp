@@ -12,6 +12,7 @@
 | `run_process_module_standalone.py <start\|stop\|restart>` | kit.exe lifecycle 를 MCP 서버 import cache 없이 직접 제어 | Extension 코드 변경 후 Isaac Sim 재기동 필요할 때 (MCP 세션 재시작 회피) |
 | `run_scenario_standalone.py <scenario_path>` | scenario runner 를 최신 `src/` 코드로 실행 | MCP import cache 를 우회하고 scenario 수정 live 검증 |
 | `live_test_phase_d.py` · `live_test_phase_e.py` · `live_test_gui_equiv.py` · `live_test_extension_ui.py` | Phase 별 live E2E 검증 | Phase 완료 시 — PhaseD/ · PhaseE/ 에 아티팩트 저장 |
+| `live_test_replicator.py` · `live_test_omnigraph.py` · `live_test_content.py` · `live_test_extension_ext.py` | Phase H 도메인 별 live REST 검증 | Isaac Sim 기동 중 14 신규 tool 의 Extension route 를 직접 호출 — 결과 JSON 은 `PhaseH/` 디렉토리에 저장 |
 | `harvest_extension_metadata.py` · `render_catalog_md.py` · `sync_testbed_snapshot.py` | Kit Extension 레퍼런스 재수집 | `docs/references/extensions-catalog.md` 업데이트 시 |
 
 ## 추가 규칙
