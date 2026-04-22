@@ -174,8 +174,8 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 | Phase | 범위 | 상태 |
 |-------|------|------|
 | P0 | Tier 0/1/2 제약 재검증 | ✅ 완료 (`docs/constraint-validation-2026-04-23.md`) |
-| P1 | MCP tool 2 개 (`navigation_sample_walkable_points`, `robot_drive_physics`) | ⏳ |
-| P2 | Extension 골격 + Load Warehouse + Bake | ⏳ |
+| P1 | MCP tool 2 개 (`navigation_sample_walkable_points`, `robot_drive_physics`) | ✅ 완료 (commit 8c88911 — pytest 357, catalog 108) |
+| P2 | Extension 골격 + Load Warehouse + Bake | ✅ — UI 78 widget, Load Warehouse + Bake 라이브 검증, sample_walkable HTTP 호출 OK (method=bbox_reachability fallback) |
 | P3 | People controller (Walk→Sit FSM) | ⏳ |
 | P4 | Robot controller (DifferentialController + Pure Pursuit) | ⏳ |
 | P5 | Deep verification (Scenarios YAML + SSIM) | ⏳ |
@@ -185,6 +185,8 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 
 - 2026-04-23 02:14 — autonomous session start (Phase 0 → 6 자율 운영 모드)
 - 2026-04-23 02:30 — Phase 0 done — Tier 0 14/15 유효 + 1 부분 (T0.8 set_joint_positions R2 over-strict), Tier 2 6/6 EXISTS, Tier 1 10 skip. md 변경 없음.
+- 2026-04-23 02:55 — Phase 1 done — +2 MCP tool (navigation_sample_walkable_points spec §8.1 + 폴백, robot_drive_physics spec §8.2). pytest 357, catalog 108.
+- 2026-04-23 03:05 — Phase 2 done — Extension 8 file (toml + __init__ + extension + ui_panel + usd_loader + navmesh_sampler + agent_manager). UI window 표시 + Load Warehouse + Bake 라이브 검증, navigation_sample_walkable_points HTTP 호출 ok (3 walkable points, method=bbox_reachability).
 
 ## 업데이트 프로토콜
 
