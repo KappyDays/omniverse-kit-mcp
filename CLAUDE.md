@@ -26,22 +26,15 @@ Phase 히스토리 / 실측 결과 선택 참조: `docs/phase-{a..h}-validation-
 
 | Tool | 동작 | 정상 시간 |
 |------|------|----------|
-| `isaac_sim_start` | kit.exe 런치 + health polling (2 s interval) | cold ≤30 s · warm ≤15 s (실측 15.4 / 12.1 s) |
-| `isaac_sim_stop` | `powershell Stop-Process -Name kit -Force` + 종료 확인 | ≤10 s |
+| `isaac_sim_start` | kit.exe 런치 + health polling (2 s interval) | cold ≤30 s · warm ≤15 s |
+| `isaac_sim_stop` | `taskkill /F /IM kit.exe /T` + orphan hub 정리 | ≤10 s |
 | `isaac_sim_restart` | stop → `isaac_extension/.../__pycache__` clear → start | stop + start 합 |
 
-**핵심 구현**: `src/isaacsim_mcp/modules/process_module.py::_prepare_launch_env()` 가 NVIDIA 공식 `isaac-sim.bat` + `setup_ros_env.bat` 의 env setup (`ROS_DISTRO=humble` / `RMW_IMPLEMENTATION=rmw_fastrtps_cpp` / `PATH` 에 `<ISAAC_SIM_ROOT>/exts/isaacsim.ros2.bridge/humble/lib` 추가) 을 Python 으로 재현해 `subprocess.Popen(env=env)` 로 전달한다. 이 step 을 생략하면 ROS2 bridge 의존 Kit extension 이 startup 훅에서 silent fail → kit.exe 이벤트 루프 정지 → `/health` 영영 미응답 → timeout. `.bat` 을 cmd wrapper 로 호출하지 않는 이유는 프로세스 트리를 평평하게 유지하기 위함 (`Get-Process -Name kit` 이 wrapper 와 실 프로세스를 헷갈리지 않도록).
+**핵심**: `_prepare_launch_env()` 가 `isaac-sim.bat`의 ROS env setup을 Python으로 재현 — 생략 시 ROS2 bridge 의존 ext 가 silent fail → kit.exe 이벤트 루프 정지 → `/health` 미응답. 상세: `src/isaacsim_mcp/modules/process_module.py` docstring.
 
-`.env` 의 `ISAAC_SIM_STARTUP_TIMEOUT=600.0` — cold boot + 8 개 extra ext 조합의 안전 마진. 실측 15~30 s 이지만 상한은 넉넉히.
+**OmniHub orphan 주의**: kit.exe 는 `hub.exe` 를 `--mode=shared` daemon 으로 분리 spawn — `taskkill /T` 가 kit tree 에 닿지 않아 hub 가 port 14090 orphan 잔존. 수 시간 경과 시 accept loop broken → 다음 기동 `"Hub failed to launch: exit code 1"`. `stop/start` 가 자동 cleanup. 상세: `modules/CLAUDE.md §"ProcessModule hang recovery"` 3번.
 
-**검증 (세션 재시작 없이 최신 코드 확인)**:
-```bash
-.venv/Scripts/python.exe scripts/run_process_module_standalone.py stop
-.venv/Scripts/python.exe scripts/run_process_module_standalone.py start
-.venv/Scripts/python.exe scripts/run_process_module_standalone.py restart
-```
-
-**회복 절차 (timeout 재발)**: `src/isaacsim_mcp/modules/CLAUDE.md` 의 "ProcessModule hang recovery" — 좀비 판정 지표 · 강제 종료 · Minimal ext 수동 런치 · log 분석 순서 기록됨.
+**hang 회복 / 코드 검증**: `src/isaacsim_mcp/modules/CLAUDE.md` §"ProcessModule hang recovery" · `scripts/CLAUDE.md`.
 
 ## USD 로드 핵심 제약
 
@@ -134,9 +127,7 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 | `scripts/CLAUDE.md` | 개발 스크립트 (lifecycle · live 검증 · catalog regen · verify_mcp_sync) |
 | `isaac_course/CLAUDE.md` | Digital Twin 튜토리얼 PPTX 루트 규칙 (R1~R9) |
 | `isaac_course/docs/asset_inventory.md` | 3 Twin 사용 asset 의 확정 USD 경로 |
-| `archive/last-prompt.md` | Phase E~H + PPTX 전체 마스터 네비게이션 — **프로젝트 완료 상태 (전 Phase ✅)**. archive 는 완료된 세션의 재현/역사 자료 저장소 |
-| `archive/prompts/{pptx,phase-e,phase-f,phase-g,phase-h}.md` | 각 세션 전용 주입 프롬프트 — **프로젝트 완료, 재실행 불필요**. historical 자료로만 유지 |
-| `archive/session-3-captures/` | 세션 3 (PPTX) 중간 단계 캡처 7장 — 최종본은 `isaac_course/captures/` 에 있고 이 디렉토리는 과정 증빙 |
+| `archive/` | 완료된 Phase 세션 프롬프트 + 중간 캡처 — 역사 자료, 새 작업에 참조 불필요 |
 
 ## 변경 파급 매트릭스
 
@@ -180,7 +171,7 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 |------|-------------------|----------------|------|
 | `ISAAC_SIM_BASE_URL` | `http://localhost:8011` | — | Isaac Sim REST API |
 | `ISAAC_SIM_STARTUP_TIMEOUT` | `240.0` | `600.0` | ProcessModule health 대기 상한 |
-| `ISAAC_SIM_EXTRA_EXT_IDS` | (6 개 Phase C-D bundle) | 8 개 (Phase E 포함: sensors.rtx / asset.browser / content_browser / graph.action / replicator.core 등) | kit.exe 런치 시 추가 활성화 ext — JSON array only (pydantic-settings v2 limitation) |
+| `ISAAC_SIM_EXTRA_EXT_IDS` | (config.py 기본 bundle) | `["omni.anim.graph.bundle","omni.anim.navigation.bundle","isaacsim.replicator.agent.core","isaacsim.sensors.rtx","omni.graph.action","omni.replicator.core"]` | kit.exe 런치 시 추가 활성화 ext — JSON array only. **⚠️ `isaacsim.asset.browser` / `omni.kit.window.content_browser` 금지** (§USD 로드 핵심 제약 #3) |
 | `LAKEHOUSE_BASE_URL` | `http://localhost:9000` | — | Lakehouse REST API |
 | `MCP_SERVER_PORT` | `8080` | — | MCP 서버 포트 |
 | `SCENARIOS_DIR` | `scenarios` | — | 시나리오 YAML 루트 |
