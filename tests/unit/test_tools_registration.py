@@ -147,6 +147,9 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "extension_deactivate",
     "extension_list_all",
     "extension_get_info",
+    # Phase J — NavMesh Playground (sample_walkable_points + drive_physics)
+    "navigation_sample_walkable_points",
+    "robot_drive_physics",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({

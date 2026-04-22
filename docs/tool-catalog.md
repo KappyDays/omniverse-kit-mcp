@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 106
+**Tool count**: 108
 
 ## Table of contents
 
@@ -14,11 +14,11 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 6 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 10 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
-- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 7 tools
+- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 8 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 1 tools
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
-- [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 4 tools
+- [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
 - Unclassified (35)
 
@@ -713,6 +713,33 @@ Query Lakehouse REST for expected values; accepts raw SQL or namespace/dataset/t
 
 ## Robot — articulation + navigation (ASYNC Job)
 
+### `robot_drive_physics`
+
+```python
+robot_drive_physics(prim_path: 'str', waypoints: 'list[list[float]]', max_linear: 'float' = 1.0, max_angular: 'float' = 1.2, wheel_radius: 'float' = 0.14, wheel_base: 'float' = 0.413, arrival_tolerance: 'float' = 0.3, timeout_s: 'float' = 60.0, lookahead: 'float' = 0.8) -> 'str'
+```
+
+Drive a wheel-based articulation along ``waypoints`` using DifferentialController + Pure
+Pursuit (physics-based, writes joint_velocities, spec §8.2).  ASYNC Job — returns ``{job_id}``;
+poll ``job_status``. Requires timeline playing (R2). Wheel DOFs auto-resolved by name substring
+scan (wheel_left/right or joint_wheel_*). Always zeros wheels on exit
+(cancel/timeout/exception). Defaults are Nova Carter spec (wheel_radius=0.14,
+wheel_base=0.413).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `waypoints` | `list[list[number]]` | `'—'` | ✓ |
+| `max_linear` | `number` | `1.0` |  |
+| `max_angular` | `number` | `1.2` |  |
+| `wheel_radius` | `number` | `0.14` |  |
+| `wheel_base` | `number` | `0.413` |  |
+| `arrival_tolerance` | `number` | `0.3` |  |
+| `timeout_s` | `number` | `60.0` |  |
+| `lookahead` | `number` | `0.8` |  |
+
 ### `robot_get_joint_positions`
 
 ```python
@@ -1076,6 +1103,27 @@ Query shortest NavMesh path between two world-space points. Auto-bakes if needed
 | `agent_radius` | `number` | `0.25` |  |
 | `agent_height` | `number` | `1.8` |  |
 | `straighten` | `boolean` | `True` |  |
+
+### `navigation_sample_walkable_points`
+
+```python
+navigation_sample_walkable_points(count: 'int', bounds_min: 'list[float] | None' = None, bounds_max: 'list[float] | None' = None, seed: 'int | None' = None) -> 'str'
+```
+
+Sample N random walkable points on the baked NavMesh (area-weighted barycentric, spec §8.1).
+count ∈ [1, 1000]. Optional [x,y,z] bounds_min/max restrict to AABB (both must be set or both
+null). When triangle iteration API is unavailable on this Kit build, falls back to bbox-
+rejection (random-in-bbox + reachability via query_shortest_path) — response ``method`` field
+reports which path won. Requires prior navigation_bake.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `count` | `integer` | `'—'` | ✓ |
+| `bounds_min` | `list[number] \| None` | `None` |  |
+| `bounds_max` | `list[number] \| None` | `None` |  |
+| `seed` | `integer \| None` | `None` |  |
 
 ### `navigation_set_visualization`
 

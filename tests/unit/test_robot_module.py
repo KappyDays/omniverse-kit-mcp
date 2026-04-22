@@ -10,6 +10,8 @@ from isaacsim_mcp.types.robot import (
     JointPositions,
     JointPositionsSetRequest,
     JointPositionsSetResult,
+    RobotDrivePhysicsRequest,
+    RobotDrivePhysicsResult,
     RobotLoadRequest,
     RobotLoadResult,
     RobotNavigateRequest,
@@ -138,3 +140,47 @@ async def test_robot_load_propagates_error():
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "ROBOT_LOAD_ERROR"
     assert "CreateReferenceCommand failed" in (result.message or "")
+
+
+# Phase J — drive_physics
+
+
+@pytest.mark.asyncio
+async def test_robot_drive_physics_returns_job_id():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+    waypoints = ((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 2.0, 0.0))
+    request = RobotDrivePhysicsRequest(
+        prim_path="/World/Robot",
+        waypoints=waypoints,
+        wheel_radius=0.14, wheel_base=0.413,
+    )
+    result = await module.drive_physics(_meta(), request)
+
+    assert result.ok
+    assert isinstance(result.data, RobotDrivePhysicsResult)
+    assert result.data.job_id == "drive_test_0001"
+    drive_calls = [c for c in client.calls if c[0] == "robot_drive_physics"]
+    assert len(drive_calls) == 1
+    assert drive_calls[0][1]["waypoints"] == [list(p) for p in waypoints]
+    assert drive_calls[0][1]["wheel_radius"] == 0.14
+
+
+@pytest.mark.asyncio
+async def test_robot_drive_physics_server_error_maps():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["robot_drive_physics"] = {"ok": False, "reason": "wheel DOF unresolvable"}
+    module = RobotModule(client)
+    request = RobotDrivePhysicsRequest(
+        prim_path="/World/X",
+        waypoints=((0.0, 0.0, 0.0), (1.0, 0.0, 0.0)),
+    )
+    result = await module.drive_physics(_meta(), request)
+
+    assert not result.ok
+    assert result.error_code == "ROBOT_DRIVE_PHYSICS_ERROR"
+    assert "DOF" in (result.message or "")
