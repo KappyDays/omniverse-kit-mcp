@@ -24,6 +24,7 @@ EXPECTED_RESOURCES: frozenset[str] = frozenset({
     "isaacsim://tool-catalog",
     "isaacsim://sensor-menu",
     "isaacsim://scenario-schema",
+    "isaacsim://scenarios",
 })
 
 
