@@ -11,24 +11,71 @@ from typing import Any
 import pytest
 import yaml
 
-# Mock Kit/Isaac Sim modules needed for Extension imports
-import types as _types
-for _mod_name in ["carb", "omni.ext", "omni.services", "omni.services.core", "omni.usd", "omni.timeline"]:
-    if _mod_name not in sys.modules:
-        _parent = None
-        for _i in range(_mod_name.count(".") + 1):
-            if _mod_name not in sys.modules:
-                _mod = _types.ModuleType(_mod_name)
-                _mod.__path__ = []
-                sys.modules[_mod_name] = _mod
-            _mod_name = _mod_name.rsplit(".", 1)[0] if "." in _mod_name else None
-            if _mod_name is None:
-                break
-
-# Add isaac_extension directory to sys.path so omni namespace is importable during tests
+# Add isaac_extension directory to sys.path so `omni.mycompany.isaac_tutorial`
+# is importable via Python namespace packages (PEP 420). MUST come before any
+# submodule stubbing — otherwise standalone `omni` ModuleType blocks the namespace.
 _ext_root = Path(__file__).parent.parent / "isaac_extension" / "omni.mycompany.isaac_tutorial"
 if str(_ext_root) not in sys.path:
     sys.path.insert(0, str(_ext_root))
+
+# Stub Kit-only leaf modules (carb, omni.ext, etc.) that the Extension imports
+# at top level. Tests mock these further as needed.
+import types as _types
+
+
+def _stub(name: str, **attrs):
+    if name in sys.modules:
+        mod = sys.modules[name]
+    else:
+        mod = _types.ModuleType(name)
+        sys.modules[name] = mod
+    for k, v in attrs.items():
+        setattr(mod, k, v)
+    # Ensure parent namespace package is imported so setattr binds correctly
+    if "." in name:
+        parent_name, leaf = name.rsplit(".", 1)
+        if parent_name not in sys.modules:
+            __import__(parent_name)  # triggers implicit namespace package creation
+        parent = sys.modules.get(parent_name)
+        if parent is not None:
+            setattr(parent, leaf, mod)
+    return mod
+
+
+class _IExtStub:  # minimal base so `class X(omni.ext.IExt)` works at import time
+    def on_startup(self, ext_id): ...
+    def on_shutdown(self): ...
+
+
+_stub("carb", log_warn=lambda *a, **k: None, log_info=lambda *a, **k: None,
+      log_error=lambda *a, **k: None)
+_stub("carb.settings", get_settings=lambda: _types.SimpleNamespace(
+    set=lambda *a, **k: None, get=lambda *a, **k: None))
+_stub("omni.ext", IExt=_IExtStub)
+_stub("omni.ui")
+_stub("omni.usd", get_context=lambda: None)
+_stub("omni.timeline", get_timeline_interface=lambda: None)
+_stub("omni.kit")
+_stub("omni.kit.app", get_app=lambda: None)
+_stub("omni.kit.commands", execute=lambda *a, **k: None)
+_stub("omni.kit.notification_manager",
+      post_notification=lambda *a, **k: None,
+      NotificationStatus=_types.SimpleNamespace(WARNING="warning", INFO="info"))
+_stub("omni.services")
+_stub("omni.services.core")
+_stub("omni.graph")
+_stub("omni.graph.core")
+_stub("omni.graph.action")
+_stub("pxr")
+_stub("pxr.UsdGeom")
+_stub("pxr.Gf")
+_stub("pxr.Usd")
+_stub("pxr.Sdf")
+_stub("isaacsim")
+_stub("isaacsim.core")
+_stub("isaacsim.core.nodes")
+_stub("isaacsim.wheeled_robots")
+_stub("isaacsim.wheeled_robots.controllers")
 
 from isaacsim_mcp.types.common import ModuleName, OperationMeta
 from isaacsim_mcp.types.extension import ExtensionState
