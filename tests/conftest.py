@@ -766,6 +766,28 @@ class MockIsaacRestClient:
             "setting_path": "/persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh",
         })
 
+    # Phase J — NavMesh Playground
+
+    async def navigation_sample_walkable_points(self, request: dict) -> dict:
+        self.calls.append(("navigation_sample_walkable_points", request))
+        count = int(request.get("count", 1))
+        return self.responses.get("navigation_sample_walkable_points", {
+            "ok": True,
+            "points": [[float(i), float(i), 0.0] for i in range(count)],
+            "triangle_count": 100,
+            "total_area_m2": 50.0,
+            "seed": request.get("seed"),
+            "method": "area_weighted",
+        })
+
+    async def robot_drive_physics(self, request: dict) -> dict:
+        self.calls.append(("robot_drive_physics", request))
+        return self.responses.get("robot_drive_physics", {
+            "ok": True,
+            "job_id": "drive_test_0001",
+            "prim_path": request.get("prim_path", "/World/Robot"),
+        })
+
     # Sensor (Phase E) — RTX Camera / Lidar / Depth + viz
 
     async def sensor_attach_rtx_camera(self, request: dict) -> dict:

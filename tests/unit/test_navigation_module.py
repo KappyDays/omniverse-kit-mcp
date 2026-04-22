@@ -6,7 +6,7 @@ import pytest
 
 from isaacsim_mcp.modules.navigation_module import NavigationModule
 from isaacsim_mcp.types.common import ModuleName, OperationMeta
-from isaacsim_mcp.types.navigation import NavPathQueryRequest
+from isaacsim_mcp.types.navigation import NavPathQueryRequest, SampleWalkablePointsRequest
 from tests.conftest import MockIsaacRestClient
 
 
@@ -90,3 +90,45 @@ async def test_query_path_error_maps(nav_module, mock_client, meta):
     )
     assert result.ok is False
     assert result.error_code == "NAVIGATION_QUERY_PATH_ERROR"
+
+
+# Phase J — sample_walkable_points
+
+
+@pytest.mark.asyncio
+async def test_sample_walkable_points_default(nav_module, mock_client, meta):
+    request = SampleWalkablePointsRequest(count=3, seed=42)
+    result = await nav_module.sample_walkable_points(meta, request)
+    assert result.ok is True
+    assert len(result.data.points) == 3
+    assert result.data.method == "area_weighted"
+    assert result.data.seed == 42
+    name, payload = mock_client.calls[-1]
+    assert name == "navigation_sample_walkable_points"
+    assert payload == {"count": 3, "seed": 42}
+
+
+@pytest.mark.asyncio
+async def test_sample_walkable_points_with_bounds(nav_module, mock_client, meta):
+    request = SampleWalkablePointsRequest(
+        count=5,
+        bounds_min=(-10.0, -10.0, 0.0),
+        bounds_max=(10.0, 10.0, 5.0),
+    )
+    await nav_module.sample_walkable_points(meta, request)
+    _, payload = mock_client.calls[-1]
+    assert payload["count"] == 5
+    assert payload["bounds_min"] == [-10.0, -10.0, 0.0]
+    assert payload["bounds_max"] == [10.0, 10.0, 5.0]
+
+
+@pytest.mark.asyncio
+async def test_sample_walkable_points_server_error_maps(nav_module, mock_client, meta):
+    mock_client.responses["navigation_sample_walkable_points"] = {
+        "ok": False, "reason": "NavMesh not baked",
+    }
+    request = SampleWalkablePointsRequest(count=1)
+    result = await nav_module.sample_walkable_points(meta, request)
+    assert result.ok is False
+    assert result.error_code == "NAVIGATION_SAMPLE_ERROR"
+    assert "not baked" in (result.message or "")
