@@ -3,12 +3,32 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import pytest
 import yaml
+
+# Mock Kit/Isaac Sim modules needed for Extension imports
+import types as _types
+for _mod_name in ["carb", "omni.ext", "omni.services", "omni.services.core", "omni.usd", "omni.timeline"]:
+    if _mod_name not in sys.modules:
+        _parent = None
+        for _i in range(_mod_name.count(".") + 1):
+            if _mod_name not in sys.modules:
+                _mod = _types.ModuleType(_mod_name)
+                _mod.__path__ = []
+                sys.modules[_mod_name] = _mod
+            _mod_name = _mod_name.rsplit(".", 1)[0] if "." in _mod_name else None
+            if _mod_name is None:
+                break
+
+# Add isaac_extension directory to sys.path so omni namespace is importable during tests
+_ext_root = Path(__file__).parent.parent / "isaac_extension" / "omni.mycompany.isaac_tutorial"
+if str(_ext_root) not in sys.path:
+    sys.path.insert(0, str(_ext_root))
 
 from isaacsim_mcp.types.common import ModuleName, OperationMeta
 from isaacsim_mcp.types.extension import ExtensionState
