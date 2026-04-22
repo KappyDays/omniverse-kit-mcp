@@ -51,7 +51,7 @@ def test_scale_selected_raises_when_nothing_selected(mock_ctx):
     mock_ctx.return_value.get_selection.return_value = mock_sel
 
     from omni.mycompany.isaac_tutorial.actions.env_actions import scale_selected
-    with pytest.raises(ValueError, match="선택"):
+    with pytest.raises(ValueError, match="No prim selected"):
         scale_selected(factor=10.0)
 
 
@@ -80,7 +80,7 @@ def test_set_camera_speed_rejects_out_of_range():
         set_camera_speed(100.0)
 
 
-# ---------- T8: toggle_ceiling_visibility ----------
+# ---------- T8: toggle_hidden_prims (ceiling + ventilation + cube) ----------
 
 def _make_prim(path: str, name: str):
     p = MagicMock()
@@ -91,34 +91,39 @@ def _make_prim(path: str, name: str):
 
 @patch("omni.mycompany.isaac_tutorial.actions.env_actions.UsdGeom.Imageable")
 @patch("omni.mycompany.isaac_tutorial.actions.env_actions.omni.usd.get_context")
-def test_toggle_ceiling_hides_and_caches(mock_ctx, mock_imageable):
+def test_toggle_hides_all_matching_keywords(mock_ctx, mock_imageable):
     stage = MagicMock()
     stage.Traverse.return_value = [
         _make_prim("/World/office/Ceiling_01", "Ceiling_01"),
         _make_prim("/World/office/Wall_01", "Wall_01"),
         _make_prim("/World/office/ceiling_tile_03", "ceiling_tile_03"),
+        _make_prim("/World/office/Ventilation_Duct", "Ventilation_Duct"),
+        _make_prim("/World/Cube_test", "Cube_test"),
+        _make_prim("/World/office/Desk_01", "Desk_01"),
     ]
-    # GetPrimAtPath returns a valid prim
     stage.GetPrimAtPath.return_value = MagicMock(IsValid=lambda: True)
     mock_ctx.return_value.get_stage.return_value = stage
-    # Imageable(prim) returns a truthy object with MakeInvisible/MakeVisible
     mock_imageable.return_value = MagicMock()
 
     state = TutorialState()
-    from omni.mycompany.isaac_tutorial.actions.env_actions import toggle_ceiling_visibility
-    msg = toggle_ceiling_visibility(state)
+    from omni.mycompany.isaac_tutorial.actions.env_actions import toggle_hidden_prims
+    msg = toggle_hidden_prims(state)
 
     assert state.ceiling_hidden is True
-    assert len(state.ceiling_cache) == 2
+    # 2 ceiling + 1 ventilation + 1 cube = 4 matches; Wall and Desk excluded
+    assert len(state.ceiling_cache) == 4
     assert sorted(state.ceiling_cache) == [
-        "/World/office/Ceiling_01", "/World/office/ceiling_tile_03",
+        "/World/Cube_test",
+        "/World/office/Ceiling_01",
+        "/World/office/Ventilation_Duct",
+        "/World/office/ceiling_tile_03",
     ]
-    assert "Hid 2" in msg
+    assert "Hid 4" in msg
 
 
 @patch("omni.mycompany.isaac_tutorial.actions.env_actions.UsdGeom.Imageable")
 @patch("omni.mycompany.isaac_tutorial.actions.env_actions.omni.usd.get_context")
-def test_toggle_ceiling_restores_on_second_call(mock_ctx, mock_imageable):
+def test_toggle_restores_on_second_call(mock_ctx, mock_imageable):
     stage = MagicMock()
     stage.GetPrimAtPath.return_value = MagicMock(IsValid=lambda: True)
     mock_ctx.return_value.get_stage.return_value = stage
@@ -126,14 +131,39 @@ def test_toggle_ceiling_restores_on_second_call(mock_ctx, mock_imageable):
 
     state = TutorialState(
         ceiling_hidden=True,
-        ceiling_cache=["/World/office/Ceiling_01", "/World/office/ceiling_tile_03"],
+        ceiling_cache=[
+            "/World/office/Ceiling_01",
+            "/World/office/Ventilation_Duct",
+            "/World/Cube_test",
+        ],
     )
-    from omni.mycompany.isaac_tutorial.actions.env_actions import toggle_ceiling_visibility
-    msg = toggle_ceiling_visibility(state)
+    from omni.mycompany.isaac_tutorial.actions.env_actions import toggle_hidden_prims
+    msg = toggle_hidden_prims(state)
 
     assert state.ceiling_hidden is False
     assert state.ceiling_cache == []
-    assert "Restored 2" in msg
+    assert "Restored 3" in msg
+
+
+@patch("omni.mycompany.isaac_tutorial.actions.env_actions.UsdGeom.Imageable")
+@patch("omni.mycompany.isaac_tutorial.actions.env_actions.omni.usd.get_context")
+def test_toggle_case_insensitive_matching(mock_ctx, mock_imageable):
+    stage = MagicMock()
+    stage.Traverse.return_value = [
+        _make_prim("/World/CEILING_upper", "CEILING_upper"),   # upper-case
+        _make_prim("/World/CUBE", "CUBE"),                      # upper-case
+        _make_prim("/World/ventilation", "ventilation"),        # lower-case
+    ]
+    stage.GetPrimAtPath.return_value = MagicMock(IsValid=lambda: True)
+    mock_ctx.return_value.get_stage.return_value = stage
+    mock_imageable.return_value = MagicMock()
+
+    state = TutorialState()
+    from omni.mycompany.isaac_tutorial.actions.env_actions import toggle_hidden_prims
+    msg = toggle_hidden_prims(state)
+
+    assert len(state.ceiling_cache) == 3
+    assert "Hid 3" in msg
 
 
 # ---------- T17: spawn_wasd_nova_carter ----------

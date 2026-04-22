@@ -22,7 +22,7 @@ async def test_run_with_ui_feedback_success():
     assert result == "done"
     ui.set_busy.assert_any_call(True, label="test")
     ui.set_busy.assert_any_call(False)
-    assert ui.status_label.text == "✓ done"
+    assert ui.status_label.text == "[OK] done"
 
 
 @pytest.mark.asyncio
