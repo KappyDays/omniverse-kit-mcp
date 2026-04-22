@@ -152,7 +152,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({
     "scenario_validate",
     "scenario_plan",
-    "scenario_list",
+    # scenario_list demoted to MCP resource isaacsim://scenarios
     # scenario_schema demoted to MCP resource isaacsim://scenario-schema
     "scenario_last_report",
 })

@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 107
+**Tool count**: 106
 
 ## Table of contents
 
@@ -19,7 +19,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 1 tools
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 4 tools
-- [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 4 tools
+- [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
 - Unclassified (35)
 
 ## Process — Isaac Sim kit.exe lifecycle
@@ -277,7 +277,8 @@ Pause simulation timeline.
 simulation_play() -> 'str'
 ```
 
-Start Isaac Sim simulation timeline.
+Start simulation timeline (play button). Does NOT launch the Isaac Sim application — use
+isaac_sim_start for that.
 
 ### `simulation_stop`
 
@@ -285,7 +286,8 @@ Start Isaac Sim simulation timeline.
 simulation_stop() -> 'str'
 ```
 
-Stop simulation timeline (resets time to 0).
+Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Isaac Sim
+process — use isaac_sim_stop for that.
 
 ## Viewport — 3D renderer capture + camera
 
@@ -295,7 +297,8 @@ Stop simulation timeline (resets time to 0).
 viewport_capture(viewport_name: 'str' = 'Viewport', camera_prim_path: 'str | None' = None, renderer: 'str' = 'rtx', width: 'int' = 1280, height: 'int' = 720, output_format: 'str' = 'png') -> 'str'
 ```
 
-Capture 3D viewport PNG via RTX render; returns artifact path.
+Capture the 3D RTX render only (no Kit chrome) to PNG; returns artifact path. For the whole app
+window (menus + panels + viewport) use window_capture instead.
 
 **Parameters**
 
@@ -411,8 +414,8 @@ slower.
 viewport_set_render_quality(samples: 'int' = 1, denoiser: 'str' = 'auto') -> 'str'
 ```
 
-Tune RTX render quality via /rtx/pathtracing/spp (samples per pixel) and /rtx/post/aa/op
-(denoiser / AA). *denoiser* ∈ {auto, DLSS, NRD, off}.
+Tune RTX path-tracing render quality. *samples* = path-tracing samples per pixel (higher = less
+noise, slower). *denoiser* ∈ {auto, DLSS, NRD, off}.
 
 **Parameters**
 
@@ -578,8 +581,8 @@ since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL.
 extension_clear_logs() -> 'str'
 ```
 
-Drop all buffered carb log entries (returns count removed); marks "new session" for later
-peeks.
+Empty the carb log ring buffer; returns removed count. Subsequent extension_capture_logs calls
+will only see entries logged after this point.
 
 ### `extension_deactivate`
 
@@ -616,7 +619,9 @@ Return ExtensionManager info for ext_id (bare id match). 404 if not registered.
 extension_get_state() -> 'str'
 ```
 
-Get Custom Extension state: enabled/busy/last_operation/errors.
+Get the validation_api Extension's runtime state (enabled/busy/last_operation/errors) — this
+MCP server's in-Kit companion, not an arbitrary Kit extension (use extension_get_info for
+those).
 
 ### `extension_get_ui_tree`
 
@@ -656,7 +661,8 @@ Item: {id, full_id, name, version, enabled, path, title}.
 extension_trigger(operation: 'str', payload: 'dict[str, Any] | None' = None, wait_for_idle: 'bool' = True, idle_timeout_s: 'float' = 30.0) -> 'str'
 ```
 
-Trigger Custom Extension sync operation (e.g. sync_from_lakehouse); optionally waits for idle.
+Trigger an operation on the validation_api Extension (this MCP server's in-Kit companion), e.g.
+sync_from_lakehouse. Optionally waits for idle.
 
 **Parameters**
 
@@ -990,8 +996,10 @@ response.variables_set lists applied keys.
 character_set_position(prim_path: 'str', position: 'list[float]', orientation: 'list[float] | None' = None) -> 'str'
 ```
 
-Kinematically set character world pose; orientation is scalar-first [qw,qx,qy,qz], omit to keep
-current.
+Write character world pose to USD (xformOp:translate + orientation, scalar-first
+[qw,qx,qy,qz]). AnimGraph overrides the visual pose on the next tick, so get_state.position
+will not reflect this — for visible motion use character_navigate_to; for initial placement use
+character_load(position=...).
 
 **Parameters**
 
@@ -1099,21 +1107,6 @@ Get last execution report for a scenario_id from the most recent scenario_valida
 | name | type | default | required |
 |------|------|---------|----------|
 | `scenario_id` | `string` | `'—'` | ✓ |
-
-### `scenario_list`
-
-```python
-scenario_list(root_dir: 'str | None' = None) -> 'str'
-```
-
-List available YAML validation scenarios (IDs, names, tags) from the configured scenarios
-directory.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `root_dir` | `string \| None` | `None` |  |
 
 ### `scenario_plan`
 

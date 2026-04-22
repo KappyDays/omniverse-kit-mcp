@@ -1,6 +1,9 @@
 # Environment variables
 .env
 
+# Temporary measurement snapshots (probe_mcp_surface.py)
+tmp_*.json
+
 # Python
 __pycache__/
 *.py[cod]
