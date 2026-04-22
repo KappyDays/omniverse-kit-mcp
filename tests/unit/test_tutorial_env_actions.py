@@ -134,3 +134,43 @@ def test_toggle_ceiling_restores_on_second_call(mock_ctx, mock_imageable):
     assert state.ceiling_hidden is False
     assert state.ceiling_cache == []
     assert "Restored 2" in msg
+
+
+# ---------- T17: spawn_wasd_nova_carter ----------
+
+from unittest.mock import AsyncMock
+
+
+@pytest.mark.asyncio
+async def test_spawn_wasd_nova_carter_loads_and_builds_graph():
+    services = MagicMock()
+    services.stage.load_usd = AsyncMock(return_value=MagicMock(ok=True))
+    state = TutorialState()
+
+    with patch(
+        "omni.mycompany.isaac_tutorial.bindings.graph_builder.build_wasd_graph",
+        return_value="/World/nova_carter/WASDGraph",
+    ) as mock_build:
+        from omni.mycompany.isaac_tutorial.actions.env_actions import spawn_wasd_nova_carter
+        msg = await spawn_wasd_nova_carter(services, state)
+
+    assert state.nova_carter_loaded is True
+    assert state.wasd_graph_path == "/World/nova_carter/WASDGraph"
+    mock_build.assert_called_once()
+    assert "WASD" in msg
+
+
+@pytest.mark.asyncio
+async def test_spawn_wasd_nova_carter_skips_load_when_already_loaded():
+    services = MagicMock()
+    services.stage.load_usd = AsyncMock()
+    state = TutorialState(nova_carter_loaded=True)
+
+    with patch(
+        "omni.mycompany.isaac_tutorial.bindings.graph_builder.build_wasd_graph",
+        return_value="/World/nova_carter/WASDGraph",
+    ):
+        from omni.mycompany.isaac_tutorial.actions.env_actions import spawn_wasd_nova_carter
+        await spawn_wasd_nova_carter(services, state)
+
+    services.stage.load_usd.assert_not_called()
