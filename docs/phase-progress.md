@@ -164,6 +164,28 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 
 **수동 QA 대기**: `isaac_extension/omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` 에 따라 Kit 재시작 후 각 버튼 동작 검증 필요.
 
+---
+
+## Phase J — NavMesh Playground Extension (2026-04-23)
+
+Spec: `docs/superpowers/specs/2026-04-23-navmesh-playground-design.md`
+Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
+
+| Phase | 범위 | 상태 |
+|-------|------|------|
+| P0 | Tier 0/1/2 제약 재검증 | ✅ 완료 (`docs/constraint-validation-2026-04-23.md`) |
+| P1 | MCP tool 2 개 (`navigation_sample_walkable_points`, `robot_drive_physics`) | ⏳ |
+| P2 | Extension 골격 + Load Warehouse + Bake | ⏳ |
+| P3 | People controller (Walk→Sit FSM) | ⏳ |
+| P4 | Robot controller (DifferentialController + Pure Pursuit) | ⏳ |
+| P5 | Deep verification (Scenarios YAML + SSIM) | ⏳ |
+| P6 | QA manual + docs finalization | ⏳ |
+
+### 진행 로그
+
+- 2026-04-23 02:14 — autonomous session start (Phase 0 → 6 자율 운영 모드)
+- 2026-04-23 02:30 — Phase 0 done — Tier 0 14/15 유효 + 1 부분 (T0.8 set_joint_positions R2 over-strict), Tier 2 6/6 EXISTS, Tier 1 10 skip. md 변경 없음.
+
 ## 업데이트 프로토콜
 
 Agent 가 Task 완료 시 반드시 이 파일을 업데이트 (3 줄 이내):
