@@ -137,6 +137,33 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 
 ---
 
+---
+
+## Phase I — Isaac Sim Tutorial Extension (2026-04-22)
+
+학습자용 Kit UI Extension — `validation_api` in-process import 로 4 환경설정 + 4-step 튜토리얼 버튼 제공.
+
+| Task | 상태 | Commit |
+|------|------|--------|
+| T1 Extension skeleton | ✅ | d51eca6 |
+| T2 bindings/services.py | ✅ | c1df3be |
+| T3 actions/state.py | ✅ | 2764422 |
+| T4 actions/base.py | ✅ | d831722 |
+| T5 MainWindow shell | ✅ | 9e8a697 |
+| T6-T8 env_actions (scale / camera / ceiling) | ✅ | c5771ec |
+| T9 env_setup_panel | ✅ | f5a4bb2 |
+| T10-T14 step_actions batch | ✅ | 9153e93 |
+| T15 steps_panel | ✅ | 8ba3499 |
+| T16 graph_builder (WASD Action Graph) | ✅ | 0048d88 |
+| T17 spawn_wasd_nova_carter | ✅ | 1c15157 |
+| T18 Progress bar + job polling | ✅ | 08ad8a0 |
+| T19 Reset all + 2-click confirm | ✅ | e14f1b2 |
+| T20 E2E smoke.yaml | ✅ | (this commit) |
+| T21 Docs + setup updates | ✅ | (this commit) |
+| T22 QA_CHECKLIST.md | ✅ | (this commit) |
+
+**수동 QA 대기**: `isaac_extension/omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` 에 따라 Kit 재시작 후 각 버튼 동작 검증 필요.
+
 ## 업데이트 프로토콜
 
 Agent 가 Task 완료 시 반드시 이 파일을 업데이트 (3 줄 이내):

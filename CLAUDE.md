@@ -113,6 +113,7 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 | 파일 | 담당 범위 |
 |------|----------|
 | `isaac_extension/CLAUDE.md` | Kit Extension (FastAPI router · Pydantic 모델 · Kit SDK 실측 · REST endpoints · **UI Window 3 규칙** · carb log capture) |
+| `isaac_extension/omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` | Tutorial Extension 수동 QA 체크리스트 (UI 위젯은 pytest 로 검증 불가 → live Kit 기반 항목) |
 | `src/isaacsim_mcp/CLAUDE.md` | FastMCP 서버 패키지 루트 (entry flow · type 경계 · clients 통신 규약) |
 | `src/isaacsim_mcp/modules/CLAUDE.md` | 도메인 모듈 — 모듈 책임 매트릭스 · **Integration Facts** · **ProcessModule hang recovery** · Character domain 제약 |
 | `src/isaacsim_mcp/scenario/CLAUDE.md` | 시나리오 엔진 — Arrange/Act/Assert/Cleanup · action_registry · context-aware dispatch |
