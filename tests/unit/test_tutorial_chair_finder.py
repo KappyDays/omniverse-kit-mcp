@@ -28,22 +28,18 @@ async def test_find_nearest_chair_picks_closest(mock_ctx):
     services = MagicMock()
 
     async def _bbox(path):
-        from dataclasses import dataclass
-
-        @dataclass
-        class _B:
-            center: tuple
-
+        # compute_world_bbox returns a dict with 'center' key (not an object attr)
         if "far" in path:
-            return _B(center=(20.0, 0.0, 0.0))
-        return _B(center=(1.0, 0.0, 0.0))
+            return {"center": [20.0, 0.0, 0.0]}
+        return {"center": [1.0, 0.0, 0.0]}
 
     services.stage.compute_world_bbox = AsyncMock(side_effect=_bbox)
 
     from omni.mycompany.isaac_tutorial.actions.step_actions import _find_nearest_chair
     path, center = await _find_nearest_chair(services, start=(0.0, 0.0, 0.0))
     assert path == "/World/office/Chair_near"
-    assert center == (1.0, 0.0, 0.0)
+    # Converted from list to tuple by _find_nearest_chair
+    assert tuple(center) == (1.0, 0.0, 0.0)
 
 
 @pytest.mark.asyncio
