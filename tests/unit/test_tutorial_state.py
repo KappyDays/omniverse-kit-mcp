@@ -2,32 +2,11 @@
 
 from __future__ import annotations
 
-import importlib.util
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock
 
-# Load state.py directly without going through __init__ imports
-_state_path = (
-    Path(__file__).parent.parent.parent
-    / "isaac_extension"
-    / "omni.mycompany.isaac_tutorial"
-    / "omni"
-    / "mycompany"
-    / "isaac_tutorial"
-    / "actions"
-    / "state.py"
-).resolve()
-
-_spec = importlib.util.spec_from_file_location(
-    "omni.mycompany.isaac_tutorial.actions.state", _state_path
+from omni.mycompany.isaac_tutorial.actions.state import (
+    TutorialState, recover_state_from_stage,
 )
-_state_module = importlib.util.module_from_spec(_spec)
-sys.modules["omni.mycompany.isaac_tutorial.actions.state"] = _state_module
-_spec.loader.exec_module(_state_module)
-
-TutorialState = _state_module.TutorialState
-recover_state_from_stage = _state_module.recover_state_from_stage
 
 
 def test_default_state_all_false():
