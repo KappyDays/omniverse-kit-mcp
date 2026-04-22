@@ -112,7 +112,12 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 
 | 파일 | 담당 범위 |
 |------|----------|
-| `isaac_extension/CLAUDE.md` | Kit Extension (FastAPI router · Pydantic 모델 · Kit SDK 실측 · REST endpoints · **UI Window 3 규칙** · carb log capture) |
+| `isaac_extension/CLAUDE.md` | Extension 개발 nav hub — Extension 목록 + 신규=독립 정책 + docs/* 포인터 |
+| `isaac_extension/docs/extension-basics.md` | IExt 상속 · hot-reload · 한글 UI 금지 · 신규 독립 Extension copy-paste 스켈레톤 |
+| `isaac_extension/docs/kit-sdk-pitfalls.md` | Kit 107 / Isaac Sim 5.1 SDK 실측 함정 도메인별 (Stage / Articulation / Character / NavMesh / Sensor / Replicator / OmniGraph / Viewport / UI automation / Menu / Extension manager / carb log) |
+| `isaac_extension/docs/usd-load-deadlock-recipe.md` | MDL resolver ↔ carb log deadlock 방어 3-요소 copy-paste 레시피 (독립 extension 이 S3 MDL-heavy asset 로드 시) |
+| `isaac_extension/docs/validation_api-reuse.md` | **이미 만들어진 Extension 전용** — rest_router 싱글턴 in-process import 패턴 + 서비스 호출 규약 (dict/positional/sync-async). 신규 extension 불필요 |
+| `isaac_extension/docs/lessons-learned.md` | Extension 개발 중 실수 + 재발 방지 규칙 누적 로그 (새 작업 전 필독) |
 | `isaac_extension/omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` | Tutorial Extension 수동 QA 체크리스트 (UI 위젯은 pytest 로 검증 불가 → live Kit 기반 항목) |
 | `src/isaacsim_mcp/CLAUDE.md` | FastMCP 서버 패키지 루트 (entry flow · type 경계 · clients 통신 규약) |
 | `src/isaacsim_mcp/modules/CLAUDE.md` | 도메인 모듈 — 모듈 책임 매트릭스 · **Integration Facts** · **ProcessModule hang recovery** · Character domain 제약 |
