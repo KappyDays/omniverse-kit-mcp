@@ -17,6 +17,9 @@
 | 테스트 | `tests/CLAUDE.md` |
 | Setup / 신규 PC | `setup/CLAUDE.md` |
 | PPTX 튜토리얼 | `isaac_course/CLAUDE.md` |
+| **Kit alive 판단 (필수)** | `tasklist //FI` (git bash) **금지** — false negative 발생. PowerShell `Get-Process -Name kit` 또는 MCP `simulation_get_status` 사용. 상세: `docs/implementation_issues.md#i3` |
+| **MCP UI automation (`extension_ui_invoke`)** | hot-reload 누적 시 callback binding stale (I5). 자율 검증은 **MCP 직접 동작** (stage_load_usd, character_load 등) 으로 동등 결과. Extension UI button 은 사용자 마우스 직접 click 만 안정. 상세: `docs/implementation_issues.md#i5` |
+| **validation_api `.py` 변경 후 module reimport** | `extension_activate(reload=True)` 가 module 자체 unload 안 함 (sys.modules cache, I6). **Kit process restart** (`scripts/run_process_module_standalone.py stop + start`) 만 module 새로 import. lessons-learned L9 |
 
 Phase 히스토리 / 실측 결과 선택 참조: `docs/phase-{a..h}-validation-report.md`. Tool name SoT 는 `tests/unit/test_tools_registration.py` frozenset.
 
@@ -112,6 +115,9 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 | `isaac_extension/docs/validation_api-reuse.md` | **이미 만들어진 Extension 전용** — rest_router 싱글턴 in-process import 패턴 + 서비스 호출 규약 (dict/positional/sync-async). 신규 extension 불필요 |
 | `isaac_extension/docs/lessons-learned.md` | Extension 개발 중 실수 + 재발 방지 규칙 누적 로그 (새 작업 전 필독) |
 | `isaac_extension/omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` | Tutorial Extension 수동 QA 체크리스트 (UI 위젯은 pytest 로 검증 불가 → live Kit 기반 항목) |
+| `isaac_extension/omni.mycompany.navmesh_playground/QA_CHECKLIST.md` | NavMesh Playground (Phase J, commit 33d679~70a530b) 수동 QA — Walk→Sit / Robot drive (사용자 마우스 직접 click). 자동 검증은 `scenarios/smoke/navmesh_playground_e2e.yaml` (25/25 PASSED). 핵심 fix: SitWeight=1.0 변수 (commit `ed0c4ce`+ 후속), Pure Pursuit cos 감쇄 완화 |
+| `docs/implementation_issues.md` | Phase J 작업 중 발견된 5개 이슈 (I3-I7) — tasklist false negative, glob limit, ui_invoke binding, hot-reload closure, DifferentialController 5.1 type. 새 작업 전 필독 |
+| `isaac_extension/docs/lessons-learned.md` L7-L12 | 동일 이슈의 재발 방지 규칙 (L7-L12) |
 | `src/isaacsim_mcp/CLAUDE.md` | FastMCP 서버 패키지 루트 (entry flow · type 경계 · clients 통신 규약) |
 | `src/isaacsim_mcp/modules/CLAUDE.md` | 도메인 모듈 — 모듈 책임 매트릭스 · **Integration Facts** · **ProcessModule hang recovery** · Character domain 제약 |
 | `src/isaacsim_mcp/scenario/CLAUDE.md` | 시나리오 엔진 — Arrange/Act/Assert/Cleanup · action_registry · context-aware dispatch |
