@@ -62,6 +62,9 @@ docs/artifacts/**/*.npy
 docs/artifacts/**/*.pkl
 # Live test JSON reports (regenerated per run; summaries are captured in phase-*-validation-report.md)
 docs/artifacts/**/*.json
+# Exception: restructure-baseline/ is a committed baseline used by plan §5-§9 to
+# detect regression in the CLAUDE.md Pull-First restructure.
+!docs/artifacts/restructure-baseline/**/*.json
 
 # Phase H replicator scenario output (default output_dir for replicator_create_writer)
 _temp_sdg/
