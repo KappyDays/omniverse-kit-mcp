@@ -1,0 +1,223 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: navmesh_playground_e2e
+  name: "Phase J e2e: warehouse load → bake → spawn → Walk→Sit + Robot drive_physics"
+  tags: [smoke, navmesh, character, robot, phase-j, deep-verification]
+
+spec:
+  defaults:
+    # Warehouse cold-load + Biped_Setup 등 S3 fetch 가 무거움 — 넉넉하게.
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/full_warehouse.usd"
+    char_skin_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/F_Business_02/F_Business_02.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    char_request_path: "/World/People_01"
+    char_actual_path: "/World/Characters/People_01"   # character_load sanitized output
+    robot_path: "/World/Robot_01"
+    char_start: [4.18, -14.25, 0.0]
+    char_goal: [-6.75, -8.3, 0.0]
+    robot_start: [-6.75, -8.3, 0.2]
+    # NavMesh path waypoints (NavMesh-derived; here hardcoded for determinism)
+    robot_waypoints:
+      - [-6.75, -8.3, 0.0]
+      - [-3.0, -10.0, 0.0]
+      - [0.0, -12.0, 0.0]
+      - [4.18, -14.25, 0.0]
+
+  arrange:
+    # 1. Warehouse load (deadlock-safe payload via stage_load_usd)
+    - id: load_warehouse
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.warehouse_url}
+        prim_path: /World/Warehouse
+        position: [0.0, 0.0, 0.0]
+
+    # 2. NavMesh bake (timeline must be stopped — R1a)
+    - id: stop_for_bake
+      module: simulation
+      action: stop
+      args: {}
+
+    - id: bake_navmesh
+      module: navigation
+      action: bake
+      args:
+        timeout_s: 60.0
+        volume_scale: 30.0
+
+    # 3. Sample walkable points (Phase 1 신규 tool — Phase J §8.1)
+    - id: sample_points
+      module: navigation
+      action: sample_walkable_points
+      args:
+        count: 3
+        seed: 42
+
+    # 4. Spawn People (character_load auto-binds AnimGraph)
+    - id: load_character
+      module: character
+      action: load
+      args:
+        usd_url: ${variables.char_skin_url}
+        prim_path: ${variables.char_request_path}
+        position: ${variables.char_start}
+        yaw: 0.0
+
+    # 5. Spawn Robot (USD reference + articulation auto-detected)
+    - id: load_robot
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.robot_url}
+        prim_path: ${variables.robot_path}
+        position: ${variables.robot_start}
+
+    # 6. Timeline play + warm-up (AnimGraph + articulation registry populate)
+    - id: play_warmup
+      module: simulation
+      action: play
+      args: {}
+
+    - id: step_warmup
+      module: simulation
+      action: step
+      args:
+        frames: 5
+
+  act:
+    # 7. People Walk → goal
+    - id: walk_to_goal
+      module: character
+      action: play_animation
+      args:
+        prim_path: ${variables.char_actual_path}
+        animation_name: Walk
+        speed: 1.0
+        target_position: ${variables.char_goal}
+
+    # 8. Wait for arrival (~13m at 1.0 m/s with overhead)
+    - id: wait_walk
+      module: simulation
+      action: step
+      args:
+        frames: 600   # ~10s @ 60fps
+
+    # 9. Sit on arrival
+    - id: stop_walk
+      module: character
+      action: stop_animation
+      args:
+        prim_path: ${variables.char_actual_path}
+
+    - id: sit_idle
+      module: character
+      action: play_animation_variant
+      args:
+        prim_path: ${variables.char_actual_path}
+        variant: SitIdle
+        speed: 1.0
+
+    # 10. Robot drive (Phase 1 신규 tool — Phase J §8.2 DifferentialController + Pure Pursuit)
+    - id: drive_robot
+      module: robot
+      action: drive_physics
+      args:
+        prim_path: ${variables.robot_path}
+        waypoints: ${variables.robot_waypoints}
+        max_linear: 1.0
+        max_angular: 1.2
+        wheel_radius: 0.14
+        wheel_base: 0.413
+        arrival_tolerance: 0.5
+        timeout_s: 30.0
+
+    # 11. Poll drive job until done
+    - id: wait_drive
+      module: job
+      action: status
+      args:
+        navigate_step_id: drive_robot
+        expected_status: done
+        poll_interval_s: 0.5
+        max_polls: 80
+
+  assert:
+    # 12. Stage prims registered
+    - id: warehouse_present
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World/Warehouse
+        should_exist: true
+
+    - id: character_present
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.char_actual_path}
+        should_exist: true
+
+    - id: robot_present
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.robot_path}
+        should_exist: true
+
+    # 13. Character Sit state (server-side _last_action cache)
+    - id: character_sit_state
+      module: character
+      action: get_state
+      args:
+        prim_path: ${variables.char_actual_path}
+
+    # 14. Visual capture (Stage panel + Property + Viewport 한 장에)
+    - id: window_capture_after
+      module: viewport
+      action: capture
+      args:
+        width: 1280
+        height: 720
+
+  cleanup:
+    # Stop timeline gracefully (testbed #14 — AnimGraph/NavMesh shutdown safety)
+    - id: stop_anim_safe
+      module: character
+      action: stop_animation
+      args:
+        prim_path: ${variables.char_actual_path}
+      continueOnFailure: true
+
+    - id: final_play
+      module: simulation
+      action: play
+      args: {}
+      continueOnFailure: true
+
+    - id: final_stop
+      module: simulation
+      action: stop
+      args: {}
+      continueOnFailure: true
+
+    - id: remove_character
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.char_actual_path}
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.robot_path}
+      continueOnFailure: true
+
+    # Warehouse + NavMeshVolume + Biped_Setup 는 stage 에 남김 (재사용 idempotent)

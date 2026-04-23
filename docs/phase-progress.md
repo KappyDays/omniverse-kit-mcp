@@ -178,7 +178,7 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 | P2 | Extension 골격 + Load Warehouse + Bake | ✅ — UI 78 widget, Load Warehouse + Bake 라이브 검증, sample_walkable HTTP 호출 OK (method=bbox_reachability fallback) |
 | P3 | People controller (Walk→Sit FSM) | 🟡 부분 완료 — Extension UI button callback 호출 inconsistency (I5); MCP 직접 동작 (`character_load + play_animation Walk + play_animation_variant SitIdle`) 으로 **Walk→Sit 시퀀스 라이브 검증** (4.18,-14.25→-6.68,-8.30 13m 이동, action=Sit, window_capture 확인) |
 | P4 | Robot controller (DifferentialController + Pure Pursuit) | ✅ 완료 — Kit restart 후 `drive_physics` 라이브 검증: `reached=true`, `final_distance_m=0.50`, `dof_names` 7 DOF 정확 (joint_wheel_left/right idx 1/2), wheel rotation 1.94 rad, Property translate X=-6.75 → 4.75 (11.5m 이동) |
-| P5 | Deep verification (Scenarios YAML + SSIM) | ⏳ |
+| P5 | Deep verification (Scenarios YAML + SSIM) | ✅ — `scenarios/smoke/navmesh_playground_e2e.yaml` 25 step PASS (52.6s, drive_robot 폴링 23.9s OK), pytest 357, drift test green, SSIM baseline 부트스트랩 |
 | P6 | QA manual + docs finalization | ⏳ |
 
 ### 진행 로그
