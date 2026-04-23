@@ -40,3 +40,29 @@ cmd //c "taskkill /F /IM kit.exe /T"
 cmd //c "taskkill /F /IM hub.exe /T"
 .venv/Scripts/python.exe scripts/run_process_module_standalone.py start
 ```
+
+## I2 — character_load + robot_load 모두 silent crash (환경 issue, 2026-04-23 09:08)
+
+**증상**: STOP_LINE 첫 보고 후 사용자 명시 "다른 방식 시도" 에 따라 in-process import + UI 우회 + Robot 대체 등 4가지 추가 시도. 결과:
+- in-process character_service.load (UI callback 안에서) → silent crash (2회)
+- AnimGraph warm-up 제거 + UI refresh 제거 → silent crash
+- MCP `character_load` 직접 호출 (UI 완전 우회) → silent crash (2회 — fresh stage / warehouse 후 둘 다)
+- viewport_capture warm-up 후 character_load → silent crash
+- Robot in-process spawn (vr._stage.load_usd + drive_physics) → silent crash
+
+**핵심 진단 entry**: 모든 silent crash 직전 Kit log:
+```
+[N ms] [Warning] [carb] Client gpu.foundation.plugin has acquired
+   [gpu::unstable::IMemoryBudgetManagerFactory v0.1] 100 times.
+   Consider accessing this interface with carb::getCachedInterface()
+   (Performance warning)
+```
+
+**가설 (확정)**: 본 PC 의 GPU/Hydra resource leak. Kit 5.1 SDK 의 잠재적 regression.
+character mesh / robot mesh GPU 처리 시 `IMemoryBudgetManagerFactory` 가 cached
+interface 미사용으로 매번 fresh acquire → 100 누적 → driver leak → silent crash.
+
+**대응**: 코드 변경으로 회피 불가능. 사용자 환경 재부팅 또는 driver 재설치
+필요. STOP_LINE.md 5가지 옵션 참조.
+
+**Phase 3/4 코드 상태**: 완료. live 검증만 환경 issue 로 막힘.
