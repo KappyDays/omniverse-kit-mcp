@@ -21,13 +21,22 @@ from isaacsim_mcp.clients.lakehouse_client import LakehouseClient
 from isaacsim_mcp.config import AppConfig
 from isaacsim_mcp.modules.asset_module import AssetModule
 from isaacsim_mcp.modules.character_module import CharacterModule
+from isaacsim_mcp.modules.content_module import ContentModule
 from isaacsim_mcp.modules.extension_module import ExtensionModule
 from isaacsim_mcp.modules.job_module import JobModule
 from isaacsim_mcp.modules.lakehouse_module import LakehouseModule
+from isaacsim_mcp.modules.lighting_module import LightingModule
+from isaacsim_mcp.modules.material_module import MaterialModule
+from isaacsim_mcp.modules.navigation_module import NavigationModule
+from isaacsim_mcp.modules.omnigraph_module import OmnigraphModule
+from isaacsim_mcp.modules.physics_module import PhysicsModule
+from isaacsim_mcp.modules.replicator_module import ReplicatorModule
 from isaacsim_mcp.modules.robot_module import RobotModule
+from isaacsim_mcp.modules.sensor_module import SensorModule
 from isaacsim_mcp.modules.simulation_module import SimulationModule
 from isaacsim_mcp.modules.stage_module import StageModule
 from isaacsim_mcp.modules.viewport_module import ViewportModule
+from isaacsim_mcp.modules.window_module import WindowModule
 from isaacsim_mcp.scenario.compiler import compile_scenario
 from isaacsim_mcp.scenario.loader import load_scenario
 from isaacsim_mcp.scenario.reporters import to_json, to_markdown
@@ -49,10 +58,21 @@ async def run(scenario_path: str) -> int:
         job = JobModule(isaac_client)
         asset = AssetModule(isaac_client)
         character = CharacterModule(isaac_client)
+        window = WindowModule(isaac_client)
+        navigation = NavigationModule(isaac_client)
+        sensor = SensorModule(isaac_client)
+        physics = PhysicsModule(isaac_client)
+        lighting = LightingModule(isaac_client)
+        material = MaterialModule(isaac_client)
+        replicator = ReplicatorModule(isaac_client)
+        omnigraph = OmnigraphModule(isaac_client)
+        content = ContentModule(isaac_client)
 
         runner = ScenarioRunner(
             stage, viewport, lakehouse, extension, simulation,
             robot, job, asset, character,
+            window, navigation, sensor, physics, lighting,
+            material, replicator, omnigraph, content,
         )
 
         raw = load_scenario(resolved_path)
