@@ -260,7 +260,7 @@ omni.kit.commands / omni.usd / omni.timeline / pxr.*
 - **R3. Viewport 캡처 시각 검증 의무**: `viewport_capture` 후 반드시 `Read` tool 로 PNG 시각 확인. **흰색/검은색 배경만** 보이거나 asset 이 점처럼 작으면 **실패 처리** — 아래 순서로 조정 후 재캡처:
   1. **조명 추가/조정** — scene 에 `DistantLight` 또는 `DomeLight` 가 없으면 `stage_create_prim(prim_type="DistantLight")` + `stage_set_property(inputs:intensity=3000)`. 이미 있으면 intensity 2배 증가
   2. **카메라 위치/각도 조정** — `stage_set_property("/OmniverseKit_Persp", "xformOp:translate", [x,y,z])` 로 asset bbox 기준 거리 재설정 (small asset 은 1~3 m, large env 는 10~30 m 외부)
-  3. **Asset 위치 조정** — `stage_compute_world_bbox` 로 bbox 구한 후 asset 중심이 viewport 정면이 되게 asset 자체 또는 camera target 재배치
+  3. **Asset 위치 조정** — bounding box 를 참조하여 asset 중심이 viewport 정면이 되게 asset 자체 또는 camera target 재배치
   4. 조정 후 `viewport_capture` 재호출 + Read 재검증. 이 cycle 은 **geometry 가 명확히 보일 때까지** 반복 — 2-3 회 시도 후에도 실패면 `implementation_issues.md` 기록
 
 ## Key Decisions (글로벌 — 하위 CLAUDE.md 에 없는 것만)
