@@ -177,7 +177,7 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 | P1 | MCP tool 2 개 (`navigation_sample_walkable_points`, `robot_drive_physics`) | ✅ 완료 (commit 8c88911 — pytest 357, catalog 108) |
 | P2 | Extension 골격 + Load Warehouse + Bake | ✅ — UI 78 widget, Load Warehouse + Bake 라이브 검증, sample_walkable HTTP 호출 OK (method=bbox_reachability fallback) |
 | P3 | People controller (Walk→Sit FSM) | 🟡 부분 완료 — Extension UI button callback 호출 inconsistency (I5); MCP 직접 동작 (`character_load + play_animation Walk + play_animation_variant SitIdle`) 으로 **Walk→Sit 시퀀스 라이브 검증** (4.18,-14.25→-6.68,-8.30 13m 이동, action=Sit, window_capture 확인) |
-| P4 | Robot controller (DifferentialController + Pure Pursuit) | 🟡 부분 완료 — drive_physics MCP tool + NavMesh path query 동작 검증, `DifferentialController.forward()` Isaac Sim 5.1 반환 type 변경 fix (I7) 후 hot-reload stale closure (I6) 로 검증 보류 — Kit restart 필요 |
+| P4 | Robot controller (DifferentialController + Pure Pursuit) | ✅ 완료 — Kit restart 후 `drive_physics` 라이브 검증: `reached=true`, `final_distance_m=0.50`, `dof_names` 7 DOF 정확 (joint_wheel_left/right idx 1/2), wheel rotation 1.94 rad, Property translate X=-6.75 → 4.75 (11.5m 이동) |
 | P5 | Deep verification (Scenarios YAML + SSIM) | ⏳ |
 | P6 | QA manual + docs finalization | ⏳ |
 
@@ -190,6 +190,7 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 - 2026-04-23 03:25 — STOP_LINE — Phase 3 People spawn live verification 단계에서 kit.exe silent crash 4회 연속 (자동 수정 4회 모두 실패). 자율 운영 정책 trigger #4 충족. STOP_LINE.md + docs/implementation_issues.md#i1 작성 후 사용자 결정 대기.
 - 2026-04-23 09:08 — STOP_LINE 업데이트 — 사용자 "다른 방식 시도" 명령에 따라 in-process character_service.load + Robot 우회 등 4가지 추가 시도. 모두 동일 silent crash. **환경 issue 확정** (`IMemoryBudgetManagerFactory acquired 100 times` GPU leak). Phase 3/4 코드 완료, 환경 회복 필요. issues.md#i2 + STOP_LINE.md 업데이트.
 - 2026-04-23 10:30 — STOP_LINE 회수 (사용자 직접 검증으로). Kit 안 죽음 (I3), spawn 자체 동작. 진짜 issue 들 분리: I3 (tasklist false negative), I4 (glob), I5 (ui_invoke binding), I6 (hot-reload closure stale), I7 (DifferentialController.forward type 변경). MCP 직접 동작으로 Walk→Sit 라이브 검증 완료 — character_load/play_animation/play_animation_variant.
+- 2026-04-23 12:25 — Phase 4 라이브 완료 — Kit process restart 후 drive_physics: reached=true, 11.5m 이동, wheel_right 1.94 rad. validation_api ext disable+activate 만으로는 module unload 안 됨 (I6 확정), Kit restart 가 유일.
 
 ## 업데이트 프로토콜
 
