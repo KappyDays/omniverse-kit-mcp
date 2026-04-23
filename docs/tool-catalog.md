@@ -548,7 +548,8 @@ extension_activate(ext_id: 'str', reload: 'bool' = False) -> 'str'
 ```
 
 Enable Kit Extension by ext_id (Window → Extensions toggle). reload=True forces disable→enable
-to re-import. 400 if ext_id unknown.
+but does NOT clear sys.modules — for .py source reimport rely on omni.ext.plugin fswatcher
+(auto-triggers on file save). 400 if ext_id unknown.
 
 **Parameters**
 
@@ -590,8 +591,9 @@ will only see entries logged after this point.
 extension_deactivate(ext_id: 'str') -> 'str'
 ```
 
-Disable Kit Extension by id. Python module imports survive; use extension_activate(reload=True)
-to re-import.
+Disable Kit Extension by id. Python module imports survive; for .py reimport rely on
+omni.ext.plugin fswatcher auto-reload on file save (extension_activate(reload=True) only re-
+toggles, does not clear sys.modules).
 
 **Parameters**
 
