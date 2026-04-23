@@ -19,9 +19,11 @@
 <!--      ("⛔ DO-NOT-EDIT" inline 마커가 있는 부분)                  -->
 <!-- ============================================================== -->
 
-## 세션 시작 절차 — 필독 CLAUDE.md
+## 세션 진입
 
-**공통 트리오** (모든 세션 시작 시 로드): 루트 `CLAUDE.md` (이 파일) · `docs/tool-catalog.md` · `docs/phase-progress.md`.
+- **이 파일만** 매 턴 자동 로드 (CC 동작)
+- Phase 진행 맥락 필요 시: `docs/phase-progress.md` Read
+- MCP tool 탐색은 tool 호출로 충분 (`docs/tool-catalog.md` 는 human 레퍼런스)
 
 **작업별 추가 필독** (문제 발생 전 선제 로드):
 
