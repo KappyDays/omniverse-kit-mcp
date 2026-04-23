@@ -63,3 +63,10 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 ## 향후 MCP tool 화 (제안, 미구현)
 
 `extensions.json` 을 기반으로 MCP tool `extension_search(keyword, category=None)` 구현 가능. 설계 문서 §9.2 참조.
+
+## 관련 경계
+
+- 상위 문서 루트: `../CLAUDE.md`
+- 읽기 순서 가이드 (testbed-snapshot 전용): `testbed-snapshot/CLAUDE.md`
+- 파생 카탈로그 (편집 금지, 재생성만): `extensions-catalog.md`, `extensions.json`, `sensor_menu_catalog.md`
+- 재생성 스크립트 규약: `../../scripts/CLAUDE.md`
