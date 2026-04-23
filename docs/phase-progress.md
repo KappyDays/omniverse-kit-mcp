@@ -176,8 +176,8 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 | P0 | Tier 0/1/2 제약 재검증 | ✅ 완료 (`docs/constraint-validation-2026-04-23.md`) |
 | P1 | MCP tool 2 개 (`navigation_sample_walkable_points`, `robot_drive_physics`) | ✅ 완료 (commit 8c88911 — pytest 357, catalog 108) |
 | P2 | Extension 골격 + Load Warehouse + Bake | ✅ — UI 78 widget, Load Warehouse + Bake 라이브 검증, sample_walkable HTTP 호출 OK (method=bbox_reachability fallback) |
-| P3 | People controller (Walk→Sit FSM) | 🛑 STOP_LINE — People spawn 후 Kit silent crash 4회 (`STOP_LINE.md` + `docs/implementation_issues.md#i1`) |
-| P4 | Robot controller (DifferentialController + Pure Pursuit) | ⏳ |
+| P3 | People controller (Walk→Sit FSM) | 🛑 STOP_LINE — 코드 완료 (in-process character_service.load 패턴), spawn live 검증 환경 issue 로 막힘 |
+| P4 | Robot controller (DifferentialController + Pure Pursuit) | 🛑 STOP_LINE — 코드 완료 (in-process drive_physics + NavMesh path), spawn live 검증 환경 issue (GPU resource leak) 로 막힘 |
 | P5 | Deep verification (Scenarios YAML + SSIM) | ⏳ |
 | P6 | QA manual + docs finalization | ⏳ |
 
@@ -188,6 +188,7 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 - 2026-04-23 02:55 — Phase 1 done — +2 MCP tool (navigation_sample_walkable_points spec §8.1 + 폴백, robot_drive_physics spec §8.2). pytest 357, catalog 108.
 - 2026-04-23 03:05 — Phase 2 done — Extension 8 file (toml + __init__ + extension + ui_panel + usd_loader + navmesh_sampler + agent_manager). UI window 표시 + Load Warehouse + Bake 라이브 검증, navigation_sample_walkable_points HTTP 호출 ok (3 walkable points, method=bbox_reachability).
 - 2026-04-23 03:25 — STOP_LINE — Phase 3 People spawn live verification 단계에서 kit.exe silent crash 4회 연속 (자동 수정 4회 모두 실패). 자율 운영 정책 trigger #4 충족. STOP_LINE.md + docs/implementation_issues.md#i1 작성 후 사용자 결정 대기.
+- 2026-04-23 09:08 — STOP_LINE 업데이트 — 사용자 "다른 방식 시도" 명령에 따라 in-process character_service.load + Robot 우회 등 4가지 추가 시도. 모두 동일 silent crash. **환경 issue 확정** (`IMemoryBudgetManagerFactory acquired 100 times` GPU leak). Phase 3/4 코드 완료, 환경 회복 필요. issues.md#i2 + STOP_LINE.md 업데이트.
 
 ## 업데이트 프로토콜
 
