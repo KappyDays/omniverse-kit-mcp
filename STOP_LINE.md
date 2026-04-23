@@ -1,40 +1,77 @@
-# STOP_LINE — RESCINDED 2026-04-23 10:30
+# STOP_LINE — PR ready for review (Phase 6 Task 6.3 직전)
 
-## 회수 사유
-사용자 직접 검증 + 정확한 진단 도구 (PowerShell `Get-Process`, MCP `simulation_get_status`, `window_capture`) 사용 결과:
+## 트리거
+자율 운영 정책 종료 조건 — "Phase 6 Task 6.3 의 PR draft 직전까지 자율 수행. PR 생성은 사용자 승인 사안". Phase 0~6 완료, PR draft 생성 직전 정지.
 
-- **Kit 은 죽지 않았음** (이전 모든 silent crash 진단 false negative — `tasklist //FI` git bash issue)
-- **spawn 자체 동작** — `stage_load_usd` / `character_load` 직접 호출 시 stage 에 prim 정상 등록
-- **Walk→Sit 시퀀스 라이브 검증 완료** (character_load → play_animation Walk → arrival → play_animation_variant SitIdle)
+## 완료 요약
 
-진짜 issue 들 분리되어 `docs/implementation_issues.md#i3, #i4, #i5, #i6, #i7` 에 기록.
+| Phase | 상태 | Commit |
+|-------|------|--------|
+| 0 | ✅ Tier 0/1/2 제약 재검증 | `1a54cef` |
+| 1 | ✅ MCP +2 tools (navigation_sample_walkable_points, robot_drive_physics) | `8c88911` |
+| 2 | ✅ Extension 골격 + Load Warehouse + Bake (live) | `22600f2` |
+| 3 | ✅ Walk→Sit MCP 직접 동작 라이브 검증 | `fc2768c` |
+| 4 | ✅ drive_physics live (reached=true, 11.5m 이동) | `3633297` |
+| 5 | ✅ scenarios/smoke/navmesh_playground_e2e.yaml 25/25 PASSED + SSIM baseline | `6d8f468` |
+| 6 | ✅ QA_CHECKLIST + lessons-learned L7-L12 | `<HEAD>` |
 
-## 현재 상태 (commit `<TBD>`)
+## 검증 통과 증거
 
-| Phase | 상태 |
-|---|---|
-| 0 | ✅ 완료 (commit 1a54cef) |
-| 1 | ✅ 완료 (commit 8c88911, +2 MCP tool) |
-| 2 | ✅ 완료 (commit 22600f2, Load Warehouse + Bake live) |
-| 3 | 🟡 핵심 검증 OK (Walk→Sit MCP 직접) — Extension UI button I5 별도 수정 |
-| 4 | 🟡 코드 완료 + drive_physics fix I7 적용 — Kit restart 후 재검증 |
-| 5 | ⏳ scenarios YAML 작성 + SSIM baseline |
-| 6 | ⏳ QA + PR draft |
+- **pytest**: 357 passed
+- **drift test**: verify_mcp_sync.py green
+- **scenario**: 52.6s, 25 step PASSED (arrange 8 + act 6 + assert 5 + cleanup 6)
+- **MCP catalog**: 108 tools (+2 from Phase 1)
+- **Live artifacts**:
+  - `docs/artifacts/phase-2-extension/phase3_walk_then_sit_window.png`
+  - `docs/artifacts/phase-2-extension/phase4_robot_drive_window.png`
+  - `baselines/navmesh_playground/scenario_e2e.png` (SSIM bootstrap)
+- **Constraint validation**: `docs/constraint-validation-2026-04-23.md`
 
-## 다음 단계 결정 사항 (사용자 판단)
+## 새로 발견된 issue (commit 으로 기록됨)
 
-1. **Kit restart 후 Robot drive 검증** — `_drive_physics_coro` fix (ArticulationAction.joint_velocities) 가 stale closure 로 미반영. Kit restart 후 wheel rotation delta > 2 rad 검증.
-2. **Extension UI button I5 우회** — 옵션:
-   - (a) MCP 직접 동작 검증 (현재 패턴) — Extension UI 는 사용자 시연용
-   - (b) Extension 자체 REST endpoint 추가 (validation_api 의존 X) — claude curl 호출
-3. **Phase 5 진행** — scenarios YAML + SSIM baseline (mock test 가능)
+`docs/implementation_issues.md` 참조:
+- **I3** `tasklist //FI` (git bash) false negative
+- **I4** `stage_capture_snapshot` glob `*` 가 `/` 미매치
+- **I5** `extension_ui_invoke` callback inconsistency (hot-reload binding stale)
+- **I6** validation_api hot-reload module-level closure stale
+- **I7** `DifferentialController.forward()` Isaac Sim 5.1 ArticulationAction 반환
 
-## 진짜 issue 정리
+`isaac_extension/docs/lessons-learned.md` L7-L12 에 재발 방지 규칙으로 정리.
 
-- **I3** tasklist false negative — 정확 도구로 PowerShell `Get-Process` / MCP `simulation_get_status`
-- **I4** stage_capture_snapshot glob `*` 가 `/` 매치 안 함
-- **I5** extension_ui_invoke callback 호출 inconsistency (hot-reload binding stale)
-- **I6** validation_api hot-reload 가 module-level closure stale (Kit restart 필요)
-- **I7** DifferentialController.forward() Isaac Sim 5.1 ArticulationAction 반환
+## PR 생성 시 사용자 승인 필요
 
-이전 STOP_LINE I1, I2 의 진단 (silent crash 환경 issue) 는 **잘못된 진단** (tasklist false negative 영향). 진짜 issue 는 위 5개로 분리됨.
+자율 운영 정책상 **PR 생성 = 사용자 명시 승인 사안**. 다음 명령으로 사용자가 직접 생성:
+
+```bash
+gh pr create --title "feat: NavMesh Playground Extension (Phase J)" --body "$(cat <<'EOF'
+## Summary
+- Independent Kit Extension `omni.mycompany.navmesh_playground` — full_warehouse.usd 위에 People/Robot 을 random walkable 배치 후 Walk→Sit / NavMesh path drive
+- 신규 MCP tool 2 개: `navigation_sample_walkable_points`, `robot_drive_physics`
+- Phase 0 constraint validation report (Tier 0/1/2)
+- 25-step scenario YAML deep verification PASSED
+
+## Changes
+- isaac_extension/omni.mycompany.navmesh_playground/ (신규 ext, 8 file)
+- isaac_extension/omni.mycompany.validation_api/ (+2 services + REST endpoints)
+- src/isaacsim_mcp/{clients,modules,types,tools,scenario}/ (Phase 1 +2 tools, scenario action_registry)
+- scenarios/smoke/navmesh_playground_e2e.yaml (25-step e2e)
+- docs/constraint-validation-2026-04-23.md + artifacts
+- docs/implementation_issues.md (I3-I7)
+- isaac_extension/docs/lessons-learned.md (L7-L12)
+- baselines/navmesh_playground/scenario_e2e.png (SSIM)
+
+## Test plan
+- [x] uv run pytest tests/ — 357 passed
+- [x] scripts/verify_mcp_sync.py — green (108 tools)
+- [x] scripts/run_scenario_standalone.py scenarios/smoke/navmesh_playground_e2e.yaml — 25/25 PASSED (52.6s)
+- [x] Live MCP: character Walk→Sit (artifact phase3) + robot drive (phase4)
+- [ ] Manual QA: isaac_extension/omni.mycompany.navmesh_playground/QA_CHECKLIST.md (15 항목)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+## 자율 운영 종료
+
+본 STOP_LINE 이 자율 운영 정책 정상 종료 지점 (Phase 6 Task 6.3 PR draft 직전). 사용자 승인 시 위 `gh pr create` 명령 실행 또는 별도 review 후 결정.

@@ -179,7 +179,7 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 | P3 | People controller (Walk→Sit FSM) | 🟡 부분 완료 — Extension UI button callback 호출 inconsistency (I5); MCP 직접 동작 (`character_load + play_animation Walk + play_animation_variant SitIdle`) 으로 **Walk→Sit 시퀀스 라이브 검증** (4.18,-14.25→-6.68,-8.30 13m 이동, action=Sit, window_capture 확인) |
 | P4 | Robot controller (DifferentialController + Pure Pursuit) | ✅ 완료 — Kit restart 후 `drive_physics` 라이브 검증: `reached=true`, `final_distance_m=0.50`, `dof_names` 7 DOF 정확 (joint_wheel_left/right idx 1/2), wheel rotation 1.94 rad, Property translate X=-6.75 → 4.75 (11.5m 이동) |
 | P5 | Deep verification (Scenarios YAML + SSIM) | ✅ — `scenarios/smoke/navmesh_playground_e2e.yaml` 25 step PASS (52.6s, drive_robot 폴링 23.9s OK), pytest 357, drift test green, SSIM baseline 부트스트랩 |
-| P6 | QA manual + docs finalization | ⏳ |
+| P6 | QA manual + docs finalization | ✅ — `isaac_extension/omni.mycompany.navmesh_playground/QA_CHECKLIST.md` (15 항목) + `isaac_extension/docs/lessons-learned.md` L7-L12 추가 (Phase J 세션 교훈). PR draft 사용자 승인 사안 — STOP_LINE 으로 정지 |
 
 ### 진행 로그
 
@@ -191,6 +191,8 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 - 2026-04-23 09:08 — STOP_LINE 업데이트 — 사용자 "다른 방식 시도" 명령에 따라 in-process character_service.load + Robot 우회 등 4가지 추가 시도. 모두 동일 silent crash. **환경 issue 확정** (`IMemoryBudgetManagerFactory acquired 100 times` GPU leak). Phase 3/4 코드 완료, 환경 회복 필요. issues.md#i2 + STOP_LINE.md 업데이트.
 - 2026-04-23 10:30 — STOP_LINE 회수 (사용자 직접 검증으로). Kit 안 죽음 (I3), spawn 자체 동작. 진짜 issue 들 분리: I3 (tasklist false negative), I4 (glob), I5 (ui_invoke binding), I6 (hot-reload closure stale), I7 (DifferentialController.forward type 변경). MCP 직접 동작으로 Walk→Sit 라이브 검증 완료 — character_load/play_animation/play_animation_variant.
 - 2026-04-23 12:25 — Phase 4 라이브 완료 — Kit process restart 후 drive_physics: reached=true, 11.5m 이동, wheel_right 1.94 rad. validation_api ext disable+activate 만으로는 module unload 안 됨 (I6 확정), Kit restart 가 유일.
+- 2026-04-23 12:54 — Phase 5 완료 — scenarios/smoke/navmesh_playground_e2e.yaml 25/25 PASSED (52.6s). action_registry +2 (sample_walkable_points, drive_physics). standalone runner 패치 (18 modules wire). pytest 357, drift test green, SSIM baseline 부트스트랩.
+- 2026-04-23 13:10 — Phase 6 완료 — QA_CHECKLIST.md (15 항목), lessons-learned L7-L12 (tasklist false negative, ui_invoke binding, hot-reload closure, DifferentialController 5.1, CreatePayloadCommand silent fail, glob limit). PR draft 사용자 승인 대기 (STOP_LINE).
 
 ## 업데이트 프로토콜
 
