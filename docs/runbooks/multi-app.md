@@ -55,7 +55,7 @@ powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name
 ```
 
 CommandLine 에 `--ext-folder` 와 `--enable omni.mycompany.validation_api`
-둘 다 있어야 함. 없으면 `process_module.py::start` 의 cmd 배열 빌드 회귀.
+둘 다 있어야 함. 없으면 `src/isaacsim_mcp/modules/process_module.py::ProcessModule` start cmd 배열 빌드 회귀.
 
 **복구**: stop + start 사이클 후 재진단. 여전히 문제면 Level C.
 
@@ -122,7 +122,7 @@ cmd //c "setup\\setup-isaacsim-mcp.bat"
 - Invariants: `docs/invariants/multi-app.md`
 - Code SoT:
   - `src/isaacsim_mcp/modules/process_module.py`
-  - `isaac_extension/omni.mycompany.validation_api/.../_app_features.py`
+  - `isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/_app_features.py`
 - Live smoke:
   - `scripts/verify_multi_instance.py`
   - `scripts/verify_multi_app.py`
