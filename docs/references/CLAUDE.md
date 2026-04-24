@@ -19,8 +19,9 @@
 1. `extensions-catalog.md` 에서 키워드로 Ctrl+F. 후보 ext 식별.
 2. 각 후보의 `mcp_extension_idea` 확인.
 3. `testbed-snapshot/03-api-patterns.md` 에서 해당 도메인 섹션 읽기.
-4. 해당 ext 의 실제 소스 (`C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/<source>/<ext>/`) 열어서 확인.
-5. `testbed-snapshot/nvidia-docs/` 에 관련 공식 문서 있으면 참고.
+4. `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/standalone_examples/` (api/ · benchmarks/ · data/) 에서 해당 ext 의 통합 사용 예제 확인 — 실동작 호출 패턴이 03-api-patterns 보다 더 구체적.
+5. 해당 ext 의 실제 소스 (`C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/<source>/<ext>/`) 열어서 확인.
+6. `testbed-snapshot/nvidia-docs/` 에 관련 공식 문서 있으면 참고.
 
 ## 센서 요청 응답 순서
 

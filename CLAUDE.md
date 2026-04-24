@@ -16,6 +16,7 @@
 |---|---|
 | USD 로드 (`stage_load_usd` / `robot_load` / `character_load` / `stage_open`) | `docs/invariants/usd-load.md` |
 | Isaac Sim 기동/종료/hang | `docs/invariants/process-lifecycle.md` |
+| 새 MCP tool 기능 research (사전) | `docs/references/CLAUDE.md` |
 | 새 MCP tool 추가 | `docs/invariants/mcp-tool-add.md` |
 | 새 module / scenario action | `docs/invariants/module-add.md` |
 | Extension `.py` 수정 / reload | `docs/invariants/ext-reload.md` |
