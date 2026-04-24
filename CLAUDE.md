@@ -23,6 +23,7 @@
 | Extension UI automation (`extension_ui_invoke`) | `docs/invariants/ui-invoke.md` |
 | Scenario YAML 저작 | `docs/invariants/scenario-validation.md` |
 | Multi-app 추가 / Kit app profile 수정 | `docs/invariants/multi-app.md` |
+| Kit / app 버전 업뎃 후 catalog sync | `docs/references/CLAUDE.md` "Kit / app 업데이트" 섹션 |
 
 장애 진단은 `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · hub-orphan · env-sub-config). Phase 히스토리는 `docs/phase-a-validation-report.md` … `docs/phase-h-validation-report.md`. Tool name SoT 는 `tests/unit/test_tools_registration.py` frozenset.
 
