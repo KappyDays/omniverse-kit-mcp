@@ -169,10 +169,20 @@ $Profiles = @(
 )
 
 function Make-McpEntry($ProfileName, $InstanceId) {
+    # --no-sync is CRITICAL for multi-instance: every `uv run` without it
+    # triggers `uv sync`, which tries to reinstall the editable isaacsim-mcp
+    # package. When multiple MCP servers run simultaneously (6 entries), each
+    # sync competes to replace the same `.venv/Scripts/isaacsim-mcp.exe` —
+    # the first one wins (locks it), every subsequent sync fails with
+    # "The process cannot access the file because it is being used by another
+    # process", and `uv run isaacsim-mcp` never spawns the server. Claude
+    # Code then reports "Failed to reconnect" for those entries.
+    # Setup script step 2 already runs `uv sync` once, so --no-sync here is
+    # safe.
     return [PSCustomObject]@{
         type    = "stdio"
         command = "cmd"
-        args    = @("/c", "uv", "--directory", ($RepoDir -replace '\\', '/'), "run", "isaacsim-mcp")
+        args    = @("/c", "uv", "--directory", ($RepoDir -replace '\\', '/'), "run", "--no-sync", "isaacsim-mcp")
         env     = [PSCustomObject]@{
             ISAAC_MCP_APP_PROFILE = $ProfileName
             ISAAC_MCP_INSTANCE_ID = "$InstanceId"
