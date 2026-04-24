@@ -19,12 +19,32 @@ from typing import Any
 ISAAC_SIM_ROOT = Path(
     "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64"
 )
+USD_COMPOSER_ROOT = Path(
+    "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release"
+)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_JSON = PROJECT_ROOT / "docs" / "references" / "extensions.json"
 PROGRESS_JSON = PROJECT_ROOT / "docs" / "references" / "harvest-progress.json"
 
+# v1 defaults (Isaac Sim only — preserved for bootstrap() backward compat).
 SOURCE_DIRS = ("exts", "extscache", "extsDeprecated")
 EXPECTED_COUNTS = {"exts": 97, "extscache": 452, "extsDeprecated": 72}
+
+# v2: multi-app config (primary path via run_multi_app_harvest).
+APP_ROOTS: dict[str, dict[str, Any]] = {
+    "isaacsim": {
+        "root": ISAAC_SIM_ROOT,
+        "source_dirs": ("exts", "extscache", "extsDeprecated"),
+        "kit_version": "107.3.3",
+        "app_version": "5.1.0-rc.19",
+    },
+    "usd_composer": {
+        "root": USD_COMPOSER_ROOT,
+        "source_dirs": ("exts", "extscache", "extsbuild"),
+        "kit_version": "110.0-110.1",
+        "app_version": "kit-app-template",
+    },
+}
 
 # VERSION_TAG_RE: 디렉토리명 뒤의 `-<digit>.<digit>...` 이후를 버전 태그로 간주.
 # 주의: `omni.kit.loop-isaac` 처럼 `-<alpha>` 인 경우는 제거 안 함 (정규식 뒤에 \d 요구).
@@ -78,6 +98,26 @@ DOMAIN_RULES: list[tuple[str, list[re.Pattern[str]]]] = [
     ]),
     ("XR (VR/AR)", [
         re.compile(r"^(omni\.kit\.xr|isaacsim\.xr)\..*$"),
+    ]),
+    ("Procedural Generation", [
+        re.compile(r"^omni\.genproc(\..*)?$"),
+    ]),
+    ("Scene Optimization", [
+        re.compile(r"^omni\.scene\.(optimizer|visualization)(\..*)?$"),
+    ]),
+    ("Configurator", [
+        re.compile(r"^omni\.configurator.*$"),
+        re.compile(r"^omni\.kit\.browser\.configurator_samples$"),
+    ]),
+    ("No-Code UI", [
+        re.compile(r"^omni\.no_code_ui(\..*)?$"),
+        re.compile(r"^omni\.kit\.data2ui(\..*)?$"),
+    ]),
+    ("Lighting Rigs", [
+        re.compile(r"^omni\.light_rigs$"),
+    ]),
+    ("USD Schemas (extended)", [
+        re.compile(r"^omni\.usd\.schema\.(omni_projectors|physical_lighting|playback|usd_particle_field|omni_lens_distortion|omni_sensors|scene\.visualization|sequence|semantics|metrics\.assembler|flow|geospatial|audio|omnigraph|omniscripting|render_settings\.rtx)$"),
     ]),
     ("Kit Viewport & Manipulator", [
         re.compile(r"^omni\.kit\.viewport(\.|_).*$"),
@@ -246,6 +286,282 @@ def make_error_entry(ext_dir: Path, source_dir_name: str, reason: str) -> dict[s
     }
 
 
+# =====================================================================
+# v2 Multi-App section — new primary path (see schema-design.md)
+# =====================================================================
+
+# Fields that stay top-level (app-agnostic) in v2.
+AGNOSTIC_FIELDS = (
+    "name",
+    "category",
+    "title",
+    "summary",
+    "keywords",
+    "public_modules",
+    "key_symbols",
+    "raw_description",
+    "readme_excerpt",
+    "testbed_refs",
+    "enrichment_status",
+    "skipped_reason",
+    "enriched_at",
+)
+
+
+def _v2_app_record(v1_or_parsed: dict[str, Any]) -> dict[str, Any]:
+    """Build an apps.<app> record from a v1-shape parsed entry."""
+    return {
+        "present": True,
+        "source_dir": v1_or_parsed.get("source_dir"),
+        "raw_dirname": v1_or_parsed.get("raw_dirname"),
+        "path": v1_or_parsed.get("path"),
+        "version": v1_or_parsed.get("version"),
+        "dependencies": v1_or_parsed.get("dependencies") or [],
+        "deprecated": v1_or_parsed.get("source_dir") == "extsDeprecated",
+        "harvested_at": v1_or_parsed.get("harvested_at"),
+    }
+
+
+def migrate_v1_to_v2(v1_entry: dict[str, Any]) -> dict[str, Any]:
+    """Transform a legacy single-app entry into the dual-app schema.
+
+    Preserves enrichment and agnostic fields. Renames ``mcp_extension_idea`` →
+    ``mcp_research_hint``. All Isaac Sim per-app metadata moves under
+    ``apps.isaacsim``.
+    """
+    v2 = {k: v1_entry.get(k) for k in AGNOSTIC_FIELDS}
+    v2["mcp_research_hint"] = v1_entry.get("mcp_extension_idea")
+    v2["api_delta_note"] = None
+    v2["apps"] = {"isaacsim": _v2_app_record(v1_entry)}
+    return v2
+
+
+def parse_single_extension_v2(
+    ext_dir: Path, source_dir_name: str, app_name: str
+) -> dict[str, Any]:
+    """Parse an extension dir and wrap it as a v2 entry for the given app."""
+    v1 = parse_single_extension(ext_dir, source_dir_name)
+    v2 = {k: v1.get(k) for k in AGNOSTIC_FIELDS}
+    v2["mcp_research_hint"] = v1.get("mcp_extension_idea")
+    v2["api_delta_note"] = None
+    v2["apps"] = {app_name: _v2_app_record(v1)}
+    return v2
+
+
+def make_error_entry_v2(
+    ext_dir: Path, source_dir_name: str, app_name: str, reason: str
+) -> dict[str, Any]:
+    v1 = make_error_entry(ext_dir, source_dir_name, reason)
+    v2 = {k: v1.get(k) for k in AGNOSTIC_FIELDS}
+    v2["mcp_research_hint"] = None
+    v2["api_delta_note"] = None
+    v2["apps"] = {app_name: _v2_app_record(v1)}
+    return v2
+
+
+def _version_major_minor(version_str: str | None) -> str | None:
+    """Extract leading X.Y from a pdm-style version string.
+
+    ``107.3.26+107.3.3.cp311.u353`` → ``107.3``.
+    """
+    if not version_str:
+        return None
+    m = re.match(r"^(\d+\.\d+)", version_str)
+    return m.group(1) if m else version_str
+
+
+def detect_api_delta(apps_map: dict[str, Any]) -> str | None:
+    """Flag when major.minor versions differ across apps (patch diffs ignored).
+
+    Returns a human-readable note, or ``None`` when versions align.
+    """
+    majors = {
+        app: _version_major_minor(data.get("version"))
+        for app, data in apps_map.items()
+        if data.get("version")
+    }
+    distinct = {v for v in majors.values() if v}
+    if len(distinct) > 1:
+        return f"major.minor differs: {majors}"
+    return None
+
+
+def merge_entry(base: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    """Merge `incoming` into `base` at the ext-name level (union of apps)."""
+    merged = dict(base)
+    merged["apps"] = {**base.get("apps", {}), **incoming.get("apps", {})}
+    # Prefer base's agnostic values (already enriched for Isaac Sim catalog);
+    # fall back to incoming where base is empty.
+    for f in AGNOSTIC_FIELDS:
+        if not merged.get(f) and incoming.get(f):
+            merged[f] = incoming[f]
+    if not merged.get("mcp_research_hint") and incoming.get("mcp_research_hint"):
+        merged["mcp_research_hint"] = incoming["mcp_research_hint"]
+    # Recompute api_delta_note from unioned apps map.
+    merged["api_delta_note"] = detect_api_delta(merged["apps"])
+    return merged
+
+
+def harvest_app(app_name: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Walk an app's source dirs and parse every extension.
+
+    Returns ``(entries, errors)``. Entries are v2-shape with only the given
+    app populated in ``apps``.
+    """
+    cfg = APP_ROOTS[app_name]
+    entries: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    for source_dir_name in cfg["source_dirs"]:
+        source_dir = cfg["root"] / source_dir_name
+        if not source_dir.exists():
+            errors.append({
+                "app": app_name,
+                "source_dir": source_dir_name,
+                "message": f"source dir missing: {source_dir}",
+                "severity": "warning",
+            })
+            continue
+        for ext_dir in sorted(source_dir.iterdir()):
+            if not ext_dir.is_dir():
+                continue
+            try:
+                entry = parse_single_extension_v2(ext_dir, source_dir_name, app_name)
+            except Exception as exc:  # noqa: BLE001
+                errors.append({
+                    "app": app_name,
+                    "source_dir": source_dir_name,
+                    "ext": ext_dir.name,
+                    "message": str(exc),
+                    "severity": "error",
+                })
+                entry = make_error_entry_v2(ext_dir, source_dir_name, app_name, str(exc))
+            entries.append(entry)
+    return entries, errors
+
+
+def _build_catalog_v2(
+    entries: list[dict[str, Any]], errors: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """Compose v2 catalog with multi-app metadata block."""
+    isaacsim_only = sum(1 for e in entries if set(e["apps"]) == {"isaacsim"})
+    usd_only = sum(1 for e in entries if set(e["apps"]) == {"usd_composer"})
+    both = sum(
+        1 for e in entries if "isaacsim" in e["apps"] and "usd_composer" in e["apps"]
+    )
+    api_delta = sum(1 for e in entries if e.get("api_delta_note"))
+
+    per_app_source_counts: dict[str, dict[str, int]] = {}
+    for app_name in APP_ROOTS:
+        counts: dict[str, int] = {}
+        for e in entries:
+            rec = e["apps"].get(app_name)
+            if not rec:
+                continue
+            sd = rec.get("source_dir") or "unknown"
+            counts[sd] = counts.get(sd, 0) + 1
+        per_app_source_counts[app_name] = counts
+
+    return {
+        "metadata": {
+            "generated_at": dt.datetime.now(dt.UTC).isoformat(),
+            "generator_version": "harvest_extension_metadata.py@2.0",
+            "schema_version": 2,
+            "apps": {
+                app: {
+                    "root": cfg["root"].as_posix(),
+                    "kit_version": cfg["kit_version"],
+                    "app_version": cfg["app_version"],
+                    "source_dirs": list(cfg["source_dirs"]),
+                }
+                for app, cfg in APP_ROOTS.items()
+            },
+            "total_extensions": len(entries),
+            "distribution": {
+                "isaacsim_only": isaacsim_only,
+                "usd_composer_only": usd_only,
+                "both_apps": both,
+                "api_delta_detected": api_delta,
+            },
+            "source_counts_per_app": per_app_source_counts,
+            "last_enriched_at": max(
+                (e.get("enriched_at") for e in entries if e.get("enriched_at")),
+                default=None,
+            ),
+            "harvest_errors": errors or [],
+        },
+        "extensions": entries,
+    }
+
+
+def run_multi_app_harvest(preserve_enrichment: bool = True) -> None:
+    """Produce the v2 ``extensions.json`` combining all configured apps.
+
+    If ``preserve_enrichment`` and an existing v1 catalog is present, that
+    catalog is migrated in place (keeping ``enrichment_status=enriched``
+    entries with their manual summaries/hints). Isaac Sim extensions are NOT
+    re-harvested — migration is trusted as equivalent. USD Composer (and
+    future apps) are harvested fresh.
+    """
+    CATALOG_JSON.parent.mkdir(parents=True, exist_ok=True)
+
+    by_name: dict[str, dict[str, Any]] = {}
+    migrated = 0
+    harvested_per_app: dict[str, int] = {}
+    all_errors: list[dict[str, Any]] = []
+
+    # Step 1 — migrate existing catalog if requested.
+    if preserve_enrichment and CATALOG_JSON.exists():
+        try:
+            existing = json.loads(CATALOG_JSON.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            existing = {"extensions": []}
+        for raw in existing.get("extensions", []):
+            if "apps" in raw:  # already v2 — keep as is
+                by_name[raw["name"]] = raw
+            else:
+                by_name[raw["name"]] = migrate_v1_to_v2(raw)
+                migrated += 1
+
+    # Step 2 — fresh harvest for each app (USD Composer only, unless the
+    # existing catalog lacks the Isaac Sim half of the data).
+    for app_name in APP_ROOTS:
+        if app_name == "isaacsim" and migrated > 0:
+            # Isaac Sim already present via migration — skip re-harvest.
+            continue
+        app_entries, app_errors = harvest_app(app_name)
+        harvested_per_app[app_name] = len(app_entries)
+        all_errors.extend(app_errors)
+        for entry in app_entries:
+            name = entry["name"]
+            if name in by_name:
+                by_name[name] = merge_entry(by_name[name], entry)
+            else:
+                by_name[name] = entry
+
+    # Step 3 — recompute api_delta for all dual-app entries (defensive).
+    for e in by_name.values():
+        e["api_delta_note"] = detect_api_delta(e["apps"])
+
+    entries = sorted(by_name.values(), key=lambda x: x["name"])
+    catalog = _build_catalog_v2(entries, all_errors)
+    CATALOG_JSON.write_text(
+        json.dumps(catalog, indent=2, sort_keys=True, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(
+        f"[multi-app harvest] migrated={migrated}  "
+        f"harvested_per_app={harvested_per_app}  "
+        f"total={len(entries)}  "
+        f"errors={len(all_errors)}"
+    )
+    print(
+        f"  distribution: isaacsim_only={catalog['metadata']['distribution']['isaacsim_only']}  "
+        f"usd_composer_only={catalog['metadata']['distribution']['usd_composer_only']}  "
+        f"both={catalog['metadata']['distribution']['both_apps']}  "
+        f"api_delta={catalog['metadata']['distribution']['api_delta_detected']}"
+    )
+
+
 def _build_catalog(entries: list[dict[str, Any]]) -> dict[str, Any]:
     source_counts = {"exts": 0, "extscache": 0, "extsDeprecated": 0}
     for e in entries:
@@ -366,12 +682,28 @@ def bootstrap(resume: bool = False) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    parser.add_argument(
+        "--mode",
+        choices=["multi-app", "v1-bootstrap"],
+        default="multi-app",
+        help="multi-app (default): migrate existing v1 catalog + harvest USD Composer fresh. "
+             "v1-bootstrap (legacy): Isaac Sim single-app harvest.",
+    )
     parser.add_argument("--resume", action="store_true",
-                        help="기존 extensions.json 의 엔트리 보존하고 누락된 것만 추가")
+                        help="v1-bootstrap 에서만 유효. 기존 extensions.json 엔트리 보존.")
+    parser.add_argument(
+        "--no-preserve-enrichment",
+        action="store_true",
+        help="multi-app 에서 기존 v1 엔트리 migration 을 건너뛰고 전수 재수확 (파괴적).",
+    )
     args = parser.parse_args()
-    bootstrap(resume=args.resume)
-    print(f"Bootstrap complete. See {CATALOG_JSON.as_posix()}")
+    if args.mode == "v1-bootstrap":
+        bootstrap(resume=args.resume)
+        print(f"v1 bootstrap complete. See {CATALOG_JSON.as_posix()}")
+    else:
+        run_multi_app_harvest(preserve_enrichment=not args.no_preserve_enrichment)
+        print(f"Multi-app harvest complete. See {CATALOG_JSON.as_posix()}")
     return 0
 
 
