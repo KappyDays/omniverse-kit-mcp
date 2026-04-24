@@ -139,10 +139,10 @@ function Save-JsonFile {
     }
 }
 
-# ── Step 4: Register in ~/.claude.json ──────────────────────────────────────
+# ── Step 4: Register in ~/.claude.json (multi-instance × multi-app) ──────
 
 Write-Host ""
-Write-Host "[ 4/4 ] Registering MCP server in $ClaudeJson ..." -ForegroundColor Yellow
+Write-Host "[ 4/4 ] Registering MCP servers in $ClaudeJson ..." -ForegroundColor Yellow
 
 if (Test-Path $ClaudeJson) {
     try {
@@ -159,24 +159,59 @@ if (-not $claudeConfig.PSObject.Properties['mcpServers']) {
     $claudeConfig | Add-Member -MemberType NoteProperty -Name 'mcpServers' -Value ([PSCustomObject]@{})
 }
 
-# uv --directory <repo> run isaacsim-mcp  (wrapped in cmd /c for Windows MCP)
-$mcpEntry = [PSCustomObject]@{
-    type    = "stdio"
-    command = "cmd"
-    args    = @("/c", "uv", "--directory", ($RepoDir -replace '\\', '/'), "run", "isaacsim-mcp")
-    env     = [PSCustomObject]@{}
+# Multi-instance × multi-app matrix. Profile base ports:
+#   isaac-sim     -> 8011, 8012, 8013
+#   usd-composer  -> 8014, 8015, 8016
+$InstanceCount = 3
+$Profiles = @(
+    @{ name = "isaac-sim";    prefix = "isaacsim-mcp" },
+    @{ name = "usd-composer"; prefix = "usdcomposer-mcp" }
+)
+
+function Make-McpEntry($ProfileName, $InstanceId) {
+    return [PSCustomObject]@{
+        type    = "stdio"
+        command = "cmd"
+        args    = @("/c", "uv", "--directory", ($RepoDir -replace '\\', '/'), "run", "isaacsim-mcp")
+        env     = [PSCustomObject]@{
+            ISAAC_MCP_APP_PROFILE = $ProfileName
+            ISAAC_MCP_INSTANCE_ID = "$InstanceId"
+        }
+    }
 }
 
-if ($claudeConfig.mcpServers.PSObject.Properties[$McpName]) {
-    $claudeConfig.mcpServers.$McpName = $mcpEntry
-    Write-Host "  [OK]   Updated existing '$McpName' entry." -ForegroundColor Green
-} else {
-    $claudeConfig.mcpServers | Add-Member -MemberType NoteProperty -Name $McpName -Value $mcpEntry
-    Write-Host "  [OK]   Added new '$McpName' entry." -ForegroundColor Green
+function Set-McpEntry($EntryName, $Entry) {
+    if ($claudeConfig.mcpServers.PSObject.Properties[$EntryName]) {
+        $claudeConfig.mcpServers.$EntryName = $Entry
+        Write-Host "  [OK]   Updated '$EntryName'" -ForegroundColor Green
+    } else {
+        $claudeConfig.mcpServers | Add-Member -MemberType NoteProperty -Name $EntryName -Value $Entry
+        Write-Host "  [OK]   Added   '$EntryName'" -ForegroundColor Green
+    }
 }
+
+foreach ($prof in $Profiles) {
+    for ($i = 1; $i -le $InstanceCount; $i++) {
+        $entryName = "$($prof.prefix)-$i"
+        Set-McpEntry $entryName (Make-McpEntry $prof.name $i)
+    }
+}
+
+# Legacy alias 'isaacsim-mcp' → isaac-sim instance 1 (backward compat)
+Set-McpEntry "isaacsim-mcp" (Make-McpEntry "isaac-sim" 1)
 
 Save-JsonFile -Data $claudeConfig -Path $ClaudeJson
 Write-Host "  [OK]   Saved to $ClaudeJson" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "  Registered MCP servers:" -ForegroundColor White
+Write-Host "    isaacsim-mcp          (alias -> isaac-sim instance 1, port 8011)" -ForegroundColor DarkGray
+foreach ($i in 1..$InstanceCount) {
+    Write-Host "    isaacsim-mcp-$i       (isaac-sim instance $i, port $(8010 + $i))" -ForegroundColor DarkGray
+}
+foreach ($i in 1..$InstanceCount) {
+    Write-Host "    usdcomposer-mcp-$i    (usd-composer instance $i, port $(8013 + $i))" -ForegroundColor DarkGray
+}
 
 # ── Done ────────────────────────────────────────────────────────────────────
 
@@ -186,10 +221,12 @@ Write-Host "   Isaac Sim MCP setup complete!                       " -Foreground
 Write-Host "======================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor White
-Write-Host "  1. Open Isaac Sim" -ForegroundColor Cyan
-Write-Host "  2. Window > Extensions > search 'Validation'" -ForegroundColor Cyan
-Write-Host "     Add search path: $RepoDir\isaac_extension" -ForegroundColor DarkGray
-Write-Host "  3. Enable 'Validation API Extension'" -ForegroundColor Cyan
-Write-Host "  4. Verify: http://localhost:8011/validation/v1/health" -ForegroundColor Cyan
-Write-Host "  5. Restart Claude Code to activate the MCP server" -ForegroundColor Cyan
+Write-Host "  1. Ensure Isaac Sim installed at:" -ForegroundColor Cyan
+Write-Host "     C:\Users\$env:USERNAME\workspace\branch\isaac-sim-standalone-5.1.0-windows-x86_64\" -ForegroundColor DarkGray
+Write-Host "  2. Ensure USD Composer built at:" -ForegroundColor Cyan
+Write-Host "     C:\Users\$env:USERNAME\workspace\branch\kit-app-template\_build\windows-x86_64\release\" -ForegroundColor DarkGray
+Write-Host "  3. Restart Claude Code to pick up new MCP entries" -ForegroundColor Cyan
+Write-Host "  4. In Claude Code, use tools prefixed:" -ForegroundColor Cyan
+Write-Host "     mcp__isaacsim-mcp-N__*      for Isaac Sim instance N" -ForegroundColor DarkGray
+Write-Host "     mcp__usdcomposer-mcp-N__*   for USD Composer instance N" -ForegroundColor DarkGray
 Write-Host ""
