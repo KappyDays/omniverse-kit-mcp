@@ -84,6 +84,19 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 
 `extensions.json` 를 local 쿼리하는 `extension_search(keyword, app, category, limit)` MCP tool. 구현: `src/isaacsim_mcp/modules/catalog_module.py` (+ `tools/module_tools.py` 등록). Isaac Sim / REST 의존 없음 — MCP 서버 프로세스 내부에서 JSON 1회 load 후 cache. 상세 사용법은 `src/isaacsim_mcp/tools/CLAUDE.md` Catalog 섹션 참조.
 
+## Kit / app 업데이트 후 catalog 동기화 workflow
+
+Kit 107.3 → 110.x 같은 버전 bump 또는 Isaac Sim / USD Composer 설치 갱신 후:
+
+1. `uv run python scripts/diff_catalog.py --verbose` — 현재 catalog ↔ fresh harvest 비교. added / removed / version_bumped / category_changed 출력. 변경 없으면 종료.
+2. `uv run pytest tests/unit/test_catalog_integrity.py -q` — schema invariants 통과 확인 (required field / enrichment_status / source_dir allowlist / unique name / kit/extscore dual-app).
+3. 변경이 의미 있으면 `uv run python scripts/harvest_extension_metadata.py` — `preserve_enrichment=True` 로 기존 수동 enrichment 유지하면서 재수확.
+4. `uv run python scripts/render_catalog_md.py` — markdown 재생성.
+5. diff 에서 나온 added 목록을 enrichment 대상으로 처리 (Phase A 패턴: summary + key_symbols + mcp_research_hint). removed 는 `enrichment_status="skipped"` + `skipped_reason="removed_from_install"` 로 전환 (수동).
+6. commit pattern: `chore(catalog): Kit <old> → <new> sync — <N added / M removed>`.
+
+**새 세션에 위임 시** (Claude Code): "Kit 업데이트됐어 — catalog sync 해줘" 요청 후, 위 1~6 단계를 자율 실행. `APP_ROOTS` 의 `kit_version` / `app_version` 상수도 함께 업데이트 필요 (`scripts/harvest_extension_metadata.py`).
+
 ## 관련 경계
 
 - 상위 문서 루트: `../CLAUDE.md`
