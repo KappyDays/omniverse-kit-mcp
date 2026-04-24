@@ -31,7 +31,7 @@
    - Isaac Sim: `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/<source_dir>/<ext>/` (source_dir = `exts` / `extscache` / ~~`extsDeprecated`~~ 참조 금지 → `app-specific/isaacsim-deprecated.md` 매핑으로 modern 대체 찾기)
    - USD Composer: `C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/<source_dir>/<ext>/` (source_dir = `exts` / `extscache` / `extsbuild`)
    - **`api_delta_note` 있으면 양쪽 소스 diff 필수**: Kit 버전 상이로 signature 가 다를 수 있음.
-   - **Command 패턴 search 팁**: 많은 ext 는 `omni.kit.commands.execute("<CommandName>", **kwargs)` 형태로 일회성 작업을 노출한다. 이름 검색: 카탈로그에서 `.commands` 로 끝나는 ext (예: `omni.kit.commands`, `omni.physx.commands`, `omni.fabric.commands`, `omni.kit.graph.usd.commands`) 를 찾아 `commands/` 디렉토리 또는 Python 모듈의 `Command` 서브클래스 탐색. 예: `isaacsim.asset.gen.conveyor` 가 노출하는 `CreateConveyorBelt` Command 는 MCP 에서 1줄 호출로 재사용 가능.
+   - **Command 패턴 search 팁**: 많은 ext 는 `omni.kit.commands.execute("<CommandName>", **kwargs)` 형태로 일회성 작업을 노출한다. 후보 탐색: MCP 의 `extension_search("<keyword>")` 로 관련 ext 조회 → `.commands` 로 끝나는 것 우선 (예: `omni.kit.commands`, `omni.physx.commands`, `omni.fabric.commands`, `omni.kit.graph.usd.commands`). 실행: MCP 의 `kit_command_execute("<CommandName>", payload)` 로 1줄 호출 (예: `isaacsim.asset.gen.conveyor` 의 `CreateConveyorBelt`).
 6. **공식 문서**: `testbed-snapshot/nvidia-docs/` 에 관련 문서 있으면 참고.
 
 ## 센서 요청 응답 순서
