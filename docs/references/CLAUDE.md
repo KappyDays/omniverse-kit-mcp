@@ -86,12 +86,7 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 
 ## Kit / app 업데이트 후 catalog 동기화
 
-**Canonical 절차**: `.claude/skills/catalog-sync/SKILL.md` (user-invocable skill). Kit / Isaac Sim / USD Composer 설치 갱신 후 사용자가 `/catalog-sync` 또는 "catalog sync 해줘" 입력하면 해당 skill 이 load 되어 6-step workflow 실행 (diff → integrity → harvest → render → enrichment → commit). 상세 절차·invariants·red-flag 는 SKILL.md 참조 — 여기서는 중복 기술 않음.
-
-진입 빠른 요약 (human reference 용):
-- `scripts/diff_catalog.py` 로 변화 점검 → 변화 있으면 skill 호출
-- 변경 반영은 `preserve_enrichment=True` 로 기존 manual enrichment 보존
-- `APP_ROOTS` 상수 (kit_version / app_version) 업데이트 필요 시 사용자 input 받음
+Canonical 절차는 `/catalog-sync` skill (`.claude/skills/catalog-sync/SKILL.md`). Kit / Isaac Sim / USD Composer 설치 갱신 시 사용자가 호출 → 6-step workflow (diff → integrity → harvest → render → enrichment → commit). 절차·invariants·stop-condition 은 SKILL.md 가 SoT.
 
 ## 관련 경계
 
