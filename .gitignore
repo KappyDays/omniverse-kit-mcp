@@ -68,3 +68,10 @@ docs/artifacts/**/*.json
 
 # Phase H replicator scenario output (default output_dir for replicator_create_writer)
 _temp_sdg/
+
+# Worktree dir (future use; keep ignored even if we don't create one now)
+.worktrees/
+
+# Standalone script artifacts (kit log copies / verify results)
+docs/artifacts/multi-instance-smoke/
+docs/artifacts/multi-app-smoke/
