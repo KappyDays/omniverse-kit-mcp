@@ -43,7 +43,9 @@ Thumbs.db
 state/
 
 # Claude Code runtime state (scheduled_tasks.lock etc. — not project code)
-.claude/
+.claude/*
+# Exception: project-local skills should be shared across sessions/teammates
+!.claude/skills/
 
 # Local log files (kit.exe stdout redirect lands in %TEMP%, but catch any that slip into repo)
 *.log
