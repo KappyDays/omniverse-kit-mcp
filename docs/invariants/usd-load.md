@@ -19,6 +19,8 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 
 카탈로그 SoT: `isaac_course/docs/asset_inventory.md` 진입점 + `isaac_course/docs/assets/*.md`.
 
+**Extension 개발 시 방어 레시피**: MCP 서버가 아닌 Extension 에서 S3 MDL-heavy asset (office / warehouse / nova_carter / Biped_Setup) 을 로드할 때는 log_capture disable + `run_coroutine` + `CreatePayloadCommand instanceable=True` 3-요소 패턴을 **복사**해서 사용. 상세: `isaac_extension/docs/usd-load-deadlock-recipe.md`.
+
 ### 2. `log_capture.start()` 호출 금지
 
 - Extension `on_startup` 에서 `self._log_capture = None` 유지 (request-scoped refactor 전까지)

@@ -12,6 +12,7 @@ R1/R1a/R2/R3 위반 시 검증 결과는 무효.
   - `.../Environments/Office/Props/SM_Armchair.usd`
   - `.../Robots/NVIDIA/NovaCarter/nova_carter.usd`
   - `.../People/Characters/Biped_Setup.usd`
+- **SoT 카탈로그** (전체 S3 URL 목록): `isaac_course/docs/asset_inventory.md` + `isaac_course/docs/assets/*.md` — scenario 저작 전 후보 asset 선택 진입점
 
 ### 이유 (실측 False Positive)
 
