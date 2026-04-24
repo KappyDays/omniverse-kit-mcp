@@ -1,5 +1,7 @@
 <!-- Parent: ../../CLAUDE.md -->
 <!-- Scope: isaac_sim_start / isaac_sim_stop / isaac_sim_restart 작업 시작 전 필수 숙지 -->
+<!-- Multi-app context: 이 문서의 "kit.exe" 는 모든 app profile 에 동일하게 적용됨.
+     Profile 별 launch 차이는 `docs/invariants/multi-app.md` 참조. -->
 # Process Lifecycle — Invariants
 
 이 MCP 서버의 모든 stage / viewport / character / robot / sensor / scenario tool 은
