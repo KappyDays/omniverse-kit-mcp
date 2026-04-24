@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 110
+**Tool count**: 111
 
 ## Table of contents
 
@@ -11,7 +11,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
 - [Simulation — timeline](#simulation--timeline) — 4 tools
 - [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 9 tools
-- [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 6 tools
+- [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 11 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
 - [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 8 tools
@@ -466,6 +466,29 @@ alone (use viewport_capture). wait_stable polls pixel diffs for async UI.
 | `stable_consecutive` | `integer` | `2` |  |
 | `stable_max_wait_s` | `number` | `45.0` |  |
 | `stable_diff_threshold` | `number` | `0.01` |  |
+
+### `window_capture_sequence`
+
+```python
+window_capture_sequence(num_frames: 'int' = 10, interval_s: 'float' = 0.5, hwnd: 'int | None' = None, bring_to_front: 'bool' = False, use_client_rect: 'bool' = False, settle_frames: 'int' = 3) -> 'str'
+```
+
+Capture N full-window frames at `interval_s` spacing for motion verification.  Wraps
+window_capture in a fixed-rate loop — used to record dynamic scenes (robot pick sequence,
+conveyor cube transit, hover highlight on/off) where a single PNG is insufficient. Works on
+both Isaac Sim and USD Composer (window_capture's GLFW30 auto-detect).  Returns JSON: {frames:
+[{frame, path, sha256, ok, error?}], ...}.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `num_frames` | `integer` | `10` |  |
+| `interval_s` | `number` | `0.5` |  |
+| `hwnd` | `integer \| None` | `None` |  |
+| `bring_to_front` | `boolean` | `False` |  |
+| `use_client_rect` | `boolean` | `False` |  |
+| `settle_frames` | `integer` | `3` |  |
 
 ### `window_list`
 

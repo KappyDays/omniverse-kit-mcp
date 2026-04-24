@@ -73,6 +73,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "extension_clear_logs",
     # Phase E — Window (Kit GUI / menu / omni.ui.Window)
     "window_capture",
+    "window_capture_sequence",
     "window_list",
     "window_ui_list",
     "window_ui_show",
