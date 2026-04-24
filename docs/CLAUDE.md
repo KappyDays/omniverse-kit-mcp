@@ -10,13 +10,15 @@ Isaac-sim-MCP 가 "지금 무엇을 할 수 있는가" (tool 카탈로그) 와 "
 | 파일 / 하위 디렉토리 | 역할 | 업데이트 규칙 |
 |---------------------|------|--------------|
 | `tool-catalog.md` | **지금 호출 가능한 모든 MCP tool** — signature, description, parameters. 외부 세션의 진입점 | **Auto-generated**. `scripts/generate_tool_catalog.py` 재실행 필요. `tests/unit/test_tool_catalog_sync.py` 가 drift 검출 |
+| `invariants/` | **작업 전 필독 pull-doc** — USD 로드 / process lifecycle / MCP tool 추가 / module 추가 / extension reload / UI invoke / scenario validation 7 개. 루트 CLAUDE.md 의 "⚠️ 작업 전 필수 pull-doc" 표가 진입점 | 하드캡 ≤200 줄. 영구 규칙 신규 추가 시 여기 신설 |
+| `runbooks/` | **장애 대응 pull-doc** — kit-stdin-deadlock / cold-boot-timeout / hub-orphan / env-sub-config 4 개. 정상 개발 흐름에서 무시, 장애 시에만 참조 | 하드캡 ≤300 줄. 신규 장애 유형 발생 시 신설 |
 | `phase-a-validation-report.md` … `phase-h-validation-report.md` | Phase 별 구현 결정 / 실측 결과 / 남은 한계 (A-H 전 Phase 완료 상태) | Phase 완료 시 신규 작성. 이후 불변 (git log 스타일 히스토리) |
 | `phase-progress.md` | 모든 Phase Task 체크박스 + 타임스탬프 + 프로젝트 완료 표기 | Task 완료 시 agent 가 실시간 갱신 |
 | `references/` | Isaac Sim Kit SDK / ext 카탈로그 / testbed snapshot — 외부 레퍼런스 자료 | `scripts/sync_testbed_snapshot.py` 등으로 주기 갱신. 상세: `references/CLAUDE.md` |
 | `blueprint/` | 초기 설계 문서 / 아키텍처 스케치 | 거의 변경 없음 (history) |
 | `specs/` | 인터뷰 스펙 / 프로젝트 원본 요구사항 | 거의 변경 없음 (history) |
-| `artifacts/` | Phase 별 live validation 산출물 (`phase-a/`, `phase-d/`, `phase-e/`, `phase-f/`). validation-report.md 의 참조 타겟 | live test 스크립트가 직접 쓰기 (각 `scripts/live_test_*.py` 의 `PHASE_*_DIR` 상수가 이 경로로 설정됨) |
-| `superpowers/` | superpowers 관련 메모 / plans | 수동 작성 |
+| `artifacts/` | Phase 별 live validation 산출물 (`phase-a/`, `phase-d/`, `phase-e/`, `phase-f/`) + 재구성 baseline (`restructure-baseline/{pre,post}/`). validation-report.md 의 참조 타겟 | live test 스크립트가 직접 쓰기 (각 `scripts/live_test_*.py` 의 `PHASE_*_DIR` 상수가 이 경로로 설정됨) |
+| `superpowers/` | superpowers 관련 메모 / plans / specs (디자인 아티팩트 — forward ref 허용, `test_doc_integrity.py` A1 에서 제외) | 수동 작성 |
 
 ## Phase report 작성 규칙
 
