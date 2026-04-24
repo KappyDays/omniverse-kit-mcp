@@ -152,6 +152,8 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "robot_drive_physics",
     # D25 — Kit commands (common profile)
     "kit_command_execute",
+    # Phase E — Extension catalog search (local JSON query, no REST)
+    "extension_search",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({

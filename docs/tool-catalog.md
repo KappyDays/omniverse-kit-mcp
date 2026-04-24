@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 109
+**Tool count**: 110
 
 ## Table of contents
 
@@ -12,7 +12,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Simulation — timeline](#simulation--timeline) — 4 tools
 - [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 9 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 6 tools
-- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 10 tools
+- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 11 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
 - [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 8 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
@@ -656,6 +656,30 @@ Item: {id, full_id, name, version, enabled, path, title}.
 | name | type | default | required |
 |------|------|---------|----------|
 | `enabled_only` | `boolean` | `False` |  |
+
+### `extension_search`
+
+```python
+extension_search(keyword: 'str', app: 'str | None' = None, category: 'str | None' = None, limit: 'int' = 20) -> 'str'
+```
+
+Search docs/references/extensions.json (658 ext catalog) for candidates.  Matches `keyword`
+(case-insensitive substring) against ext name / title / summary / mcp_research_hint /
+raw_description / keywords. Empty keyword returns all entries matching optional filters.
+Filters:   - app: "isaacsim" or "usd_composer" (include entries where that app key exists)   -
+category: exact match on entry.category (case-insensitive)   - limit: max results (default 20)
+Returns list of {name, title, summary, category, apps, key_symbols, mcp_research_hint}. Use
+this when choosing a Kit Extension to wrap for a new MCP tool or to answer "which extension
+handles X?" questions.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `keyword` | `string` | `'—'` | ✓ |
+| `app` | `string \| None` | `None` |  |
+| `category` | `string \| None` | `None` |  |
+| `limit` | `integer` | `20` |  |
 
 ### `extension_trigger`
 

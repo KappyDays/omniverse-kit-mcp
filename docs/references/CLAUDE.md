@@ -80,9 +80,9 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 - v2 multi-app harvest 는 v1 bootstrap phase 를 덮지 않고 병렬 trace (향후 재설계 후보 — 현재는 v1 마커 유지).
 - enrichment 단계만 수동 (Sonnet 루프). 나머지는 스크립트 자동.
 
-## 향후 MCP tool 화 (제안, 미구현)
+## MCP tool: `extension_search` (Phase E 구현 완료)
 
-`extensions.json` 기반 `extension_search(keyword, app=None, category=None)` MCP tool. `app` 파라미터로 isaacsim / usd_composer 필터.
+`extensions.json` 를 local 쿼리하는 `extension_search(keyword, app, category, limit)` MCP tool. 구현: `src/isaacsim_mcp/modules/catalog_module.py` (+ `tools/module_tools.py` 등록). Isaac Sim / REST 의존 없음 — MCP 서버 프로세스 내부에서 JSON 1회 load 후 cache. 상세 사용법은 `src/isaacsim_mcp/tools/CLAUDE.md` Catalog 섹션 참조.
 
 ## 관련 경계
 
