@@ -31,16 +31,18 @@ SOURCE_DIRS = ("exts", "extscache", "extsDeprecated")
 EXPECTED_COUNTS = {"exts": 97, "extscache": 452, "extsDeprecated": 72}
 
 # v2: multi-app config (primary path via run_multi_app_harvest).
+# `kit/extscore` 는 Kit 핵심 binary lib (omni.client.lib · omni.kit.async_engine ·
+# omni.kit.registry.nucleus) — 양쪽 앱 모두 동일 ext 가 설치돼 있어 둘 다 포함.
 APP_ROOTS: dict[str, dict[str, Any]] = {
     "isaacsim": {
         "root": ISAAC_SIM_ROOT,
-        "source_dirs": ("exts", "extscache", "extsDeprecated"),
+        "source_dirs": ("exts", "extscache", "extsDeprecated", "kit/extscore"),
         "kit_version": "107.3.3",
         "app_version": "5.1.0-rc.19",
     },
     "usd_composer": {
         "root": USD_COMPOSER_ROOT,
-        "source_dirs": ("exts", "extscache", "extsbuild"),
+        "source_dirs": ("exts", "extscache", "extsbuild", "kit/extscore"),
         "kit_version": "110.0-110.1",
         "app_version": "kit-app-template",
     },
@@ -397,8 +399,16 @@ def merge_entry(base: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any
             merged[f] = incoming[f]
     if not merged.get("mcp_research_hint") and incoming.get("mcp_research_hint"):
         merged["mcp_research_hint"] = incoming["mcp_research_hint"]
-    # Recompute api_delta_note from unioned apps map.
-    merged["api_delta_note"] = detect_api_delta(merged["apps"])
+    # api_delta_note: preserve manual notes (Phase B classification or manual
+    # null-clear). Refresh only if missing (new merge) or still in raw
+    # auto-detect format ("major.minor differs:" prefix).
+    existing = base.get("api_delta_note")
+    if "api_delta_note" not in base or (
+        isinstance(existing, str) and existing.startswith("major.minor differs:")
+    ):
+        merged["api_delta_note"] = detect_api_delta(merged["apps"])
+    else:
+        merged["api_delta_note"] = existing
     return merged
 
 
@@ -538,9 +548,14 @@ def run_multi_app_harvest(preserve_enrichment: bool = True) -> None:
             else:
                 by_name[name] = entry
 
-    # Step 3 — recompute api_delta for all dual-app entries (defensive).
+    # Step 3 — refresh api_delta only for entries with raw auto-detect note
+    # or no note. Preserve manual classifications (Phase B) and manual nulls.
     for e in by_name.values():
-        e["api_delta_note"] = detect_api_delta(e["apps"])
+        existing = e.get("api_delta_note")
+        if "api_delta_note" not in e or (
+            isinstance(existing, str) and existing.startswith("major.minor differs:")
+        ):
+            e["api_delta_note"] = detect_api_delta(e["apps"])
 
     entries = sorted(by_name.values(), key=lambda x: x["name"])
     catalog = _build_catalog_v2(entries, all_errors)

@@ -151,3 +151,25 @@ def test_kit_extscore_ext_exist_in_both_apps(entries):
 def test_metadata_schema_version_is_2(catalog):
     md = catalog.get("metadata") or {}
     assert md.get("schema_version") == 2, f"schema_version != 2: {md.get('schema_version')}"
+
+
+def test_no_raw_auto_detect_api_delta_notes(entries):
+    """All api_delta_note values must be manually classified or null.
+
+    Regression guard for the harvest preserve bug fixed in `feat(harvest):
+    preserve manual api_delta_note across re-runs`. The raw auto-detect
+    format `"major.minor differs: ..."` should never appear in committed
+    catalog — it is the harvester's intermediate signal that humans/Claude
+    are expected to refine into a meaningful note (Phase B classification:
+    additive / removal / bidirectional / binary-bundle) or clear to null
+    when it is a false positive.
+    """
+    raw_offenders = [
+        e["name"] for e in entries
+        if isinstance(e.get("api_delta_note"), str)
+        and e["api_delta_note"].startswith("major.minor differs:")
+    ]
+    assert not raw_offenders, (
+        f"raw auto-detect api_delta_note found (Phase B refinement missing): "
+        f"{raw_offenders}"
+    )
