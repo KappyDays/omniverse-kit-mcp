@@ -74,7 +74,7 @@ Subagent 는 sub-CLAUDE.md 자동 로드 안 함. 디스패치 프롬프트에 `
 | 파일 | 담당 |
 |------|------|
 | `src/isaacsim_mcp/CLAUDE.md` | FastMCP 서버 루트 (entry / type 경계 / clients) |
-| `src/isaacsim_mcp/modules/CLAUDE.md` | 모듈 매트릭스 + Integration Facts + ProcessModule hang recovery + Character 제약 |
+| `src/isaacsim_mcp/modules/CLAUDE.md` | 모듈 매트릭스 + Character 제약 + base.py 패턴 (→ `integration-facts.md` · `process-ops.md`) |
 | `src/isaacsim_mcp/scenario/CLAUDE.md` | 시나리오 엔진 (Arrange/Act/Assert/Cleanup + action_registry) |
 | `src/isaacsim_mcp/tools/CLAUDE.md` | MCP tool 등록 규약 + 그룹별 caveat |
 | `isaac_extension/CLAUDE.md` | Extension 개발 nav hub (→ `docs/*` basics / pitfalls / recipe / reuse / lessons-learned) |

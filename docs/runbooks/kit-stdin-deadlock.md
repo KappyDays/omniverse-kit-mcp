@@ -101,6 +101,6 @@ silent leak.
 
 - L17 사고 기록 원문: `isaac_extension/docs/lessons-learned.md`
 - 코드 위치 SoT: `src/isaacsim_mcp/modules/process_module.py::start`
-- ProcessModule 결정 트리 / hang recovery 4종 함정: `src/isaacsim_mcp/modules/CLAUDE.md`
+- ProcessModule 결정 트리 / hang recovery 4종 함정: `src/isaacsim_mcp/modules/process-ops.md`
 - Process 생애주기 invariants: `docs/invariants/process-lifecycle.md`
 - Cold boot timeout 응답 분기 (still_loading vs crashed): `docs/runbooks/cold-boot-timeout.md`
