@@ -85,7 +85,10 @@ Subagent 는 sub-CLAUDE.md 자동 로드 안 함. 디스패치 프롬프트에 `
 | `docs/CLAUDE.md` | phase 히스토리 / tool-catalog / references |
 | `isaac_course/CLAUDE.md` | Digital Twin 튜토리얼 + asset 카탈로그 (`docs/asset_inventory.md`) |
 
-## 메타
+## 메타 — CLAUDE.md 작성 규칙
 
-- 이 파일 **≤100 줄 하드캡** (A3 자동 가드). 추가 내용은 `docs/invariants/` / `docs/runbooks/` 로 이관 — 삭제는 stale content 만
-- sub-CLAUDE.md **≤150 줄** (Phase 3 적용). 영구 규칙은 `docs/invariants/`, 사고 기록은 `isaac_extension/docs/lessons-learned.md`
+- **라인 하드캡**: 루트 ≤100 · sub-CLAUDE.md ≤150 · `docs/invariants/*.md` ≤200 · `docs/runbooks/*.md` ≤300 (`test_doc_integrity.py` A3/A4/A6 가드)
+- **이관 vs 삭제**: 증가 시 pull-doc 이관. **삭제는 stale 한정** (outdated fact / 중복 / 불용 pointer)
+- **신규 영구 규칙 destination**: `docs/invariants/*.md` (작업 전 필독) + 위 pull-doc 표 갱신. 장애 대응 상세는 `docs/runbooks/*.md`
+- **`lessons-learned.md` 는 historical incident log** (Phase 3 Task 3.3 확정) — 신규 영구 규칙 추가 금지. 사고 증거 / 재현 절차만 누적
+- **sub-CLAUDE.md 규칙**: 디렉토리 고유 규칙만. 루트 / invariants 중복 금지 — cross-cutting 은 pointer 로 대체
