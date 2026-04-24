@@ -22,6 +22,7 @@
 | Extension `.py` 수정 / reload | `docs/invariants/ext-reload.md` |
 | Extension UI automation (`extension_ui_invoke`) | `docs/invariants/ui-invoke.md` |
 | Scenario YAML 저작 | `docs/invariants/scenario-validation.md` |
+| Multi-app 추가 / Kit app profile 수정 | `docs/invariants/multi-app.md` |
 
 장애 진단은 `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · hub-orphan · env-sub-config). Phase 히스토리는 `docs/phase-a-validation-report.md` … `docs/phase-h-validation-report.md`. Tool name SoT 는 `tests/unit/test_tools_registration.py` frozenset.
 
@@ -62,6 +63,8 @@
 | 변수 | 기본값 | 설명 |
 |------|-------|------|
 | `ISAAC_SIM_BASE_URL` | `http://localhost:8011` | Extension REST |
+| `ISAAC_MCP_APP_PROFILE` | `isaac-sim` | Kit app profile — `isaac-sim` or `usd-composer`. 상세: `docs/invariants/multi-app.md` |
+| `ISAAC_MCP_INSTANCE_ID` | `1` | 멀티 인스턴스 (1..3). profile base_port 에 offset (Isaac 8011+ / USD Composer 8014+) |
 | `ISAAC_SIM_STARTUP_TIMEOUT` | `120.0` | ProcessModule health 대기 상한. 상세: `docs/invariants/process-lifecycle.md` |
 | `ISAAC_SIM_EXTRA_EXT_IDS` | config.py bundle | <!-- ⛔ DO-NOT-EDIT: "extra_ext_ids race" 진단은 무효 (L17 참조 `docs/runbooks/kit-stdin-deadlock.md`). browser ext 금지 — `docs/invariants/usd-load.md` --> JSON array. `isaacsim.asset.browser` / `omni.kit.window.content_browser` 금지. stdin DEVNULL fix 후 8 개 13s 통과 |
 | `LAKEHOUSE_BASE_URL` | `http://localhost:9000` | Lakehouse REST |
