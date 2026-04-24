@@ -67,6 +67,6 @@ AgentRecord 처럼 path 가 두 종류 (parent payload vs SkelRoot) 인 경우:
 ## 관련 경계
 
 - L13 / L15 사고 기록: `isaac_extension/docs/lessons-learned.md`
-- Window / Extension domain 분리: `src/isaacsim_mcp/modules/CLAUDE.md`
+- Window / Extension domain 분리: `src/isaacsim_mcp/modules/integration-facts.md`
 - Extension reload (UI panel zombie 와 같은 layer): `docs/invariants/ext-reload.md`
 - Validation_api reuse pattern (싱글턴 in-process import): `isaac_extension/docs/validation_api-reuse.md`

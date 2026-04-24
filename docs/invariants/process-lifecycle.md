@@ -105,7 +105,7 @@ filter 처리 timing 문제로 alive Kit 도 빈 결과 반환.
 
 ## 관련 경계
 
-- 코드 위치 SoT (ProcessModule hang recovery 4종 함정): `src/isaacsim_mcp/modules/CLAUDE.md`
+- 코드 위치 SoT (ProcessModule hang recovery 4종 함정): `src/isaacsim_mcp/modules/process-ops.md`
 - Standalone 테스트 스크립트: `scripts/run_process_module_standalone.py`
 - DO-NOT-EDIT residual 본문 (재현 / 복구): `docs/runbooks/kit-stdin-deadlock.md`
 - Cold boot timeout 분기 해석: `docs/runbooks/cold-boot-timeout.md`

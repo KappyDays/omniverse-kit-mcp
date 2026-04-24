@@ -90,7 +90,7 @@ loop deadlock → 모든 MCP tool 92 s timeout.
 
 ## 관련 경계
 
-- 저수준 코드 위치 (Stage / USD 로드 프로토콜): `src/isaacsim_mcp/modules/CLAUDE.md`
+- 저수준 코드 위치 (Stage / USD 로드 프로토콜): `src/isaacsim_mcp/modules/integration-facts.md`
 - Asset URL 카탈로그 진입점: `isaac_course/docs/asset_inventory.md`
 - 독립 Extension 방어 레시피: `isaac_extension/docs/usd-load-deadlock-recipe.md`
 - LogCapture 비활성 결정 사고: `isaac_extension/docs/lessons-learned.md`
