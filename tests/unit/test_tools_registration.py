@@ -150,6 +150,8 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Phase J — NavMesh Playground (sample_walkable_points + drive_physics)
     "navigation_sample_walkable_points",
     "robot_drive_physics",
+    # D25 — Kit commands (common profile)
+    "kit_command_execute",
 })
 
 EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({

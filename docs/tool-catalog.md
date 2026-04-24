@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 108
+**Tool count**: 109
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (35)
+- Unclassified (36)
 
 ## Process — Isaac Sim kit.exe lifecycle
 
@@ -1239,6 +1239,26 @@ Nucleus prefix.
 | name | type | default | required |
 |------|------|---------|----------|
 | `url` | `string` | `'—'` | ✓ |
+
+### `kit_command_execute`
+
+```python
+kit_command_execute(name: 'str', payload: 'dict | None' = None, expect_undo: 'bool' = False) -> 'str'
+```
+
+Execute an omni.kit.commands registered command.  Dispatches to the currently-active Kit app's
+command registry. Common examples:   - CreateConveyorBelt (Isaac, isaacsim.asset.gen.conveyor)
+- CreatePrimWithDefaultXform (common)   - ChangeProperty (common)  Unknown command names on the
+current app return ok=false with error=command_exception (not a tool failure — parseable
+result).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `name` | `string` | `'—'` | ✓ |
+| `payload` | `object \| None` | `None` |  |
+| `expect_undo` | `boolean` | `False` |  |
 
 ### `lighting_create_disk`
 
