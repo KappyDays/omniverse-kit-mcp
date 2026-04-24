@@ -2,6 +2,12 @@
 <!-- Scope: 새 MCP tool 추가 작업 시작 전 필수 숙지 -->
 # MCP Tool 추가 — Invariants
 
+> **이 문서는 "추가 절차" 전용.** 어떤 Kit API / ext 를 wrapping 할지 결정하는
+> **research 단계** 는 `docs/references/CLAUDE.md` 의 5단계 flow
+> (extensions-catalog → mcp_extension_idea → 03-api-patterns → standalone_examples →
+> ext 소스 → nvidia-docs) 를 먼저 따르세요. research 없이 본 문서만 참조하면
+> 기존 `@mcp.tool()` 중복 / 잘못된 Kit API 선택 위험.
+
 새 `@mcp.tool()` 추가는 **7곳 동시 수정 + auto-regen catalog + drift test 통과** 의
 3-step. 한 곳이라도 누락하면 `verify_mcp_sync.py` / drift pytest fail.
 
