@@ -72,13 +72,14 @@ For each invalid URL group:
 
 | Symptom | Action |
 |---------|--------|
-| 404 only on a few entries | Path renamed by NVIDIA. Use `content_browse` (MCP tool) on parent dir to find new file name; `Edit` the inventory row. |
-| 404 on whole `{Vendor}/` subtree | Vendor folder renamed or relocated. Search the catalog: `extension_search("<vendor>", limit=10)` — often appears in extensions-catalog with new path; `Edit`. |
+| 404 only on a few entries | Use S3 LIST API (`?list-type=2&prefix=<dir>/&delimiter=/`, anonymous) on the parent dir to find the real `*.usd` file name; `Edit` the inventory row's file column. |
+| 404 on whole `{Vendor}/` subtree | Vendor folder renamed or relocated. List `Robots/` (or category root) with S3 LIST API to find the new vendor name; `Edit`. |
 | NET / timeout | Network — re-run Step 2; do not edit inventory. |
 | 5xx | NVIDIA-side transient — re-run Step 2 in 5 min; do not edit inventory. |
-| Mis-categorized (file exists at different vendor) | Move the row under the correct vendor section (e.g. NTNU → NVIDIA). |
+| Mis-categorized (file exists at different vendor) | Move the row under the correct vendor section. |
+| Asset folder confirmed missing on S3 | **Delete the row from markdown** + remove the model name from the corresponding category index table (e.g. AMR / 휴머노이드 row at the top of robots.md). Keeps the doc concise. |
 
-For each fix, **preserve the entry** (do not delete) — update path / vendor / model only.
+When a row's `model` column abbreviates two SKUs (e.g. `Humanoid/28` for both `Humanoid` and `Humanoid28`), split into two rows so each maps to one S3 folder.
 
 ### Step 5 — Re-validate
 
@@ -118,7 +119,8 @@ STOP and report on any:
 
 ## Never Do
 
-- ❌ Delete inventory entries (preserve & update path; if asset truly removed, mark with `(removed in v<X>)` note)
+- ❌ Keep a row whose asset folder no longer exists on S3 (delete it instead — doc must stay concise; no `(removed)` marker)
+- ❌ Forget to update the category index table (e.g. AMR · 휴머노이드 abbreviations at the top of robots.md) when deleting / renaming a row
 - ❌ Hard-code full HTTPS URLs in tables (use prefix variable)
 - ❌ Use `file://` URLs (asset load fails)
 - ❌ Add 3rd-party USD outside NVIDIA buckets (R4 in `isaac_course/CLAUDE.md`)
