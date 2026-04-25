@@ -32,8 +32,9 @@ USD_BACKTICK_RE = re.compile(r"`([^`\s]+\.usd)`")
 # Section root declaration: 루트: `$ISAAC/Path/`
 ROOT_DECL_RE = re.compile(r"^루트:\s*`(\$\w+/[^`]+?)/?`", re.MULTILINE)
 # robots.md row form: | **Vendor** | Model | `file.usd` ✓ | type |
+# Model column allows spaces (e.g. "Carter v1") so vendor sticky stays correct.
 ROBOTS_ROW_RE = re.compile(
-    r"^\|\s*(?:\*\*([\w]+)\*\*)?\s*\|\s*([\w_-]+)\s*\|\s*`([\w_./-]+\.usd)`",
+    r"^\|\s*(?:\*\*([\w]+)\*\*)?\s*\|\s*([\w_./\s-]+?)\s*\|\s*`([\w_./-]+\.usd)`",
     re.MULTILINE,
 )
 # robots.md file path declaration: $ISAAC/Robots/{Vendor}/{Model}/{model}.usd
