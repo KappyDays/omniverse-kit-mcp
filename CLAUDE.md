@@ -24,6 +24,7 @@
 | Scenario YAML 저작 | `docs/invariants/scenario-validation.md` |
 | Multi-app 추가 / Kit app profile 수정 | `docs/invariants/multi-app.md` |
 | Kit / app 버전 업뎃 후 catalog sync | skill `/catalog-sync` (`.claude/skills/catalog-sync/SKILL.md`) |
+| Asset URL 404 / inventory 갱신 | skill `/asset-inventory-sync` (`.claude/skills/asset-inventory-sync/SKILL.md`) |
 
 장애 진단은 `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · hub-orphan · env-sub-config). Phase 히스토리는 `docs/phase-a-validation-report.md` … `docs/phase-h-validation-report.md`. Tool name SoT 는 `tests/unit/test_tools_registration.py` frozenset.
 
