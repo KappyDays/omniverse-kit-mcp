@@ -1,6 +1,6 @@
 # Isaac-sim-MCP — Tool Roadmap (미래 추가 기능)
 
-> 현재 서피스: **107 MCP tools + 3 resources** (2026-04-21 기준). 이 문서는 **다음에 추가될 도구 후보** 를 필수 / 추천 / 비추천으로 분류. 결정 시 참고 자료:
+> 현재 서피스: **111 MCP tools + 3 resources** (2026-04-25 기준; 작성 2026-04-21, +4 tools since). 이 문서는 **다음에 추가될 도구 후보** 를 필수 / 추천 / 비추천으로 분류. 결정 시 참고 자료:
 >
 > - `docs/references/extensions-catalog.md` — Isaac Sim 5.1 전체 ext 카탈로그 (624 ext)
 > - `docs/references/testbed-snapshot/` — NVIDIA 공식 문서 스냅샷 + API 패턴
@@ -165,5 +165,18 @@ Phase J+ 후보 (중장기):
 
 ---
 
-**작성일**: 2026-04-21
+## 7. Implementation Status (since 2026-04-21)
+
+| 신규 tool (107 → 111) | 매칭 roadmap 후보 | 비고 |
+|---|---|---|
+| `window_capture_sequence` (111th, `03f78bd`) | 1.2 의 변형 (multi-frame motion ≠ PathTracing) | 새 카테고리, motion verification 용 |
+| `extension_search` (110th, `ea7c54b`) | (roadmap 직접 매칭 없음) | Kit catalog 검색 — 추천 2.5 "content_search" 와 다른 도메인 |
+| `kit_command_execute` (109th, `737775b`) | (roadmap 직접 매칭 없음) | Kit command 메타 도구 |
+| `navigation_sample_walkable_points` (108th, multi-instance merge 전후) | (roadmap 직접 매칭 없음) | NavMesh 보조 |
+
+→ roadmap 1.1 / 1.2 (full) / 1.3 / 1.4 / 1.5 + 추천 2.1-2.6 = **모두 미구현** (가치 여전).
+
+---
+
+**작성일**: 2026-04-21 · **업데이트**: 2026-04-25 (count + Status 추가)
 **참고 자료**: `docs/references/extensions-catalog.md` · `docs/references/testbed-snapshot/*.md` · Isaac Sim 5.1.0 공식 문서
