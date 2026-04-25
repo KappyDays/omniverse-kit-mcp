@@ -10,6 +10,8 @@ Isaac-sim-MCP 가 "지금 무엇을 할 수 있는가" (tool 카탈로그) 와 "
 | 파일 / 하위 디렉토리 | 역할 | 업데이트 규칙 |
 |---------------------|------|--------------|
 | `tool-catalog.md` | **지금 호출 가능한 모든 MCP tool** — signature, description, parameters. 외부 세션의 진입점 | **Auto-generated**. `scripts/generate_tool_catalog.py` 재실행 필요. `tests/unit/test_tool_catalog_sync.py` 가 drift 검출 |
+| `tools-roadmap.md` | **미래 tool 후보** — 필수/추천/비추천 분류, 우선순위 (Phase I/J+) — 새 tool 추가 결정 시 1차 reference | 신규 tool 추가/구현 시 Implementation Status 섹션 갱신 |
+| `tool-diagnostic-map.md` | **에러/실패 진단** — 의문→MCP read-only tool 역색인 + 디버깅 워크플로 | 새 진단 패턴 발견 시 |
 | `invariants/` | **작업 전 필독 pull-doc** — USD 로드 / process lifecycle / MCP tool 추가 / module 추가 / extension reload / UI invoke / scenario validation 7 개. 루트 CLAUDE.md 의 "⚠️ 작업 전 필수 pull-doc" 표가 진입점 | 하드캡 ≤200 줄. 영구 규칙 신규 추가 시 여기 신설 |
 | `runbooks/` | **장애 대응 pull-doc** — kit-stdin-deadlock / cold-boot-timeout / hub-orphan / env-sub-config 4 개. 정상 개발 흐름에서 무시, 장애 시에만 참조 | 하드캡 ≤300 줄. 신규 장애 유형 발생 시 신설 |
 | `phase-a-validation-report.md` … `phase-h-validation-report.md` | Phase 별 구현 결정 / 실측 결과 / 남은 한계 (A-H 전 Phase 완료 상태) | Phase 완료 시 신규 작성. 이후 불변 (git log 스타일 히스토리) |
