@@ -1,13 +1,13 @@
 ---
-name: catalog-sync
-description: Invoke after Kit / Isaac Sim / USD Composer install has been updated, to re-sync docs/references/extensions.json with the file system. Runs the canonical 6-step workflow (diff → integrity → harvest → render → enrichment → commit). Not for one-off catalog edits.
+name: kit-extension-catalog-sync
+description: Invoke after Kit / Isaac Sim / USD Composer install has been updated, to re-sync the project's Kit Extension catalog (docs/references/extensions.json) with the file system. Runs the canonical 6-step workflow (diff → integrity → harvest → render → enrichment → commit). Not for one-off catalog edits, and not for USD asset URLs (use omniverse-asset-inventory-sync for those).
 user-invocable: true
 disable-model-invocation: true
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
-# catalog-sync: Kit / App Update Re-sync
+# kit-extension-catalog-sync: Kit Extension Catalog Re-sync
 
 Prefix your first line with 📚 inline.
 
@@ -119,7 +119,7 @@ STOP and report on any:
 ## Sign-off
 
 ```
-📚 catalog-sync complete
+📚 kit-extension-catalog-sync complete
 Kit: <old>→<new> · App: <isaacsim>/<usd_composer>
 Processed: <N added enriched / M removed→skipped / K version_bumped>
 Commit(s): <hash> [, ...] (origin/main synced)
