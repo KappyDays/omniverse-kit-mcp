@@ -77,3 +77,7 @@ _temp_sdg/
 # Standalone script artifacts (kit log copies / verify results)
 docs/artifacts/multi-instance-smoke/
 docs/artifacts/multi-app-smoke/
+
+# usd-mouse-interact: directory junction into isaac_extension/ for Kit search-path
+# (real source lives in usd-mouse-interact/exts/; the junction is a setup convenience).
+isaac_extension/omni.mycompany.usd_mouse_interact/
