@@ -14,7 +14,7 @@
 | `live_test_phase_d.py` · `live_test_phase_e.py` · `live_test_gui_equiv.py` · `live_test_extension_ui.py` | Phase 별 live E2E 검증 | Phase 완료 시 — `docs/artifacts/phase-{d,e}/` 에 아티팩트 저장 |
 | `live_test_replicator.py` · `live_test_omnigraph.py` · `live_test_content.py` · `live_test_extension_ext.py` | Phase H 도메인 별 live REST 검증 | Isaac Sim 기동 중 14 신규 tool 의 Extension route 를 직접 호출 — 결과 JSON 은 `docs/artifacts/phase-h/` 디렉토리에 저장 |
 | `harvest_extension_metadata.py` · `render_catalog_md.py` · `sync_testbed_snapshot.py` | Kit Extension 레퍼런스 재수집 | `docs/references/extensions-catalog.md` 업데이트 시 |
-| `diff_catalog.py` | 현재 `extensions.json` vs fresh harvest 비교 (added / removed / version_bumped / category_changed) | Kit / app 버전 bump 후 sync 필요 여부 판정 — workflow 는 `/kit-extension-catalog-sync` skill |
+| `diff_catalog.py` | 현재 `extensions.json` vs fresh harvest 비교 (added / removed / version_bumped / category_changed) | Kit / app 버전 bump 후 sync 필요 여부 판정 — workflow 는 `/omniverse-kit-extension-catalog-sync` skill |
 | `diff_asset_inventory.py` | `isaac_course/docs/assets/*.md` 의 모든 USD URL 을 NVIDIA S3 에 HTTP HEAD 검증. 404 / NET / 5xx 보고 | Asset 경로 fail 보고 시 또는 Isaac Sim 5.x 패치 후 — workflow 는 `/omniverse-asset-inventory-sync` skill |
 
 ## 추가 규칙

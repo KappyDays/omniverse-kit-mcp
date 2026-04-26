@@ -86,7 +86,7 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 
 ## Kit / app 업데이트 후 catalog 동기화
 
-Canonical 절차는 `/kit-extension-catalog-sync` skill (`.claude/skills/kit-extension-catalog-sync/SKILL.md`). Kit / Isaac Sim / USD Composer 설치 갱신 시 사용자가 호출 → 6-step workflow (diff → integrity → harvest → render → enrichment → commit). 절차·invariants·stop-condition 은 SKILL.md 가 SoT.
+Canonical 절차는 `/omniverse-kit-extension-catalog-sync` skill (`.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`). Kit / Isaac Sim / USD Composer 설치 갱신 시 사용자가 호출 → 6-step workflow (diff → integrity → harvest → render → enrichment → commit). 절차·invariants·stop-condition 은 SKILL.md 가 SoT.
 
 ## 관련 경계
 
