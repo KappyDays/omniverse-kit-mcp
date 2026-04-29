@@ -17,6 +17,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "isaac_sim_start",
     "isaac_sim_stop",
     "isaac_sim_restart",
+    "process_list_kit_instances",
     # Stage READ/ASSERT
     "stage_capture_snapshot",
     "stage_diff_snapshots",

@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 111
+**Tool count**: 112
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (36)
+- Unclassified (37)
 
 ## Process — Isaac Sim kit.exe lifecycle
 
@@ -1626,6 +1626,17 @@ Toggle PhysX debug visualization. mode ∈ {collision, joint, mass, off}; clears
 | name | type | default | required |
 |------|------|---------|----------|
 | `mode` | `string` | `'—'` | ✓ |
+
+### `process_list_kit_instances`
+
+```python
+process_list_kit_instances() -> 'str'
+```
+
+Enumerate ALL running kit.exe processes (read-only). Includes MCP-spawned, other MCP servers,
+and user GUI launches. Per-instance: pid, command_line, start_time_utc, ext_port, app_profile,
+is_this_mcp_instance. Use BEFORE destructive ops (Kit user.config.json edit, settings reset,
+force reload) — external instances overwrite settings on shutdown. Windows-only.
 
 ### `replicator_create_writer`
 
