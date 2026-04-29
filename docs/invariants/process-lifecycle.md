@@ -92,6 +92,38 @@ pydantic-settings v2 는 `default_factory` sub-`BaseSettings` 에 부모의 `env
 
 사고 + 재발 방지 체크리스트: `docs/runbooks/env-sub-config.md`
 
+## External instance check (destructive 작업 전 필수)
+
+`isaac_sim_stop` 은 **THIS MCP server 가 spawn 한 kit.exe 만** 종료. 사용자가 GUI
+실행한 standalone Isaac Sim, 다른 MCP server (multi-instance / multi-app) 는 별도
+프로세스로 살아있을 수 있음 — Kit 은 종료 시 carb persistent settings (예:
+`%LOCALAPPDATA%\ov\data\Kit\<app>\<ver>\user.config.json`) 을 메모리에서 덮어쓰기
+때문에 **외부 인스턴스가 살아있는 채로 config 편집 시 변경분이 셧다운에 사라짐**.
+
+### 점검 절차
+
+destructive 작업 전 `process_list_kit_instances` MCP tool 호출:
+
+```
+process_list_kit_instances → instances[].is_this_mcp_instance == false 인 row 가
+있으면 외부 인스턴스 — 사용자에게 종료 요청 후 작업 진행
+```
+
+### Destructive 작업 정의 (외부 인스턴스 영향 받음)
+
+- Kit `user.config.json` / `*.toml` 편집 (carb persistent settings)
+- `%LOCALAPPDATA%\ov\data\Kit\<app>` 캐시 / extension data 삭제
+- `extension_activate(reload=True)` 같은 강제 reload (다른 인스턴스에는 무영향이나
+  파일 충돌 가능)
+- `omniverse.toml` / `hub.toml` 등 omniverse 공통 config 편집
+
+### 영향 없는 (안전한) 작업
+
+- `__pycache__` 삭제 (`isaac_sim_restart` 가 자동 — ext_folder 한정)
+- `kit.exe stdout/stderr 로그 sweep` (`_sweep_old_logs`, 7일 이전)
+- `simulation_*` / `stage_*` / `viewport_*` (Extension REST 경유 — 다른 인스턴스
+  REST 와 격리)
+
 ## Hang 확정 지표 (정확한 도구)
 
 - **`isaac_sim_start` 응답** — `process_alive=true` 인데 반복 호출해도 ready 안 됨 +
