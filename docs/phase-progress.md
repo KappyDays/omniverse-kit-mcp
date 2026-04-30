@@ -178,7 +178,8 @@ Spec: `docs/phase-i-validation-report.md`
 | 1.1 | Extension 코드 (8 파일) + symlink | ✅ 완료 — extension.toml + IExt + scene_builder + pick_controller + trajectory + joint_layout + humanoids registry + usd_loader |
 | 1.2 | 단위 테스트 21 PASS | ✅ 완료 (`tests/unit/test_humanoid_pick_place_helpers.py`) |
 | 1.3 | Live 검증 — Build Scene + Run Pick & Place | ✅ — viewport 7장 (`docs/artifacts/phase-i/`), arm 모션 + cube 추적 + cycle complete 확정. placement 정확도는 polish 사안 (joint limit + arm reach 한계) |
-| 2.0 | 두 번째 휴머노이드 (Unitree H1 / GR-1T2) | ⏳ Phase 2 — registry 후보 등록만 완료, 활성화 + 트라젝토리 튜닝 대기 |
+| 2.0a | Unitree H1 — registry 활성화 + live load + 시각 검증 | ✅ 완료 — `docs/artifacts/phase-i/08_unitree_h1_loaded.png`, 19 DOF, articulation OK. ComboBox select 콜백 + 트라젝토리 재튜닝은 후속 |
+| 2.0b | Fourier GR-1T2 (6-DOF hands) | ⏳ 6-DOF 손가락 grasp closure 로직 필요 — 현재 kinematic-toggle 전용으로 미적합 |
 
 ### 진행 로그
 

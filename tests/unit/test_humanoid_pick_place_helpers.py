@@ -66,12 +66,17 @@ class TestHumanoidRegistry:
         assert humanoids.default_humanoid().key == "humanoid28"
         assert humanoids.default_humanoid() is humanoids.HUMANOID28
 
-    def test_phase1_only_ships_humanoid28(self):
+    def test_phase1_humanoid28_first(self):
+        # Humanoid28 is the demo's default; UI ComboBox seeds index 0
+        # to it, so the spec must remain at position 0 of the active list.
+        assert humanoids.PHASE1_HUMANOIDS[0].key == "humanoid28"
+
+    def test_phase1_includes_unitree_h1(self):
+        # 2026-05-01 Phase 2 wave 1: H1 promoted to the active roster
+        # after live joint-roster capture confirmed compatibility with
+        # the role-keyed trajectory resolver.
         keys = [h.key for h in humanoids.PHASE1_HUMANOIDS]
-        assert keys == ["humanoid28"], (
-            "Phase 1 must ship exactly one humanoid; Phase 2 entries are "
-            "in PHASE2_CANDIDATES and gated until joint roster is validated."
-        )
+        assert "unitree_h1" in keys
 
     def test_all_humanoid_urls_use_allowed_s3_prefix(self):
         # Defends docs/invariants/usd-load.md condition #1 — file:// or
@@ -96,10 +101,10 @@ class TestHumanoidRegistry:
             assert h.anchor_link_hint, f"{h.key} missing anchor_link_hint"
 
     def test_phase2_candidates_are_real_robots(self):
-        # Sanity: Phase 2 candidates point to real Isaac Sim robot assets
-        # (Unitree H1 + Fourier GR-1) — not placeholders.
+        # Sanity: remaining Phase 2 candidates point to real Isaac Sim
+        # robot assets — not placeholders. Unitree H1 was promoted to
+        # PHASE1_HUMANOIDS in 2026-05-01 Phase 2 wave 1.
         keys = {h.key for h in humanoids.PHASE2_CANDIDATES}
-        assert "unitree_h1" in keys
         assert "gr1t2" in keys
 
 
