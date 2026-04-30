@@ -166,6 +166,32 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 
 ---
 
+## Phase I — Humanoid Pick & Place Extension (2026-05-01)
+
+Spec: `docs/phase-i-validation-report.md`
+
+새 Kit Extension `omni.mycompany.humanoid_pick_place` (Phase 1 = NVIDIA Humanoid28 single-arm pick&place; Phase 2 후보 = Unitree H1 / Fourier GR-1T2). 독립 구조, validation_api 의존 없음. `SingleArticulation` 키프레임 trajectory + cube grasp via `RigidBodyAPI.kinematicEnabled` 토글.
+
+| Phase | 범위 | 상태 |
+|-------|------|------|
+| 1.0 | Discovery + Asset 선택 (Humanoid28) | ✅ 완료 (28 DOF dof_names live capture, joint axis convention 실측) |
+| 1.1 | Extension 코드 (8 파일) + symlink | ✅ 완료 — extension.toml + IExt + scene_builder + pick_controller + trajectory + joint_layout + humanoids registry + usd_loader |
+| 1.2 | 단위 테스트 21 PASS | ✅ 완료 (`tests/unit/test_humanoid_pick_place_helpers.py`) |
+| 1.3 | Live 검증 — Build Scene + Run Pick & Place | ✅ — viewport 7장 (`docs/artifacts/phase-i/`), arm 모션 + cube 추적 + cycle complete 확정. placement 정확도는 polish 사안 (joint limit + arm reach 한계) |
+| 2.0 | 두 번째 휴머노이드 (Unitree H1 / GR-1T2) | ⏳ Phase 2 — registry 후보 등록만 완료, 활성화 + 트라젝토리 튜닝 대기 |
+
+### 진행 로그
+
+- 2026-05-01 02:30 — Discovery (CLAUDE.md 맵 + conveyor_pick + navmesh_playground 패턴 + asset_inventory robots/people)
+- 2026-05-01 02:50 — Asset 식별 (Humanoid28 28-DOF live load, articulation OK)
+- 2026-05-01 03:00 — Extension 코드 작성 (8 파일 + 21 unit tests)
+- 2026-05-01 03:10 — Symlink 생성 + extension_activate, UI window 정상
+- 2026-05-01 03:15 — Build Scene live 통과 (humanoid 직립 / FixedJoint 작동 / tables + cube + light 정상)
+- 2026-05-01 03:20 — DOF roster + joint axis convention 실측 (`shoulder_y` POS=down clamp +1.05, `elbow` NEG=bend)
+- 2026-05-01 03:30 — Trajectory 부호 보정 + per-frame state stamping 도입/철회 (physics jitter 회피)
+- 2026-05-01 03:40 — Cycle complete 5회 확정 (cube transport visible, place 정확도 imperfect — polish 사안)
+- 2026-05-01 03:50 — Phase I 보고서 + CLAUDE.md / phase-progress 동기화
+
 ## Phase J — NavMesh Playground Extension (2026-04-23)
 
 Spec: `docs/superpowers/specs/2026-04-23-navmesh-playground-design.md`
