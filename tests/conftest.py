@@ -273,6 +273,26 @@ class MockIsaacRestClient:
             {"ok": True, "prim_path": prim_path, "positions": [0.0] * 7},
         )
 
+    async def robot_get_joint_config(self, prim_path: str) -> dict:
+        self.calls.append(("robot_get_joint_config", {"prim_path": prim_path}))
+        return self.responses.get(
+            "robot_get_joint_config",
+            {
+                "ok": True,
+                "prim_path": prim_path,
+                "source": "dof_properties",
+                "dof_count": 7,
+                "dof_names": [f"panda_joint{i + 1}" for i in range(7)],
+                "joint_types": ["RevoluteJoint"] * 7,
+                "stiffness": [400.0] * 7,
+                "damping": [40.0] * 7,
+                "max_force": [87.0] * 7,
+                "lower_limits": [-2.9, -1.8, -2.9, -3.0, -2.9, -0.1, -2.9],
+                "upper_limits": [2.9, 1.8, 2.9, 0.0, 2.9, 3.7, 2.9],
+                "max_velocity": [2.0] * 7,
+            },
+        )
+
     async def robot_set_joint_positions(self, request: dict) -> dict:
         self.calls.append(("robot_set_joint_positions", request))
         return self.responses.get(
@@ -883,6 +903,24 @@ class MockIsaacRestClient:
             "render_product": "/Render/RenderProduct_Mock_0",
         })
 
+    async def sensor_lidar_get_point_cloud(self, request: dict) -> dict:
+        self.calls.append(("sensor_lidar_get_point_cloud", request))
+        max_points = int(request.get("max_points", 1000))
+        n = min(3, max_points)
+        return self.responses.get("sensor_lidar_get_point_cloud", {
+            "ok": True,
+            "sensor_prim": request.get("sensor_prim", ""),
+            "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+            "backend": "omni.replicator.core",
+            "num_points": n,
+            "points": [[float(i), 0.0, 0.0] for i in range(n)],
+            "intensities": [1.0] * n,
+            "truncated": False,
+            "frames_waited": int(request.get("frames_to_wait", 2)),
+            "raw_keys": ["azimuth", "data", "distance", "elevation", "intensity"],
+            "warning": None,
+        })
+
     # Physics (Phase F) — rigid body / collider / material / joint / scene / viz
 
     async def physics_apply_rigid_body(self, request: dict) -> dict:
@@ -893,6 +931,20 @@ class MockIsaacRestClient:
             "mass": request.get("mass", 1.0),
             "dynamic": request.get("dynamic", True),
             "applied_apis": ["PhysicsRigidBodyAPI", "PhysicsMassAPI"],
+        })
+
+    async def physics_get_rigid_body_state(self, prim_path: str) -> dict:
+        self.calls.append(("physics_get_rigid_body_state", {"prim_path": prim_path}))
+        return self.responses.get("physics_get_rigid_body_state", {
+            "ok": True,
+            "prim_path": prim_path,
+            "source": "physx_runtime",
+            "linear_velocity": [0.0, 0.0, -2.5],
+            "angular_velocity": [0.0, 0.0, 0.0],
+            "mass": 1.0,
+            "center_of_mass": [0.0, 0.0, 0.0],
+            "is_kinematic": False,
+            "is_enabled": True,
         })
 
     async def physics_apply_collider(self, request: dict) -> dict:

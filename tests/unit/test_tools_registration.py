@@ -44,6 +44,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Phase B — Robot
     "robot_load",
     "robot_get_joint_positions",
+    "robot_get_joint_config",
     "robot_set_joint_positions",
     "robot_navigate_to",
     # Phase B — Job
@@ -87,6 +88,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Phase E — Sensor (RTX Camera / Lidar / Depth) + visualization
     "sensor_attach_rtx_camera",
     "sensor_attach_rtx_lidar",
+    "sensor_lidar_get_point_cloud",
     "sensor_attach_rtx_depth_camera",
     "sensor_set_visualization",
     # Phase E — Viewport multi (create / destroy)
@@ -96,6 +98,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "navigation_set_visualization",
     # Phase F — Physics (rigid body / collider / material / joint / scene / viz)
     "physics_apply_rigid_body",
+    "physics_get_rigid_body_state",
     "physics_apply_collider",
     "physics_apply_material",
     "physics_create_joint",
