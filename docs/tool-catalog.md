@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 112
+**Tool count**: 115
 
 ## Table of contents
 
@@ -14,13 +14,13 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 11 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
-- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 8 tools
+- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 9 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 1 tools
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (37)
+- Unclassified (39)
 
 ## Process — Isaac Sim kit.exe lifecycle
 
@@ -788,6 +788,23 @@ wheel_base=0.413).
 | `arrival_tolerance` | `number` | `0.3` |  |
 | `timeout_s` | `number` | `60.0` |  |
 | `lookahead` | `number` | `0.8` |  |
+
+### `robot_get_joint_config`
+
+```python
+robot_get_joint_config(prim_path: 'str') -> 'str'
+```
+
+Read drive stiffness/damping/max_force + position lower/upper limits + max joint velocity per
+DOF. Symmetric readback for set_joint_positions — diagnose IK / drive_physics anomalies (drive
+too soft, target outside limits, velocity capped). Source field reports backend (dof_properties
+/ usd_drive_api fallback).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
 
 ### `robot_get_joint_positions`
 
@@ -1593,6 +1610,23 @@ anchor=localPos0; axis selects X/Y/Z for Revolute/Prismatic.
 | `axis` | `list[number] \| None` | `None` |  |
 | `joint_prim_path` | `string \| None` | `None` |  |
 
+### `physics_get_rigid_body_state`
+
+```python
+physics_get_rigid_body_state(prim_path: 'str') -> 'str'
+```
+
+Read PhysX runtime state — linear/angular velocity, mass, COM, kinematic/enabled flags.
+Symmetric readback for physics_apply_rigid_body. source='physx_runtime' (live PhysX via
+SingleRigidPrim, requires simulation.play to have ticked) or 'usd_initial' (USD authored
+values, velocities reflect pre-play state but mass/COM always accurate).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+
 ### `physics_set_scene`
 
 ```python
@@ -1798,6 +1832,24 @@ Attach RTX Lidar for point-cloud capture; config_preset selects profile
 | `mount_rotation` | `list[number]` | `'—'` | ✓ |
 | `config_preset` | `string` | `'Example_Rotary'` |  |
 | `sensor_name` | `string` | `'RtxLidar'` |  |
+
+### `sensor_lidar_get_point_cloud`
+
+```python
+sensor_lidar_get_point_cloud(sensor_prim: 'str', max_points: 'int' = 1000, frames_to_wait: 'int' = 2) -> 'str'
+```
+
+Read one frame of RTX Lidar XYZ point cloud (symmetric readback for sensor_attach_rtx_lidar).
+Reuses annotator stamped on sensor prim. Empty cloud → response.warning explains (typically
+"call simulation_play & wait for spin"). Truncates to max_points (≤100000).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `sensor_prim` | `string` | `'—'` | ✓ |
+| `max_points` | `integer` | `1000` |  |
+| `frames_to_wait` | `integer` | `2` |  |
 
 ### `sensor_set_annotator`
 

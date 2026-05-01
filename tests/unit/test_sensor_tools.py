@@ -15,6 +15,8 @@ from isaacsim_mcp.types.sensor import (
     SensorAttachRtxDepthCameraResult,
     SensorAttachRtxLidarRequest,
     SensorAttachRtxLidarResult,
+    SensorLidarGetPointCloudRequest,
+    SensorLidarGetPointCloudResult,
     SensorSetVisualizationRequest,
     SensorSetVisualizationResult,
 )
@@ -36,6 +38,7 @@ def test_sensor_tools_registered(mcp_server):
     names = set(mcp_server._tool_manager._tools)
     assert "sensor_attach_rtx_camera" in names
     assert "sensor_attach_rtx_lidar" in names
+    assert "sensor_lidar_get_point_cloud" in names
     assert "sensor_attach_rtx_depth_camera" in names
     assert "sensor_set_visualization" in names
 
@@ -136,6 +139,86 @@ async def test_set_visualization_toggle():
         assert result.ok
         assert isinstance(result.data, SensorSetVisualizationResult)
         assert result.data.mode == mode
+
+
+@pytest.mark.asyncio
+async def test_lidar_get_point_cloud_default_mock():
+    """Default mock returns 3 points with annotator backend."""
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = SensorModule(client)
+    request = SensorLidarGetPointCloudRequest(
+        sensor_prim="/World/Robot/NovaCarter/TopLidar",
+        max_points=1000,
+        frames_to_wait=2,
+    )
+    result = await module.lidar_get_point_cloud(_meta(), request)
+
+    assert result.ok
+    assert result.status == ExecutionStatus.PASSED
+    assert isinstance(result.data, SensorLidarGetPointCloudResult)
+    assert result.data.num_points == 3
+    assert result.data.points == ((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (2.0, 0.0, 0.0))
+    assert result.data.intensities == (1.0, 1.0, 1.0)
+    assert result.data.backend == "omni.replicator.core"
+    assert result.data.warning is None
+    assert result.data.frames_waited == 2
+    calls = [c for c in client.calls if c[0] == "sensor_lidar_get_point_cloud"]
+    assert len(calls) == 1
+    assert calls[0][1]["sensor_prim"] == "/World/Robot/NovaCarter/TopLidar"
+    assert calls[0][1]["max_points"] == 1000
+    assert calls[0][1]["frames_to_wait"] == 2
+
+
+@pytest.mark.asyncio
+async def test_lidar_get_point_cloud_empty_with_warning():
+    """Mock simulates pre-play empty cloud with warning."""
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["sensor_lidar_get_point_cloud"] = {
+        "ok": True,
+        "sensor_prim": "/World/Lidar",
+        "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+        "backend": "omni.replicator.core",
+        "num_points": 0,
+        "points": [],
+        "intensities": [],
+        "truncated": False,
+        "frames_waited": 2,
+        "raw_keys": [],
+        "warning": "annotator.get_data() returned empty — call simulation_play and wait for the lidar to spin",
+    }
+    module = SensorModule(client)
+    request = SensorLidarGetPointCloudRequest(sensor_prim="/World/Lidar")
+    result = await module.lidar_get_point_cloud(_meta(), request)
+
+    assert result.ok
+    assert result.data.num_points == 0
+    assert result.data.points == ()
+    assert result.data.warning is not None
+    assert "simulation_play" in result.data.warning
+
+
+@pytest.mark.asyncio
+async def test_lidar_get_point_cloud_propagates_400():
+    """Extension raises ValueError for non-rtx_lidar sensor → wrapped error."""
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingClient(MockIsaacRestClient):
+        async def sensor_lidar_get_point_cloud(self, request):  # type: ignore[override]
+            raise ValueError(
+                "Sensor at /World/Cam is not rtx_lidar (got sensor_type='rtx_camera')"
+            )
+
+    module = SensorModule(FailingClient())
+    request = SensorLidarGetPointCloudRequest(sensor_prim="/World/Cam")
+    result = await module.lidar_get_point_cloud(_meta(), request)
+
+    assert not result.ok
+    assert result.error_code == "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR"
+    assert "rtx_lidar" in (result.message or "")
 
 
 @pytest.mark.asyncio
