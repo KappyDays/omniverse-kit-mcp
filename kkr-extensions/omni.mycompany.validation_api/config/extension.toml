@@ -1,0 +1,15 @@
+[package]
+version = "1.0.0"
+title = "Validation API Extension"
+description = "REST API endpoints for MCP server validation of USD Stage changes"
+category = "Validation"
+keywords = ["validation", "mcp", "rest", "testing"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.services.core" = {}
+"omni.services.transport.server.http" = {}
+"omni.usd" = {}
+
+[[python.module]]
+name = "omni.mycompany.validation_api"

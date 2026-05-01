@@ -39,7 +39,7 @@ _F1_EXTERNAL_BASENAMES = frozenset({
 # Source-tree roots used by F1/F6 for unique-basename fallback. We avoid
 # scanning `.venv/`, `__pycache__/`, and other generated trees.
 _SOURCE_ROOTS = (
-    "src", "isaac_extension", "scripts", "tests",
+    "src", "kkr-extensions", "scripts", "tests",
     "scenarios", "docs", "isaac_course", "setup",
 )
 
@@ -159,7 +159,7 @@ def test_f1_referenced_files_exist():
 # directory names, config keys, env vars, etc. Add sparingly — most
 # suspects should either be real tools or actual stale refs to fix.
 _F2_NON_TOOL_TOKENS = frozenset({
-    "isaac_extension",   # directory name
+    "kkr-extensions",   # directory name
 })
 
 
@@ -282,9 +282,9 @@ def test_f5_referenced_scripts_exist():
 def _locate_py(rel: str) -> Path | None:
     """Try common project roots for a relative .py reference."""
     candidates = [PROJECT / rel]
-    for prefix in ("src", "isaac_extension", "scripts", "tests"):
+    for prefix in ("src", "kkr-extensions", "scripts", "tests"):
         candidates.append(PROJECT / prefix / rel)
-    # Explicit full-ext match (handles isaac_extension/omni.mycompany.*)
+    # Explicit full-ext match (handles kkr-extensions/omni.mycompany.*)
     for cand in candidates:
         if cand.exists():
             return cand

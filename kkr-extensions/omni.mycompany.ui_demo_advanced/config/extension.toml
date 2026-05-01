@@ -1,0 +1,13 @@
+[package]
+version = "0.1.0"
+title = "Phase E UI Demo — Advanced"
+description = "omni.ui.Window with CollapsableFrame + ComboBox + FloatSlider + TreeView + CheckBox — a realistic surface for extension_get_ui_tree / extension_ui_invoke to exercise the full _WIDGET_TYPES enumeration (structural widgets in particular)."
+category = "Validation"
+keywords = ["validation", "ui_test", "phase_e", "demo", "advanced"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.ui" = {}
+
+[[python.module]]
+name = "omni.mycompany.ui_demo_advanced"

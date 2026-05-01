@@ -22,12 +22,12 @@ extension_activate(ext_id, reload=True)
 
 ## 자동 방어 (현재 적용됨)
 
-`isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::ui_invoke`
+`kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::ui_invoke`
 가:
 1. widget_path 의 window 부분을
-   `isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::_auto_show_window`
+   `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::_auto_show_window`
    로 자동 호출 (settle_frames=10)
-2. `isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::_install_ui_test_dimensions_patch`
+2. `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::_install_ui_test_dimensions_patch`
    가 `omni.kit.ui_test.input.emulate_mouse` 를 monkey-patch — workspace dimensions=0
    시 OS app-window dimensions 으로 대체
 
@@ -66,7 +66,7 @@ AgentRecord 처럼 path 가 두 종류 (parent payload vs SkelRoot) 인 경우:
 
 ## 관련 경계
 
-- L13 / L15 사고 기록: `isaac_extension/docs/lessons-learned.md`
+- L13 / L15 사고 기록: `kkr-extensions/docs/lessons-learned.md`
 - Window / Extension domain 분리: `src/isaacsim_mcp/modules/integration-facts.md`
 - Extension reload (UI panel zombie 와 같은 layer): `docs/invariants/ext-reload.md`
-- Validation_api reuse pattern (싱글턴 in-process import): `isaac_extension/docs/validation_api-reuse.md`
+- Validation_api reuse pattern (싱글턴 in-process import): `kkr-extensions/docs/validation_api-reuse.md`

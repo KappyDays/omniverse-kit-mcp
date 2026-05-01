@@ -1,0 +1,164 @@
+"""Pydantic models for Robot REST endpoints (Phase B + G)."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class RobotLoadRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    usd_url: str = Field(description="USD asset URL (local path or omniverse://)")
+    prim_path: str = Field(description="Stage path where the robot is placed")
+    position: list[float] | None = Field(
+        default=None, description="[x, y, z] world position"
+    )
+    rotation: list[float] | None = Field(
+        default=None, description="[rx, ry, rz] Euler degrees (XYZ order)"
+    )
+
+
+class RobotLoadResponseModel(BaseModel):
+    ok: bool = True
+    prim_path: str
+    usd_url: str
+    type_name: str
+    has_articulation: bool = False
+
+
+class RobotSetJointPositionsRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str
+    positions: list[float] = Field(description="Joint positions (radians or metres)")
+
+
+class RobotJointPositionsResponseModel(BaseModel):
+    ok: bool = True
+    prim_path: str
+    positions: list[float]
+
+
+class RobotSetJointPositionsResponseModel(BaseModel):
+    ok: bool = True
+    prim_path: str
+    positions_count: int
+
+
+class RobotNavigateRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str
+    target: list[float] = Field(
+        description="[x, y, z] world-space target for the robot base"
+    )
+    duration_s: float = Field(
+        default=1.0, ge=0.0, description="Navigation duration (linear interpolation)"
+    )
+
+
+class RobotNavigateResponseModel(BaseModel):
+    ok: bool = True
+    job_id: str
+    prim_path: str
+    target: list[float]
+
+
+class RobotNavigatePathRequestModel(BaseModel):
+    """Follow a multi-waypoint path (e.g. NavMesh result) via linear interp."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str
+    points: list[list[float]] = Field(
+        description="Waypoints in world space; each entry is [x, y, z]. Minimum 2 points."
+    )
+    duration_s: float = Field(default=5.0, gt=0.0, description="Total traversal time.")
+
+
+class NavigationQueryPathRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    start: list[float] = Field(description="[x, y, z] start world position")
+    end: list[float] = Field(description="[x, y, z] end world position")
+    agent_radius: float = Field(default=0.0, ge=0.0)
+    agent_height: float = Field(default=0.0, ge=0.0)
+    straighten: bool = True
+
+
+class RobotGripperControlRequestModel(BaseModel):
+    """Open/close/set gripper joints on an articulation (Phase G).
+
+    The Extension auto-detects gripper joints by searching DOF names for
+    ``finger`` or ``gripper`` substrings. Works with Franka / UR-like
+    grippers. For ``action="set"`` the caller specifies an explicit
+    *target*; ``open`` / ``close`` read the joint limits (falls back to
+    Franka defaults ``0.04`` / ``0.0``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str = Field(description="Articulation prim path")
+    action: Literal["open", "close", "set"] = Field(
+        description="Gripper command — open/close use joint limits, set uses target"
+    )
+    target: float | None = Field(
+        default=None,
+        description="Required when action='set'; target position for all gripper joints",
+    )
+
+
+class DrivePhysicsRequestModel(BaseModel):
+    """Drive a wheel-based articulation along ``waypoints`` using
+    DifferentialController + Pure Pursuit (spec §8.2). Physics-based —
+    writes joint_velocities into PhysX articulation. Requires
+    ``omni.timeline.is_playing()`` (R2). Returns a Job; poll ``/jobs/{id}``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str = Field(description="Wheel-based articulation prim path")
+    waypoints: list[list[float]] = Field(
+        description="World-space [x,y,z] path (≥2 points). Use NavMesh query_path output.",
+        min_length=2,
+    )
+    max_linear: float = Field(default=1.0, gt=0, description="m/s")
+    max_angular: float = Field(default=1.2, gt=0, description="rad/s")
+    wheel_radius: float = Field(default=0.14, gt=0, description="m (Nova Carter default)")
+    wheel_base: float = Field(default=0.413, gt=0, description="m (Nova Carter default)")
+    arrival_tolerance: float = Field(default=0.3, gt=0, description="m")
+    timeout_s: float = Field(default=60.0, gt=0)
+    lookahead: float = Field(default=0.8, gt=0, description="Pure Pursuit lookahead distance (m)")
+
+
+class DrivePhysicsResponseModel(BaseModel):
+    ok: bool = True
+    job_id: str
+    prim_path: str
+
+
+class RobotSetEETargetRequestModel(BaseModel):
+    """Inverse-kinematics — compute joint positions to reach an end-effector pose (Phase G).
+
+    Uses ``isaacsim.robot_motion.motion_generation.lula`` IK solver. The
+    Franka config ships with Isaac Sim; generic articulations without a
+    Lula config cannot be solved (Extension returns HTTP 400).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str = Field(description="Articulation prim path")
+    target_pose: list[float] = Field(
+        description="[x, y, z, qw, qx, qy, qz] end-effector target",
+        min_length=7, max_length=7,
+    )
+    robot_description: str = Field(
+        default="Franka",
+        description="Lula robot description preset — Franka|UR10|Leatherback (Franka supported)",
+    )
+    end_effector_frame: str | None = Field(
+        default=None,
+        description="URDF frame name for end-effector (default per robot_description)",
+    )

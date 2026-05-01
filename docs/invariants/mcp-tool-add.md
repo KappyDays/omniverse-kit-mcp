@@ -15,7 +15,7 @@
 
 새 MCP tool 한 개 추가 시 반드시 함께 변경:
 
-1. **Extension REST endpoint** — `isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/services/` 또는 router
+1. **Extension REST endpoint** — `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/` 또는 router
 2. **REST client** — `src/isaacsim_mcp/clients/isaac_rest_client.py` 메서드 추가
 3. **Module wrapper** — `src/isaacsim_mcp/modules/` 도메인 모듈의 typed async 메서드
 4. **MCP tool 등록** — `src/isaacsim_mcp/tools/module_tools.py` 의 `@mcp.tool()` 데코레이터 함수

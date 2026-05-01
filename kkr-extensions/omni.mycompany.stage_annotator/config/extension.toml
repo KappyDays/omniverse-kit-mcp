@@ -1,0 +1,19 @@
+[package]
+version = "0.1.0"
+title = "Stage Annotator"
+description = "Prim-anchored sticky-note review system. Drop threaded notes on any prim with a status workflow (Open / In Progress / Resolved / Won't Fix), in-scene 3D pin markers colour-coded by status, search + filter panel, and JSON export. Notes persist as customData on the stage rootLayer so they survive save/reload."
+category = "Tools"
+authors = ["Isaac-sim-MCP autonomous"]
+keywords = ["annotation", "review", "comment", "sticky-note", "collaboration", "stage", "viewport"]
+preview_image = ""
+readme = "../README.md"
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.usd" = {}
+"omni.ui" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.viewport.window" = {}
+
+[[python.module]]
+name = "omni.mycompany.stage_annotator"

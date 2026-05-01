@@ -38,7 +38,7 @@
 ## Validation Rules
 
 - **R1** 실 asset 만 — primitive (Cube/Sphere) 대체 금지 (False Positive). 상세: `docs/invariants/scenario-validation.md`
-- **R1a** NavMesh bake 는 `simulation_stop` 재호출 후 (`load → stop → bake → query → play → navigate`) — 본문 `isaac_extension/docs/kit-sdk-pitfalls.md` NavMesh §
+- **R1a** NavMesh bake 는 `simulation_stop` 재호출 후 (`load → stop → bake → query → play → navigate`) — 본문 `kkr-extensions/docs/kit-sdk-pitfalls.md` NavMesh §
 - **R2** Robot 동작 (`set_joint_positions` / `navigate_*` / `drive_physics`) 은 `simulation_play` 상태 필수 (`robot_load` 예외) — 상세 `src/isaacsim_mcp/modules/CLAUDE.md` Robot
 - **R3** `viewport_capture` 후 `Read` tool 시각 검증 의무 — blank/black 이면 조명·카메라·asset 조정 재시도
 
@@ -48,7 +48,7 @@
 |-----------|----------|
 | 새 MCP tool | 7 곳 (`docs/invariants/mcp-tool-add.md`) + `scripts/verify_mcp_sync.py` 수동 1 회 |
 | 새 module / scenario action | `docs/invariants/module-add.md` |
-| REST endpoint | client + tool 등록 + test + `isaac_extension/CLAUDE.md` |
+| REST endpoint | client + tool 등록 + test + `kkr-extensions/CLAUDE.md` |
 | MCP resource | `src/isaacsim_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py` + verify_mcp_sync |
 | Phase 완료 | `docs/phase-<N>-validation-report.md` + `docs/phase-progress.md` + 전체 pytest green |
 | CLAUDE.md 새 디렉토리 | 이 매트릭스 + 문서 맵 양방향 갱신 |
@@ -84,7 +84,7 @@ Subagent 는 sub-CLAUDE.md 자동 로드 안 함. 디스패치 프롬프트에 `
 | `src/isaacsim_mcp/modules/CLAUDE.md` | 모듈 매트릭스 + Character 제약 + base.py 패턴 (→ `integration-facts.md` · `process-ops.md`) |
 | `src/isaacsim_mcp/scenario/CLAUDE.md` | 시나리오 엔진 (Arrange/Act/Assert/Cleanup + action_registry) |
 | `src/isaacsim_mcp/tools/CLAUDE.md` | MCP tool 등록 규약 + 그룹별 caveat |
-| `isaac_extension/CLAUDE.md` | Extension 개발 nav hub (→ `docs/*` basics / pitfalls / recipe / reuse / lessons-learned) |
+| `kkr-extensions/CLAUDE.md` | Extension 개발 nav hub (→ `docs/*` basics / pitfalls / recipe / reuse / lessons-learned) |
 | `scenarios/CLAUDE.md` | YAML 저작 |
 | `tests/CLAUDE.md` | pytest 단위 |
 | `setup/CLAUDE.md` | 설치 / 신규 PC |

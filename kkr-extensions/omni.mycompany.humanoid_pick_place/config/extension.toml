@@ -1,0 +1,18 @@
+[package]
+version = "0.1.0"
+title = "Humanoid Pick & Place"
+description = "NVIDIA Humanoid28 keyframe pick-and-place demo. Single-arm right-hand pickup at table A → place on table B."
+authors = ["isaac-humanoid autonomous"]
+category = "Demo"
+keywords = ["humanoid", "pick", "place", "manipulation", "demo"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.usd" = {}
+"omni.ui" = {}
+"omni.physx" = {}
+"omni.timeline" = {}
+"isaacsim.core.api" = {}
+
+[[python.module]]
+name = "omni.mycompany.humanoid_pick_place"

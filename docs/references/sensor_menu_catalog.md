@@ -2,7 +2,7 @@
 
 **Source of Truth**: `window_menu_list(menu_path="Create")` — Isaac Sim Kit 5.1 merged menu tree.
 **Regenerate**: Isaac Sim 기동 상태에서 `mcp__isaacsim-mcp__window_menu_list(menu_path="Create")` 호출 → `Create/Sensors/*` 항목만 추출. Kit SDK / Extension 버전 변경 시 재생성.
-**Last captured**: 2026-04-20 (Isaac Sim 5.1.0 + isaac_extension/validation_api 기동 상태).
+**Last captured**: 2026-04-20 (Isaac Sim 5.1.0 + kkr-extensions/validation_api 기동 상태).
 
 ## 사용 목적
 
@@ -114,7 +114,7 @@ window_menu_trigger(menu_path="Create/Robots/Nova Carter with Sensors")
 
 ## 현 Extension `sensor_service` vs 이 카탈로그
 
-`isaac_extension/.../services/sensor_service.py` 의 `attach_rtx_camera` / `attach_rtx_lidar` / `attach_rtx_depth_camera` 는 **UsdGeom.Camera + customData.validation_api.sensor_type tag** 기반 mock 구현. 실제 RTX sensor schema (Lidar scan buffer annotator, Radar sample buffer, HESAI/Ouster-specific intrinsics) 는 이 카탈로그의 menu action 이 생성하는 prim 만 가진다.
+`kkr-extensions/.../services/sensor_service.py` 의 `attach_rtx_camera` / `attach_rtx_lidar` / `attach_rtx_depth_camera` 는 **UsdGeom.Camera + customData.validation_api.sensor_type tag** 기반 mock 구현. 실제 RTX sensor schema (Lidar scan buffer annotator, Radar sample buffer, HESAI/Ouster-specific intrinsics) 는 이 카탈로그의 menu action 이 생성하는 prim 만 가진다.
 
 **사용 구분**:
 - **튜토리얼 · 시각 교육**: mock (sensor_attach_rtx_* MCP tool) — 부착 위치 + Stage hierarchy 시각화만 필요

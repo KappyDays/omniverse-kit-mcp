@@ -76,7 +76,7 @@ Isaac-sim-MCP does **not auto-detect** the Isaac Sim install location. Default p
    # Optional: cold-boot + shader compile budget (default 240s → 600s recommended)
    ISAAC_SIM_STARTUP_TIMEOUT=600.0
    ```
-4. **Kit Extension activation is automatic** — on `isaac_sim_start` the MCP server spawns Kit with `--ext-folder <repo>/isaac_extension --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.
+4. **Kit Extension activation is automatic** — on `isaac_sim_start` the MCP server spawns Kit with `--ext-folder <repo>/kkr-extensions --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.
 
 Sanity check after first startup: `curl http://localhost:8011/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
 
@@ -86,9 +86,9 @@ The MCP server always ships the built-in `omni.mycompany.validation_api` Extensi
 
 **Option A — Drop it under the repo's extension folder (simplest)**
 
-1. Place your extension at `isaac_extension/<your.ext.id>/` with the standard Kit layout:
+1. Place your extension at `kkr-extensions/<your.ext.id>/` with the standard Kit layout:
    ```
-   isaac_extension/
+   kkr-extensions/
    ├── omni.mycompany.validation_api/      # built-in
    └── your.company.awesome/               # your extension
        ├── config/extension.toml
@@ -102,14 +102,14 @@ The MCP server always ships the built-in `omni.mycompany.validation_api` Extensi
 
 **Option B — Use a different extension folder**
 
-`isaac_extension/` is the default `--ext-folder` passed to Kit. To point elsewhere, override in `.env`:
+`kkr-extensions/` is the default `--ext-folder` passed to Kit. To point elsewhere, override in `.env`:
 
 ```dotenv
 ISAAC_SIM_EXT_FOLDER=D:/my-projects/my-kit-extensions
 ISAAC_SIM_EXTRA_EXT_IDS=["your.company.awesome"]
 ```
 
-⚠️ `ISAAC_SIM_EXT_FOLDER` currently accepts a **single path only**. If you need both the repo's built-in extension and an external folder, use Option A (drop into `isaac_extension/`) — Kit auto-discovers every subfolder there.
+⚠️ `ISAAC_SIM_EXT_FOLDER` currently accepts a **single path only**. If you need both the repo's built-in extension and an external folder, use Option A (drop into `kkr-extensions/`) — Kit auto-discovers every subfolder there.
 
 **Verifying your extension loaded**
 
@@ -154,7 +154,7 @@ For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows sp
 | Path | Role |
 |---|---|
 | `src/isaacsim_mcp/` | FastMCP server (Python) — tool registration, scenario engine, REST client |
-| `isaac_extension/omni.mycompany.validation_api/` | Kit Extension (FastAPI) — 102 REST endpoints mounted at `/validation/v1` |
+| `kkr-extensions/omni.mycompany.validation_api/` | Kit Extension (FastAPI) — 102 REST endpoints mounted at `/validation/v1` |
 | `scenarios/` | YAML scenarios (Arrange / Act / Assert / Cleanup) + JSON Schema |
 | `scripts/` | Developer utilities — catalog regen, sync verification, per-phase live tests |
 | `tests/` | Mock-based pytest suite (309 tests) |
@@ -237,7 +237,7 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 
 - **Operational rules & escalation protocols** → root [`CLAUDE.md`](./CLAUDE.md)
 - **Tool surface contract** → [`docs/tool-catalog.md`](./docs/tool-catalog.md) + [`src/isaacsim_mcp/tools/CLAUDE.md`](./src/isaacsim_mcp/tools/CLAUDE.md)
-- **Kit Extension internals** → [`isaac_extension/CLAUDE.md`](./isaac_extension/CLAUDE.md)
+- **Kit Extension internals** → [`kkr-extensions/CLAUDE.md`](./kkr-extensions/CLAUDE.md)
 - **Module integration facts** (Kit 5.1 gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/isaacsim_mcp/modules/CLAUDE.md`](./src/isaacsim_mcp/modules/CLAUDE.md)
 - **Scenario authoring guide** → [`scenarios/CLAUDE.md`](./scenarios/CLAUDE.md)
 - **Phase-by-phase history** → `docs/phase-{a..h}-validation-report.md`
