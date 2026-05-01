@@ -29,7 +29,7 @@ htmlcov/
 *.swp
 *.swo
 
-# Node.js (isaac_course/scripts/ uses pptxgenjs via npm)
+# Node.js
 node_modules/
 
 # OS

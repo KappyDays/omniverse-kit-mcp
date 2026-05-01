@@ -30,7 +30,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 #   docs/assets/composer/      → USD Composer / cross-app sample library
 # Both live in the same omniverse-content-production S3 bucket.
 ASSETS_DIRS = [
-    PROJECT_ROOT / "isaac_course" / "docs" / "assets",
+    PROJECT_ROOT / "docs" / "assets" / "isaac" / "assets",
     PROJECT_ROOT / "docs" / "assets" / "composer",
 ]
 # Backwards-compat alias for tests that imported the singular name.

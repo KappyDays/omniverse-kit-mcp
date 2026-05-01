@@ -40,7 +40,7 @@ _F1_EXTERNAL_BASENAMES = frozenset({
 # scanning `.venv/`, `__pycache__/`, and other generated trees.
 _SOURCE_ROOTS = (
     "src", "kkr-extensions", "scripts", "tests",
-    "scenarios", "docs", "isaac_course", "setup",
+    "scenarios", "docs", "setup",
 )
 
 # Scenario YAMLs that intentionally use a local fixture (documented inline).
@@ -264,7 +264,7 @@ def test_f5_referenced_scripts_exist():
         parent = md.parent
         for match in _BACKTICK_SCRIPT_RE.finditer(md.read_text(encoding="utf-8")):
             rel = match.group(1)
-            # Resolve parent-relative first (e.g. isaac_course/CLAUDE.md referring
+            # Resolve parent-relative first (e.g. a sub-CLAUDE.md referring
             # to its own scripts/), fall back to project-root interpretation.
             if (parent / rel).exists():
                 continue
