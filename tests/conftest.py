@@ -1382,6 +1382,28 @@ class MockIsaacRestClient:
             },
         })
 
+    async def kit_command_execute(
+        self,
+        name: str,
+        payload: dict | None = None,
+        expect_undo: bool = False,
+    ) -> dict:
+        self.calls.append(("kit_command_execute", {"name": name, "payload": payload, "expect_undo": expect_undo}))
+        return self.responses.get("kit_command_execute", {
+            "ok": True, "name": name, "succeeded": True, "result": None,
+        })
+
+    async def kit_python_run(
+        self,
+        code: str,
+        return_keys: list[str] | None = None,
+    ) -> dict:
+        self.calls.append(("kit_python_run", {"code": code, "return_keys": list(return_keys or [])}))
+        return self.responses.get("kit_python_run", {
+            "ok": True, "stdout": "", "stderr": "",
+            "error": None, "traceback": None, "returned": {},
+        })
+
     async def close(self) -> None:
         pass
 
