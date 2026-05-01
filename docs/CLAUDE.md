@@ -19,7 +19,7 @@ Isaac-sim-MCP 가 "지금 무엇을 할 수 있는가" (tool 카탈로그) 와 "
 | `references/` | Isaac Sim Kit SDK / ext 카탈로그 / testbed snapshot — 외부 레퍼런스 자료 | `scripts/sync_testbed_snapshot.py` 등으로 주기 갱신. 상세: `references/CLAUDE.md` |
 | `blueprint/` | 초기 설계 문서 / 아키텍처 스케치 | 거의 변경 없음 (history) |
 | `specs/` | 인터뷰 스펙 / 프로젝트 원본 요구사항 | 거의 변경 없음 (history) |
-| `artifacts/` | Phase 별 live validation 산출물 (`phase-a/`, `phase-d/`, `phase-e/`, `phase-f/`) + 재구성 baseline (`restructure-baseline/{pre,post}/`). validation-report.md 의 참조 타겟 | live test 스크립트가 직접 쓰기 (각 `scripts/live_test_*.py` 의 `PHASE_*_DIR` 상수가 이 경로로 설정됨) |
+| `artifacts/` | Phase 별 live validation 산출물 (`phase-a/`, `phase-d/`, `phase-e/`, `phase-f/`, `phase-i/`) + `constraint-validation-2026-04-23/`. validation-report.md 의 참조 타겟 | live test 스크립트가 직접 쓰기 (각 `scripts/live_test_*.py` 의 `PHASE_*_DIR` 상수가 이 경로로 설정됨) |
 | `superpowers/` | superpowers 관련 메모 / plans / specs (디자인 아티팩트 — forward ref 허용, `test_doc_integrity.py` A1 에서 제외) | 수동 작성 |
 
 ## Phase report 작성 규칙
