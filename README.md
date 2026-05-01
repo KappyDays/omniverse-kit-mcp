@@ -159,9 +159,8 @@ For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows sp
 | `scripts/` | Developer utilities — catalog regen, sync verification, per-phase live tests |
 | `tests/` | Mock-based pytest suite (309 tests) |
 | `setup/` | Windows installer + `~/.claude.json` wiring helpers |
-| `docs/` | `tool-catalog.md` (auto-generated), `phase-progress.md`, per-phase validation reports, live artifacts |
-| `isaac_course/` | Companion PPTX tutorial project — 28 slides + 3 Digital Twin USD |
-| `archive/` | Completed session prompts + historical captures (post-project) |
+| `docs/` | `tool-catalog.md` (auto-generated), `phase-progress.md`, per-phase validation reports, live artifacts, `assets/isaac/` + `assets/composer/` (asset URL catalogs) |
+| `isaac-pick-place/` · `usd-mouse-interact/` | Workshop material (design / verification / captures / tests) — extensions live in `kkr-extensions/` |
 
 ---
 
@@ -240,8 +239,8 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 - **Kit Extension internals** → [`kkr-extensions/CLAUDE.md`](./kkr-extensions/CLAUDE.md)
 - **Module integration facts** (Kit 5.1 gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/isaacsim_mcp/modules/CLAUDE.md`](./src/isaacsim_mcp/modules/CLAUDE.md)
 - **Scenario authoring guide** → [`scenarios/CLAUDE.md`](./scenarios/CLAUDE.md)
-- **Phase-by-phase history** → `docs/phase-{a..h}-validation-report.md`
-- **Companion tutorial** → [`isaac_course/README.md`](./isaac_course/README.md)
+- **Phase-by-phase history** → `docs/phase-{a..i}-validation-report.md`
+- **Asset URL catalogs** → [`docs/assets/isaac/asset_inventory.md`](./docs/assets/isaac/asset_inventory.md) (Isaac Sim 5.1 bundle) + `docs/assets/composer/` (Composer scope)
 
 ---
 
