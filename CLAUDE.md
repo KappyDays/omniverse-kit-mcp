@@ -21,6 +21,7 @@
 | Extension `.py` 수정 / reload | `docs/invariants/ext-reload.md` |
 | Extension UI automation (`extension_ui_invoke`) | `docs/invariants/ui-invoke.md` |
 | Scenario YAML 저작 | `docs/invariants/scenario-validation.md` |
+| `viewport_capture` / scene build / 새 NVIDIA asset 사용 | `docs/invariants/visual-validation.md` |
 | Multi-app 추가 / Kit app profile 수정 | `docs/invariants/multi-app.md` |
 | Kit / app 버전 업뎃 후 catalog sync | skill `/omniverse-kit-extension-catalog-sync` (`.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`) |
 | Asset URL 404 / inventory 갱신 | skill `/omniverse-asset-inventory-sync` (`.claude/skills/omniverse-asset-inventory-sync/SKILL.md`) |
