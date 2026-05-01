@@ -90,7 +90,7 @@ Subagent 는 sub-CLAUDE.md 자동 로드 안 함. 디스패치 프롬프트에 `
 | `setup/CLAUDE.md` | 설치 / 신규 PC |
 | `scripts/CLAUDE.md` | 개발 스크립트 |
 | `docs/CLAUDE.md` | phase 히스토리 / tool-catalog / references |
-| `isaac_course/CLAUDE.md` | Digital Twin 튜토리얼 + asset 카탈로그 (`docs/asset_inventory.md`) |
+| `docs/assets/isaac/` | NVIDIA Isaac Sim 5.1 asset URL 카탈로그 SoT (`asset_inventory.md` 진입점 + per-category `assets/*.md`) |
 
 ## 메타 — CLAUDE.md 작성 규칙
 

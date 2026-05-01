@@ -41,7 +41,7 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 | Task | 제목 | 상태 | 타임스탬프 | 비고 |
 |---|---|---|---|---|
 | 1 | Prerequisite 상태 확인 | ✅ | 2026-04-19 09:25 | pytest 194 passed, verify_mcp_sync OK (58 tool baseline) |
-| 2 | NavMesh Viz API 3 후보 조사 | ✅ | 2026-04-19 10:25 | `isaac_course/docs/navmesh_viz_research.md` 작성, carb.settings + prim-visibility 폴백 채택 |
+| 2 | NavMesh Viz API 3 후보 조사 | ✅ | 2026-04-19 10:25 | `docs/assets/isaac/navmesh_viz_research.md` 작성, carb.settings + prim-visibility 폴백 채택 |
 | 3 | sensor_module 골격 | ✅ | 2026-04-19 09:45 | ModuleName.SENSOR + scenario wiring 완료 |
 | 4 | sensor_attach_rtx_camera | ✅ | 2026-04-19 09:50 | +1 tool (59) |
 | 5 | sensor_attach_rtx_lidar | ✅ | 2026-04-19 09:50 | +1 tool (60) |
@@ -64,7 +64,7 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 | 1 | isaac_course 초기화 | ✅ | 2026-04-19 12:18 | 디렉토리 skeleton 존재 (슬라이드/USD/scripts/captures 서브/baselines twin{1,2,3}/slide_renders 생성). build_log.md 세션 2 헤더. asset_inventory 교차검증 완료 |
 | 2 | Asset inventory 실측 | ✅ | 2026-04-19 12:20 | live drill-down: NovaCarter/Carter/Jetbot/Simple_Warehouse/Office/Simple_Room/Hospital/Grid/FrankaPanda/ur10/Leatherback 전부 ✓. female_child_casual_01 부재 → F_Medical_01 대체. Leatherback △→✓ |
 | 3 | capture_helpers.py | ✅ | 2026-04-19 | 파일 작성 + smoke test pass. `.venv/Scripts/python.exe isaac_course/scripts/capture_helpers.py` 실행 결과: `captures/test/99_smoke_viewport.png` (6,108 B — 빈 stage 상태) + `99_smoke_app.png` (274,038 B — Kit GUI chrome 정상). 캡처 파이프라인 (viewport + window → `_artifact_path` flat/wrapped dual parsing → `_relocate`) 검증 완료 |
-| 4 | UI/Browsers/Examples 캡처 | 🟡 | 2026-04-19 | 슬라이드 3~5 — 16 capture (ui 2 + browsers 10 + examples 4). Isaac Sim Assets browser 는 Kit 5.1 action silent no-op 으로 skip (5 browser 로 진행). warehouse.usd S3 cold-load hang + `/window/menu_trigger` query param mismatch 는 문서화 후 해결. 상세: `isaac_course/docs/implementation_issues.md` 2026-04-19 Task 4 |
+| 4 | UI/Browsers/Examples 캡처 | 🟡 | 2026-04-19 | 슬라이드 3~5 — 16 capture (ui 2 + browsers 10 + examples 4). Isaac Sim Assets browser 는 Kit 5.1 action silent no-op 으로 skip (5 browser 로 진행). warehouse.usd S3 cold-load hang + `/window/menu_trigger` query param mismatch 는 문서화 후 해결. 상세: `docs/assets/isaac/implementation_issues.md` 2026-04-19 Task 4 |
 | 5 | Categories 캡처 | ✅ | 2026-04-20 23:17 | 재수행 (session 3): 실 S3 asset 사용 성공. slide 6 4 character (Biped + F_Business_02 + F_Medical_01 + Construction) back/front/angle2 + app views · slide 7 Warehouse + 3 robots + 5 Cube obstacles + NavMesh walkable before/after · slide 8 3 SimReady (armchair/sofa/coffeetable) · slide 9 NovaCarter + 실 IMU Sensor + mock RTX 3 (hierarchy) |
 | 6 | Asset Sampler 캡처 | ✅ | 2026-04-20 23:37 | slide 10 — Franka/UR10/Leatherback/Pallet/KLT_Bin + Police/Medical character. `usd/asset_sampler.usd` 저장 |
 | 7 | Recipe 플로우 섬네일 | ✅ | 2026-04-20 23:50 | slide 11 — step1 empty · step2 env(warehouse) · step3 simready · step4 people(Biped) live capture. step5~7 (navmesh/sensor/play) 는 Task 5 캡처 재활용 (bake cache lock 으로 Kit 재시작 반복 방지) |
@@ -126,7 +126,7 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 
 ---
 
-## Skip 항목 요약 (상세는 `isaac_course/docs/implementation_issues.md`)
+## Skip 항목 요약 (상세는 `docs/assets/isaac/implementation_issues.md`)
 
 | Phase | Tool/Step | 사유 요약 |
 |---|---|---|
