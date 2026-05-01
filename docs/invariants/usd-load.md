@@ -27,13 +27,7 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 - MDL 로더 loop 가 carb thread 와 GIL 경합을 일으켰던 검증된 증상
 - `extension_capture_logs` / `extension_clear_logs` MCP tool 은 현재 no-op
 
-### 3. `ISAAC_SIM_EXTRA_EXT_IDS` 에 browser ext 금지
-
-- `isaacsim.asset.browser` / `omni.kit.window.content_browser` 의 S3 crawl thread 가
-  MDL resolver 와 경합하여 hang 확률 급증
-- GUI Asset Browser 가 필요하면 수동 활성화 (해당 세션 후 비활성화)
-
-### 4. 좀비 복구는 `cmd //c "taskkill /F /IM kit.exe /T"` 만 작동
+### 3. 좀비 복구는 `cmd //c "taskkill /F /IM kit.exe /T"` 만 작동
 
 - `powershell Stop-Process` 는 Access Denied 확정
 - 편의 스크립트: `scripts/kill_kit_zombie.sh`
@@ -87,8 +81,9 @@ loop deadlock → 모든 MCP tool 92 s timeout.
 
 - `log_capture.start()` 재활성
 - `file:///` 로컬 캐시
-- `ISAAC_SIM_EXTRA_EXT_IDS` 에 browser ext 추가
 - **S3 load 실패 시 skip/fallback/placeholder** — 모두 금지. 근본 원인 분석 후 반드시 성공시킬 것
+
+> 과거 "browser ext 금지" 항목 (2026-04-20 진단) 은 2026-04-25 자동 검증으로 무효화. USD Composer `.kit` default 로 `omni.kit.window.content_browser` 활성 상태에서 warehouse MDL-heavy load 17.5s 성공. deadlock 의 인과는 carb log hook 등록 (현재 `extension.py:36` 에서 disable) 이며 browser ext 자체는 무해. lessons-learned 보존.
 
 ## 관련 경계
 
