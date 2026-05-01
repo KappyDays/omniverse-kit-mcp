@@ -17,6 +17,7 @@ from isaacsim_mcp.types.physics import (
     PhysicsApplyRigidBodyResult,
     PhysicsCreateJointRequest,
     PhysicsCreateJointResult,
+    PhysicsRigidBodyState,
     PhysicsSetSceneRequest,
     PhysicsSetSceneResult,
     PhysicsVisualizeRequest,
@@ -42,6 +43,7 @@ def test_physics_tools_registered(mcp_server):
     names = set(mcp_server._tool_manager._tools)
     for tool in (
         "physics_apply_rigid_body",
+        "physics_get_rigid_body_state",
         "physics_apply_collider",
         "physics_apply_material",
         "physics_create_joint",
@@ -78,6 +80,72 @@ async def test_apply_rigid_body_success():
     assert "PhysicsRigidBodyAPI" in result.data.applied_apis
     assert ("physics_apply_rigid_body",
             {"prim_path": "/World/Box", "mass": 2.5, "dynamic": True}) in client.calls
+
+
+@pytest.mark.asyncio
+async def test_get_rigid_body_state_default_runtime():
+    """Default mock returns physx_runtime source with -2.5 z velocity."""
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = PhysicsModule(client)
+    result = await module.get_rigid_body_state(_meta(), "/World/Box")
+
+    assert result.ok
+    assert isinstance(result.data, PhysicsRigidBodyState)
+    assert result.data.source == "physx_runtime"
+    assert result.data.linear_velocity == (0.0, 0.0, -2.5)
+    assert result.data.angular_velocity == (0.0, 0.0, 0.0)
+    assert result.data.mass == 1.0
+    assert result.data.is_kinematic is False
+    assert result.data.is_enabled is True
+    state_calls = [c for c in client.calls if c[0] == "physics_get_rigid_body_state"]
+    assert len(state_calls) == 1
+    assert state_calls[0][1]["prim_path"] == "/World/Box"
+
+
+@pytest.mark.asyncio
+async def test_get_rigid_body_state_usd_initial_fallback():
+    """Custom mock simulates USD-only fallback (pre-play state)."""
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["physics_get_rigid_body_state"] = {
+        "ok": True,
+        "prim_path": "/World/StaticBox",
+        "source": "usd_initial",
+        "linear_velocity": [0.0, 0.0, 0.0],
+        "angular_velocity": [0.0, 0.0, 0.0],
+        "mass": 5.0,
+        "center_of_mass": [0.0, 0.0, 0.5],
+        "is_kinematic": True,
+        "is_enabled": True,
+    }
+    module = PhysicsModule(client)
+    result = await module.get_rigid_body_state(_meta(), "/World/StaticBox")
+
+    assert result.ok
+    assert result.data.source == "usd_initial"
+    assert result.data.is_kinematic is True
+    assert result.data.mass == 5.0
+    assert result.data.center_of_mass == (0.0, 0.0, 0.5)
+
+
+@pytest.mark.asyncio
+async def test_get_rigid_body_state_propagates_400():
+    """Extension raises ValueError for missing RigidBodyAPI → wrapped error."""
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingClient(MockIsaacRestClient):
+        async def physics_get_rigid_body_state(self, prim_path):  # type: ignore[override]
+            raise ValueError("Prim at /X has no UsdPhysics.RigidBodyAPI applied")
+
+    module = PhysicsModule(FailingClient())
+    result = await module.get_rigid_body_state(_meta(), "/X")
+
+    assert not result.ok
+    assert result.error_code == "PHYSICS_GET_RIGID_BODY_STATE_ERROR"
+    assert "RigidBodyAPI" in (result.message or "")
 
 
 @pytest.mark.asyncio
