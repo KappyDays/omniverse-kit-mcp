@@ -25,7 +25,16 @@ from pathlib import Path
 import httpx
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-ASSETS_DIR = PROJECT_ROOT / "isaac_course" / "docs" / "assets"
+# Two catalog scopes — both validated by this script:
+#   isaac_course/docs/assets/  → Isaac Sim 5.1 bundle (legacy, strict prefix)
+#   docs/assets/composer/      → USD Composer / cross-app sample library
+# Both live in the same omniverse-content-production S3 bucket.
+ASSETS_DIRS = [
+    PROJECT_ROOT / "isaac_course" / "docs" / "assets",
+    PROJECT_ROOT / "docs" / "assets" / "composer",
+]
+# Backwards-compat alias for tests that imported the singular name.
+ASSETS_DIR = ASSETS_DIRS[0]
 
 PREFIX_DECL_RE = re.compile(r"^`(\$\w+)`\s*=\s*`(https?://[^`]+)`", re.MULTILINE)
 USD_BACKTICK_RE = re.compile(r"`([^`\s]+\.usd)`")
@@ -52,25 +61,26 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
     """Resolve every backtick-wrapped *.usd containing a `/` separator.
 
     Returns [(source_line, full_url), ...].
-    - `$ISAAC/...usd` / `$SIM/...usd` → expand prefix
+    - `$VAR/...usd` for any declared `$VAR = "https://..."` → expand prefix
     - `Characters/foo.usd` (relative) → use most-recent `루트:` declaration in scope
     - paths with `{placeholder}` skipped
     Bare file names (e.g. robots.md) handled by extract_urls_robots.
+
+    Prefix handling is fully dynamic — adding a new catalog .md with its own
+    `$VAR` (e.g. `$DT` for DigitalTwin) just works without touching this code.
     """
     text = md_path.read_text(encoding="utf-8")
     prefixes = parse_prefixes(text)
-    isaac = prefixes.get("$ISAAC", "")
-    sim = prefixes.get("$SIM", "")
-    if not isaac and not sim:
+    if not prefixes:
         return []
 
-    def _expand(prefix_var: str) -> str:
-        # `$ISAAC/People/Characters` → "https://.../Isaac/People/Characters"
-        if prefix_var.startswith("$ISAAC"):
-            return isaac + prefix_var[len("$ISAAC"):]
-        if prefix_var.startswith("$SIM"):
-            return sim + prefix_var[len("$SIM"):]
-        return ""
+    def _expand_decl(var_path: str) -> str:
+        """Expand `$VAR/Path/Sub` against the declared prefix table."""
+        var, _, rest = var_path.partition("/")
+        base = prefixes.get(var)
+        if base is None:
+            return ""
+        return f"{base}/{rest}".rstrip("/") if rest else base.rstrip("/")
 
     # First `루트:` in the file is the canonical category root for all relative
     # paths. Subsequent `루트:` are sub-section context only — table path columns
@@ -78,7 +88,11 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
     main_root = ""
     m_first_root = ROOT_DECL_RE.search(text)
     if m_first_root:
-        main_root = _expand(m_first_root.group(1)).rstrip("/")
+        main_root = _expand_decl(m_first_root.group(1))
+
+    # Fallback base for relative paths when no `루트:` is declared — use whichever
+    # prefix is most likely the catalog root (deterministic via dict order).
+    fallback_base = next(iter(prefixes.values()), "").rstrip("/")
 
     out: list[tuple[str, str]] = []
     for line in text.splitlines():
@@ -87,15 +101,19 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
                 continue
             if PLACEHOLDER_RE.search(path):
                 continue  # template like `{name}/{name}.usd`
-            if path.startswith("$ISAAC/"):
-                if isaac:
-                    out.append((line.strip(), isaac + path[len("$ISAAC"):]))
-            elif path.startswith("$SIM/"):
-                if sim:
-                    out.append((line.strip(), sim + path[len("$SIM"):]))
+            # Try declared prefix vars first (longest match would also work,
+            # but $VAR/ + first-match is unambiguous given USD path shape).
+            expanded = None
+            for var, base in prefixes.items():
+                if path.startswith(var + "/"):
+                    expanded = base + path[len(var):]
+                    break
+            if expanded:
+                out.append((line.strip(), expanded))
             else:
-                # relative: use the file's main `루트:` (or $ISAAC top if absent)
-                base = main_root or isaac
+                # relative path: anchor to the file's main `루트:` (or the first
+                # declared prefix if no 루트: present).
+                base = main_root or fallback_base
                 if base:
                     out.append((line.strip(), f"{base}/{path}"))
     return out
@@ -124,15 +142,26 @@ def extract_urls_robots(md_path: Path) -> list[tuple[str, str]]:
 
 
 def collect_all_urls() -> list[tuple[str, str, str]]:
-    """Return [(md_filename, source_line, full_url), ...] across all asset md files."""
+    """Return [(md_filename, source_line, full_url), ...] across all asset md files.
+
+    Walks every directory in ASSETS_DIRS that exists on disk, so the composer
+    catalog directory is optional — the validator runs even before it's
+    populated. README.md files (catalog index) are skipped: they reference
+    sub-md filenames, not USD URLs.
+    """
     out: list[tuple[str, str, str]] = []
-    for md in sorted(ASSETS_DIR.glob("*.md")):
-        if md.name == "robots.md":
-            urls = extract_urls_robots(md)
-        else:
-            urls = extract_urls_generic(md)
-        for line, url in urls:
-            out.append((md.name, line, url))
+    for assets_dir in ASSETS_DIRS:
+        if not assets_dir.is_dir():
+            continue
+        for md in sorted(assets_dir.glob("*.md")):
+            if md.name.lower() == "readme.md":
+                continue
+            if md.name == "robots.md":
+                urls = extract_urls_robots(md)
+            else:
+                urls = extract_urls_generic(md)
+            for line, url in urls:
+                out.append((md.name, line, url))
     return out
 
 
