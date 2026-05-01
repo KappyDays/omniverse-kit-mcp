@@ -1,0 +1,571 @@
+"""Sensor service — RTX Camera / Lidar / Depth Camera prim attachment (Phase E).
+
+Each ``attach_*`` method creates a child xform under ``robot_prim`` carrying
+the sensor schema. The *type* is recorded as a USD custom attribute
+``validation_api:sensor_type`` (one of ``rtx_camera`` / ``rtx_lidar`` /
+``rtx_depth_camera``) so ``set_visualization`` can dispatch the correct
+Debug Draw backend without re-parsing the prim kind.
+
+All omni.*/pxr.* imports are lazy inside the methods per API rule #7.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+# Custom USD attribute name we stamp on sensor prims so `set_visualization`
+# can tell what kind of overlay to toggle without having to inspect the
+# underlying Kit sensor instance (which may not be available in headless
+# tests). String, stored in the prim custom-data dict.
+SENSOR_TYPE_ATTR = "validation_api:sensor_type"
+
+_SUPPORTED_TYPES = {"rtx_camera", "rtx_lidar", "rtx_depth_camera"}
+
+
+class SensorService:
+    """Attach RTX sensor prims under a robot chassis + toggle their overlays."""
+
+    async def attach_rtx_camera(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._attach(request, sensor_type="rtx_camera")
+
+    async def attach_rtx_lidar(self, request: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(request)
+        payload["config_preset"] = request.get("config_preset", "Example_Rotary")
+        return await self._attach(payload, sensor_type="rtx_lidar")
+
+    async def attach_rtx_depth_camera(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._attach(request, sensor_type="rtx_depth_camera")
+
+    async def _attach(
+        self, request: dict[str, Any], *, sensor_type: str,
+    ) -> dict[str, Any]:
+        """Create a Camera prim child + stamp sensor_type + apply mount transform."""
+        import omni.kit.commands  # lazy
+        import omni.usd
+        from pxr import Gf, Sdf, UsdGeom
+
+        robot_prim = request["robot_prim"]
+        mount_offset = request["mount_offset"]
+        mount_rotation = request["mount_rotation"]
+        sensor_name = request.get("sensor_name") or _default_name(sensor_type)
+        resolution = request.get("resolution") or [1280, 720]
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+
+        parent = stage.GetPrimAtPath(robot_prim)
+        if not parent.IsValid():
+            raise ValueError(f"Parent prim {robot_prim!r} not found for sensor attach")
+
+        sensor_path = _safe_child_path(robot_prim, sensor_name)
+        # All sensor classes derive from UsdGeom.Camera — Kit's viewport binding
+        # and Isaac Sim's sensor pipelines both consume Camera prims; the Lidar
+        # / Depth differentiation is driven by the sensor_type custom attr plus
+        # the annotator configured on capture.
+        omni.kit.commands.execute(
+            "CreatePrimWithDefaultXformCommand",
+            prim_type="Camera",
+            prim_path=sensor_path,
+        )
+
+        sensor_prim = stage.GetPrimAtPath(sensor_path)
+        if not sensor_prim.IsValid():
+            raise RuntimeError(f"Sensor prim creation failed at {sensor_path}")
+
+        # Mount transform (relative to parent robot prim via xformOp on child)
+        t_attr = sensor_prim.GetAttribute("xformOp:translate")
+        if t_attr.IsValid():
+            t_attr.Set(Gf.Vec3d(*mount_offset))
+        r_attr = sensor_prim.GetAttribute("xformOp:rotateXYZ")
+        if r_attr.IsValid():
+            r_attr.Set(Gf.Vec3f(*mount_rotation))
+
+        # Resolution + camera defaults
+        if sensor_type in {"rtx_camera", "rtx_depth_camera"}:
+            horiz_aper = sensor_prim.GetAttribute("horizontalAperture")
+            if horiz_aper.IsValid():
+                horiz_aper.Set(20.955)
+            focal = sensor_prim.GetAttribute("focalLength")
+            if focal.IsValid():
+                focal.Set(24.0)
+
+        # Stamp sensor_type + resolution + config_preset for later dispatch
+        custom = sensor_prim.GetCustomData() or {}
+        custom_block = dict(custom.get("validation_api", {}))
+        custom_block["sensor_type"] = sensor_type
+        custom_block["resolution"] = list(resolution)
+        if sensor_type == "rtx_lidar":
+            custom_block["config_preset"] = request.get(
+                "config_preset", "Example_Rotary"
+            )
+            custom_block["annotator"] = "RtxSensorCpuIsaacCreateRTXLidarScanBuffer"
+        if sensor_type == "rtx_depth_camera":
+            custom_block["annotator"] = "distance_to_camera"
+        custom["validation_api"] = custom_block
+        sensor_prim.SetCustomData(custom)
+
+        response: dict[str, Any] = {
+            "ok": True,
+            "sensor_prim_path": sensor_path,
+            "parent_prim": robot_prim,
+            "sensor_type": sensor_type,
+            "resolution": list(resolution),
+        }
+        if sensor_type == "rtx_lidar":
+            response["config_preset"] = custom_block["config_preset"]
+            response["annotator"] = custom_block["annotator"]
+        if sensor_type == "rtx_depth_camera":
+            response["annotator"] = custom_block["annotator"]
+        return response
+
+    async def attach_contact(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Attach an ``isaacsim.sensors.physics.ContactSensor`` child prim (Phase G).
+
+        Falls back to a plain Xform prim carrying ``validation_api:sensor_type=contact``
+        when the ``isaacsim.sensors.physics`` module is not importable
+        (headless test harness). Response always reports which path was
+        taken via the ``backend`` field.
+        """
+        import omni.kit.commands  # lazy
+        import omni.usd
+        from pxr import Gf
+
+        parent_prim = request["prim_path"]
+        sensor_name = request.get("sensor_name") or "ContactSensor"
+        frequency = int(request.get("frequency", 60))
+        translation = request.get("translation") or [0.0, 0.0, 0.0]
+        radius = float(request.get("radius", -1.0))
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        if not stage.GetPrimAtPath(parent_prim).IsValid():
+            raise ValueError(f"Parent prim {parent_prim!r} not found for contact sensor")
+
+        sensor_path = _safe_child_path(parent_prim, sensor_name)
+        backend = "isaacsim.sensors.physics"
+
+        try:
+            import numpy as np  # lazy
+            from isaacsim.sensors.physics import ContactSensor  # type: ignore[import-not-found]
+
+            ContactSensor(
+                prim_path=sensor_path,
+                name=sensor_name,
+                frequency=frequency,
+                translation=np.array(translation, dtype=float),
+                radius=radius,
+            )
+        except Exception as exc:  # noqa: BLE001
+            backend = f"fallback_xform:{type(exc).__name__}"
+            omni.kit.commands.execute(
+                "CreatePrimWithDefaultXformCommand",
+                prim_type="Xform",
+                prim_path=sensor_path,
+            )
+            prim = stage.GetPrimAtPath(sensor_path)
+            if prim.IsValid():
+                t_attr = prim.GetAttribute("xformOp:translate")
+                if t_attr.IsValid():
+                    t_attr.Set(Gf.Vec3d(*translation))
+
+        sensor_prim = stage.GetPrimAtPath(sensor_path)
+        if sensor_prim.IsValid():
+            custom = sensor_prim.GetCustomData() or {}
+            block = dict(custom.get("validation_api") or {})
+            block["sensor_type"] = "contact"
+            block["frequency"] = frequency
+            block["radius"] = radius
+            block["backend"] = backend
+            custom["validation_api"] = block
+            sensor_prim.SetCustomData(custom)
+
+        return {
+            "ok": True,
+            "sensor_prim_path": sensor_path,
+            "parent_prim": parent_prim,
+            "sensor_type": "contact",
+            "frequency": frequency,
+            "translation": [float(t) for t in translation],
+            "radius": radius,
+            "backend": backend,
+        }
+
+    async def attach_imu(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Attach an ``isaacsim.sensors.physics.IMUSensor`` child prim (Phase G).
+
+        Same fallback pattern as :meth:`attach_contact`.
+        """
+        import omni.kit.commands  # lazy
+        import omni.usd
+        from pxr import Gf
+
+        parent_prim = request["prim_path"]
+        sensor_name = request.get("sensor_name") or "IMUSensor"
+        frequency = int(request.get("frequency", 200))
+        mount_offset = request.get("mount_offset") or [0.0, 0.0, 0.0]
+        mount_orientation = request.get("mount_orientation") or [1.0, 0.0, 0.0, 0.0]
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        if not stage.GetPrimAtPath(parent_prim).IsValid():
+            raise ValueError(f"Parent prim {parent_prim!r} not found for IMU sensor")
+
+        sensor_path = _safe_child_path(parent_prim, sensor_name)
+        backend = "isaacsim.sensors.physics"
+
+        try:
+            import numpy as np  # lazy
+            from isaacsim.sensors.physics import IMUSensor  # type: ignore[import-not-found]
+
+            IMUSensor(
+                prim_path=sensor_path,
+                name=sensor_name,
+                frequency=frequency,
+                translation=np.array(mount_offset, dtype=float),
+                orientation=np.array(mount_orientation, dtype=float),
+            )
+        except Exception as exc:  # noqa: BLE001
+            backend = f"fallback_xform:{type(exc).__name__}"
+            omni.kit.commands.execute(
+                "CreatePrimWithDefaultXformCommand",
+                prim_type="Xform",
+                prim_path=sensor_path,
+            )
+            prim = stage.GetPrimAtPath(sensor_path)
+            if prim.IsValid():
+                t_attr = prim.GetAttribute("xformOp:translate")
+                if t_attr.IsValid():
+                    t_attr.Set(Gf.Vec3d(*mount_offset))
+
+        sensor_prim = stage.GetPrimAtPath(sensor_path)
+        if sensor_prim.IsValid():
+            custom = sensor_prim.GetCustomData() or {}
+            block = dict(custom.get("validation_api") or {})
+            block["sensor_type"] = "imu"
+            block["frequency"] = frequency
+            block["mount_orientation"] = list(mount_orientation)
+            block["backend"] = backend
+            custom["validation_api"] = block
+            sensor_prim.SetCustomData(custom)
+
+        return {
+            "ok": True,
+            "sensor_prim_path": sensor_path,
+            "parent_prim": parent_prim,
+            "sensor_type": "imu",
+            "frequency": frequency,
+            "mount_offset": [float(t) for t in mount_offset],
+            "mount_orientation": [float(q) for q in mount_orientation],
+            "backend": backend,
+        }
+
+    async def set_annotator(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Attach replicator annotators to a sensor camera prim (Phase G).
+
+        Creates a render product from the sensor prim and attaches each
+        requested annotator via ``AnnotatorRegistry.get_annotator``.
+        Unknown annotator names raise HTTP 400; known annotators that
+        fail to attach (missing module) are collected into ``skipped``.
+        """
+        import omni.usd  # lazy
+
+        sensor_prim_path = request["sensor_prim"]
+        annotators = list(request.get("annotators") or [])
+        resolution = request.get("resolution") or [1280, 720]
+
+        if not annotators:
+            raise ValueError("annotators list must not be empty")
+        valid_set = {
+            "rgb", "depth", "semantic_segmentation", "instance_segmentation",
+            "normals", "motion_vectors",
+            "distance_to_camera", "distance_to_image_plane",
+        }
+        unknown = [a for a in annotators if a not in valid_set]
+        if unknown:
+            raise ValueError(
+                f"Unknown annotator(s): {unknown!r}. Valid: {sorted(valid_set)}"
+            )
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        sensor_prim = stage.GetPrimAtPath(sensor_prim_path)
+        if not sensor_prim.IsValid():
+            raise ValueError(f"Sensor prim {sensor_prim_path!r} not found")
+
+        attached: list[str] = []
+        skipped: dict[str, str] = {}
+        backend = "omni.replicator.core"
+        render_product_path: str | None = None
+
+        try:
+            import omni.replicator.core as rep  # type: ignore[import-not-found]
+
+            render_product = rep.create.render_product(
+                sensor_prim_path, (int(resolution[0]), int(resolution[1])),
+            )
+            render_product_path = str(render_product)
+            for name in annotators:
+                try:
+                    annot = rep.AnnotatorRegistry.get_annotator(name)
+                    annot.attach(render_product)
+                    attached.append(name)
+                except Exception as exc:  # noqa: BLE001
+                    skipped[name] = f"{type(exc).__name__}: {exc}"
+        except Exception as exc:  # noqa: BLE001
+            backend = f"fallback_metadata:{type(exc).__name__}"
+            # Record requested annotators on sensor customData only
+            for name in annotators:
+                attached.append(name)
+
+        # Stamp annotator names on sensor prim metadata (survives capture path)
+        custom = sensor_prim.GetCustomData() or {}
+        block = dict(custom.get("validation_api") or {})
+        block["annotators"] = attached
+        block["annotator_resolution"] = [int(resolution[0]), int(resolution[1])]
+        if render_product_path:
+            block["render_product"] = render_product_path
+        custom["validation_api"] = block
+        sensor_prim.SetCustomData(custom)
+
+        return {
+            "ok": True,
+            "sensor_prim": sensor_prim_path,
+            "annotators": attached,
+            "skipped": skipped,
+            "resolution": [int(resolution[0]), int(resolution[1])],
+            "backend": backend,
+            "render_product": render_product_path,
+        }
+
+    async def lidar_get_point_cloud(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Read one frame of RTX Lidar point cloud data.
+
+        Symmetric readback for ``attach_rtx_lidar``. Reuses the annotator
+        name stamped on the sensor prim by ``attach_rtx_lidar``
+        (``RtxSensorCpuIsaacCreateRTXLidarScanBuffer`` by default), creates
+        a render product, attaches the annotator, awaits *frames_to_wait*
+        Kit ticks, and reads ``annotator.get_data()``.
+
+        Returns Cartesian XYZ points + intensities (when available),
+        truncated to *max_points* if the raw cloud is larger. ``backend``
+        field reports which path won (``omni.replicator.core`` or fallback
+        with reason). Empty data → ``num_points=0`` with ``warning`` field
+        explaining why (typically "no data yet — call simulation_play").
+        """
+        import math
+
+        import omni.usd
+
+        sensor_prim_path = request["sensor_prim"]
+        max_points = int(request.get("max_points", 1000))
+        frames_to_wait = max(1, int(request.get("frames_to_wait", 2)))
+
+        if max_points <= 0:
+            raise ValueError("max_points must be positive")
+        if max_points > 100000:
+            raise ValueError("max_points capped at 100000 (response size)")
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        sensor_prim = stage.GetPrimAtPath(sensor_prim_path)
+        if not sensor_prim.IsValid():
+            raise ValueError(f"Sensor prim {sensor_prim_path!r} not found")
+
+        custom = sensor_prim.GetCustomData() or {}
+        block = dict(custom.get("validation_api") or {})
+        sensor_type = block.get("sensor_type")
+        if sensor_type != "rtx_lidar":
+            raise ValueError(
+                f"Sensor at {sensor_prim_path} is not rtx_lidar "
+                f"(got sensor_type={sensor_type!r}). "
+                "Use sensor_attach_rtx_lidar first."
+            )
+
+        annotator_name = block.get(
+            "annotator", "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+        )
+
+        backend = "omni.replicator.core"
+        warning: str | None = None
+        points: list[list[float]] = []
+        intensities: list[float] = []
+        raw_keys: list[str] = []
+        truncated = False
+
+        try:
+            import omni.kit.app
+            import omni.replicator.core as rep  # type: ignore[import-not-found]
+
+            render_product = rep.create.render_product(sensor_prim_path, (1, 1))
+            annotator = rep.AnnotatorRegistry.get_annotator(annotator_name)
+            annotator.attach(render_product)
+
+            app = omni.kit.app.get_app()
+            for _ in range(frames_to_wait):
+                await app.next_update_async()
+
+            raw = annotator.get_data()
+
+            # RTX Lidar scan buffer shape varies across Kit builds. Try the
+            # common keys: dict with "data" (numpy structured) or with
+            # "azimuth"/"elevation"/"distance"/"intensity" arrays.
+            if raw is None or (hasattr(raw, "__len__") and len(raw) == 0):
+                warning = (
+                    "annotator.get_data() returned empty — call simulation_play "
+                    "and wait for the lidar to spin, then retry"
+                )
+            else:
+                if isinstance(raw, dict):
+                    raw_keys = sorted(str(k) for k in raw.keys())
+                    if "data" in raw and raw["data"] is not None:
+                        # Structured numpy — try to extract x/y/z fields directly.
+                        struct = raw["data"]
+                        try:
+                            xs = struct["x"] if "x" in struct.dtype.names else None
+                            ys = struct["y"] if "y" in struct.dtype.names else None
+                            zs = struct["z"] if "z" in struct.dtype.names else None
+                            ints = struct["intensity"] if "intensity" in struct.dtype.names else None
+                            if xs is not None and ys is not None and zs is not None:
+                                n = min(len(xs), max_points)
+                                truncated = len(xs) > max_points
+                                for i in range(n):
+                                    points.append([float(xs[i]), float(ys[i]), float(zs[i])])
+                                if ints is not None:
+                                    intensities = [float(ints[i]) for i in range(n)]
+                        except Exception as exc:  # noqa: BLE001
+                            warning = f"structured field extraction failed: {exc}"
+                    if not points and "azimuth" in raw and "elevation" in raw and "distance" in raw:
+                        # Polar → Cartesian
+                        az = raw["azimuth"]
+                        el = raw["elevation"]
+                        dist = raw["distance"]
+                        n_total = min(len(az), len(el), len(dist))
+                        n = min(n_total, max_points)
+                        truncated = n_total > max_points
+                        for i in range(n):
+                            d = float(dist[i])
+                            a = float(az[i])
+                            e = float(el[i])
+                            x = d * math.cos(e) * math.cos(a)
+                            y = d * math.cos(e) * math.sin(a)
+                            z = d * math.sin(e)
+                            points.append([x, y, z])
+                        if "intensity" in raw and raw["intensity"] is not None:
+                            ints = raw["intensity"]
+                            intensities = [float(ints[i]) for i in range(n)]
+                else:
+                    raw_keys = ["<non-dict>"]
+                    warning = (
+                        f"annotator returned {type(raw).__name__} — expected dict; "
+                        "Kit build may not be supported"
+                    )
+                # Dict shape may be present (non-empty key set) but every array
+                # inside it can be length 0 — common pre-play / not-yet-spinning
+                # case. Outer `len(raw)==0` check above only covers fully-empty
+                # payloads; this guard catches dict-with-empty-arrays so the
+                # caller still gets the retry hint.
+                if not points and warning is None:
+                    warning = (
+                        "annotator returned dict with no usable point data — "
+                        "ensure simulation_play is active and the lidar has spun"
+                    )
+        except Exception as exc:  # noqa: BLE001
+            backend = f"fallback_noop:{type(exc).__name__}"
+            warning = f"replicator path failed: {exc}"
+
+        return {
+            "ok": True,
+            "sensor_prim": sensor_prim_path,
+            "annotator": annotator_name,
+            "backend": backend,
+            "num_points": len(points),
+            "points": points,
+            "intensities": intensities,
+            "truncated": truncated,
+            "frames_waited": frames_to_wait,
+            "raw_keys": raw_keys,
+            "warning": warning,
+        }
+
+    async def set_visualization(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Toggle the Debug Draw overlay for a previously attached sensor.
+
+        Implementation is visibility-based: we flip the sensor prim's
+        ``visibility`` token. Richer backends (Lidar point-cloud Debug Draw
+        node, Depth preview overlay) are gated on Kit modules that are not
+        always loaded — visibility is the common-denominator toggle that
+        works headless-or-GUI.
+        """
+        import omni.usd
+
+        sensor_prim_path = request["sensor_prim"]
+        mode = request.get("mode", "on")
+        if mode not in ("on", "off"):
+            raise ValueError("mode must be 'on' | 'off'")
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        prim = stage.GetPrimAtPath(sensor_prim_path)
+        if not prim.IsValid():
+            raise ValueError(f"Sensor prim {sensor_prim_path!r} not found")
+
+        vis_attr = prim.GetAttribute("visibility")
+        token = "inherited" if mode == "on" else "invisible"
+        if vis_attr.IsValid():
+            vis_attr.Set(token)
+
+        custom = prim.GetCustomData() or {}
+        sensor_type = (
+            (custom.get("validation_api") or {}).get("sensor_type")
+        )
+        return {
+            "ok": True,
+            "sensor_prim": sensor_prim_path,
+            "mode": mode,
+            "sensor_type": sensor_type,
+            "visibility": token,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _default_name(sensor_type: str) -> str:
+    if sensor_type not in _SUPPORTED_TYPES:
+        raise ValueError(f"Unsupported sensor_type: {sensor_type}")
+    return {
+        "rtx_camera": "RtxCamera",
+        "rtx_lidar": "RtxLidar",
+        "rtx_depth_camera": "RtxDepthCamera",
+    }[sensor_type]
+
+
+def _safe_child_path(parent_path: str, child_name: str) -> str:
+    """Concatenate parent + child, sanitizing child to USD-legal chars."""
+    sanitized = "".join(
+        c if (c.isalnum() or c == "_") else "_"
+        for c in child_name
+    ) or "Sensor"
+    if sanitized[0].isdigit():
+        sanitized = f"s_{sanitized}"
+    parent = parent_path.rstrip("/")
+    return f"{parent}/{sanitized}"

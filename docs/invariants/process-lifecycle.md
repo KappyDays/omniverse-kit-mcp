@@ -14,7 +14,7 @@ ProcessModule 호출 전 이 파일 Read.
 |------|------|----------|
 | `isaac_sim_start` | kit.exe 런치 (또는 alive process attach) + health polling (2 s interval, `startup_timeout` 까지) | warm boot 15-30 s · cold boot 13-30 s (stdin DEVNULL fix 후) |
 | `isaac_sim_stop` | `taskkill /F /IM kit.exe /T` + orphan hub 정리 | ≤10 s |
-| `isaac_sim_restart` | stop → `isaac_extension/.../__pycache__` clear → start | stop + start 합 |
+| `isaac_sim_restart` | stop → `kkr-extensions/.../__pycache__` clear → start | stop + start 합 |
 
 ## ⚠️ stdin=subprocess.DEVNULL 필수 (변경 금지 — DO-NOT-EDIT)
 

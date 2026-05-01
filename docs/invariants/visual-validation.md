@@ -124,6 +124,6 @@ mesh 통과. 사용자 시각 검증에서 catch.
 
 ## 관련 경계
 
-- 코드 위치: `isaac-pick-place/extension/omni.userext.pickplace/omni/userext/pickplace/scene_builder.py`
+- 코드 위치: `kkr-extensions/omni.userext.pickplace/omni/userext/pickplace/scene_builder.py`
 - 이번 프로젝트 conveyor 카탈로그: `isaac-pick-place/docs/conveyor-catalog.md`
-- BBoxCache 정확성 한계: `isaac-pick-place/extension/omni.userext.pickplace/omni/userext/pickplace/layout_check.py` 모듈 docstring
+- BBoxCache 정확성 한계: `kkr-extensions/omni.userext.pickplace/omni/userext/pickplace/layout_check.py` 모듈 docstring

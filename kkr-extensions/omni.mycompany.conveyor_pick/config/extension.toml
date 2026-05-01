@@ -1,0 +1,18 @@
+[package]
+version = "0.1.0"
+title = "Conveyor Pick"
+description = "O-loop conveyor + Franka pick-and-place demo (Phase B)"
+authors = ["test-go autonomous"]
+category = "Demo"
+keywords = ["conveyor", "pick", "place", "franka"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.usd" = {}
+"omni.ui" = {}
+"omni.physx" = {}
+"omni.timeline" = {}
+"isaacsim.core.api" = {}
+
+[[python.module]]
+name = "omni.mycompany.conveyor_pick"

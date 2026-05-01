@@ -1,0 +1,18 @@
+[package]
+version = "0.1.0"
+title = "USD Composer Input"
+description = "Hover highlight + QWEASD camera input for USD Composer (Phase A)"
+authors = ["test-go autonomous"]
+category = "Demo"
+keywords = ["input", "viewport", "highlight", "camera"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.usd" = {}
+"omni.ui" = {}
+"omni.kit.viewport.window" = {}
+"omni.kit.viewport.utility" = {}
+"omni.timeline" = {}
+
+[[python.module]]
+name = "omni.mycompany.usd_composer_input"

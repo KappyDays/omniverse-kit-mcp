@@ -99,7 +99,7 @@ silent leak.
 
 ## 관련 경계
 
-- L17 사고 기록 원문: `isaac_extension/docs/lessons-learned.md`
+- L17 사고 기록 원문: `kkr-extensions/docs/lessons-learned.md`
 - 코드 위치 SoT: `src/isaacsim_mcp/modules/process_module.py::start`
 - ProcessModule 결정 트리 / hang recovery 4종 함정: `src/isaacsim_mcp/modules/process-ops.md`
 - Process 생애주기 invariants: `docs/invariants/process-lifecycle.md`

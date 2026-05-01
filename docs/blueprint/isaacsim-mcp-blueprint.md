@@ -86,7 +86,7 @@ isaacsim-mcp/
 │       ├── stage_snapshots/                # 테스트용 스냅샷 JSON
 │       └── screenshots/                    # 베이스라인 이미지
 │
-└── isaac_extension/                        # Isaac Sim 내부 Extension
+└── kkr-extensions/                        # Isaac Sim 내부 Extension
     └── omni.mycompany.validation_api/
         ├── config/
         │   └── extension.toml              # Extension 메타데이터

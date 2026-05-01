@@ -122,7 +122,7 @@ cmd //c "setup\\setup-isaacsim-mcp.bat"
 - Invariants: `docs/invariants/multi-app.md`
 - Code SoT:
   - `src/isaacsim_mcp/modules/process_module.py`
-  - `isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/_app_features.py`
+  - `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/_app_features.py`
 - Live smoke:
   - `scripts/verify_multi_instance.py`
   - `scripts/verify_multi_app.py`

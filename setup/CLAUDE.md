@@ -54,5 +54,5 @@ setup\setup-isaacsim-mcp.bat
 ## 관련 경계
 
 - kit.exe 실행 플래그 및 프로세스 제어: `../src/isaacsim_mcp/modules/CLAUDE.md` (ProcessModule)
-- Extension 개발 규칙: `../isaac_extension/CLAUDE.md`
+- Extension 개발 규칙: `../kkr-extensions/CLAUDE.md`
 - 환경 변수 전체 목록: root `CLAUDE.md`

@@ -51,4 +51,4 @@ Isaac-sim-MCP 가 "지금 무엇을 할 수 있는가" (tool 카탈로그) 와 "
 - tool 등록 규약: `../src/isaacsim_mcp/tools/CLAUDE.md`
 - tool 이름 SoT: `../tests/unit/test_tools_registration.py` 의 frozenset
 - catalog regeneration: `../scripts/CLAUDE.md`
-- Extension REST 계약: `../isaac_extension/CLAUDE.md`
+- Extension REST 계약: `../kkr-extensions/CLAUDE.md`

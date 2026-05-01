@@ -3,7 +3,7 @@
 # Extension Reload — Invariants
 
 Extension `.py` 수정 후 어떤 reload 경로를 쓰든 `sys.modules` cleanup 은 보장 안 됨.
-`isaac_extension/` 코드 수정 시 이 파일 Read.
+`kkr-extensions/` 코드 수정 시 이 파일 Read.
 
 ## 핵심 결론 (L9 재재진단 + L16)
 
@@ -66,7 +66,7 @@ self._window = ui.Window("<name>", ...)
 
 ## 관련 경계
 
-- L9 / L16 사고 기록: `isaac_extension/docs/lessons-learned.md`
-- Extension 일반 규칙 (IExt / hot-reload / 한글 UI 금지): `isaac_extension/docs/extension-basics.md`
+- L9 / L16 사고 기록: `kkr-extensions/docs/lessons-learned.md`
+- Extension 일반 규칙 (IExt / hot-reload / 한글 UI 금지): `kkr-extensions/docs/extension-basics.md`
 - Window/UI automation sequence (panel race + dual-path drift): `docs/invariants/ui-invoke.md`
 - MCP server import cache (별개 프로세스): `src/isaacsim_mcp/CLAUDE.md`

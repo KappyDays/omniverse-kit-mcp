@@ -79,4 +79,4 @@ read. Side-effect (예: highlight 후 restore) 와 검증 race 회피 위해 sta
 - USD load 함정 (S3 URL / MDL deadlock): `invariants/usd-load.md`
 - Ext reload (sys.modules cleanup 한계): `invariants/ext-reload.md`
 - Multi-app port / profile: `invariants/multi-app.md`
-- Kit SDK domain 함정: `../isaac_extension/docs/kit-sdk-pitfalls.md`
+- Kit SDK domain 함정: `../kkr-extensions/docs/kit-sdk-pitfalls.md`

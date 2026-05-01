@@ -78,9 +78,3 @@ _temp_sdg/
 docs/artifacts/multi-instance-smoke/
 docs/artifacts/multi-app-smoke/
 
-# Per-feature directory junctions/symlinks into isaac_extension/ for Kit's
-# --ext-folder discovery. The real source lives under each feature folder
-# (usd-mouse-interact/exts/, isaac-pick-place/extension/, ...); the link in
-# isaac_extension/ is just a setup convenience.
-isaac_extension/omni.mycompany.usd_mouse_interact/
-isaac_extension/omni.userext.pickplace/

@@ -44,7 +44,7 @@ action 1개당 다음 파일 동시 수정:
 ## ASYNC Job pattern (long-running 동작)
 
 `character.navigate_to` / `robot.navigate_path` 처럼 장시간 동작:
-- `isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/services/job_service.py::start_job` 사용 (coro_factory 인수)
+- `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/job_service.py::start_job` 사용 (coro_factory 인수)
 - `try-except` 필수 (silent catch 금지)
 - Tool 은 `job_id` 반환, Claude Code 가 `job_status` 폴링
 

@@ -154,7 +154,7 @@ Phase J+ 후보 (중장기):
 
 새 도구 추가 절차는 root CLAUDE.md 의 "변경 파급 매트릭스" 엔트리 "새 MCP tool (`tools/`)" 행 참조. 요약:
 
-1. Extension REST endpoint (`isaac_extension/.../services/*.py`, `rest_router.py`)
+1. Extension REST endpoint (`kkr-extensions/.../services/*.py`, `rest_router.py`)
 2. MCP client (`src/isaacsim_mcp/clients/isaac_rest_client.py`)
 3. Typed request/result (`src/isaacsim_mcp/types/*.py`)
 4. Module method (`src/isaacsim_mcp/modules/*_module.py`)

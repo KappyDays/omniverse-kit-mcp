@@ -1,0 +1,13 @@
+[package]
+version = "0.1.0"
+title = "Phase D UI Demo"
+description = "Tiny omni.ui Window (Button + StringField + Label) used as the live target for extension_get_ui_tree / extension_ui_invoke / extension_capture_logs MCP tools."
+category = "Validation"
+keywords = ["validation", "ui_test", "phase_d", "demo"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.ui" = {}
+
+[[python.module]]
+name = "omni.mycompany.ui_demo"

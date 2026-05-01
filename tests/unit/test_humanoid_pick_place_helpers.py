@@ -26,7 +26,7 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PKG_ROOT = (
     _REPO_ROOT
-    / "isaac_extension"
+    / "kkr-extensions"
     / "omni.mycompany.humanoid_pick_place"
     / "omni"
     / "mycompany"

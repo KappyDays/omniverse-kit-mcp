@@ -53,7 +53,7 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 | 11 | Live 검증 스크립트 | ✅ | 2026-04-19 11:55 (재검증) | 3 스크립트 작성 + `LIVE_HEAVY_ENV` / `LIVE_ROBOT` env 옵션화 + minimal mode 로 7 endpoint 종단 재검증. `docs/artifacts/phase-e/phaseE_verify_*.png` 7 장 확보 (sensor viz on/off, aux viewport, navmesh walkable/obstacles/off + baked variant). `robot/load` 600 s block + `navigation/bake` regression 은 implementation_issues.md 상세 기록 |
 | 12 | 전체 pytest 통과 | ✅ | 2026-04-19 10:24 | 212 passed |
 | 13 | Catalog sync (58→65) | ✅ | 2026-04-19 10:24 | `verify_mcp_sync.py` green |
-| 14 | 도메인 CLAUDE.md 동기화 | ✅ | 2026-04-19 10:26 | `modules/CLAUDE.md`, `isaac_extension/CLAUDE.md` sensor/viewport-multi/navmesh-viz 섹션 추가 |
+| 14 | 도메인 CLAUDE.md 동기화 | ✅ | 2026-04-19 10:26 | `modules/CLAUDE.md`, `kkr-extensions/CLAUDE.md` sensor/viewport-multi/navmesh-viz 섹션 추가 |
 | 15 | phase-e-validation-report.md | ✅ | 2026-04-19 10:28 | Part 1 (신규) + Part 2 (이전 세션 Window/Navigation) 통합 작성 |
 | 16 | Phase E 완료 체크 + 보고 | ✅ | 2026-04-19 10:28 | 세션 종료 보고 |
 
@@ -162,7 +162,7 @@ Last update: 2026-04-21 (세션 5 Phase H 실행: extension models/services/rout
 | T21 Docs + setup updates | ✅ | (this commit) |
 | T22 QA_CHECKLIST.md | ✅ | (this commit) |
 
-**수동 QA 대기**: `isaac_extension/omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` 에 따라 Kit 재시작 후 각 버튼 동작 검증 필요.
+**수동 QA 대기**: `kkr-extensions/omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` 에 따라 Kit 재시작 후 각 버튼 동작 검증 필요.
 
 ---
 
@@ -206,7 +206,7 @@ Plan: `docs/superpowers/plans/2026-04-23-navmesh-playground-plan.md`
 | P3 | People controller (Walk→Sit FSM) | 🟡 부분 완료 — Extension UI button callback 호출 inconsistency (I5); MCP 직접 동작 (`character_load + play_animation Walk + play_animation_variant SitIdle`) 으로 **Walk→Sit 시퀀스 라이브 검증** (4.18,-14.25→-6.68,-8.30 13m 이동, action=Sit, window_capture 확인) |
 | P4 | Robot controller (DifferentialController + Pure Pursuit) | ✅ 완료 — Kit restart 후 `drive_physics` 라이브 검증: `reached=true`, `final_distance_m=0.50`, `dof_names` 7 DOF 정확 (joint_wheel_left/right idx 1/2), wheel rotation 1.94 rad, Property translate X=-6.75 → 4.75 (11.5m 이동) |
 | P5 | Deep verification (Scenarios YAML + SSIM) | ✅ — `scenarios/smoke/navmesh_playground_e2e.yaml` 25 step PASS (52.6s, drive_robot 폴링 23.9s OK), pytest 357, drift test green, SSIM baseline 부트스트랩 |
-| P6 | QA manual + docs finalization | ✅ — `isaac_extension/omni.mycompany.navmesh_playground/QA_CHECKLIST.md` (15 항목) + `isaac_extension/docs/lessons-learned.md` L7-L12 추가 (Phase J 세션 교훈). PR draft 사용자 승인 사안 — STOP_LINE 으로 정지 |
+| P6 | QA manual + docs finalization | ✅ — `kkr-extensions/omni.mycompany.navmesh_playground/QA_CHECKLIST.md` (15 항목) + `kkr-extensions/docs/lessons-learned.md` L7-L12 추가 (Phase J 세션 교훈). PR draft 사용자 승인 사안 — STOP_LINE 으로 정지 |
 
 ### 진행 로그
 

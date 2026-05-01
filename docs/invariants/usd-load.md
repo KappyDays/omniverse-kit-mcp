@@ -19,7 +19,7 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 
 카탈로그 SoT: `isaac_course/docs/asset_inventory.md` 진입점 + `isaac_course/docs/assets/*.md`.
 
-**Extension 개발 시 방어 레시피**: MCP 서버가 아닌 Extension 에서 S3 MDL-heavy asset (office / warehouse / nova_carter / Biped_Setup) 을 로드할 때는 log_capture disable + `run_coroutine` + `CreatePayloadCommand instanceable=True` 3-요소 패턴을 **복사**해서 사용. 상세: `isaac_extension/docs/usd-load-deadlock-recipe.md`.
+**Extension 개발 시 방어 레시피**: MCP 서버가 아닌 Extension 에서 S3 MDL-heavy asset (office / warehouse / nova_carter / Biped_Setup) 을 로드할 때는 log_capture disable + `run_coroutine` + `CreatePayloadCommand instanceable=True` 3-요소 패턴을 **복사**해서 사용. 상세: `kkr-extensions/docs/usd-load-deadlock-recipe.md`.
 
 ### 2. `log_capture.start()` 호출 금지
 
@@ -49,7 +49,7 @@ loop deadlock → 모든 MCP tool 92 s timeout.
 
 1. Extension `on_startup` 에서 `self._log_capture = None`
    (NOT `get_log_capture_service().start()`)
-2. `isaac_extension/omni.mycompany.validation_api/omni/mycompany/validation_api/services/stage_service.py::load_usd`
+2. `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/stage_service.py::load_usd`
    는 `omni.kit.async_engine.run_coroutine(_main_loop_impl())` +
    `asyncio.wrap_future(future)` — FastAPI event loop ≠ Kit main event loop 이므로
    Kit main loop 에 명시적 schedule
@@ -57,7 +57,7 @@ loop deadlock → 모든 MCP tool 92 s timeout.
    GUI drag&drop scene_drop_delegate 와 동등 경로
 
 코드 레시피 (독립 Extension 에서 S3 MDL-heavy asset 로드 시 복사할 방어 코드):
-`isaac_extension/docs/usd-load-deadlock-recipe.md`
+`kkr-extensions/docs/usd-load-deadlock-recipe.md`
 
 ## 실측 (2026-04-20 hang 해결 후)
 
@@ -89,5 +89,5 @@ loop deadlock → 모든 MCP tool 92 s timeout.
 
 - 저수준 코드 위치 (Stage / USD 로드 프로토콜): `src/isaacsim_mcp/modules/integration-facts.md`
 - Asset URL 카탈로그 진입점: `isaac_course/docs/asset_inventory.md`
-- 독립 Extension 방어 레시피: `isaac_extension/docs/usd-load-deadlock-recipe.md`
-- LogCapture 비활성 결정 사고: `isaac_extension/docs/lessons-learned.md`
+- 독립 Extension 방어 레시피: `kkr-extensions/docs/usd-load-deadlock-recipe.md`
+- LogCapture 비활성 결정 사고: `kkr-extensions/docs/lessons-learned.md`

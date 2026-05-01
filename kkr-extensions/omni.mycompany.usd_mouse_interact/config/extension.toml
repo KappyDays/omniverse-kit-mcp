@@ -1,0 +1,19 @@
+[package]
+version = "0.2.0"
+title = "USD Mouse Interact"
+description = "FPS fly-camera + whitelist prim picker with info overlay (timeline-driven)."
+category = "Viewport"
+keywords = ["viewport", "camera", "mouse", "fps", "picker", "highlight"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.ui" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.commands" = {}
+"omni.timeline" = {}
+"omni.usd" = {}
+"omni.appwindow" = {}
+"omni.physx" = { optional = true }
+
+[[python.module]]
+name = "omni.mycompany.usd_mouse_interact"

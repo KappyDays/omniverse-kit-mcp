@@ -16,7 +16,7 @@ import pytest
 # Load the in-Extension module directly without requiring the Kit import chain.
 _SERVICE_PATH = (
     pathlib.Path(__file__).resolve().parents[2]
-    / "isaac_extension"
+    / "kkr-extensions"
     / "omni.mycompany.validation_api"
     / "omni" / "mycompany" / "validation_api"
     / "services" / "log_capture_service.py"
