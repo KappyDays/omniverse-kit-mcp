@@ -1,6 +1,6 @@
 ---
 name: omniverse-asset-inventory-sync
-description: Invoke after Isaac Sim 5.x or NVIDIA SimReady asset bucket update, or when an asset path in isaac_course/docs/assets/*.md or docs/assets/composer/*.md is reported as 404 / missing. Validates every USD URL in both inventories against NVIDIA Omniverse public S3 (HTTP HEAD) and walks the human through fixing invalid entries. Not for adding brand-new assets to the inventory, and not for Kit Extension code packages (use omniverse-kit-extension-catalog-sync for those).
+description: Invoke after Isaac Sim 5.x or NVIDIA SimReady asset bucket update, or when an asset path in docs/assets/isaac/assets/*.md or docs/assets/composer/*.md is reported as 404 / missing. Validates every USD URL in both inventories against NVIDIA Omniverse public S3 (HTTP HEAD) and walks the human through fixing invalid entries. Not for adding brand-new assets to the inventory, and not for Kit Extension code packages (use omniverse-kit-extension-catalog-sync for those).
 user-invocable: true
 disable-model-invocation: true
 metadata:
@@ -14,7 +14,7 @@ Prefix your first line with 🗂️ inline.
 **목표**: 두 inventory 디렉토리의 모든 USD URL 이 NVIDIA S3 에서 여전히 valid 한지 검증하고 invalid 엔트리를 수정. Isaac Sim 5.x 패치 / SimReady release 후 stale path 가 누적되는 것을 방지.
 
 **Watched scopes** (둘 다 같은 `omniverse-content-production` S3 bucket):
-- `isaac_course/docs/assets/*.md` — Isaac Sim 5.1 번들 한정 (strict: `Isaac/5.1` 또는 `simready_content` prefix 만 허용)
+- `docs/assets/isaac/assets/*.md` — Isaac Sim 5.1 번들 한정 (strict: `Isaac/5.1` 또는 `simready_content` prefix 만 허용)
 - `docs/assets/composer/*.md` — USD Composer / 크로스앱 sample library (DigitalTwin / ArchVis / Vegetation 등 `$VAR` 자유 선언, bucket-level 검증만)
 - README.md (catalog index) 는 URL 검증 대상 아님 — sub-md 의 메타정보만 등재
 
@@ -33,7 +33,7 @@ User says one of:
 | ID | Rule |
 |----|------|
 | I1 | Use full HTTPS S3 URLs only — `file://` prohibited (스테이지 로드 실패). |
-| I2 | All sub-md must declare at least one `$VAR` prefix at the top (e.g. `$ISAAC` / `$SIM` for isaac_course, `$DT` / `$ARCHVIS` for composer). Every prefix URL must point to `omniverse-content-production` or `omniverse-content-staging` bucket. Do not hard-code full URLs in tables. |
+| I2 | All sub-md must declare at least one `$VAR` prefix at the top (e.g. `$ISAAC` / `$SIM` for `docs/assets/isaac/`, `$DT` / `$ARCHVIS` for `docs/assets/composer/`). Every prefix URL must point to `omniverse-content-production` or `omniverse-content-staging` bucket. Do not hard-code full URLs in tables. |
 | I3 | `루트:` 선언은 그 파일의 메인 카테고리 root. 표의 path 컬럼은 메인 root 기준 (e.g. `루트: $ISAAC/People/` + `Characters/Foo.usd` → `$ISAAC/People/Characters/Foo.usd`). 동일하게 composer 의 `루트: $DT/Datacenter/` + `Liquid_Cooling/...usd` 도 적용. |
 | I4 | Pre-commit: `pytest tests/unit/test_asset_inventory_integrity.py -q` green, `verify_mcp_sync.py` OK, root `CLAUDE.md` ≤ 100 lines. |
 
@@ -104,7 +104,7 @@ Expect exit 0. If still invalid, return to Step 4 for unresolved items. STOP if 
 I4 must hold. Then:
 
 ```bash
-git add isaac_course/docs/assets/ isaac_course/docs/asset_inventory.md docs/assets/composer/
+git add docs/assets/isaac/assets/ docs/assets/isaac/asset_inventory.md docs/assets/composer/
 git commit -m "fix(asset_inventory): <summary> — <N entries fixed>"
 git push origin main
 ```
@@ -128,7 +128,7 @@ STOP and report on any:
 - ❌ Forget to update the category index table (e.g. AMR · 휴머노이드 abbreviations at the top of robots.md) when deleting / renaming a row
 - ❌ Hard-code full HTTPS URLs in tables (use prefix variable)
 - ❌ Use `file://` URLs (asset load fails)
-- ❌ Add 3rd-party USD outside NVIDIA buckets (R4 in `isaac_course/CLAUDE.md`)
+- ❌ Add 3rd-party USD outside NVIDIA buckets (only `omniverse-content-production` / `omniverse-content-staging`)
 - ❌ Commit without Step 5 re-validate exit 0
 - ❌ `git push --force`
 
@@ -146,8 +146,7 @@ Integrity: pytest 7 passed, verify_mcp_sync OK, CLAUDE.md <N> lines
 
 - `scripts/diff_asset_inventory.py` — implementation (HTTP HEAD validator)
 - `tests/unit/test_asset_inventory_integrity.py` — 7 format invariants (no network)
-- `isaac_course/CLAUDE.md` — R4 (NVIDIA-only assets), R5 (asset diversity matrix)
-- `isaac_course/docs/asset_inventory.md` — root index
-- `isaac_course/docs/assets/{robots,environments,people,props,simready,other}.md` — per-category catalogs
+- `docs/assets/isaac/asset_inventory.md` — root index
+- `docs/assets/isaac/assets/{robots,environments,people,props,simready,other}.md` — per-category catalogs
 
 Answer in the same language as the question.

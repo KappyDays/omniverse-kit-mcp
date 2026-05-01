@@ -15,9 +15,9 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 - `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/...`
 - `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/{ArchVis,DigitalTwin,Vegetation}/...`
 
-`file:///` 로컬 캐시 **금지** (`isaac_course/cache_usd/` 재생성 금지).
+`file:///` 로컬 캐시 **금지** (S3 재조회 시 stale cache 가 silent miss 유발).
 
-카탈로그 SoT: `isaac_course/docs/asset_inventory.md` 진입점 + `isaac_course/docs/assets/*.md`.
+카탈로그 SoT: `docs/assets/isaac/asset_inventory.md` 진입점 + `docs/assets/isaac/assets/*.md`.
 
 **Extension 개발 시 방어 레시피**: MCP 서버가 아닌 Extension 에서 S3 MDL-heavy asset (office / warehouse / nova_carter / Biped_Setup) 을 로드할 때는 log_capture disable + `run_coroutine` + `CreatePayloadCommand instanceable=True` 3-요소 패턴을 **복사**해서 사용. 상세: `kkr-extensions/docs/usd-load-deadlock-recipe.md`.
 
@@ -88,6 +88,6 @@ loop deadlock → 모든 MCP tool 92 s timeout.
 ## 관련 경계
 
 - 저수준 코드 위치 (Stage / USD 로드 프로토콜): `src/isaacsim_mcp/modules/integration-facts.md`
-- Asset URL 카탈로그 진입점: `isaac_course/docs/asset_inventory.md`
+- Asset URL 카탈로그 진입점: `docs/assets/isaac/asset_inventory.md`
 - 독립 Extension 방어 레시피: `kkr-extensions/docs/usd-load-deadlock-recipe.md`
 - LogCapture 비활성 결정 사고: `kkr-extensions/docs/lessons-learned.md`

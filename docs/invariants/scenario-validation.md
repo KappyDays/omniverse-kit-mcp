@@ -12,7 +12,7 @@ R1/R1a/R2/R3 위반 시 검증 결과는 무효.
   - `.../Environments/Office/Props/SM_Armchair.usd`
   - `.../Robots/NVIDIA/NovaCarter/nova_carter.usd`
   - `.../People/Characters/Biped_Setup.usd`
-- **SoT 카탈로그** (전체 S3 URL 목록): `isaac_course/docs/asset_inventory.md` + `isaac_course/docs/assets/*.md` — scenario 저작 전 후보 asset 선택 진입점
+- **SoT 카탈로그** (전체 S3 URL 목록): `docs/assets/isaac/asset_inventory.md` + `docs/assets/isaac/assets/*.md` — scenario 저작 전 후보 asset 선택 진입점
 
 ### 이유 (실측 False Positive)
 
@@ -93,7 +93,7 @@ scenario cleanup 은 `simulation_play → simulation_stop` (최종 physics tick)
 
 - Scenario YAML 저작 가이드: `scenarios/CLAUDE.md`
 - Scenario 엔진 (Arrange/Act/Assert/Cleanup, action_registry): `src/isaacsim_mcp/scenario/CLAUDE.md`
-- Asset URL 카탈로그 진입점: `isaac_course/docs/asset_inventory.md`
+- Asset URL 카탈로그 진입점: `docs/assets/isaac/asset_inventory.md`
 - Character domain constraints (실측): `src/isaacsim_mcp/modules/CLAUDE.md`
 - USD 로드 4 조건: `docs/invariants/usd-load.md`
 - Issue / 개선 항목 누적: `docs/implementation_issues.md`

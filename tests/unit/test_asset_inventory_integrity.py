@@ -1,4 +1,4 @@
-"""Asset inventory markdown invariants for isaac_course/docs/assets/*.md.
+"""Asset inventory markdown invariants for docs/assets/isaac/assets/*.md.
 
 Format-only checks (no network). The slow URL-validity check lives in
 `scripts/diff_asset_inventory.py` (run manually or via /asset-inventory-sync skill).
@@ -13,8 +13,8 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 # Strict scope: Isaac Sim 5.1 bundle catalog (legacy invariants apply here).
-ASSETS_DIR = PROJECT_ROOT / "isaac_course" / "docs" / "assets"
-INVENTORY_INDEX = PROJECT_ROOT / "isaac_course" / "docs" / "asset_inventory.md"
+ASSETS_DIR = PROJECT_ROOT / "docs" / "assets" / "isaac" / "assets"
+INVENTORY_INDEX = PROJECT_ROOT / "docs" / "assets" / "isaac" / "asset_inventory.md"
 # Lenient scope: Composer / cross-app sample library (same bucket, looser prefix).
 COMPOSER_ASSETS_DIR = PROJECT_ROOT / "docs" / "assets" / "composer"
 

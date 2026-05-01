@@ -50,7 +50,7 @@ PROCESS_MODULE = PROJECT / "src" / "isaacsim_mcp" / "modules" / "process_module.
 ISAAC_URL = os.environ.get("ISAAC_SIM_BASE_URL", "http://localhost:8011")
 LAKEHOUSE_URL = os.environ.get("LAKEHOUSE_BASE_URL", "http://localhost:9000")
 
-# S3 URLs — SoT: ``isaac_course/docs/assets/*.md`` (R1 compliant).
+# S3 URLs — SoT: ``docs/assets/isaac/assets/*.md`` (R1 compliant).
 WAREHOUSE_URL = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
     "Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
