@@ -42,15 +42,31 @@ UsdPhysics.CollisionAPI.Apply(ground_prim)  # cube collision
 
 새 robot ↔ 새 asset 조합 layout 결정 전, 종이 위 계산:
 
-| 변수 | 측정 |
+| 변수 | 측정 (Franka Panda + ConveyorBelt_A06) |
 |------|------|
-| Robot reach radius | URDF / spec (Franka Panda = 0.855 m) |
-| Robot footprint half-width | base link AABB (Franka ≈ 0.30 m) |
-| Asset target surface z | Belt sub-prim translate.z (NVIDIA conveyor) |
-| Asset half-width | segment AABB (handrail 포함, 0.55 m for A06) |
+| Robot reach radius | URDF / spec (0.855 m sphere from base) |
+| Robot base footprint radius | panda_link0 AABB (≈ 0.115 m radius) |
+| Robot arm-raised half-width | default-pose AABB (≈ 0.55 m, used for layout_check soft warn) |
+| Asset target surface z | Belt sub-prim world z |
+| Asset half-width (belt + handrail) | segment AABB (0.55 m for A06) |
 
-체크: `(robot - asset_target_xy 거리) ≤ reach_radius - clearance` ?
-미달 시 robot stand 추가 또는 asset 위치 lower (ConveyorLoop translate.z).
+3D reach 체크 (ground-mount robot, base z=0):
+
+```
+horizontal_max = √(reach² − (cube_z − base_z)²)
+              = √(0.855² − 0.40² − 0.025²) ≈ 0.741 m  (cube on belt at z=0.40m)
+```
+
+Mesh-clearance 체크 (base 가 belt edge 안 부딪히도록):
+
+```
+REACH_OFFSET_min = belt_half + base_radius + clearance
+                 = 0.55 + 0.115 + 0.055 ≈ 0.72 m
+```
+
+두 budget 동시 만족: REACH_OFFSET ≈ 0.72 m, belt_top_z ≈ 0.40 m. 어느 한 쪽
+미달 시 robot stand 추가 또는 belt z lower (ConveyorLoop translate.z).
+v5 round-4 (belt_top_z=0.85 m + REACH_OFFSET=0.85 m) 는 양쪽 모두 위반 → rate=0%.
 
 ## R4 — Ground / belt height = 산업 standard
 
@@ -58,8 +74,12 @@ Belt top z = 0.40 ~ 0.70 m (산업 standard "허리 높이"). 0.05 m 이하는
 "ground 붙음" 시각, robot stand 없이는 reach 안 닿음. 1.0 m 이상은
 ground-mount Franka EE saturate 가능.
 
-NVIDIA ConveyorBelt 자산은 native belt top z=1.76 m (handrail + 다리).
-LOOP_ROOT translate.z = -1.36 으로 내려서 belt top = 0.40 m 권장.
+NVIDIA ConveyorBelt 자산 native handrail + 다리 → ground_snap 만 적용 시
+belt top z ≈ 0.85 m (다리 길이) → ground-mount Franka 안 닿음 (round-4 rate=0%).
+v5 round-5 결정: `track_loop_builder._lower_loop_to_target_belt_z(target=0.40)`
+로 LOOP_ROOT 추가 lowering. 다리가 ground 아래로 내려가는 시각 손실은 감수
+(`check_ground_penetration` warning 예상). robot stand 추가는 layout 복잡도
+증가하므로 보류.
 
 ## R6 — Ground anchor: BBoxCache로 bottom 측정, z=0 hardcode 금지
 
