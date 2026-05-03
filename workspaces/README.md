@@ -1,0 +1,48 @@
+# Workspaces — omniverse-kit-mcp Consumer Workspaces
+
+이 디렉토리는 omniverse-kit-mcp server 를 **사용** 하기 위한 워크스페이스. server 코드 / docs / tests 는 `../` (repo root) 참조.
+
+## 사용 패턴
+
+각 instance 폴더 = 1 개 CC 세션 = 1 MCP entry 로드 (~150 tool 이름). 멀티 앱 시나리오는 CC 창 2 개 동시 운영.
+
+```
+cd workspaces/isaac/instance-1   # Isaac Sim instance 1 (port 8011)
+claude
+```
+
+## 첫 사용 (clone 직후 1 회)
+
+`.mcp.json` 은 머신마다 절대경로가 다르므로 commit 되지 않음 (`.gitignore`). repo root 에서 setup 스크립트 한 번 실행하면 4 개 instance 폴더에 `.mcp.json` 자동 생성.
+
+```
+setup\setup-omniverse-kit-mcp.bat
+```
+
+setup 동작 상세: `../setup/CLAUDE.md`.
+
+## 시나리오 → 폴더 매트릭스
+
+| 시나리오 | CC 창 | 진입 폴더 |
+|---|---|---|
+| isaac × 1 | 1 | `isaac/instance-1/` |
+| composer × 1 | 1 | `usd-composer/instance-1/` |
+| isaac + composer | 2 동시 | `isaac/instance-1/` + `usd-composer/instance-1/` |
+| isaac × 2 | 2 동시 | `isaac/instance-1/` + `isaac/instance-2/` |
+| composer × 2 | 2 동시 | `usd-composer/instance-1/` + `usd-composer/instance-2/` |
+
+## 디렉토리 규약
+
+- `{profile}/CLAUDE.md` — profile 별 작업 룰 + pull-doc 표 (server `docs/` 상대경로 참조)
+- `{profile}/scenarios/` — work-only YAML. R1 충족 시 commit 가능
+- `{profile}/scratch/` — gitignored. 임시 USD / 스크린샷
+- `{profile}/instance-{N}/.mcp.json.template` — committed. setup 시 `.mcp.json` 으로 변환
+- `{profile}/instance-{N}/.mcp.json` — gitignored. setup 시 자동 생성. CC 진입점
+
+## 확장
+
+instance-3 / cross-app `mixed/` / 신규 profile 추가 절차: `../docs/superpowers/specs/2026-05-04-workspace-split-design.md` § 14.
+
+## Promote work scenario → server regression
+
+상세: spec § 8 (4 항목 체크리스트 + `git mv`).

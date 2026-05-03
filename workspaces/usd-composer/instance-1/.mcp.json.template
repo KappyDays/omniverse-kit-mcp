@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "usdcomposer-mcp-1": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "uv", "--directory", "{{REPO_DIR}}", "run", "--no-sync", "omniverse-kit-mcp"],
+      "env": {
+        "ISAAC_MCP_APP_PROFILE": "usd-composer",
+        "ISAAC_MCP_INSTANCE_ID": "1"
+      }
+    }
+  }
+}
