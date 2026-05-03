@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.window_module import WindowModule
-from isaacsim_mcp.types.common import ModuleName, OperationMeta
-from isaacsim_mcp.types.window import WindowCaptureRequest
+from omniverse_kit_mcp.modules.window_module import WindowModule
+from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
+from omniverse_kit_mcp.types.window import WindowCaptureRequest
 from tests.conftest import MockIsaacRestClient
 
 

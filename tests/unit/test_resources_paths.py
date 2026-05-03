@@ -8,7 +8,7 @@ over time. These tests guarantee:
    (``EXPECTED_RESOURCES``).
 2. Every file-backed resource's source file exists at the declared path
    (``RESOURCE_SOURCES``). If a source file moves, either update the
-   mapping in ``src/isaacsim_mcp/mcp/resources.py`` or restore the file
+   mapping in ``src/omniverse_kit_mcp/mcp/resources.py`` or restore the file
    — the test catches the drift either way.
 """
 
@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.config import AppConfig
-from isaacsim_mcp.mcp.resources import RESOURCE_SOURCES
-from isaacsim_mcp.mcp.server import create_mcp_server
+from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.mcp.resources import RESOURCE_SOURCES
+from omniverse_kit_mcp.mcp.server import create_mcp_server
 
 EXPECTED_RESOURCES: frozenset[str] = frozenset({
     "isaacsim://tool-catalog",

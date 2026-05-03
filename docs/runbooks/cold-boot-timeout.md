@@ -65,7 +65,7 @@ Hub failed to launch: child exited with exit code: 1
 
 ## 관련 경계
 
-- ProcessModule 결정 트리 + stdin/stdout 규약: `src/isaacsim_mcp/modules/process-ops.md`
+- ProcessModule 결정 트리 + stdin/stdout 규약: `src/omniverse_kit_mcp/modules/process-ops.md`
 - Process 생애주기 invariants: `docs/invariants/process-lifecycle.md`
 - stdin pipe hang 본문: `docs/runbooks/kit-stdin-deadlock.md`
 - env 무시 함정: `docs/runbooks/env-sub-config.md`

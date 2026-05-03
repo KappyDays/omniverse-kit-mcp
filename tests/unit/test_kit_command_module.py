@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.kit_command_module import KitCommandModule
-from isaacsim_mcp.types.common import ModuleName, OperationMeta
-from isaacsim_mcp.types.kit_command import (
+from omniverse_kit_mcp.modules.kit_command_module import KitCommandModule
+from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
+from omniverse_kit_mcp.types.kit_command import (
     KitCommandExecuteRequest,
     KitPythonExecRequest,
 )

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.viewport_module import ViewportModule
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.viewport import SSIMComparisonRequest, ViewportCaptureRequest
+from omniverse_kit_mcp.modules.viewport_module import ViewportModule
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.viewport import SSIMComparisonRequest, ViewportCaptureRequest
 from tests.conftest import MockIsaacRestClient
 
 

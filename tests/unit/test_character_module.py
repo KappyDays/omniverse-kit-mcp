@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.character_module import CharacterModule
-from isaacsim_mcp.types.character import (
+from omniverse_kit_mcp.modules.character_module import CharacterModule
+from omniverse_kit_mcp.types.character import (
     CharacterLoadRequest,
     CharacterLoadResult,
     CharacterNavigateRequest,
@@ -18,7 +18,7 @@ from isaacsim_mcp.types.character import (
     CharacterStopAnimationRequest,
     CharacterStopAnimationResult,
 )
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 
 
 def _meta() -> OperationMeta:

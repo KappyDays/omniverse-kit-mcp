@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.robot_module import RobotModule
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.robot import (
+from omniverse_kit_mcp.modules.robot_module import RobotModule
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.robot import (
     JointConfig,
     JointPositions,
     JointPositionsSetRequest,

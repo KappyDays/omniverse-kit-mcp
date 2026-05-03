@@ -12,7 +12,7 @@ spec:
 
   variables:
     warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
-    output_dir: "C:/Users/<you>/workspace/Isaac-sim-MCP/_temp_sdg/phase_h_combined"
+    output_dir: "C:/Users/<you>/workspace/omniverse-kit-mcp/_temp_sdg/phase_h_combined"
     graph_path: /World/FrameTriggerGraph
 
   arrange:

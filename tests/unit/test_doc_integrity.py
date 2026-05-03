@@ -43,7 +43,7 @@ _MEMORY_INDEX = (
     Path.home()
     / ".claude"
     / "projects"
-    / "C--Users-kang-workspace-Isaac-sim-MCP"
+    / "C--Users-kang-workspace-omniverse-kit-mcp"
     / "memory"
     / "MEMORY.md"
 )

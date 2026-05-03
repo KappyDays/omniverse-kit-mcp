@@ -49,6 +49,6 @@ GUI-equiv live 검증은 `scripts/live_test_gui_equiv.py` — unit tests 는 moc
 
 ## 관련 경계
 
-- Module 구현: `../src/isaacsim_mcp/modules/CLAUDE.md`
-- Tool 등록 규약: `../src/isaacsim_mcp/tools/CLAUDE.md`
-- Scenario 엔진: `../src/isaacsim_mcp/scenario/CLAUDE.md`
+- Module 구현: `../src/omniverse_kit_mcp/modules/CLAUDE.md`
+- Tool 등록 규약: `../src/omniverse_kit_mcp/tools/CLAUDE.md`
+- Scenario 엔진: `../src/omniverse_kit_mcp/scenario/CLAUDE.md`

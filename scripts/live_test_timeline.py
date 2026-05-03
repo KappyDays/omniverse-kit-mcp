@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from isaacsim_mcp.clients.isaac_rest_client import IsaacRestClient  # noqa: E402
-from isaacsim_mcp.config import AppConfig  # noqa: E402
+from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient  # noqa: E402
+from omniverse_kit_mcp.config import AppConfig  # noqa: E402
 
 
 async def _main() -> int:

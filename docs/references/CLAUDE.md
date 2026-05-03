@@ -82,7 +82,7 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 
 ## MCP tool: `extension_search` (Phase E 구현 완료)
 
-`extensions.json` 를 local 쿼리하는 `extension_search(keyword, app, category, limit)` MCP tool. 구현: `src/isaacsim_mcp/modules/catalog_module.py` (+ `tools/module_tools.py` 등록). Isaac Sim / REST 의존 없음 — MCP 서버 프로세스 내부에서 JSON 1회 load 후 cache. 상세 사용법은 `src/isaacsim_mcp/tools/CLAUDE.md` Catalog 섹션 참조.
+`extensions.json` 를 local 쿼리하는 `extension_search(keyword, app, category, limit)` MCP tool. 구현: `src/omniverse_kit_mcp/modules/catalog_module.py` (+ `tools/module_tools.py` 등록). Isaac Sim / REST 의존 없음 — MCP 서버 프로세스 내부에서 JSON 1회 load 후 cache. 상세 사용법은 `src/omniverse_kit_mcp/tools/CLAUDE.md` Catalog 섹션 참조.
 
 ## Kit / app 업데이트 후 catalog 동기화
 

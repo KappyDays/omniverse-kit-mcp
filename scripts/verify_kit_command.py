@@ -21,8 +21,8 @@ import httpx
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from isaacsim_mcp.config import AppConfig  # noqa: E402
-from isaacsim_mcp.modules.process_module import ProcessModule  # noqa: E402
+from omniverse_kit_mcp.config import AppConfig  # noqa: E402
+from omniverse_kit_mcp.modules.process_module import ProcessModule  # noqa: E402
 
 
 def _module_for(profile: str, instance: int) -> ProcessModule:

@@ -45,7 +45,7 @@ import pytest
 from PIL import Image
 
 PROJECT = Path(__file__).resolve().parents[2]
-PROCESS_MODULE = PROJECT / "src" / "isaacsim_mcp" / "modules" / "process_module.py"
+PROCESS_MODULE = PROJECT / "src" / "omniverse_kit_mcp" / "modules" / "process_module.py"
 
 ISAAC_URL = os.environ.get("ISAAC_SIM_BASE_URL", "http://localhost:8011")
 LAKEHOUSE_URL = os.environ.get("LAKEHOUSE_BASE_URL", "http://localhost:9000")
@@ -93,8 +93,8 @@ def _require_alive() -> None:
 
 
 def _client():
-    from isaacsim_mcp.clients.isaac_rest_client import IsaacRestClient
-    from isaacsim_mcp.config import IsaacSimConfig
+    from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
+    from omniverse_kit_mcp.config import IsaacSimConfig
 
     config = IsaacSimConfig(base_url=ISAAC_URL, timeout=180.0, connect_timeout=5.0)
     return IsaacRestClient(config=config)
@@ -593,7 +593,7 @@ def test_d17_lakehouse_query_conditional():
     if not alive:
         pytest.skip(f"Lakehouse not reachable at {LAKEHOUSE_URL}")
 
-    from isaacsim_mcp.clients.lakehouse_client import LakehouseClient
+    from omniverse_kit_mcp.clients.lakehouse_client import LakehouseClient
 
     async def go():
         c = LakehouseClient(base_url=LAKEHOUSE_URL, timeout=10.0)

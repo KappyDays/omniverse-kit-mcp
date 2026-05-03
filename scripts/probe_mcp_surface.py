@@ -15,7 +15,7 @@ async def probe() -> None:
     proc = await asyncio.create_subprocess_exec(
         PY,
         "-m",
-        "isaacsim_mcp.main",
+        "omniverse_kit_mcp.main",
         cwd=str(REPO_ROOT),
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,

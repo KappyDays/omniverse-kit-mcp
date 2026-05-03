@@ -1,18 +1,18 @@
-# setup_isaacsim_mcp.ps1 — Clone Isaac-sim-MCP repo, uv sync, register MCP server
-# Run via: setup-isaacsim-mcp.bat (same directory)
+# setup_omniverse_kit_mcp.ps1 — Clone omniverse-kit-mcp repo, uv sync, register MCP server
+# Run via: setup-omniverse-kit-mcp.bat (same directory)
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
 
-$RepoUrl    = "https://github.com/KappyDays/Isaac-sim-MCP.git"
-$RepoDir    = Join-Path $env:USERPROFILE "workspace\Isaac-sim-MCP"
+$RepoUrl    = "https://github.com/KappyDays/omniverse-kit-mcp.git"
+$RepoDir    = Join-Path $env:USERPROFILE "workspace\omniverse-kit-mcp"
 $ClaudeJson = Join-Path $env:USERPROFILE ".claude.json"
-$McpName    = "isaacsim-mcp"
+$McpName    = "omniverse-kit-mcp"
 
 Write-Host ""
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "   Isaac Sim MCP Server Setup                          " -ForegroundColor Cyan
+Write-Host "   Omniverse Kit MCP Server Setup                          " -ForegroundColor Cyan
 Write-Host "======================================================" -ForegroundColor Cyan
 
 # ── Step 1: Check prerequisites ─────────────────────────────────────────────
@@ -170,19 +170,19 @@ $Profiles = @(
 
 function Make-McpEntry($ProfileName, $InstanceId) {
     # --no-sync is CRITICAL for multi-instance: every `uv run` without it
-    # triggers `uv sync`, which tries to reinstall the editable isaacsim-mcp
+    # triggers `uv sync`, which tries to reinstall the editable omniverse-kit-mcp
     # package. When multiple MCP servers run simultaneously (6 entries), each
-    # sync competes to replace the same `.venv/Scripts/isaacsim-mcp.exe` —
+    # sync competes to replace the same `.venv/Scripts/omniverse-kit-mcp.exe` —
     # the first one wins (locks it), every subsequent sync fails with
     # "The process cannot access the file because it is being used by another
-    # process", and `uv run isaacsim-mcp` never spawns the server. Claude
+    # process", and `uv run omniverse-kit-mcp` never spawns the server. Claude
     # Code then reports "Failed to reconnect" for those entries.
     # Setup script step 2 already runs `uv sync` once, so --no-sync here is
     # safe.
     return [PSCustomObject]@{
         type    = "stdio"
         command = "cmd"
-        args    = @("/c", "uv", "--directory", ($RepoDir -replace '\\', '/'), "run", "--no-sync", "isaacsim-mcp")
+        args    = @("/c", "uv", "--directory", ($RepoDir -replace '\\', '/'), "run", "--no-sync", "omniverse-kit-mcp")
         env     = [PSCustomObject]@{
             ISAAC_MCP_APP_PROFILE = $ProfileName
             ISAAC_MCP_INSTANCE_ID = "$InstanceId"
@@ -207,17 +207,17 @@ foreach ($prof in $Profiles) {
     }
 }
 
-# Legacy alias 'isaacsim-mcp' → isaac-sim instance 1 (backward compat)
-Set-McpEntry "isaacsim-mcp" (Make-McpEntry "isaac-sim" 1)
+# Legacy alias 'omniverse-kit-mcp' → isaac-sim instance 1 (backward compat)
+Set-McpEntry "omniverse-kit-mcp" (Make-McpEntry "isaac-sim" 1)
 
 Save-JsonFile -Data $claudeConfig -Path $ClaudeJson
 Write-Host "  [OK]   Saved to $ClaudeJson" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "  Registered MCP servers:" -ForegroundColor White
-Write-Host "    isaacsim-mcp          (alias -> isaac-sim instance 1, port 8011)" -ForegroundColor DarkGray
+Write-Host "    omniverse-kit-mcp          (alias -> isaac-sim instance 1, port 8011)" -ForegroundColor DarkGray
 foreach ($i in 1..$InstanceCount) {
-    Write-Host "    isaacsim-mcp-$i       (isaac-sim instance $i, port $(8010 + $i))" -ForegroundColor DarkGray
+    Write-Host "    omniverse-kit-mcp-$i       (isaac-sim instance $i, port $(8010 + $i))" -ForegroundColor DarkGray
 }
 foreach ($i in 1..$InstanceCount) {
     Write-Host "    usdcomposer-mcp-$i    (usd-composer instance $i, port $(8013 + $i))" -ForegroundColor DarkGray
@@ -227,7 +227,7 @@ foreach ($i in 1..$InstanceCount) {
 
 Write-Host ""
 Write-Host "======================================================" -ForegroundColor Green
-Write-Host "   Isaac Sim MCP setup complete!                       " -ForegroundColor Green
+Write-Host "   Omniverse Kit MCP setup complete!                       " -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor White

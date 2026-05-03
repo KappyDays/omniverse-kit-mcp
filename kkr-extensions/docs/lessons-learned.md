@@ -20,7 +20,7 @@
 
 ### L17. `subprocess.Popen` 의 `stdin` 명시 누락 = MCP server 자식 프로세스에서 boot 정지
 
-- **원인**: `src/isaacsim_mcp/modules/process_module.py::start()` 의 `subprocess.Popen(...)` 가 `stdin` 인자 미지정. MCP server (`isaacsim-mcp`) 는 Claude Code 의 stdio 자식이라 그 stdin = MCP protocol 양방향 pipe. 자식 kit.exe 가 그 pipe stdin 을 상속 → cold boot 어느 init 단계에서 stdin read 시도 → MCP pipe 에서 indefinite block → 그 thread + join 대기 thread 들 모두 정지 → 전체 boot 멈춤.
+- **원인**: `src/omniverse_kit_mcp/modules/process_module.py::start()` 의 `subprocess.Popen(...)` 가 `stdin` 인자 미지정. MCP server (`omniverse-kit-mcp`) 는 Claude Code 의 stdio 자식이라 그 stdin = MCP protocol 양방향 pipe. 자식 kit.exe 가 그 pipe stdin 을 상속 → cold boot 어느 init 단계에서 stdin read 시도 → MCP pipe 에서 indefinite block → 그 thread + join 대기 thread 들 모두 정지 → 전체 boot 멈춤.
 - **증상 (실측 2026-04-23 두 번 hang, 2026-04-24 root cause 확정)**:
   - `isaac_sim_start` 응답 `status=timeout` (240s 후) 또는 `status=still_loading`
   - PowerShell `Get-Process kit`: alive (PID 정상), CPU < 5s (5분 idle), WS ~60MB (boot 시작도 못함)
@@ -43,7 +43,7 @@
   ```
   - 다른 `subprocess.Popen` 호출도 자식이 input 안 받으면 동일하게 `stdin=DEVNULL` 명시 (default = inherit 이라 silent leak)
   - 재현 검증 (Fix 회귀 방지): `python -c "import subprocess; p=subprocess.Popen(['.venv/Scripts/python.exe','scripts/run_process_module_standalone.py','start'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True); print(p.communicate(input='', timeout=300))"` → ~13s ready 여야 PASS, 240s timeout 면 stdin DEVNULL 누락
-- **상세**: 루트 `CLAUDE.md §"kit.exe cold boot hang — stdin pipe deadlock"` 와 `src/isaacsim_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 1번
+- **상세**: 루트 `CLAUDE.md §"kit.exe cold boot hang — stdin pipe deadlock"` 와 `src/omniverse_kit_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 1번
 
 ---
 
@@ -79,7 +79,7 @@
   - 신규 sub-config 추가 시 동일 패턴 (env_prefix + env_file + extra="ignore")
   - 검증 명령 (PR 전 필수):
     ```bash
-    .venv/Scripts/python.exe -c "from isaacsim_mcp.config import AppConfig; ac=AppConfig(); print(ac.isaac_sim_process.startup_timeout)"
+    .venv/Scripts/python.exe -c "from omniverse_kit_mcp.config import AppConfig; ac=AppConfig(); print(ac.isaac_sim_process.startup_timeout)"
     ```
     → `.env` 값 반영 확인
 
@@ -100,7 +100,7 @@
   - **PowerShell** `Get-Process -Name kit -ErrorAction SilentlyContinue`
   - **MCP** `simulation_get_status` (응답 ≤ 1s = alive)
   - **`curl http://localhost:8011/validation/v1/health`** (200 = alive)
-  - 절대 `tasklist //FI` (git bash) 사용 금지. `src/isaacsim_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 에 정정.
+  - 절대 `tasklist //FI` (git bash) 사용 금지. `src/omniverse_kit_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 에 정정.
 
 ### L8. `extension_ui_invoke` callback 호출 inconsistency (hot-reload 후)
 

@@ -279,7 +279,7 @@ wheels = [
 ]
 
 [[package]]
-name = "isaacsim-mcp"
+name = "omniverse-kit-mcp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

@@ -3,7 +3,7 @@
 
 # NavMesh Playground — User Workflow + QA Checklist
 
-이 Extension 은 **Isaac Sim 단독 환경 (Isaac-sim-MCP 없이)** 에서도 동작합니다.
+이 Extension 은 **Isaac Sim 단독 환경 (omniverse-kit-mcp 없이)** 에서도 동작합니다.
 모든 callback 은 Kit SDK 직접 호출 (`omni.kit.commands` / `omni.usd` /
 `omni.anim.graph.core` / `omni.anim.navigation.core` / `pxr.*` 등) — `omni.mycompany.validation_api` 의존 0.
 

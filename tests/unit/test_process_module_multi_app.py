@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from isaacsim_mcp.config import AppConfig
-from isaacsim_mcp.modules.process_module import ProcessModule
+from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.modules.process_module import ProcessModule
 
 
 @pytest.fixture(autouse=True)
@@ -78,7 +78,7 @@ async def test_isaac_instance_1_cmd_has_port_8011_and_ext_folder(monkeypatch):
     async def fake_health(self):
         return True
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", fake_alive)
     monkeypatch.setattr(ProcessModule, "_check_health", fake_health)
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
@@ -108,7 +108,7 @@ async def test_usd_composer_instance_1_cmd_has_port_8014(monkeypatch):
     async def fake_health(self):
         return True
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", fake_alive)
     monkeypatch.setattr(ProcessModule, "_check_health", fake_health)
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
@@ -134,7 +134,7 @@ async def test_usd_composer_instance_3_port_8016(monkeypatch):
         fake.pid = 22223
         return fake
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", lambda self: _async_false())
     monkeypatch.setattr(ProcessModule, "_check_health", lambda self: _async_true())
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
@@ -157,7 +157,7 @@ async def test_isaac_profile_sets_ros_env(monkeypatch):
         fake.pid = 11112
         return fake
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", lambda self: _async_false())
     monkeypatch.setattr(ProcessModule, "_check_health", lambda self: _async_true())
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
@@ -181,7 +181,7 @@ async def test_usd_composer_profile_skips_ros_env(monkeypatch):
         fake.pid = 22224
         return fake
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", lambda self: _async_false())
     monkeypatch.setattr(ProcessModule, "_check_health", lambda self: _async_true())
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
@@ -203,7 +203,7 @@ async def test_resolve_instance_pid_matches_port_string(monkeypatch):
         r.returncode = 0
         return r
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.run", fake_run)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
     pid = await module._resolve_instance_pid()
     assert pid == 33344
 
@@ -218,7 +218,7 @@ async def test_resolve_instance_pid_returns_none_when_empty(monkeypatch):
         r.returncode = 0
         return r
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.run", fake_run)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
     pid = await module._resolve_instance_pid()
     assert pid is None
 
@@ -243,7 +243,7 @@ async def test_stop_uses_pid_not_imagename(monkeypatch):
         call_count["alive"] += 1
         return call_count["alive"] == 1
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.run", fake_run)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", fake_alive)
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
 
@@ -279,7 +279,7 @@ async def test_hub_cleanup_skipped_when_other_kit_alive(monkeypatch):
             r.stdout = ""
         return r
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.run", fake_run)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
 
     await module._cleanup_orphan_hub()
     hub_kills = [c for c in captured if "/IM" in c and "hub.exe" in c]
@@ -299,7 +299,7 @@ async def test_hub_cleanup_runs_when_no_kit_alive(monkeypatch):
         r.stdout = ""
         return r
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.run", fake_run)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
     await module._cleanup_orphan_hub()
     hub_kills = [c for c in captured if "/IM" in c and "hub.exe" in c]
     assert hub_kills, f"hub cleanup must run when no kit.exe alive; got {captured}"
@@ -316,7 +316,7 @@ async def test_start_response_includes_profile_and_instance(monkeypatch):
         fake.pid = 77777
         return fake
 
-    monkeypatch.setattr("isaacsim_mcp.modules.process_module.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", lambda self: _async_false())
     monkeypatch.setattr(ProcessModule, "_check_health", lambda self: _async_true())
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())

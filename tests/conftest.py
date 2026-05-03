@@ -78,11 +78,11 @@ _stub("isaacsim.core.nodes")
 _stub("isaacsim.wheeled_robots")
 _stub("isaacsim.wheeled_robots.controllers")
 
-from isaacsim_mcp.types.common import ModuleName, OperationMeta
-from isaacsim_mcp.types.extension import ExtensionState
-from isaacsim_mcp.types.lakehouse import LakehouseQueryResult, LakehouseRow
-from isaacsim_mcp.types.stage import StageSnapshot, UsdPropertyValue
-from isaacsim_mcp.types.viewport import ImageArtifact, SSIMComparisonResult
+from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
+from omniverse_kit_mcp.types.extension import ExtensionState
+from omniverse_kit_mcp.types.lakehouse import LakehouseQueryResult, LakehouseRow
+from omniverse_kit_mcp.types.stage import StageSnapshot, UsdPropertyValue
+from omniverse_kit_mcp.types.viewport import ImageArtifact, SSIMComparisonResult
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

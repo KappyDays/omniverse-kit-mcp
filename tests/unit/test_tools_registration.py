@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.config import AppConfig
-from isaacsim_mcp.mcp.server import create_mcp_server
+from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.mcp.server import create_mcp_server
 
 
 EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({

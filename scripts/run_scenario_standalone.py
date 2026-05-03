@@ -16,31 +16,31 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from isaacsim_mcp.clients.isaac_rest_client import IsaacRestClient
-from isaacsim_mcp.clients.lakehouse_client import LakehouseClient
-from isaacsim_mcp.config import AppConfig
-from isaacsim_mcp.modules.asset_module import AssetModule
-from isaacsim_mcp.modules.character_module import CharacterModule
-from isaacsim_mcp.modules.content_module import ContentModule
-from isaacsim_mcp.modules.extension_module import ExtensionModule
-from isaacsim_mcp.modules.job_module import JobModule
-from isaacsim_mcp.modules.lakehouse_module import LakehouseModule
-from isaacsim_mcp.modules.lighting_module import LightingModule
-from isaacsim_mcp.modules.material_module import MaterialModule
-from isaacsim_mcp.modules.navigation_module import NavigationModule
-from isaacsim_mcp.modules.omnigraph_module import OmnigraphModule
-from isaacsim_mcp.modules.physics_module import PhysicsModule
-from isaacsim_mcp.modules.replicator_module import ReplicatorModule
-from isaacsim_mcp.modules.robot_module import RobotModule
-from isaacsim_mcp.modules.sensor_module import SensorModule
-from isaacsim_mcp.modules.simulation_module import SimulationModule
-from isaacsim_mcp.modules.stage_module import StageModule
-from isaacsim_mcp.modules.viewport_module import ViewportModule
-from isaacsim_mcp.modules.window_module import WindowModule
-from isaacsim_mcp.scenario.compiler import compile_scenario
-from isaacsim_mcp.scenario.loader import load_scenario
-from isaacsim_mcp.scenario.reporters import to_json, to_markdown
-from isaacsim_mcp.scenario.runner import ScenarioRunner
+from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
+from omniverse_kit_mcp.clients.lakehouse_client import LakehouseClient
+from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.modules.asset_module import AssetModule
+from omniverse_kit_mcp.modules.character_module import CharacterModule
+from omniverse_kit_mcp.modules.content_module import ContentModule
+from omniverse_kit_mcp.modules.extension_module import ExtensionModule
+from omniverse_kit_mcp.modules.job_module import JobModule
+from omniverse_kit_mcp.modules.lakehouse_module import LakehouseModule
+from omniverse_kit_mcp.modules.lighting_module import LightingModule
+from omniverse_kit_mcp.modules.material_module import MaterialModule
+from omniverse_kit_mcp.modules.navigation_module import NavigationModule
+from omniverse_kit_mcp.modules.omnigraph_module import OmnigraphModule
+from omniverse_kit_mcp.modules.physics_module import PhysicsModule
+from omniverse_kit_mcp.modules.replicator_module import ReplicatorModule
+from omniverse_kit_mcp.modules.robot_module import RobotModule
+from omniverse_kit_mcp.modules.sensor_module import SensorModule
+from omniverse_kit_mcp.modules.simulation_module import SimulationModule
+from omniverse_kit_mcp.modules.stage_module import StageModule
+from omniverse_kit_mcp.modules.viewport_module import ViewportModule
+from omniverse_kit_mcp.modules.window_module import WindowModule
+from omniverse_kit_mcp.scenario.compiler import compile_scenario
+from omniverse_kit_mcp.scenario.loader import load_scenario
+from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
+from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 
 
 async def run(scenario_path: str) -> int:

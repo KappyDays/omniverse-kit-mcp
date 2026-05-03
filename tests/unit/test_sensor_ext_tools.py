@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.config import AppConfig
-from isaacsim_mcp.mcp.server import create_mcp_server
-from isaacsim_mcp.modules.sensor_module import SensorModule
-from isaacsim_mcp.scenario.action_registry import build_request
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.sensor import (
+from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.mcp.server import create_mcp_server
+from omniverse_kit_mcp.modules.sensor_module import SensorModule
+from omniverse_kit_mcp.scenario.action_registry import build_request
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.sensor import (
     SensorAttachContactRequest,
     SensorAttachContactResult,
     SensorAttachImuRequest,

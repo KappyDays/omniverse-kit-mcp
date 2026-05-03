@@ -62,7 +62,7 @@ Isaac Sim GUI (`kit.exe`) 내부에서 실행되는 Kit Extension 들이 모여 
 
 ## 관련 경계
 
-- MCP 서버가 `validation_api` 를 어떻게 호출하는지: [`../src/isaacsim_mcp/CLAUDE.md`](../src/isaacsim_mcp/CLAUDE.md) + [`../src/isaacsim_mcp/modules/CLAUDE.md`](../src/isaacsim_mcp/modules/CLAUDE.md)
+- MCP 서버가 `validation_api` 를 어떻게 호출하는지: [`../src/omniverse_kit_mcp/CLAUDE.md`](../src/omniverse_kit_mcp/CLAUDE.md) + [`../src/omniverse_kit_mcp/modules/CLAUDE.md`](../src/omniverse_kit_mcp/modules/CLAUDE.md)
 - `validation_api` REST endpoint 전체 목록 SoT: [`omni.mycompany.validation_api/omni/mycompany/validation_api/rest_router.py`](omni.mycompany.validation_api/omni/mycompany/validation_api/rest_router.py) (코드가 SoT)
 - Extension 활성화 설치 절차: [`../setup/CLAUDE.md`](../setup/CLAUDE.md)
 - Scenario YAML 에서 Extension UI 자동 조작: [`../scenarios/CLAUDE.md`](../scenarios/CLAUDE.md)

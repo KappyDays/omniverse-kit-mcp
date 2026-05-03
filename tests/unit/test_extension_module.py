@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.extension_module import ExtensionModule
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.extension import ExtensionResetRequest, ExtensionTriggerRequest
+from omniverse_kit_mcp.modules.extension_module import ExtensionModule
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.extension import ExtensionResetRequest, ExtensionTriggerRequest
 from tests.conftest import MockIsaacRestClient
 
 

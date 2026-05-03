@@ -1,0 +1,155 @@
+"""Types for robot control (Phase B)."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(slots=True, frozen=True)
+class RobotLoadRequest:
+    usd_url: str
+    prim_path: str
+    position: tuple[float, float, float] | None = None
+    rotation: tuple[float, float, float] | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class RobotLoadResult:
+    ok: bool
+    prim_path: str
+    usd_url: str
+    type_name: str
+    has_articulation: bool
+
+
+@dataclass(slots=True, frozen=True)
+class JointPositions:
+    prim_path: str
+    positions: tuple[float, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class JointConfig:
+    """Drive config + limits + max velocity per articulation DOF.
+
+    Symmetric readback for ``set_joint_positions`` — exposes drive
+    stiffness/damping/max_force, position lower/upper limits, and max
+    joint velocities. ``source`` reports which backend filled the arrays
+    (``dof_properties`` for SingleArticulation runtime view, or
+    ``usd_drive_api`` for the per-joint UsdPhysics fallback).
+    """
+
+    prim_path: str
+    source: str
+    dof_count: int
+    dof_names: tuple[str, ...]
+    joint_types: tuple[str, ...]
+    stiffness: tuple[float, ...]
+    damping: tuple[float, ...]
+    max_force: tuple[float, ...]
+    lower_limits: tuple[float, ...]
+    upper_limits: tuple[float, ...]
+    max_velocity: tuple[float, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class JointPositionsSetRequest:
+    prim_path: str
+    positions: tuple[float, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class JointPositionsSetResult:
+    prim_path: str
+    positions_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class RobotNavigateRequest:
+    prim_path: str
+    target: tuple[float, float, float]
+    duration_s: float = 1.0
+
+
+@dataclass(slots=True, frozen=True)
+class RobotNavigateResult:
+    job_id: str
+    prim_path: str
+    target: tuple[float, float, float]
+
+
+# --- Phase G ---
+
+
+@dataclass(slots=True, frozen=True)
+class RobotNavigatePathRequest:
+    prim_path: str
+    waypoints: tuple[tuple[float, float, float], ...]
+    duration_s: float = 5.0
+
+
+@dataclass(slots=True, frozen=True)
+class RobotNavigatePathResult:
+    job_id: str
+    prim_path: str
+    num_waypoints: int
+    duration_s: float
+
+
+@dataclass(slots=True, frozen=True)
+class RobotGripperControlRequest:
+    prim_path: str
+    action: str  # Literal["open","close","set"]
+    target: float | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class RobotGripperControlResult:
+    prim_path: str
+    action: str
+    target_value: float
+    gripper_joint_names: tuple[str, ...]
+    gripper_joint_indices: tuple[int, ...]
+    dof_count: int
+
+
+@dataclass(slots=True, frozen=True)
+class RobotSetEETargetRequest:
+    prim_path: str
+    target_pose: tuple[float, float, float, float, float, float, float]
+    robot_description: str = "Franka"
+    end_effector_frame: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class RobotSetEETargetResult:
+    prim_path: str
+    target_pose: tuple[float, float, float, float, float, float, float]
+    robot_description: str
+    end_effector_frame: str
+    lula_import_path: str
+    ik_success: bool
+    solution: tuple[float, ...]
+
+
+# --- Phase J (NavMesh Playground) ---
+
+
+@dataclass(slots=True, frozen=True)
+class RobotDrivePhysicsRequest:
+    prim_path: str
+    waypoints: tuple[tuple[float, float, float], ...]
+    max_linear: float = 1.0
+    max_angular: float = 1.2
+    wheel_radius: float = 0.14
+    wheel_base: float = 0.413
+    arrival_tolerance: float = 0.3
+    timeout_s: float = 60.0
+    lookahead: float = 0.8
+
+
+@dataclass(slots=True, frozen=True)
+class RobotDrivePhysicsResult:
+    ok: bool
+    job_id: str
+    prim_path: str

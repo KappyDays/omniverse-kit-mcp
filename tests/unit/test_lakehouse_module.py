@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.lakehouse_module import LakehouseModule
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.lakehouse import LakehouseDatasetRef, LakehouseQueryRequest
+from omniverse_kit_mcp.modules.lakehouse_module import LakehouseModule
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.lakehouse import LakehouseDatasetRef, LakehouseQueryRequest
 from tests.conftest import MockLakehouseClient
 
 

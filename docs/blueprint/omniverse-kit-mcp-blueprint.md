@@ -8,12 +8,12 @@
 ## 1. 프로젝트 디렉토리 구조
 
 ```
-isaacsim-mcp/
+omniverse-kit-mcp/
 ├── pyproject.toml                          # 패키지 정의, 의존성
 ├── .env.example                            # 환경변수 템플릿
 ├── README.md
 │
-├── src/isaacsim_mcp/                       # MCP 서버 (외부)
+├── src/omniverse_kit_mcp/                       # MCP 서버 (외부)
 │   ├── __init__.py
 │   ├── main.py                             # 진입점: config 로드 → MCP 서버 기동
 │   ├── config.py                           # 타입화된 설정 (Isaac REST URL, Lakehouse DSN, 타임아웃)

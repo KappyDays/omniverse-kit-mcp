@@ -25,7 +25,7 @@ import pytest
 
 PROJECT = Path(__file__).resolve().parents[2]
 ROOT_CLAUDE = PROJECT / "CLAUDE.md"
-PROCESS_MODULE = PROJECT / "src" / "isaacsim_mcp" / "modules" / "process_module.py"
+PROCESS_MODULE = PROJECT / "src" / "omniverse_kit_mcp" / "modules" / "process_module.py"
 RUNBOOK = PROJECT / "docs" / "runbooks" / "kit-stdin-deadlock.md"
 
 

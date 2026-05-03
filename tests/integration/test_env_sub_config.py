@@ -7,7 +7,7 @@ sub-``BaseSettings`` instances created via ``Field(default_factory=…)``.
 Without each sub-config declaring its own ``env_file=".env"``, every
 ``.env`` override for ``ISAAC_SIM_*`` / ``LAKEHOUSE_*`` / ``MCP_SERVER_*`` /
 ``SCENARIO_*`` was silently ignored — only OS env vars took effect.
-See ``src/isaacsim_mcp/config.py`` docstring and lessons-learned L14.
+See ``src/omniverse_kit_mcp/config.py`` docstring and lessons-learned L14.
 
 These tests prove two things:
 
@@ -28,7 +28,7 @@ from pathlib import Path
 import pytest
 
 PROJECT = Path(__file__).resolve().parents[2]
-CONFIG_PY = PROJECT / "src" / "isaacsim_mcp" / "config.py"
+CONFIG_PY = PROJECT / "src" / "omniverse_kit_mcp" / "config.py"
 
 # Env vars that must not leak in from the outer shell — .env is the
 # authoritative source under test.
@@ -60,7 +60,7 @@ def _fresh_app_config():
     reloading keeps the test resilient against any future module-level
     caching.
     """
-    import isaacsim_mcp.config as cfg
+    import omniverse_kit_mcp.config as cfg
     importlib.reload(cfg)
     return cfg.AppConfig()
 

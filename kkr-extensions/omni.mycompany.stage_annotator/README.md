@@ -80,7 +80,7 @@ The folder layout under that path must be `omni.mycompany.stage_annotator/`
 ### 2. Add to the project's `.env`
 
 Append the id to `ISAAC_SIM_EXTRA_EXT_IDS` so
-`setup-isaacsim-mcp.bat` forwards it as `--enable …` on next boot:
+`setup-omniverse-kit-mcp.bat` forwards it as `--enable …` on next boot:
 
 ```env
 ISAAC_SIM_EXTRA_EXT_IDS=[..., "omni.mycompany.stage_annotator"]
