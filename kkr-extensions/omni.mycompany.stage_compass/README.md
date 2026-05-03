@@ -68,7 +68,7 @@ boot too.
 
 ### 2. Add to the project's `.env`
 
-This repo's `setup-isaacsim-mcp.bat` reads `ISAAC_SIM_EXTRA_EXT_IDS` (a
+This repo's `setup-omniverse-kit-mcp.bat` reads `ISAAC_SIM_EXTRA_EXT_IDS` (a
 JSON array) and forwards each id as `--enable …` to Kit. Append the
 extension id:
 

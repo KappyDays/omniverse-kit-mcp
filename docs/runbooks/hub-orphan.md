@@ -22,7 +22,7 @@ daemon. kit 종료해도 port 14090 orphan 잔존. 시간 경과 시 accept loop
 
 ## 자동 복구 (현재 적용됨)
 
-`src/isaacsim_mcp/modules/process_module.py::_cleanup_orphan_hub` 가
+`src/omniverse_kit_mcp/modules/process_module.py::_cleanup_orphan_hub` 가
 `stop` / `start` 양쪽에서 자동 수행:
 - `taskkill /F /IM hub.exe /T`
 - `%TEMP%/hub-*.lock` / `hub-*.config.json` 파일 제거
@@ -53,7 +53,7 @@ daemon. kit 종료해도 port 14090 orphan 잔존. 시간 경과 시 accept loop
 
 ## 관련 경계
 
-- 자동 복구 코드: `src/isaacsim_mcp/modules/process_module.py::_cleanup_orphan_hub`
-- ProcessModule hang recovery 4종 함정 중 #4: `src/isaacsim_mcp/modules/process-ops.md`
+- 자동 복구 코드: `src/omniverse_kit_mcp/modules/process_module.py::_cleanup_orphan_hub`
+- ProcessModule hang recovery 4종 함정 중 #4: `src/omniverse_kit_mcp/modules/process-ops.md`
 - Process 생애주기 invariants: `docs/invariants/process-lifecycle.md`
 - Cold boot timeout 분기: `docs/runbooks/cold-boot-timeout.md`

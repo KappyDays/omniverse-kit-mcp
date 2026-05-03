@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from isaacsim_mcp.modules.base import make_meta
-from isaacsim_mcp.modules.catalog_module import CatalogModule
-from isaacsim_mcp.types.common import ModuleName, OperationMeta
+from omniverse_kit_mcp.modules.base import make_meta
+from omniverse_kit_mcp.modules.catalog_module import CatalogModule
+from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
 
 
 @pytest.fixture

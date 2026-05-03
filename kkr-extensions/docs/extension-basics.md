@@ -112,7 +112,7 @@ MDL-heavy S3 asset 을 직접 로드해야 하면 `docs/usd-load-deadlock-recipe
 | 경로 | 사용 시점 |
 |------|----------|
 | `kit.exe --enable <ext_id>` | 프로세스 레벨 (1회성 실행) |
-| `.env` 의 `ISAAC_SIM_EXTRA_EXT_IDS` JSON array | `setup-isaacsim-mcp.bat` 로 MCP 서버 기동 시 자동 (학생 PC 배포 시 권장) |
+| `.env` 의 `ISAAC_SIM_EXTRA_EXT_IDS` JSON array | `setup-omniverse-kit-mcp.bat` 로 MCP 서버 기동 시 자동 (학생 PC 배포 시 권장) |
 | Extension Manager UI 토글 | 로컬 개발 중 수동 |
 
-학생 / 신규 PC 에 자동 활성화하려면 **`.env`** 방식 채택 + `setup/setup_isaacsim_mcp.ps1` 에 반영.
+학생 / 신규 PC 에 자동 활성화하려면 **`.env`** 방식 채택 + `setup/setup_omniverse_kit_mcp.ps1` 에 반영.

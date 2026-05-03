@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.stage_module import StageModule, _compute_diff, _parse_snapshot
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.stage import (
+from omniverse_kit_mcp.modules.stage_module import StageModule, _compute_diff, _parse_snapshot
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.stage import (
     DiffKind,
     PrimExistenceAssertion,
     PrimSpec,

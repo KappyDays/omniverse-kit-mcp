@@ -3,7 +3,7 @@
 
 # docs — 문서 루트
 
-Isaac-sim-MCP 가 "지금 무엇을 할 수 있는가" (tool 카탈로그) 와 "어떻게 여기까지 왔는가" (phase 히스토리) 를 분리해서 기록한다. 루트 CLAUDE.md "현재 MCP 표면 확인" 섹션이 진입점.
+omniverse-kit-mcp 가 "지금 무엇을 할 수 있는가" (tool 카탈로그) 와 "어떻게 여기까지 왔는가" (phase 히스토리) 를 분리해서 기록한다. 루트 CLAUDE.md "현재 MCP 표면 확인" 섹션이 진입점.
 
 ## 파일 구조
 
@@ -42,13 +42,13 @@ Isaac-sim-MCP 가 "지금 무엇을 할 수 있는가" (tool 카탈로그) 와 "
 
 ## 외부 세션에서 이 디렉토리를 참조하는 루트
 
-- 다른 Claude Code 세션 / LLM 이 "Isaac-sim-MCP 로 뭘 할 수 있냐" 질문 → `docs/tool-catalog.md` 단 하나만 읽으면 전체 서피스 파악.
+- 다른 Claude Code 세션 / LLM 이 "omniverse-kit-mcp 로 뭘 할 수 있냐" 질문 → `docs/tool-catalog.md` 단 하나만 읽으면 전체 서피스 파악.
 - "왜 Phase D 에서 carb log 훅이 5-arg 시그니처냐" 질문 → `docs/phase-d-validation-report.md` 의 Design decisions 섹션.
 - Kit SDK 미공개 API 를 찾을 때 → `docs/references/extensions-catalog.md` 키워드 검색 → testbed-snapshot → 실제 Kit source.
 
 ## 관련 경계
 
-- tool 등록 규약: `../src/isaacsim_mcp/tools/CLAUDE.md`
+- tool 등록 규약: `../src/omniverse_kit_mcp/tools/CLAUDE.md`
 - tool 이름 SoT: `../tests/unit/test_tools_registration.py` 의 frozenset
 - catalog regeneration: `../scripts/CLAUDE.md`
 - Extension REST 계약: `../kkr-extensions/CLAUDE.md`

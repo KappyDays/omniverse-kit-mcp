@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.exceptions import ScenarioSchemaError
-from isaacsim_mcp.scenario.compiler import compile_scenario
-from isaacsim_mcp.scenario.loader import validate_schema
-from isaacsim_mcp.scenario.schema import SCENARIO_SCHEMA
+from omniverse_kit_mcp.exceptions import ScenarioSchemaError
+from omniverse_kit_mcp.scenario.compiler import compile_scenario
+from omniverse_kit_mcp.scenario.loader import validate_schema
+from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
 
 
 def test_validate_valid_scenario(sync_add_cube_scenario_raw):

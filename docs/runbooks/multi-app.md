@@ -30,7 +30,7 @@ validator 에서 profile=isaac-sim 검사가 누락되면 발생.
 **진단**:
 ```bash
 .venv/Scripts/python.exe -c "
-from isaacsim_mcp.config import AppConfig
+from omniverse_kit_mcp.config import AppConfig
 import os
 os.environ['ISAAC_MCP_APP_PROFILE']='usd-composer'
 ac = AppConfig()
@@ -55,7 +55,7 @@ powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name
 ```
 
 CommandLine 에 `--ext-folder` 와 `--enable omni.mycompany.validation_api`
-둘 다 있어야 함. 없으면 `src/isaacsim_mcp/modules/process_module.py::ProcessModule` start cmd 배열 빌드 회귀.
+둘 다 있어야 함. 없으면 `src/omniverse_kit_mcp/modules/process_module.py::ProcessModule` start cmd 배열 빌드 회귀.
 
 **복구**: stop + start 사이클 후 재진단. 여전히 문제면 Level C.
 
@@ -107,13 +107,13 @@ hub.exe 가 없어졌으면 회귀 확정.
 `tests/unit/test_process_module_multi_app.py::test_hub_cleanup_skipped_when_other_kit_alive`
 가 검증.
 
-## 증상 6 — `~/.claude.json` 에 `isaacsim-mcp-*` entry 가 하나만 있음
+## 증상 6 — `~/.claude.json` 에 `omniverse-kit-mcp-*` entry 가 하나만 있음
 
 **원인**: setup script 가 구 버전 (multi-app 이전) 로 실행됨.
 
 **복구**: feature branch 에서:
 ```bash
-cmd //c "setup\\setup-isaacsim-mcp.bat"
+cmd //c "setup\\setup-omniverse-kit-mcp.bat"
 ```
 이후 `~/.claude.json` 검증 (Phase 5.2 Step 2 참조).
 
@@ -121,7 +121,7 @@ cmd //c "setup\\setup-isaacsim-mcp.bat"
 
 - Invariants: `docs/invariants/multi-app.md`
 - Code SoT:
-  - `src/isaacsim_mcp/modules/process_module.py`
+  - `src/omniverse_kit_mcp/modules/process_module.py`
   - `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/_app_features.py`
 - Live smoke:
   - `scripts/verify_multi_instance.py`

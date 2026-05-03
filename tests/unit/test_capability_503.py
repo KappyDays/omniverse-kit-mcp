@@ -10,9 +10,9 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from isaacsim_mcp.clients.isaac_rest_client import IsaacRestClient
-from isaacsim_mcp.config import IsaacSimConfig
-from isaacsim_mcp.exceptions import CapabilityNotSupportedError, RemoteServiceError
+from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
+from omniverse_kit_mcp.config import IsaacSimConfig
+from omniverse_kit_mcp.exceptions import CapabilityNotSupportedError, RemoteServiceError
 
 
 @pytest.mark.asyncio
@@ -69,9 +69,9 @@ async def test_non_stack_503_falls_back_to_remote_service_error():
 @pytest.mark.asyncio
 async def test_robot_module_returns_capability_not_supported_error_code():
     from unittest.mock import AsyncMock, MagicMock
-    from isaacsim_mcp.modules.robot_module import RobotModule
-    from isaacsim_mcp.types.common import ModuleName, OperationMeta
-    from isaacsim_mcp.types.robot import RobotLoadRequest
+    from omniverse_kit_mcp.modules.robot_module import RobotModule
+    from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
+    from omniverse_kit_mcp.types.robot import RobotLoadRequest
 
     mock_client = MagicMock()
     mock_client.robot_load = AsyncMock(side_effect=CapabilityNotSupportedError({

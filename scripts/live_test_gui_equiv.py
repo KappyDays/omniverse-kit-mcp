@@ -33,7 +33,7 @@ def _get(c: httpx.Client, path: str, *, params=None):
 
 
 def main() -> int:
-    save_path = os.path.join(tempfile.gettempdir(), "isaacsim_mcp_phase_b_test.usd").replace("\\", "/")
+    save_path = os.path.join(tempfile.gettempdir(), "omniverse_kit_mcp_phase_b_test.usd").replace("\\", "/")
     report: dict[str, object] = {}
 
     with httpx.Client(timeout=60) as c:

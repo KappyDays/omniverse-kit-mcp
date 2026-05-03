@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.config import AppConfig
+from omniverse_kit_mcp.config import AppConfig
 
 
 @pytest.fixture(autouse=True)
@@ -146,19 +146,19 @@ def test_invalid_instance_id_rejects(monkeypatch):
 # --- Profile module smoke tests ------------------------------------------
 
 def test_profile_module_exports_isaac_and_usd_composer():
-    from isaacsim_mcp.types.profile import get_profile, list_profile_names
+    from omniverse_kit_mcp.types.profile import get_profile, list_profile_names
     assert set(list_profile_names()) == {"isaac-sim", "usd-composer"}
     assert get_profile("isaac-sim").default_ext_port == 8011
     assert get_profile("usd-composer").default_ext_port == 8014
 
 
 def test_get_profile_raises_on_unknown():
-    from isaacsim_mcp.types.profile import get_profile
+    from omniverse_kit_mcp.types.profile import get_profile
     with pytest.raises(ValueError, match="Unknown app profile"):
         get_profile("kaolin")
 
 
 def test_profile_is_frozen_dataclass():
-    from isaacsim_mcp.types.profile import ISAAC_SIM_PROFILE
+    from omniverse_kit_mcp.types.profile import ISAAC_SIM_PROFILE
     with pytest.raises(Exception):  # FrozenInstanceError
         ISAAC_SIM_PROFILE.name = "mutated"

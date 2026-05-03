@@ -39,7 +39,7 @@
 
 `subprocess.Popen` 의 **stdin inheritance**:
 
-- MCP server (`isaacsim-mcp`) 는 Claude Code 가 stdio 로 spawn → MCP server 의
+- MCP server (`omniverse-kit-mcp`) 는 Claude Code 가 stdio 로 spawn → MCP server 의
   stdin = Claude Code 와의 양방향 MCP protocol pipe
 - ProcessModule 의 `subprocess.Popen(...)` 가 `stdin` 인자 명시 안 했었음 →
   자식 kit.exe 가 그 MCP pipe stdin 을 그대로 상속
@@ -53,7 +53,7 @@
 
 ## Fix 적용 위치
 
-`src/isaacsim_mcp/modules/process_module.py::start` 의 `subprocess.Popen(...)` 에
+`src/omniverse_kit_mcp/modules/process_module.py::start` 의 `subprocess.Popen(...)` 에
 **`stdin=subprocess.DEVNULL` 추가**. 단 한 줄. 절대 누락 / 변경 금지.
 
 ```python
@@ -100,7 +100,7 @@ silent leak.
 ## 관련 경계
 
 - L17 사고 기록 원문: `kkr-extensions/docs/lessons-learned.md`
-- 코드 위치 SoT: `src/isaacsim_mcp/modules/process_module.py::start`
-- ProcessModule 결정 트리 / hang recovery 4종 함정: `src/isaacsim_mcp/modules/process-ops.md`
+- 코드 위치 SoT: `src/omniverse_kit_mcp/modules/process_module.py::start`
+- ProcessModule 결정 트리 / hang recovery 4종 함정: `src/omniverse_kit_mcp/modules/process-ops.md`
 - Process 생애주기 invariants: `docs/invariants/process-lifecycle.md`
 - Cold boot timeout 응답 분기 (still_loading vs crashed): `docs/runbooks/cold-boot-timeout.md`

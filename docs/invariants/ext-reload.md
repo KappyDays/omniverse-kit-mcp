@@ -69,4 +69,4 @@ self._window = ui.Window("<name>", ...)
 - L9 / L16 사고 기록: `kkr-extensions/docs/lessons-learned.md`
 - Extension 일반 규칙 (IExt / hot-reload / 한글 UI 금지): `kkr-extensions/docs/extension-basics.md`
 - Window/UI automation sequence (panel race + dual-path drift): `docs/invariants/ui-invoke.md`
-- MCP server import cache (별개 프로세스): `src/isaacsim_mcp/CLAUDE.md`
+- MCP server import cache (별개 프로세스): `src/omniverse_kit_mcp/CLAUDE.md`

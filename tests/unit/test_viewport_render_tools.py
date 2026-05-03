@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.config import AppConfig
-from isaacsim_mcp.mcp.server import create_mcp_server
-from isaacsim_mcp.modules.viewport_module import ViewportModule
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.viewport import (
+from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.mcp.server import create_mcp_server
+from omniverse_kit_mcp.modules.viewport_module import ViewportModule
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.viewport import (
     ViewportSetFovRequest,
     ViewportSetFovResult,
     ViewportSetRenderModeRequest,

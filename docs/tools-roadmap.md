@@ -1,4 +1,4 @@
-# Isaac-sim-MCP — Tool Roadmap (미래 추가 기능)
+# omniverse-kit-mcp — Tool Roadmap (미래 추가 기능)
 
 > 현재 서피스: **111 MCP tools + 3 resources** (2026-04-25 기준; 작성 2026-04-21, +4 tools since). 이 문서는 **다음에 추가될 도구 후보** 를 필수 / 추천 / 비추천으로 분류. 결정 시 참고 자료:
 >
@@ -155,10 +155,10 @@ Phase J+ 후보 (중장기):
 새 도구 추가 절차는 root CLAUDE.md 의 "변경 파급 매트릭스" 엔트리 "새 MCP tool (`tools/`)" 행 참조. 요약:
 
 1. Extension REST endpoint (`kkr-extensions/.../services/*.py`, `rest_router.py`)
-2. MCP client (`src/isaacsim_mcp/clients/isaac_rest_client.py`)
-3. Typed request/result (`src/isaacsim_mcp/types/*.py`)
-4. Module method (`src/isaacsim_mcp/modules/*_module.py`)
-5. `@mcp.tool()` 데코레이터 (`src/isaacsim_mcp/tools/module_tools.py`)
+2. MCP client (`src/omniverse_kit_mcp/clients/isaac_rest_client.py`)
+3. Typed request/result (`src/omniverse_kit_mcp/types/*.py`)
+4. Module method (`src/omniverse_kit_mcp/modules/*_module.py`)
+5. `@mcp.tool()` 데코레이터 (`src/omniverse_kit_mcp/tools/module_tools.py`)
 6. Mock client (`tests/conftest.py`)
 7. `EXPECTED_*_TOOLS` frozenset 업데이트 (`tests/unit/test_tools_registration.py`)
 8. `scripts/verify_mcp_sync.py` 실행 → catalog regen

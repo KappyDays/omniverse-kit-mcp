@@ -1,4 +1,4 @@
-# Isaac-sim-MCP
+# omniverse-kit-mcp
 
 **Drive NVIDIA Isaac Sim 5.1 in natural language from Claude Code (or any MCP client).**
 
@@ -12,7 +12,7 @@ An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — 
 
 ```
 ┌──────────────┐   stdio (JSON-RPC)   ┌──────────────────────┐
-│ Claude Code  │ ◀──────────────────▶ │  isaacsim-mcp        │ FastMCP server (Python)
+│ Claude Code  │ ◀──────────────────▶ │  omniverse-kit-mcp        │ FastMCP server (Python)
 │  (or any     │                      │                      │
 │   MCP client)│                      │  • ProcessModule  ─▶ subprocess → kit.exe
 └──────────────┘                      │  • 17 domain modules │
@@ -48,8 +48,8 @@ Scenario tools (`scenario_validate`, `scenario_plan`, …) are orchestrators —
 
 ```bash
 # 1. Clone and install deps
-git clone https://github.com/<your-org>/Isaac-sim-MCP.git
-cd Isaac-sim-MCP
+git clone https://github.com/<your-org>/omniverse-kit-mcp.git
+cd omniverse-kit-mcp
 cp .env.example .env       # then edit — see "Isaac Sim Setup" below
 uv sync
 
@@ -63,7 +63,7 @@ uv run pytest tests/                             # should be all green
 
 ### Isaac Sim Setup
 
-Isaac-sim-MCP does **not auto-detect** the Isaac Sim install location. Default paths in `src/isaacsim_mcp/config.py` point at the developer's workstation and must be overridden.
+omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Default paths in `src/omniverse_kit_mcp/config.py` point at the developer's workstation and must be overridden.
 
 1. **Install** Isaac Sim 5.1.0 Standalone anywhere (e.g. `C:/IsaacSim/`, `D:/programs/isaac-sim-5.1.0/`)
 2. **Note** the two files you'll reference:
@@ -134,9 +134,9 @@ Minimal `~/.claude.json` entry (recommended form — bypasses `uv run` file lock
 ```json
 {
   "mcpServers": {
-    "isaacsim-mcp": {
+    "omniverse-kit-mcp": {
       "type": "stdio",
-      "command": "C:/path/to/Isaac-sim-MCP/.venv/Scripts/isaacsim-mcp.exe",
+      "command": "C:/path/to/omniverse-kit-mcp/.venv/Scripts/omniverse-kit-mcp.exe",
       "args": []
     }
   }
@@ -153,7 +153,7 @@ For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows sp
 
 | Path | Role |
 |---|---|
-| `src/isaacsim_mcp/` | FastMCP server (Python) — tool registration, scenario engine, REST client |
+| `src/omniverse_kit_mcp/` | FastMCP server (Python) — tool registration, scenario engine, REST client |
 | `kkr-extensions/omni.mycompany.validation_api/` | Kit Extension (FastAPI) — 102 REST endpoints mounted at `/validation/v1` |
 | `scenarios/` | YAML scenarios (Arrange / Act / Assert / Cleanup) + JSON Schema |
 | `scripts/` | Developer utilities — catalog regen, sync verification, per-phase live tests |
@@ -235,9 +235,9 @@ Process-level control without restarting Claude Code (bypasses the MCP import ca
 Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문서 맵" table. High-signal entries:
 
 - **Operational rules & escalation protocols** → root [`CLAUDE.md`](./CLAUDE.md)
-- **Tool surface contract** → [`docs/tool-catalog.md`](./docs/tool-catalog.md) + [`src/isaacsim_mcp/tools/CLAUDE.md`](./src/isaacsim_mcp/tools/CLAUDE.md)
+- **Tool surface contract** → [`docs/tool-catalog.md`](./docs/tool-catalog.md) + [`src/omniverse_kit_mcp/tools/CLAUDE.md`](./src/omniverse_kit_mcp/tools/CLAUDE.md)
 - **Kit Extension internals** → [`kkr-extensions/CLAUDE.md`](./kkr-extensions/CLAUDE.md)
-- **Module integration facts** (Kit 5.1 gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/isaacsim_mcp/modules/CLAUDE.md`](./src/isaacsim_mcp/modules/CLAUDE.md)
+- **Module integration facts** (Kit 5.1 gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/omniverse_kit_mcp/modules/CLAUDE.md`](./src/omniverse_kit_mcp/modules/CLAUDE.md)
 - **Scenario authoring guide** → [`scenarios/CLAUDE.md`](./scenarios/CLAUDE.md)
 - **Phase-by-phase history** → `docs/phase-{a..i}-validation-report.md`
 - **Asset URL catalogs** → [`docs/assets/isaac/asset_inventory.md`](./docs/assets/isaac/asset_inventory.md) (Isaac Sim 5.1 bundle) + `docs/assets/composer/` (Composer scope)

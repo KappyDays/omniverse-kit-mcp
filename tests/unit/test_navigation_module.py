@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.modules.navigation_module import NavigationModule
-from isaacsim_mcp.types.common import ModuleName, OperationMeta
-from isaacsim_mcp.types.navigation import NavPathQueryRequest, SampleWalkablePointsRequest
+from omniverse_kit_mcp.modules.navigation_module import NavigationModule
+from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
+from omniverse_kit_mcp.types.navigation import NavPathQueryRequest, SampleWalkablePointsRequest
 from tests.conftest import MockIsaacRestClient
 
 

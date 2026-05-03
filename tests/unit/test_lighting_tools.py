@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from isaacsim_mcp.config import AppConfig
-from isaacsim_mcp.mcp.server import create_mcp_server
-from isaacsim_mcp.modules.lighting_module import LightingModule
-from isaacsim_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from isaacsim_mcp.types.lighting import (
+from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.mcp.server import create_mcp_server
+from omniverse_kit_mcp.modules.lighting_module import LightingModule
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.lighting import (
     LightingCreateDiskRequest,
     LightingCreateDistantRequest,
     LightingCreateDomeRequest,

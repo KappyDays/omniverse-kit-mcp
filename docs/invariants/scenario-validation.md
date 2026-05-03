@@ -92,8 +92,8 @@ scenario cleanup 은 `simulation_play → simulation_stop` (최종 physics tick)
 ## 관련 경계
 
 - Scenario YAML 저작 가이드: `scenarios/CLAUDE.md`
-- Scenario 엔진 (Arrange/Act/Assert/Cleanup, action_registry): `src/isaacsim_mcp/scenario/CLAUDE.md`
+- Scenario 엔진 (Arrange/Act/Assert/Cleanup, action_registry): `src/omniverse_kit_mcp/scenario/CLAUDE.md`
 - Asset URL 카탈로그 진입점: `docs/assets/isaac/asset_inventory.md`
-- Character domain constraints (실측): `src/isaacsim_mcp/modules/CLAUDE.md`
+- Character domain constraints (실측): `src/omniverse_kit_mcp/modules/CLAUDE.md`
 - USD 로드 4 조건: `docs/invariants/usd-load.md`
 - Issue / 개선 항목 누적: `docs/implementation_issues.md`

@@ -25,7 +25,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 HOOK = PROJECT_ROOT / ".git" / "hooks" / "pre-commit"
 
 _HOOK_BODY = r"""#!/usr/bin/env bash
-# isaacsim-mcp pre-commit hook — verifies MCP tool surface sync.
+# omniverse-kit-mcp pre-commit hook — verifies MCP tool surface sync.
 # Managed by scripts/install_pre_commit_hook.py. Regenerate if edited.
 
 set -e

@@ -66,7 +66,7 @@ Output: `{변경된 파일: [함께 갱신해야 할 파일들]}` 매핑.
 ### Step 3 — L2 tactical 후보 도출
 
 - **(3a) 카운터**:
-  - tool 수: `grep -c '@mcp.tool()' src/isaacsim_mcp/tools/*.py` 합산 → root `CLAUDE.md` / `docs/tools-roadmap.md` Implementation Status 섹션의 수치 확인
+  - tool 수: `grep -c '@mcp.tool()' src/omniverse_kit_mcp/tools/*.py` 합산 → root `CLAUDE.md` / `docs/tools-roadmap.md` Implementation Status 섹션의 수치 확인
   - test 수: `pytest --collect-only -q` 마지막 줄
   - 라인 수: `wc -l` 로 각 CLAUDE.md / invariants / runbooks
 - **(3b) Pointer**: 모든 sub-CLAUDE.md / invariants / runbooks 의 cross-ref (`docs/...`, `../...`) 추출 → 파일 존재 검증. 깨진 pointer 중 *단순 rename / path drift* 만 후보 (의미 변형 동반은 L3).

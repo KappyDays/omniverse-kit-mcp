@@ -24,8 +24,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from isaacsim_mcp.config import AppConfig  # noqa: E402
-from isaacsim_mcp.mcp.server import create_mcp_server  # noqa: E402
+from omniverse_kit_mcp.config import AppConfig  # noqa: E402
+from omniverse_kit_mcp.mcp.server import create_mcp_server  # noqa: E402
 
 
 OUTPUT = PROJECT_ROOT / "docs" / "tool-catalog.md"

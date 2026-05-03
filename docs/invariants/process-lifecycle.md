@@ -18,7 +18,7 @@ ProcessModule 호출 전 이 파일 Read.
 
 ## ⚠️ stdin=subprocess.DEVNULL 필수 (변경 금지 — DO-NOT-EDIT)
 
-`src/isaacsim_mcp/modules/process_module.py::start` 의 `subprocess.Popen(...)` 가
+`src/omniverse_kit_mcp/modules/process_module.py::start` 의 `subprocess.Popen(...)` 가
 `stdin=subprocess.DEVNULL` 명시 안 하면 MCP server 자식 kit.exe 가 Claude Code 의
 MCP protocol stdin pipe 를 상속 → cold boot 중 stdin read 시 indefinite block →
 전체 boot 정지. **240s timeout, 13s ready 검증 (L17)**. "extra_ext_ids race" 진단은
@@ -48,7 +48,7 @@ process alive?
 
 ## stdout/stderr 규약 (변경 금지)
 
-- `stdout` / `stderr` 는 `%TEMP%/isaacsim_mcp/kit_<epoch>.log` 로 리다이렉트
+- `stdout` / `stderr` 는 `%TEMP%/omniverse_kit_mcp/kit_<epoch>.log` 로 리다이렉트
 - **`subprocess.DEVNULL` 금지** (stdin 과 정반대) — Windows OS pipe 버퍼 포화 시
   kit.exe 초기화 정지
 - `start()` 는 매 기동 시 `_sweep_old_logs()` 로 7일 이전 `kit_*.log` 자동 삭제
@@ -64,7 +64,7 @@ process alive?
 
 ## ROS env 자동 setup (silent fail 방지)
 
-`src/isaacsim_mcp/modules/process_module.py::_prepare_launch_env` 가 isaac-sim.bat 의
+`src/omniverse_kit_mcp/modules/process_module.py::_prepare_launch_env` 가 isaac-sim.bat 의
 ROS env setup 을 Python 으로 재현 — 생략 시 ROS2 bridge 의존 ext silent fail →
 kit.exe 이벤트 루프 정지 → `/health` 미응답.
 
@@ -86,7 +86,7 @@ pydantic-settings v2 는 `default_factory` sub-`BaseSettings` 에 부모의 `env
 
 검증 명령:
 ```bash
-.venv/Scripts/python.exe -c "from isaacsim_mcp.config import AppConfig; ac=AppConfig(); print(ac.isaac_sim_process.startup_timeout)"
+.venv/Scripts/python.exe -c "from omniverse_kit_mcp.config import AppConfig; ac=AppConfig(); print(ac.isaac_sim_process.startup_timeout)"
 ```
 → `.env` 값 반영 확인. 누락 시 silent failure.
 
@@ -139,7 +139,7 @@ filter 처리 timing 문제로 alive Kit 도 빈 결과 반환.
 
 ## 관련 경계
 
-- 코드 위치 SoT (ProcessModule hang recovery 4종 함정): `src/isaacsim_mcp/modules/process-ops.md`
+- 코드 위치 SoT (ProcessModule hang recovery 4종 함정): `src/omniverse_kit_mcp/modules/process-ops.md`
 - Standalone 테스트 스크립트: `scripts/run_process_module_standalone.py`
 - DO-NOT-EDIT residual 본문 (재현 / 복구): `docs/runbooks/kit-stdin-deadlock.md`
 - Cold boot timeout 분기 해석: `docs/runbooks/cold-boot-timeout.md`

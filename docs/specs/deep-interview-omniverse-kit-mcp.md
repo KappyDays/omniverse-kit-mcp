@@ -1,7 +1,7 @@
 # Deep Interview Spec: Isaac Sim 5.1 Custom Extension Validation MCP Server
 
 ## Metadata
-- Interview ID: isaacsim-mcp-deep-001
+- Interview ID: omniverse-kit-mcp-deep-001
 - Rounds: 9
 - Final Ambiguity Score: 19%
 - Type: greenfield
@@ -86,7 +86,7 @@ Extension이 이미 동기화를 완료한 상태 → MCP가 현재 Stage 상태
 - **HTTP 클라이언트**: httpx (AsyncClient)
 - **이미지 비교**: scikit-image SSIM
 - **시나리오 정의**: YAML + JSON Schema 검증
-- **기존 설계도**: `2026-04-07_isaacsim-mcp-blueprint/isaacsim-mcp-blueprint.md`
+- **기존 설계도**: `2026-04-07_omniverse-kit-mcp-blueprint/omniverse-kit-mcp-blueprint.md`
 
 ### 기존 설계도 대비 변경사항
 

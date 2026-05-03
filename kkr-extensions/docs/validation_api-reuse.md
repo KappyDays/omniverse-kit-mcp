@@ -21,7 +21,7 @@
 ```
 Claude Code
   ↕ stdio (MCP protocol)
-isaacsim-mcp           (별도 Python 프로세스, FastMCP 서버)
+omniverse-kit-mcp           (별도 Python 프로세스, FastMCP 서버)
   └─ IsaacRestClient
   ↕ HTTP (localhost:8011/validation/v1/**)
 validation_api         (kit.exe 내부, FastAPI router)
@@ -31,13 +31,13 @@ Kit SDK                (omni.kit.commands / omni.usd / ...)
 
 | 의존 주체 | 의존 대상 | 형태 | 비고 |
 |----------|----------|------|------|
-| `isaacsim-mcp` | `validation_api` | HTTP client | MCP tool 전부가 `validation_api` REST 에 의존. validation_api 없으면 MCP tool 호출 시 connection refused |
-| `validation_api` | `isaacsim-mcp` | **없음** | validation_api 는 MCP 의 존재를 모름. `curl` / Postman / 브라우저 누구든 호출 가능한 순수 REST 서버 |
+| `omniverse-kit-mcp` | `validation_api` | HTTP client | MCP tool 전부가 `validation_api` REST 에 의존. validation_api 없으면 MCP tool 호출 시 connection refused |
+| `validation_api` | `omniverse-kit-mcp` | **없음** | validation_api 는 MCP 의 존재를 모름. `curl` / Postman / 브라우저 누구든 호출 가능한 순수 REST 서버 |
 | `validation_api` | Kit SDK | in-process | |
 | `isaac_tutorial` | `validation_api` | **Python module import** | 같은 kit.exe 내부 extension 끼리 싱글턴 공유. HTTP 왕복 없음 |
-| `isaac_tutorial` | `isaacsim-mcp` | **없음** | 학생 PC 에 MCP 서버 없어도 동작 |
+| `isaac_tutorial` | `omniverse-kit-mcp` | **없음** | 학생 PC 에 MCP 서버 없어도 동작 |
 
-**isaacsim-mcp → validation_api → Kit SDK 한 방향 의존**. validation_api 는 업스트림 프로젝트의 일부가 아니라 **이 프로젝트 전용 bridge Extension**.
+**omniverse-kit-mcp → validation_api → Kit SDK 한 방향 의존**. validation_api 는 업스트림 프로젝트의 일부가 아니라 **이 프로젝트 전용 bridge Extension**.
 
 ## 재사용 패턴 — rest_router 싱글턴 import
 
@@ -169,4 +169,4 @@ MCP 측 `IsaacRestClient` 은 400/404/500 을 모두 `RemoteServiceError` + `HTT
 - validation_api 의 전체 REST endpoint 목록: `../omni.mycompany.validation_api/omni/mycompany/validation_api/rest_router.py` (단일 SoT)
 - 도메인별 Kit SDK 함정: `kit-sdk-pitfalls.md`
 - 독립 Extension 의 USD 로드 방어: `usd-load-deadlock-recipe.md`
-- MCP 측 client 동작: `../../src/isaacsim_mcp/CLAUDE.md`
+- MCP 측 client 동작: `../../src/omniverse_kit_mcp/CLAUDE.md`
