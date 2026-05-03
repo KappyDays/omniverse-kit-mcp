@@ -18,7 +18,7 @@ Write-Host "======================================================" -ForegroundC
 # ── Step 1: Check prerequisites ─────────────────────────────────────────────
 
 Write-Host ""
-Write-Host "[ 1/4 ] Checking prerequisites..." -ForegroundColor Yellow
+Write-Host "[ 1/5 ] Checking prerequisites..." -ForegroundColor Yellow
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "  [FAIL] git not found. Please install Git and try again." -ForegroundColor Red
@@ -35,7 +35,7 @@ Write-Host "  [OK]   uv: $(uv --version)" -ForegroundColor Green
 # ── Step 2: Clone or verify repo ────────────────────────────────────────────
 
 Write-Host ""
-Write-Host "[ 2/4 ] Checking repo at $RepoDir ..." -ForegroundColor Yellow
+Write-Host "[ 2/5 ] Checking repo at $RepoDir ..." -ForegroundColor Yellow
 
 $PyprojectFile = Join-Path $RepoDir "pyproject.toml"
 
@@ -81,7 +81,7 @@ if (Test-Path $PyprojectFile) {
 # ── Step 3: Create .env if missing ──────────────────────────────────────────
 
 Write-Host ""
-Write-Host "[ 3/4 ] Checking .env configuration..." -ForegroundColor Yellow
+Write-Host "[ 3/5 ] Checking .env configuration..." -ForegroundColor Yellow
 
 $EnvFile    = Join-Path $RepoDir ".env"
 $EnvExample = Join-Path $RepoDir ".env.example"
@@ -139,89 +139,87 @@ function Save-JsonFile {
     }
 }
 
-# ── Step 4: Register in ~/.claude.json (multi-instance × multi-app) ──────
+# ── Step 4: Cleanup legacy global mcpServers entries ────────────────────────
+# In-repo workspaces/<profile>/instance-<N>/.mcp.json (per-machine generated
+# from .mcp.json.template) is now SoT. Remove 7 legacy entries that previous
+# setup runs may have left in ~/.claude.json global mcpServers.
 
 Write-Host ""
-Write-Host "[ 4/4 ] Registering MCP servers in $ClaudeJson ..." -ForegroundColor Yellow
+Write-Host "[ 4/5 ] Cleaning legacy MCP entries in $ClaudeJson ..." -ForegroundColor Yellow
 
 if (Test-Path $ClaudeJson) {
     try {
         $claudeConfig = Get-Content $ClaudeJson -Raw -Encoding UTF8 | ConvertFrom-Json
     } catch {
-        Write-Host "  [WARN] Failed to parse existing .claude.json. Aborting." -ForegroundColor Red
-        exit 1
+        Write-Host "  [WARN] Failed to parse existing .claude.json. Skipping cleanup." -ForegroundColor Yellow
+        $claudeConfig = $null
     }
-} else {
-    $claudeConfig = [PSCustomObject]@{}
-}
 
-if (-not $claudeConfig.PSObject.Properties['mcpServers']) {
-    $claudeConfig | Add-Member -MemberType NoteProperty -Name 'mcpServers' -Value ([PSCustomObject]@{})
-}
+    if ($null -ne $claudeConfig -and $claudeConfig.PSObject.Properties['mcpServers']) {
+        $legacyNames = @(
+            'isaacsim-mcp-1','isaacsim-mcp-2','isaacsim-mcp-3',
+            'usdcomposer-mcp-1','usdcomposer-mcp-2','usdcomposer-mcp-3',
+            'omniverse-kit-mcp'
+        )
+        $removed = 0
+        foreach ($name in $legacyNames) {
+            if ($claudeConfig.mcpServers.PSObject.Properties[$name]) {
+                $claudeConfig.mcpServers.PSObject.Properties.Remove($name)
+                $removed++
+                Write-Host "  [OK]   Removed legacy '$name'" -ForegroundColor Green
+            }
+        }
 
-# Multi-instance × multi-app matrix. Profile base ports:
-#   isaac-sim     -> 8011, 8012, 8013
-#   usd-composer  -> 8014, 8015, 8016
-$InstanceCount = 3
-$Profiles = @(
-    @{ name = "isaac-sim";    prefix = "isaacsim-mcp" },
-    @{ name = "usd-composer"; prefix = "usdcomposer-mcp" }
-)
-
-function Make-McpEntry($ProfileName, $InstanceId) {
-    # --no-sync is CRITICAL for multi-instance: every `uv run` without it
-    # triggers `uv sync`, which tries to reinstall the editable omniverse-kit-mcp
-    # package. When multiple MCP servers run simultaneously (6 entries), each
-    # sync competes to replace the same `.venv/Scripts/omniverse-kit-mcp.exe` —
-    # the first one wins (locks it), every subsequent sync fails with
-    # "The process cannot access the file because it is being used by another
-    # process", and `uv run omniverse-kit-mcp` never spawns the server. Claude
-    # Code then reports "Failed to reconnect" for those entries.
-    # Setup script step 2 already runs `uv sync` once, so --no-sync here is
-    # safe.
-    return [PSCustomObject]@{
-        type    = "stdio"
-        command = "cmd"
-        args    = @("/c", "uv", "--directory", ($RepoDir -replace '\\', '/'), "run", "--no-sync", "omniverse-kit-mcp")
-        env     = [PSCustomObject]@{
-            ISAAC_MCP_APP_PROFILE = $ProfileName
-            ISAAC_MCP_INSTANCE_ID = "$InstanceId"
+        if ($removed -gt 0) {
+            Save-JsonFile -Data $claudeConfig -Path $ClaudeJson
+            Write-Host "  [OK]   Saved $ClaudeJson ($removed legacy entries removed)" -ForegroundColor Green
+        } else {
+            Write-Host "  [OK]   No legacy entries to clean." -ForegroundColor Green
         }
     }
+} else {
+    Write-Host "  [INFO] $ClaudeJson does not exist. Nothing to clean." -ForegroundColor DarkGray
 }
 
-function Set-McpEntry($EntryName, $Entry) {
-    if ($claudeConfig.mcpServers.PSObject.Properties[$EntryName]) {
-        $claudeConfig.mcpServers.$EntryName = $Entry
-        Write-Host "  [OK]   Updated '$EntryName'" -ForegroundColor Green
-    } else {
-        $claudeConfig.mcpServers | Add-Member -MemberType NoteProperty -Name $EntryName -Value $Entry
-        Write-Host "  [OK]   Added   '$EntryName'" -ForegroundColor Green
-    }
-}
-
-foreach ($prof in $Profiles) {
-    for ($i = 1; $i -le $InstanceCount; $i++) {
-        $entryName = "$($prof.prefix)-$i"
-        Set-McpEntry $entryName (Make-McpEntry $prof.name $i)
-    }
-}
-
-# Legacy alias 'omniverse-kit-mcp' → isaac-sim instance 1 (backward compat)
-Set-McpEntry "omniverse-kit-mcp" (Make-McpEntry "isaac-sim" 1)
-
-Save-JsonFile -Data $claudeConfig -Path $ClaudeJson
-Write-Host "  [OK]   Saved to $ClaudeJson" -ForegroundColor Green
+# ── Step 5: Generate per-folder .mcp.json from templates ────────────────────
+# 4 instance folders × {isaac, usd-composer} → .mcp.json with absolute $RepoDir
+# substituted into {{REPO_DIR}} placeholder. Generated files are gitignored.
 
 Write-Host ""
-Write-Host "  Registered MCP servers:" -ForegroundColor White
-Write-Host "    omniverse-kit-mcp          (alias -> isaac-sim instance 1, port 8011)" -ForegroundColor DarkGray
-foreach ($i in 1..$InstanceCount) {
-    Write-Host "    omniverse-kit-mcp-$i       (isaac-sim instance $i, port $(8010 + $i))" -ForegroundColor DarkGray
+Write-Host "[ 5/5 ] Generating workspace .mcp.json from templates ..." -ForegroundColor Yellow
+
+$WorkspacesDir = Join-Path $RepoDir "workspaces"
+$RepoDirFwd    = ($RepoDir -replace '\\', '/')
+
+$Instances = @(
+    "isaac/instance-1",
+    "isaac/instance-2",
+    "usd-composer/instance-1",
+    "usd-composer/instance-2"
+)
+
+$generated = 0
+foreach ($rel in $Instances) {
+    $instanceDir  = Join-Path $WorkspacesDir $rel
+    $templatePath = Join-Path $instanceDir ".mcp.json.template"
+    $mcpJsonPath  = Join-Path $instanceDir ".mcp.json"
+
+    if (-not (Test-Path $templatePath)) {
+        Write-Host "  [WARN] template missing: $templatePath" -ForegroundColor Yellow
+        continue
+    }
+
+    $templateContent = Get-Content -Raw -Encoding UTF8 -Path $templatePath
+    $rendered        = $templateContent -replace '\{\{REPO_DIR\}\}', $RepoDirFwd
+
+    $utf8 = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($mcpJsonPath, $rendered, $utf8)
+    $generated++
+    Write-Host "  [OK]   Generated $rel/.mcp.json" -ForegroundColor Green
 }
-foreach ($i in 1..$InstanceCount) {
-    Write-Host "    usdcomposer-mcp-$i    (usd-composer instance $i, port $(8013 + $i))" -ForegroundColor DarkGray
-}
+
+Write-Host ""
+Write-Host "  $generated workspace .mcp.json files generated (REPO_DIR=$RepoDirFwd)" -ForegroundColor White
 
 # ── Done ────────────────────────────────────────────────────────────────────
 
@@ -235,8 +233,10 @@ Write-Host "  1. Ensure Isaac Sim installed at:" -ForegroundColor Cyan
 Write-Host "     C:\Users\$env:USERNAME\workspace\branch\isaac-sim-standalone-5.1.0-windows-x86_64\" -ForegroundColor DarkGray
 Write-Host "  2. Ensure USD Composer built at:" -ForegroundColor Cyan
 Write-Host "     C:\Users\$env:USERNAME\workspace\branch\kit-app-template\_build\windows-x86_64\release\" -ForegroundColor DarkGray
-Write-Host "  3. Restart Claude Code to pick up new MCP entries" -ForegroundColor Cyan
-Write-Host "  4. In Claude Code, use tools prefixed:" -ForegroundColor Cyan
-Write-Host "     mcp__isaacsim-mcp-N__*      for Isaac Sim instance N" -ForegroundColor DarkGray
-Write-Host "     mcp__usdcomposer-mcp-N__*   for USD Composer instance N" -ForegroundColor DarkGray
+Write-Host "  3. cd into a workspace folder + start Claude Code:" -ForegroundColor Cyan
+Write-Host "     cd workspaces\isaac\instance-1     # Isaac Sim instance 1, port 8011" -ForegroundColor DarkGray
+Write-Host "     cd workspaces\usd-composer\instance-1  # USD Composer instance 1, port 8014" -ForegroundColor DarkGray
+Write-Host "  4. Tools appear with prefix:" -ForegroundColor Cyan
+Write-Host "     mcp__isaacsim-mcp-{1,2}__*       (Isaac instance)" -ForegroundColor DarkGray
+Write-Host "     mcp__usdcomposer-mcp-{1,2}__*    (USD Composer instance)" -ForegroundColor DarkGray
 Write-Host ""

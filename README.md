@@ -57,8 +57,10 @@ uv sync
 uv run pytest tests/                             # should be all green
 .venv/Scripts/python.exe scripts/verify_mcp_sync.py   # catalog drift check
 
-# 3. Wire into Claude Code  (~/.claude.json)
-#    — see setup/ for helper scripts
+# 3. Run setup (deps + .env + workspace .mcp.json generation)
+setup/setup-omniverse-kit-mcp.bat
+#    — generates workspaces/<profile>/instance-<N>/.mcp.json (4 files)
+#    — see setup/ for details
 ```
 
 ### Isaac Sim Setup
@@ -129,23 +131,26 @@ Or hit the REST route directly: `POST http://localhost:8011/validation/v1/extens
 
 Loading is one step; surfacing your extension's functionality as natural-language tools is another. See the "새 MCP tool (`tools/`)" row in root [`CLAUDE.md`](./CLAUDE.md)의 변경 파급 매트릭스 — the 8-step checklist (REST endpoint → client → type → module → `@mcp.tool()` → tests → frozenset → `verify_mcp_sync`) covers the full surface-up path.
 
-Minimal `~/.claude.json` entry (recommended form — bypasses `uv run` file locks):
+### Wiring into Claude Code — workspace folders
 
-```json
-{
-  "mcpServers": {
-    "omniverse-kit-mcp": {
-      "type": "stdio",
-      "command": "C:/path/to/omniverse-kit-mcp/.venv/Scripts/omniverse-kit-mcp.exe",
-      "args": []
-    }
-  }
-}
+The setup script (`setup/setup-omniverse-kit-mcp.bat`) generates four `.mcp.json` files under `workspaces/`, one per Kit instance. **Each workspace folder = 1 CC session = 1 MCP entry loaded** (~150 tool names per session vs. ~1050 if all entries were global). Open Claude Code from inside a workspace folder:
+
+```powershell
+cd workspaces/isaac/instance-1     # Isaac Sim instance 1, port 8011
+claude
 ```
 
-Start Claude Code; 107 Isaac Sim tools are available immediately.
+| Scenario | CC windows | Folders |
+|---|---|---|
+| Isaac × 1 | 1 | `workspaces/isaac/instance-1` |
+| USD Composer × 1 | 1 | `workspaces/usd-composer/instance-1` |
+| Isaac + USD Composer | 2 simultaneously | `workspaces/isaac/instance-1` + `workspaces/usd-composer/instance-1` |
+| Isaac × 2 | 2 | `workspaces/isaac/instance-{1,2}` |
+| USD Composer × 2 | 2 | `workspaces/usd-composer/instance-{1,2}` |
 
-For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows specifics), see **`setup/`**.
+For server-code development (modifying the MCP server itself), open Claude Code at the repo root — no MCP loads there by design, keeping the dev session focused on code. Validate runtime behavior via `scripts/run_*_standalone.py` or by entering a workspace folder.
+
+For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows specifics), see **`setup/`**. Workspace layout / promote-path details: [`docs/superpowers/specs/2026-05-04-workspace-split-design.md`](docs/superpowers/specs/2026-05-04-workspace-split-design.md).
 
 ---
 
