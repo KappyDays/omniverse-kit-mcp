@@ -164,7 +164,7 @@ For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows sp
 | `scripts/` | Developer utilities — catalog regen, sync verification, per-phase live tests |
 | `tests/` | Mock-based pytest suite (309 tests) |
 | `setup/` | Windows installer + `~/.claude.json` wiring helpers |
-| `docs/` | `tool-catalog.md` (auto-generated), `phase-progress.md`, per-phase validation reports, live artifacts, `assets/isaac/` + `assets/composer/` (asset URL catalogs) |
+| `docs/` | `tool-catalog.md` (auto-generated), `invariants/`, `runbooks/`, live artifacts, `assets/isaac/` + `assets/composer/` (asset URL catalogs) |
 | `isaac-pick-place/` · `usd-mouse-interact/` | Workshop material (design / verification / captures / tests) — extensions live in `kkr-extensions/` |
 
 ---
@@ -251,7 +251,7 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 
 ## Status
 
-Phases A through H are ✅ complete (108 → 107 tools + 3 resources after scenario_schema demotion). See `docs/phase-progress.md` and each `phase-*-validation-report.md` for deliverables, live validation evidence, and known limitations.
+107 MCP tools + 3 resources covering stage / robot / character / sensor / multi-viewport / physics / lighting / material / SDG / OmniGraph / content / extension domains. Two Kit app profiles (Isaac Sim, USD Composer) with multi-instance support. See [`docs/tool-catalog.md`](./docs/tool-catalog.md) for the full surface.
 
 ## License
 

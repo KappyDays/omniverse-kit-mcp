@@ -7,7 +7,6 @@
 ## 세션 진입
 
 - **이 파일만** 매 턴 자동 로드 (CC 동작) — cap / 작성 룰: §메타
-- Phase 진행 맥락 필요 시: `docs/phase-progress.md` Read
 
 ## ⚠️ 작업 전 필수 pull-doc
 
@@ -22,12 +21,12 @@
 | Extension UI automation (`extension_ui_invoke`) | `docs/invariants/ui-invoke.md` |
 | Scenario YAML 저작 | `docs/invariants/scenario-validation.md` |
 | `viewport_capture` / scene build / 새 NVIDIA asset 사용 | `docs/invariants/visual-validation.md` |
-| Multi-app 추가 / Kit app profile 수정 | `docs/invariants/multi-app.md` |
+| Multi-app 추가 / Kit app profile 수정 / repo·디렉토리 rename | `docs/invariants/multi-app.md` |
 | Kit / app 버전 업뎃 후 catalog sync | skill `/omniverse-kit-extension-catalog-sync` (`.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`) |
 | Asset URL 404 / inventory 갱신 | skill `/omniverse-asset-inventory-sync` (`.claude/skills/omniverse-asset-inventory-sync/SKILL.md`) |
 | 에러 / 실패 진단 (가설 검증 우선) | `docs/tool-diagnostic-map.md` |
 
-장애 진단은 `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · hub-orphan · env-sub-config). Phase 히스토리는 `docs/phase-a-validation-report.md` … `docs/phase-h-validation-report.md`.
+장애 진단은 `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · hub-orphan · env-sub-config).
 
 ## ⚠️ DO-NOT-EDIT Residual
 
@@ -50,7 +49,6 @@
 | 새 module / scenario action | `docs/invariants/module-add.md` |
 | REST endpoint | client + tool 등록 + test + `kkr-extensions/CLAUDE.md` |
 | MCP resource | `src/omniverse_kit_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py` + verify_mcp_sync |
-| Phase 완료 | `docs/phase-<N>-validation-report.md` + `docs/phase-progress.md` + 전체 pytest green |
 | CLAUDE.md 새 디렉토리 | 이 매트릭스 + 문서 맵 양방향 갱신 |
 
 ## Key Decisions
