@@ -18,7 +18,7 @@ Write-Host "======================================================" -ForegroundC
 # ── Step 1: Check prerequisites ─────────────────────────────────────────────
 
 Write-Host ""
-Write-Host "[ 1/5 ] Checking prerequisites..." -ForegroundColor Yellow
+Write-Host "[ 1/4 ] Checking prerequisites..." -ForegroundColor Yellow
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "  [FAIL] git not found. Please install Git and try again." -ForegroundColor Red
@@ -35,7 +35,7 @@ Write-Host "  [OK]   uv: $(uv --version)" -ForegroundColor Green
 # ── Step 2: Clone or verify repo ────────────────────────────────────────────
 
 Write-Host ""
-Write-Host "[ 2/5 ] Checking repo at $RepoDir ..." -ForegroundColor Yellow
+Write-Host "[ 2/4 ] Checking repo at $RepoDir ..." -ForegroundColor Yellow
 
 $PyprojectFile = Join-Path $RepoDir "pyproject.toml"
 
@@ -81,7 +81,7 @@ if (Test-Path $PyprojectFile) {
 # ── Step 3: Create .env if missing ──────────────────────────────────────────
 
 Write-Host ""
-Write-Host "[ 3/5 ] Checking .env configuration..." -ForegroundColor Yellow
+Write-Host "[ 3/4 ] Checking .env configuration..." -ForegroundColor Yellow
 
 $EnvFile    = Join-Path $RepoDir ".env"
 $EnvExample = Join-Path $RepoDir ".env.example"
@@ -140,12 +140,12 @@ function Save-JsonFile {
 }
 
 # ── Step 4: Cleanup legacy global mcpServers entries ────────────────────────
-# In-repo workspaces/<profile>/instance-<N>/.mcp.json (per-machine generated
-# from .mcp.json.template) is now SoT. Remove 7 legacy entries that previous
+# In-repo workspaces/<profile>/instance-<N>/.mcp.json (committed, relative
+# `../../..` to repo root) is now SoT. Remove 7 legacy entries that previous
 # setup runs may have left in ~/.claude.json global mcpServers.
 
 Write-Host ""
-Write-Host "[ 4/5 ] Cleaning legacy MCP entries in $ClaudeJson ..." -ForegroundColor Yellow
+Write-Host "[ 4/4 ] Cleaning legacy MCP entries in $ClaudeJson ..." -ForegroundColor Yellow
 
 if (Test-Path $ClaudeJson) {
     try {
@@ -181,47 +181,9 @@ if (Test-Path $ClaudeJson) {
     Write-Host "  [INFO] $ClaudeJson does not exist. Nothing to clean." -ForegroundColor DarkGray
 }
 
-# ── Step 5: Generate per-folder .mcp.json from templates ────────────────────
-# 4 instance folders × {isaac, usd-composer} → .mcp.json with absolute $RepoDir
-# substituted into {{REPO_DIR}} placeholder. Generated files are gitignored.
-
-Write-Host ""
-Write-Host "[ 5/5 ] Generating workspace .mcp.json from templates ..." -ForegroundColor Yellow
-
-$WorkspacesDir = Join-Path $RepoDir "workspaces"
-$RepoDirFwd    = ($RepoDir -replace '\\', '/')
-
-$Instances = @(
-    "isaac/instance-1",
-    "isaac/instance-2",
-    "usd-composer/instance-1",
-    "usd-composer/instance-2"
-)
-
-$generated = 0
-foreach ($rel in $Instances) {
-    $instanceDir  = Join-Path $WorkspacesDir $rel
-    $templatePath = Join-Path $instanceDir ".mcp.json.template"
-    $mcpJsonPath  = Join-Path $instanceDir ".mcp.json"
-
-    if (-not (Test-Path $templatePath)) {
-        Write-Host "  [WARN] template missing: $templatePath" -ForegroundColor Yellow
-        continue
-    }
-
-    $templateContent = Get-Content -Raw -Encoding UTF8 -Path $templatePath
-    $rendered        = $templateContent -replace '\{\{REPO_DIR\}\}', $RepoDirFwd
-
-    $utf8 = New-Object System.Text.UTF8Encoding $false
-    [System.IO.File]::WriteAllText($mcpJsonPath, $rendered, $utf8)
-    $generated++
-    Write-Host "  [OK]   Generated $rel/.mcp.json" -ForegroundColor Green
-}
-
-Write-Host ""
-Write-Host "  $generated workspace .mcp.json files generated (REPO_DIR=$RepoDirFwd)" -ForegroundColor White
-
 # ── Done ────────────────────────────────────────────────────────────────────
+# Workspace .mcp.json files are committed with relative `../../..` to repo root
+# (uv --directory resolves relative to CC working dir = instance folder).
 
 Write-Host ""
 Write-Host "======================================================" -ForegroundColor Green

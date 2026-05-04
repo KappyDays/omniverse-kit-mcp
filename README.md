@@ -57,9 +57,10 @@ uv sync
 uv run pytest tests/                             # should be all green
 .venv/Scripts/python.exe scripts/verify_mcp_sync.py   # catalog drift check
 
-# 3. Run setup (deps + .env + workspace .mcp.json generation)
+# 3. Run setup (deps + .env + cleanup of legacy global mcpServers entries)
 setup/setup-omniverse-kit-mcp.bat
-#    — generates workspaces/<profile>/instance-<N>/.mcp.json (4 files)
+#    — workspaces/<profile>/instance-<N>/.mcp.json (4 files) ship in-repo
+#      with relative `../../..` to repo root; no per-machine generation
 #    — see setup/ for details
 ```
 
@@ -133,7 +134,7 @@ Loading is one step; surfacing your extension's functionality as natural-languag
 
 ### Wiring into Claude Code — workspace folders
 
-The setup script (`setup/setup-omniverse-kit-mcp.bat`) generates four `.mcp.json` files under `workspaces/`, one per Kit instance. **Each workspace folder = 1 CC session = 1 MCP entry loaded** (~150 tool names per session vs. ~1050 if all entries were global). Open Claude Code from inside a workspace folder:
+Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder = 1 CC session = 1 MCP entry loaded** (~150 tool names per session vs. ~1050 if all entries were global). Open Claude Code from inside a workspace folder:
 
 ```powershell
 cd workspaces/isaac/instance-1     # Isaac Sim instance 1, port 8011
