@@ -16,6 +16,37 @@
 
 ---
 
+## 2026-05-04 — `branch/` 외부 Kit app `.bat` 직접 실행 fail (디렉토리 rename 후폭풍)
+
+### L18. `.kit` 의 `[settings.app.exts.folders]` 절대경로가 repo rename 후 stale → dependency solver 즉시 종료
+
+- **원인**: commit `be4aced refactor: rename Isaac-sim-MCP -> omniverse-kit-mcp` 가 작업 디렉토리만 rename 하고 `branch/` 의 외부 Kit app build 안에 박힌 `.kit` 절대경로 (`C:/Users/<you>/workspace/Isaac-sim-MCP/kkr-extensions` 등) 는 갱신 누락. 옛 경로는 빈 폴더만 잔존, 실 extension 은 `omniverse-kit-mcp/kkr-extensions/` 로 이동 → kit 이 ext folder 에서 `omni.mycompany.*` 미발견 → solver 즉시 종료.
+- **영향 받은 파일** (3 곳, 모두 stale 동일 패턴):
+  - `branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit` line 191
+  - `branch/kit-app-template/source/apps/kkr_usd_composer.kit` line 188 (`_build/.../release/apps/` 와 hardlink)
+  - `branch/usd-composer-webrtc-streaming/kit-app-template/source/apps/kkr_usd_composer.kit` line 189 (옛 경로는 `isaac_extension` 이지만 동일 stale 패턴)
+- **증상 (실측 2026-05-04)**:
+  - `.bat` 직접 실행 약 3 초만에 cmd 창 닫힘 (kit.exe 가 GUI 보이기 전)
+  - stderr 마지막 라인:
+    ```
+    [3,235ms] [Error] [omni.ext.plugin] Failed to resolve extension dependencies. Failure hints:
+      [isaacsim.exp.full-5.1.0] dependency: 'omni.mycompany.navmesh_playground' = { version='^' } can't be satisfied. ...
+    [3,236ms] [Error] [omni.kit.app.plugin] Exiting app because of dependency solver failure...
+    ```
+  - kkr_usd_composer 측은 미해결 ext 가 `omni.mycompany.validation_api`
+- **잘못된 진단 회피**:
+  - kkr_usd_composer.kit.bat line 3 의 `"%%~dp0apps/..."` 의 `%%` 는 batch escape — `call` 안에서 두 번째 expansion 으로 정상 평가됨. **여기 손대지 말 것** (1차 가설이었으나 오답)
+  - "extension registry sync 문제" / "registry URL 잘못됨" 도 후행 증상일 뿐 — solver 의 `Synced registries: ... found N packages` 메시지는 정상이고 진짜 원인은 ext folder 가 빈 디렉토리라는 것
+- **재발 방지**:
+  - 디렉토리 rename / repo move 시 작업 시작 전 [`docs/invariants/multi-app.md`](../../docs/invariants/multi-app.md) 의 `## .kit ext folder 절대경로` 섹션 Read
+  - rename 직후 `grep -rn '"C:/Users/<you>/workspace/' --include='*.kit' branch/` 로 stale 경로 일괄 검출
+  - 진단 / 복구 절차 본문: [`docs/runbooks/kit-dep-solver-fail.md`](../../docs/runbooks/kit-dep-solver-fail.md)
+- **잔존 정리 (2026-05-04 동시 처리)**:
+  - 빈 stale 디렉토리 `C:/Users/<you>/workspace/Isaac-sim-MCP/` (rename 잔재) 제거
+  - 세 `.kit` 모두 `C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions` 로 통일
+
+---
+
 ## 2026-04-24 — ProcessModule cold boot hang root cause
 
 ### L17. `subprocess.Popen` 의 `stdin` 명시 누락 = MCP server 자식 프로세스에서 boot 정지
