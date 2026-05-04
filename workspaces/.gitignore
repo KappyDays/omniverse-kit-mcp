@@ -16,5 +16,3 @@ __pycache__/
 .tmp/
 *.bak.*
 
-# Setup-generated per-machine MCP config (template 만 commit)
-**/instance-*/.mcp.json

@@ -1,13 +1,10 @@
-"""Validates workspace .mcp.json.template files structure (Option B / Fallback A).
+"""Validates workspace .mcp.json files structure (post-OQ1, direct commit).
 
-워크스페이스 분할 spec § 6.1 + plan Option B 검증:
-- 4 instance .mcp.json.template 존재 (committed)
+워크스페이스 분할 spec § 6.1 검증 (OQ1 PASS 후):
+- 4 instance .mcp.json 존재 (committed, no template/setup-time generation)
 - 각 mcpServers entry 에 정확한 server name / env 매핑
-- {{REPO_DIR}} placeholder 사용 (setup 시 절대경로로 치환됨)
-- workspaces/.gitignore 가 generated .mcp.json + scratch / USD / 미디어 차단
-
-OQ1 (relative path .mcp.json) 검증되면 후속 변경:
-- template → 직접 .mcp.json commit, 본 파일 placeholder 검증을 path 검증으로 교체
+- args 의 `--directory` 가 `../../..` 상대경로 (CC working dir = instance 폴더 → repo root)
+- 환경 / 머신 고유 substring 미포함
 """
 from __future__ import annotations
 
@@ -29,54 +26,77 @@ INSTANCES = [
 
 
 @pytest.mark.parametrize("folder,server_name,profile,instance_id", INSTANCES)
-def test_template_exists_and_structure(folder, server_name, profile, instance_id):
-    template_path = WORKSPACES / folder / ".mcp.json.template"
-    assert template_path.exists(), f".mcp.json.template missing at {template_path}"
+def test_mcp_json_exists_and_structure(folder, server_name, profile, instance_id):
+    mcp_path = WORKSPACES / folder / ".mcp.json"
+    assert mcp_path.exists(), f".mcp.json missing at {mcp_path}"
 
-    config = json.loads(template_path.read_text(encoding="utf-8"))
+    config = json.loads(mcp_path.read_text(encoding="utf-8"))
     servers = config.get("mcpServers", {})
-    assert server_name in servers, f"{server_name} not in {template_path} mcpServers"
+    assert server_name in servers, f"{server_name} not in {mcp_path} mcpServers"
 
     entry = servers[server_name]
     assert entry.get("env", {}).get("ISAAC_MCP_APP_PROFILE") == profile
     assert entry.get("env", {}).get("ISAAC_MCP_INSTANCE_ID") == instance_id
 
 
-@pytest.mark.parametrize("folder,_a,_b,_c", INSTANCES)
-def test_template_uses_placeholder(folder, _a, _b, _c):
-    """template 의 args 는 {{REPO_DIR}} placeholder 를 포함해야 setup 이 치환 가능."""
-    template_path = WORKSPACES / folder / ".mcp.json.template"
-    raw = template_path.read_text(encoding="utf-8")
-    assert "{{REPO_DIR}}" in raw, (
-        f"{template_path} missing {{{{REPO_DIR}}}} placeholder — "
-        f"setup script substitution will not work"
+@pytest.mark.parametrize("folder,server_name,_p,_i", INSTANCES)
+def test_mcp_json_uses_relative_repo_root(folder, server_name, _p, _i):
+    """args 의 `uv --directory` 가 `../../..` 상대경로 — instance 폴더 (3 레벨 깊이) 기준 repo root."""
+    mcp_path = WORKSPACES / folder / ".mcp.json"
+    config = json.loads(mcp_path.read_text(encoding="utf-8"))
+    args = config["mcpServers"][server_name]["args"]
+    assert "--directory" in args, f"{mcp_path} args missing --directory"
+    dir_value = args[args.index("--directory") + 1]
+    assert dir_value == "../../..", (
+        f"{mcp_path} --directory must be '../../..' (relative to instance folder), got '{dir_value}'"
     )
 
 
 @pytest.mark.parametrize("folder,_a,_b,_c", INSTANCES)
-def test_template_no_environment_specific_substring(folder, _a, _b, _c):
-    """template 에 사용자 / 머신 고유 값이 박혀 있으면 fail."""
-    template_path = WORKSPACES / folder / ".mcp.json.template"
-    raw = template_path.read_text(encoding="utf-8")
+def test_mcp_json_no_environment_specific_substring(folder, _a, _b, _c):
+    """commit 된 .mcp.json 에 사용자 / 머신 고유 값이 박혀 있으면 fail."""
+    mcp_path = WORKSPACES / folder / ".mcp.json"
+    raw = mcp_path.read_text(encoding="utf-8")
     forbidden_substrings = [
         "C:/Users/", "C:\\Users\\", "/Users/", "/home/",
         "$env:USERPROFILE", "${USERPROFILE}", "%USERPROFILE%",
         "$HOME", "${HOME}", "$env:HOME",
+        "{{REPO_DIR}}",  # placeholder leftover guard
     ]
     for forbidden in forbidden_substrings:
         assert forbidden not in raw, (
-            f"{template_path} contains environment-specific substring '{forbidden}'"
+            f"{mcp_path} contains environment-specific substring '{forbidden}'"
         )
 
 
+@pytest.mark.parametrize("folder,_a,_b,_c", INSTANCES)
+def test_no_template_leftover(folder, _a, _b, _c):
+    """OQ1 PASS 이후 .mcp.json.template 은 삭제되었어야 한다."""
+    template_path = WORKSPACES / folder / ".mcp.json.template"
+    assert not template_path.exists(), (
+        f"{template_path} should have been removed after switching to direct .mcp.json commit"
+    )
+
+
 def test_workspaces_gitignore_blocks_required_patterns():
-    """workspaces/.gitignore 가 generated .mcp.json + scratch / 미디어 차단."""
+    """workspaces/.gitignore 가 scratch / 미디어 차단."""
     gitignore = WORKSPACES / ".gitignore"
     assert gitignore.exists()
     content = gitignore.read_text(encoding="utf-8")
-    required = ["scratch/", "*.usd", "*.png", "**/instance-*/.mcp.json"]
+    required = ["scratch/", "*.usd", "*.png"]
     for pat in required:
         assert pat in content, f".gitignore missing pattern '{pat}'"
+
+
+def test_workspaces_gitignore_does_not_block_committed_mcp_json():
+    """OQ1 PASS 이후 .mcp.json 은 commit 대상 — gitignore 패턴 잔존하면 fail."""
+    gitignore = WORKSPACES / ".gitignore"
+    content = gitignore.read_text(encoding="utf-8")
+    forbidden = ["instance-*/.mcp.json", "**/instance-*/.mcp.json"]
+    for pat in forbidden:
+        assert pat not in content, (
+            f".gitignore must not contain '{pat}' — .mcp.json is committed directly"
+        )
 
 
 def test_workspaces_directory_structure():

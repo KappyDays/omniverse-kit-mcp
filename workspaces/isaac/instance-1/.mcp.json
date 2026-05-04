@@ -3,7 +3,7 @@
     "isaacsim-mcp-1": {
       "type": "stdio",
       "command": "cmd",
-      "args": ["/c", "uv", "--directory", "{{REPO_DIR}}", "run", "--no-sync", "omniverse-kit-mcp"],
+      "args": ["/c", "uv", "--directory", "../../..", "run", "--no-sync", "omniverse-kit-mcp"],
       "env": {
         "ISAAC_MCP_APP_PROFILE": "isaac-sim",
         "ISAAC_MCP_INSTANCE_ID": "1"
