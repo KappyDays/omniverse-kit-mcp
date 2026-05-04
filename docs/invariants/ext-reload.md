@@ -64,6 +64,23 @@ self._window = ui.Window("<name>", ...)
   callback 미발화
 - 누적되면 메모리 leak (Kit 재시작까지)
 
+## `branch/kit-app-template` source ↔ \_build hardlink
+
+`branch/kit-app-template/source/apps/<app>.kit` 와
+`branch/kit-app-template/_build/windows-x86_64/release/apps/<app>.kit` 는
+premake 가 만든 hardlink (동일 inode). source 만 Edit 해도 _build 쪽이
+자동 갱신되지만, 한 쪽 Edit 후 같은 세션에서 다른 쪽을 추가 Edit 하려고
+하면 **`Edit` tool 이 "File has been modified since read" 로 실패** —
+inode 가 동일해 메타데이터가 동시 갱신되기 때문.
+
+권장 패턴:
+- **source/apps/ 만 Edit** — \_build 쪽은 자동 동기화
+- 검증: `stat <source>.kit <build>.kit` 의 Inode 비교 (동일하면 hardlink)
+- 동일 .kit 을 양쪽 모두 수정해야 한다고 느끼면 hardlink 인지 먼저 확인
+
+(이 hardlink 패턴은 `branch/usd-composer-webrtc-streaming/kit-app-template/`
+에도 동일 적용)
+
 ## 관련 경계
 
 - L9 / L16 사고 기록: `kkr-extensions/docs/lessons-learned.md`

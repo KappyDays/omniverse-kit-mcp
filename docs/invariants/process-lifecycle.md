@@ -137,6 +137,38 @@ process_list_kit_instances → instances[].is_this_mcp_instance == false 인 row
 **금지** (false negative — L7): `tasklist //FI "IMAGENAME eq kit.exe"` (git bash)
 filter 처리 timing 문제로 alive Kit 도 빈 결과 반환.
 
+## `.bat` wrapper PID ≠ kit.exe PID (false-positive EXITED 회피)
+
+수동 진단 (PowerShell) 에서 `branch/` 의 외부 Kit `.bat` 을 백그라운드로 띄울 때:
+
+```powershell
+$proc = Start-Process -FilePath $bat `
+    -RedirectStandardOutput $log -RedirectStandardError $err `
+    -PassThru -WindowStyle Hidden
+# $proc.Id 는 .bat 호스트 cmd.exe / 또는 .bat 자체의 PID — kit.exe 의 PID 가 아님
+```
+
+`.bat` 은 내부에서 `call "%~dp0kit\kit.exe" ...` 으로 자식 kit.exe 를 spawn 하고
+대기. 호스트 wrapper 는 자식 종료를 따라 함께 종료되므로 kit.exe 가 살아있는 동안은
+wrapper PID 도 살아있다 — **그러나 일부 케이스 (cmd.exe wrapper 가 즉시 detach,
+또는 kit.exe 가 fastShutdown 후 wrapper 만 잔존하다 즉시 종료) 에서는 wrapper PID 가
+먼저 사라져 false-positive `EXITED` 보고**.
+
+생사 확인 권장 도구:
+
+```powershell
+# 자식 kit.exe 자체 확인 (multi-instance host 면 PID 비교 필요)
+Get-Process -Name kit -ErrorAction SilentlyContinue
+
+# 부모 wrapper PID 의 자식 process 트리
+Get-CimInstance Win32_Process -Filter "ParentProcessId=<wrapperPID>" |
+    Select-Object ProcessId, Name, CommandLine
+```
+
+(Multi-app / multi-instance 에서 `Get-Process -Name kit` 는 host 의 모든 kit.exe
+매칭 — `port=<N>` 으로 식별. 본문 §"Process Identification (name scope 금지)" 참조 —
+[`multi-app.md`](multi-app.md))
+
 ## 관련 경계
 
 - 코드 위치 SoT (ProcessModule hang recovery 4종 함정): `src/omniverse_kit_mcp/modules/process-ops.md`
