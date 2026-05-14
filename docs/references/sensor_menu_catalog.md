@@ -122,7 +122,7 @@ window_menu_trigger(menu_path="Create/Robots/Nova Carter with Sensors")
 
 ## 재생성 절차
 
-1. Isaac Sim 기동 (`isaac_sim_start` or `scripts/run_process_module_standalone.py start`)
+1. Isaac Sim 기동 (`kit_app_start` or `scripts/run_process_module_standalone.py start`)
 2. `mcp__isaacsim-mcp__window_menu_list(menu_path="Create")` 호출
 3. response 의 `items` 중 `path` 가 `Create/Sensors/` 또는 `Create/Robots/Nova Carter` 로 시작하는 항목만 필터
 4. 이 문서의 테이블 형식으로 정리 (vendor → model 2-level grouping)

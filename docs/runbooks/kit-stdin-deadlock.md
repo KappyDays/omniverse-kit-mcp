@@ -24,7 +24,7 @@
 
 ## 증상
 
-- MCP tool `isaac_sim_start` / `isaac_sim_restart` 호출 → startup_timeout 까지 health
+- MCP tool `kit_app_start` / `kit_app_restart` 호출 → startup_timeout 까지 health
   무응답 → `status=timeout` (또는 240s 후 `status=still_loading`)
 - `Get-Process kit` = alive (PID 정상), CPU 거의 0 (<5s after 5분), WS ~60MB (boot
   시작도 못함)

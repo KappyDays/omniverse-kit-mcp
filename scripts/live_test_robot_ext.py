@@ -1,7 +1,7 @@
 """Phase G live test: Robot extensions — navigate_path / gripper_control / set_ee_target.
 
 Runs against a live Isaac Sim Extension (http://localhost:8011). Intended for
-post-integration smoke after ``isaac_sim_start``. Tolerant of asset load
+post-integration smoke after ``kit_app_start``. Tolerant of asset load
 failures (logs + skip) since Phase G live validation depends on Franka /
 NovaCarter S3 assets and network availability.
 

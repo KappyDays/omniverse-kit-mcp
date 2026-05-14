@@ -70,7 +70,7 @@ Character 관련 API (`play_animation`, `navigate`, `set_position`, `get_state`)
 
 ### Shutdown hang 방지
 
-`isaac_sim_stop` 이전에 `simulation.play → step → stop` (최종 physics tick) 이 없으면 AnimGraph / NavMesh 내부 핸들 정리 타이밍 문제로 kit.exe 셔다운 hang. scenario cleanup 에 반드시 포함.
+`kit_app_stop` 이전에 `simulation.play → step → stop` (최종 physics tick) 이 없으면 AnimGraph / NavMesh 내부 핸들 정리 타이밍 문제로 kit.exe 셔다운 hang. scenario cleanup 에 반드시 포함.
 
 ### USD prim 이름 `_sanitize_prim_name` 필수
 

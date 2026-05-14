@@ -6,7 +6,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 
 ## Table of contents
 
-- [Process — Isaac Sim kit.exe lifecycle](#process--isaac-sim-kitexe-lifecycle) — 3 tools
+- [Process — Kit app lifecycle](#process--kit-app-lifecycle) — 3 tools
 - [Stage — READ / ASSERT / file & selection](#stage--read--assert--file--selection) — 6 tools
 - [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
 - [Simulation — timeline](#simulation--timeline) — 4 tools
@@ -22,32 +22,35 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
 - Unclassified (40)
 
-## Process — Isaac Sim kit.exe lifecycle
+## Process — Kit app lifecycle
 
-### `isaac_sim_restart`
-
-```python
-isaac_sim_restart() -> 'str'
-```
-
-Restart Isaac Sim (stop → clear __pycache__ → start); use after modifying Extension code.
-
-### `isaac_sim_start`
+### `kit_app_restart`
 
 ```python
-isaac_sim_start() -> 'str'
+kit_app_restart() -> 'str'
 ```
 
-Start Isaac Sim (validation extension enabled); waits for health endpoint. Required before
+Restart the Kit application (stop → clear __pycache__ → start); use after modifying Extension
+code.
+
+### `kit_app_start`
+
+```python
+kit_app_start() -> 'str'
+```
+
+Start the Kit application for this MCP instance (Isaac Sim or USD Composer per
+ISAAC_MCP_APP_PROFILE); waits for the validation REST health endpoint. Required before
 stage/sim/viewport ops.
 
-### `isaac_sim_stop`
+### `kit_app_stop`
 
 ```python
-isaac_sim_stop() -> 'str'
+kit_app_stop() -> 'str'
 ```
 
-Stop Isaac Sim process.
+Stop the Kit application (kit.exe) of this MCP instance only — other instances and other app
+profiles are unaffected.
 
 ## Stage — READ / ASSERT / file & selection
 
@@ -277,8 +280,8 @@ Pause simulation timeline.
 simulation_play() -> 'str'
 ```
 
-Start simulation timeline (play button). Does NOT launch the Isaac Sim application — use
-isaac_sim_start for that.
+Start simulation timeline (play button). Does NOT launch the Kit application — use
+kit_app_start for that.
 
 ### `simulation_stop`
 
@@ -286,8 +289,8 @@ isaac_sim_start for that.
 simulation_stop() -> 'str'
 ```
 
-Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Isaac Sim
-process — use isaac_sim_stop for that.
+Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Kit
+application — use kit_app_stop for that.
 
 ## Viewport — 3D renderer capture + camera
 

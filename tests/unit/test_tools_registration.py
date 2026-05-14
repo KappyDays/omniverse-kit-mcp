@@ -14,9 +14,9 @@ from omniverse_kit_mcp.mcp.server import create_mcp_server
 
 EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Process
-    "isaac_sim_start",
-    "isaac_sim_stop",
-    "isaac_sim_restart",
+    "kit_app_start",
+    "kit_app_stop",
+    "kit_app_restart",
     "process_list_kit_instances",
     # Stage READ/ASSERT
     "stage_capture_snapshot",

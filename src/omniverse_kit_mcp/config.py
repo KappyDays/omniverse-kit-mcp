@@ -78,7 +78,7 @@ class IsaacSimProcessConfig(BaseSettings):
     # path is NOT a failure of this timeout: when the timer expires the runtime
     # checks whether kit.exe is still alive. Alive → returns
     # `{status: "still_loading", process_alive: true}` so the caller can decide
-    # to keep polling (call isaac_sim_start again — second call detects the
+    # to keep polling (call kit_app_start again — second call detects the
     # running process and resumes health polling without re-spawning). Dead →
     # returns `{status: "crashed", log_tail: [...]}` for immediate triage.
     startup_timeout: float = 120.0

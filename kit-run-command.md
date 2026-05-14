@@ -1,10 +1,10 @@
 <!-- SoT: src/omniverse_kit_mcp/modules/process_module.py::ProcessModule.start + types/profile.py + .env -->
-<!-- 이 문서는 MCP `isaac_sim_start` tool 이 spawn 하는 실제 커맨드의 사람이 재현 가능한 형태이다. -->
+<!-- 이 문서는 MCP `kit_app_start` tool 이 spawn 하는 실제 커맨드의 사람이 재현 가능한 형태이다. -->
 <!-- profile / .env 가 변경되면 이 문서도 함께 갱신할 것. -->
 
 # Kit Run Command — Isaac Sim & USD Composer
 
-MCP `isaac_sim_start` 가 `subprocess.Popen` 으로 띄우는 실제 커맨드를 사람이 그대로 재현할 수 있는 형태로 정리한다. ProcessModule 우회 디버깅(MCP server 미경유 직접 기동) 시 사용.
+MCP `kit_app_start` 가 `subprocess.Popen` 으로 띄우는 실제 커맨드를 사람이 그대로 재현할 수 있는 형태로 정리한다. ProcessModule 우회 디버깅(MCP server 미경유 직접 기동) 시 사용.
 
 ## 공통 규약
 
@@ -240,7 +240,7 @@ curl http://localhost:8011/validation/v1/health   # Isaac Sim
 curl http://localhost:8014/validation/v1/health   # USD Composer
 ```
 
-두 응답 모두 200 → MCP `isaac_sim_start` (instance_id=1, profile=isaac-sim / usd-composer) 호출 시 `status=ready` (idempotent attach).
+두 응답 모두 200 → MCP `kit_app_start` (instance_id=1, profile=isaac-sim / usd-composer) 호출 시 `status=ready` (idempotent attach).
 
 ### 주의
 

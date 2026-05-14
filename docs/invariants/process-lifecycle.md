@@ -1,5 +1,5 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: isaac_sim_start / isaac_sim_stop / isaac_sim_restart 작업 시작 전 필수 숙지 -->
+<!-- Scope: kit_app_start / kit_app_stop / kit_app_restart 작업 시작 전 필수 숙지 -->
 <!-- Multi-app context: 이 문서의 "kit.exe" 는 모든 app profile 에 동일하게 적용됨.
      Profile 별 launch 차이는 `docs/invariants/multi-app.md` 참조. -->
 # Process Lifecycle — Invariants
@@ -12,9 +12,9 @@ ProcessModule 호출 전 이 파일 Read.
 
 | Tool | 동작 | 정상 시간 |
 |------|------|----------|
-| `isaac_sim_start` | kit.exe 런치 (또는 alive process attach) + health polling (2 s interval, `startup_timeout` 까지) | warm boot 15-30 s · cold boot 13-30 s (stdin DEVNULL fix 후) |
-| `isaac_sim_stop` | `taskkill /F /IM kit.exe /T` + orphan hub 정리 | ≤10 s |
-| `isaac_sim_restart` | stop → `kkr-extensions/.../__pycache__` clear → start | stop + start 합 |
+| `kit_app_start` | kit.exe 런치 (또는 alive process attach) + health polling (2 s interval, `startup_timeout` 까지) | warm boot 15-30 s · cold boot 13-30 s (stdin DEVNULL fix 후) |
+| `kit_app_stop` | `taskkill /F /IM kit.exe /T` + orphan hub 정리 | ≤10 s |
+| `kit_app_restart` | stop → `kkr-extensions/.../__pycache__` clear → start | stop + start 합 |
 
 ## ⚠️ stdin=subprocess.DEVNULL 필수 (변경 금지 — DO-NOT-EDIT)
 
@@ -26,7 +26,7 @@ MCP protocol stdin pipe 를 상속 → cold boot 중 stdin read 시 indefinite b
 
 본문 / 재현 / 복구: `docs/runbooks/kit-stdin-deadlock.md`
 
-## `isaac_sim_start` 결정 트리 (2026-04-23 redesign)
+## `kit_app_start` 결정 트리 (2026-04-23 redesign)
 
 ```
 process alive?
@@ -94,7 +94,7 @@ pydantic-settings v2 는 `default_factory` sub-`BaseSettings` 에 부모의 `env
 
 ## External instance check (destructive 작업 전 필수)
 
-`isaac_sim_stop` 은 **THIS MCP server 가 spawn 한 kit.exe 만** 종료. 사용자가 GUI
+`kit_app_stop` 은 **THIS MCP server 가 spawn 한 kit.exe 만** 종료. 사용자가 GUI
 실행한 standalone Isaac Sim, 다른 MCP server (multi-instance / multi-app) 는 별도
 프로세스로 살아있을 수 있음 — Kit 은 종료 시 carb persistent settings (예:
 `%LOCALAPPDATA%\ov\data\Kit\<app>\<ver>\user.config.json`) 을 메모리에서 덮어쓰기
@@ -119,14 +119,14 @@ process_list_kit_instances → instances[].is_this_mcp_instance == false 인 row
 
 ### 영향 없는 (안전한) 작업
 
-- `__pycache__` 삭제 (`isaac_sim_restart` 가 자동 — ext_folder 한정)
+- `__pycache__` 삭제 (`kit_app_restart` 가 자동 — ext_folder 한정)
 - `kit.exe stdout/stderr 로그 sweep` (`_sweep_old_logs`, 7일 이전)
 - `simulation_*` / `stage_*` / `viewport_*` (Extension REST 경유 — 다른 인스턴스
   REST 와 격리)
 
 ## Hang 확정 지표 (정확한 도구)
 
-- **`isaac_sim_start` 응답** — `process_alive=true` 인데 반복 호출해도 ready 안 됨 +
+- **`kit_app_start` 응답** — `process_alive=true` 인데 반복 호출해도 ready 안 됨 +
   log_tail mtime 수 분째 정체
 - **PowerShell** `Get-Process -Name kit -ErrorAction SilentlyContinue` —
   row 없음 = 죽음, row 있으면 alive

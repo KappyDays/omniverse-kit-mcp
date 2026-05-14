@@ -9,7 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.clients.lakehouse_client import LakehouseClient
 from omniverse_kit_mcp.config import AppConfig
-from omniverse_kit_mcp.mcp.prompts import SYSTEM_PROMPT
+from omniverse_kit_mcp.mcp.prompts import build_system_prompt
 from omniverse_kit_mcp.modules.asset_module import AssetModule
 from omniverse_kit_mcp.modules.catalog_module import CatalogModule
 from omniverse_kit_mcp.modules.character_module import CharacterModule
@@ -40,7 +40,7 @@ def create_mcp_server(config: AppConfig) -> FastMCP:
     """Create and configure the MCP server with all tools."""
     mcp = FastMCP(
         name=config.mcp_server.name,
-        instructions=SYSTEM_PROMPT,
+        instructions=build_system_prompt(config.isaac_sim_process.app_profile.name),
     )
 
     # Create clients

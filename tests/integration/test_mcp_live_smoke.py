@@ -15,9 +15,9 @@ Most tests require kit.exe running with ``validation_api`` active:
 .. code-block:: bash
 
     # Phase 1 Task 1.3 baseline flow
-    # 1) MCP isaac_sim_start (cold boot)
+    # 1) MCP kit_app_start (cold boot)
     # 2) uv run pytest tests/integration/test_mcp_live_smoke.py -m live -v
-    # 3) MCP isaac_sim_stop
+    # 3) MCP kit_app_stop
 
 D0 is the sole non-live case (static stdin=DEVNULL check for L17).
 Tests that require services Isaac Sim cannot guarantee (e.g. Lakehouse)
