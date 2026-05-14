@@ -294,7 +294,7 @@ class NavMeshPlaygroundPanel:
             if not kicked:
                 self._set_status(
                     "Bake: start_navmesh_baking returned False after retry. "
-                    "Stop timeline and try again, or isaac_sim_restart."
+                    "Stop timeline and try again, or kit_app_restart."
                 )
                 return
 

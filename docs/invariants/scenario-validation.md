@@ -85,7 +85,7 @@ character_load(...)
 ## Scenario cleanup (kit.exe shutdown hang 방지)
 
 scenario cleanup 은 `simulation_play → simulation_stop` (최종 physics tick) 을
-`isaac_sim_stop` 이전에 반드시 실행. 생략 시 AnimGraph / NavMesh 내부 핸들 정리
+`kit_app_stop` 이전에 반드시 실행. 생략 시 AnimGraph / NavMesh 내부 핸들 정리
 타이밍 문제로 kit.exe 셔다운 hang. canonical pattern:
 `scenarios/smoke/character_control.yaml`
 

@@ -8,7 +8,7 @@ Extension `.py` 수정 후 어떤 reload 경로를 쓰든 `sys.modules` cleanup 
 ## 핵심 결론 (L9 재재진단 + L16)
 
 - **`.py` 수정 후 코드 반영을 확실히 하려면 Kit process restart**
-  - `isaac_sim_restart` MCP tool, 또는
+  - `kit_app_restart` MCP tool, 또는
   - `scripts/run_process_module_standalone.py stop + start`
 - omni.ext.plugin fswatcher (C++) 가 ext python 폴더를 자동 watch — 파일 저장 시
   `FS Change triggers reloading` + disable→enable 시퀀스를 실행하긴 함.

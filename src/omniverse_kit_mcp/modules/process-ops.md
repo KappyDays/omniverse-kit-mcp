@@ -5,7 +5,7 @@
 
 kit.exe 기동/종료 관련 운영 자료. 정상 개발 흐름에서는 읽을 필요 없음.
 아래 상황에서만 참조:
-- `isaac_sim_start` 가 `still_loading` / `crashed` 반환 시
+- `kit_app_start` 가 `still_loading` / `crashed` 반환 시
 - kit.exe hang / zombie 의심 시
 - `.env` 환경변수 미반영 시
 
@@ -17,7 +17,7 @@ hub-orphan / env-sub-config).
 
 - **`stdin=subprocess.DEVNULL` 필수** (2026-04-24 root cause 확정 — `../../../docs/runbooks/kit-stdin-deadlock.md` 필독). MCP server 는 Claude Code 의 stdio 자식 → 그 stdin 은 MCP protocol pipe. ProcessModule 이 `subprocess.Popen` 에 `stdin` 명시 안 하면 자식 kit.exe 가 그 pipe 를 상속 → cold boot 중 stdin read 시 block → 전체 boot 정지 (~85 ms 시점, ext registration 직후). bash 에서 standalone 실행은 TTY stdin 이라 안전 — 이 차이 때문에 standalone 은 통과 / MCP 는 hang 의 false negative 가 발생함
 - `stdout` / `stderr` 는 **`%TEMP%/omniverse_kit_mcp/kit_<epoch>.log`** 로 리다이렉트. **stdout/stderr 에 `subprocess.DEVNULL` 금지** — Windows OS pipe 버퍼 포화 시 kit.exe 초기화 정지 (stdin 와 정반대)
-- `startup_timeout` 기본 120 s (사용자 확정 2026-04-23). 의도: **cold boot 끝까지 기다리지 말고 빠르게 진단 정보 반환**. Cold boot (GPU 셰이더 캐시 재빌드) 가 5-10 분 걸려도 timeout 후 `status=still_loading` + `process_alive=true` 반환 → caller 가 `isaac_sim_start` 재호출하면 spawn 없이 폴링만 이어감 (Branch 2). **stdin fix 후 cold boot 는 보통 13-30 초** — 5-10분 케이스는 transient (hub orphan / pycache 손상) 의심
+- `startup_timeout` 기본 120 s (사용자 확정 2026-04-23). 의도: **cold boot 끝까지 기다리지 말고 빠르게 진단 정보 반환**. Cold boot (GPU 셰이더 캐시 재빌드) 가 5-10 분 걸려도 timeout 후 `status=still_loading` + `process_alive=true` 반환 → caller 가 `kit_app_start` 재호출하면 spawn 없이 폴링만 이어감 (Branch 2). **stdin fix 후 cold boot 는 보통 13-30 초** — 5-10분 케이스는 transient (hub orphan / pycache 손상) 의심
 - `ProcessModule.start()` 반환 dict 의 `startup_log` + `log_tail` 필드가 실패 원인 파악용
 - `start()` 는 매 기동 시 `_sweep_old_logs()` 로 7 일 이전 `kit_*.log` 자동 삭제
 
@@ -36,11 +36,11 @@ Timeout 응답 (`startup_timeout` 도달 시):
 - `process_alive=true` → `{status: "still_loading", log_tail: [...], pid}` — caller 재호출로 Branch 2 폴링 이어감
 - `process_alive=false` → `{status: "crashed", log_tail: [...]}` — 즉시 진단 (commonly: ext 누락 / MDL deadlock / GPU driver)
 
-Orphan kit.exe 강제 회수가 필요하면 `isaac_sim_stop` + `isaac_sim_start` 명시적 호출 (옛 "auto force-kill" 의 안전한 대체). Log tail 해석 절차: `../../../docs/runbooks/cold-boot-timeout.md`.
+Orphan kit.exe 강제 회수가 필요하면 `kit_app_stop` + `kit_app_start` 명시적 호출 (옛 "auto force-kill" 의 안전한 대체). Log tail 해석 절차: `../../../docs/runbooks/cold-boot-timeout.md`.
 
 ## ProcessModule hang recovery (GUI X-close 후 재기동 실패)
 
-**증상**: `isaac_sim_start` 응답이 `still_loading` 으로 반복 (process_alive=true 인데 health 영원히 무응답) — orphan 또는 진짜 hang.
+**증상**: `kit_app_start` 응답이 `still_loading` 으로 반복 (process_alive=true 인데 health 영원히 무응답) — orphan 또는 진짜 hang.
 
 **원인 (4 중, 발견 빈도 순)**:
 1. **stdin pipe inheritance** (2026-04-24 확정, 가장 흔하고 위험): MCP server (`omniverse-kit-mcp`) 가 Claude Code 의 stdio 자식 → `subprocess.Popen(...)` 에 `stdin` 명시 안 하면 자식 kit.exe 가 MCP protocol pipe 을 stdin 으로 상속 → cold boot 중 stdin read 시도 시 block → 전체 boot 정지. 증상: alive + CPU ~0 + WS ~60MB + internal log mtime ~85ms 시점 정체. **`subprocess.Popen(stdin=subprocess.DEVNULL, ...)` 명시 필수** (현재 ProcessModule 적용 완료). bash 에서 standalone script 로 실행하면 stdin=TTY 라 안전 — 이 차이가 false negative 의 흔한 원인 ("standalone 으로는 되는데 MCP 로는 hang" → stdin DEVNULL 누락 의심)
@@ -49,7 +49,7 @@ Orphan kit.exe 강제 회수가 필요하면 `isaac_sim_stop` + `isaac_sim_start
 4. **Hub orphan**: `omni.client` 가 `hub.exe` 를 `--mode=shared` 로 spawn → kit process tree 와 분리된 daemon → kit 종료해도 port 14090 orphan 잔존. 시간 경과 시 accept loop broken 되어 `netstat` 은 LISTENING 이지만 새 connection 은 `10061 refused` → 다음 kit 의 OmniHub init 실패, startup_log 에 `"Hub failed to launch: child exited with exit code: 1"` 반복. `ProcessModule._cleanup_orphan_hub()` 가 `stop/start` 양쪽에서 `taskkill /F /IM hub.exe /T` + `%TEMP%/hub-*.{lock,config.json}` 제거 자동 수행. 수동 회복: `../../../docs/runbooks/hub-orphan.md`
 
 **복구 절차**:
-1. `isaac_sim_start` 응답의 `log_tail` 확인 → MDL deadlock 시그니처 또는 ext 로드 실패 확인
+1. `kit_app_start` 응답의 `log_tail` 확인 → MDL deadlock 시그니처 또는 ext 로드 실패 확인
 2. 진짜 hang 으로 판정되면 강제 종료: `cmd //c "taskkill /F /IM kit.exe /T"` (실측: 유일하게 성공. PowerShell `Stop-Process` / `taskkill /F /PID <pid>` 은 "Access is denied"). 편의 스크립트: `../../../scripts/kill_kit_zombie.sh`
 3. Minimal ext 직접 런치 (cold boot 우회로 빠른 health 확인):
    ```bash
@@ -58,11 +58,11 @@ Orphan kit.exe 강제 회수가 필요하면 `isaac_sim_stop` + `isaac_sim_start
      --enable omni.mycompany.validation_api \
      > "$LOG" 2>&1 &
    ```
-   이후 MCP `isaac_sim_start` 가 alive 감지 + health 폴링하여 ready 응답
-4. Character / Navigation / UI automation 필요 시: minimal endpoint 확인 후 `isaac_sim_restart` 로 `.env` full ext-list 재기동
+   이후 MCP `kit_app_start` 가 alive 감지 + health 폴링하여 ready 응답
+4. Character / Navigation / UI automation 필요 시: minimal endpoint 확인 후 `kit_app_restart` 로 `.env` full ext-list 재기동
 
 **Hang 확정 지표** (정확한 도구):
-- **`isaac_sim_start` 응답** — `process_alive=true` 인데 반복 호출해도 ready 안 됨 + log_tail mtime 수 분째 정체
+- **`kit_app_start` 응답** — `process_alive=true` 인데 반복 호출해도 ready 안 됨 + log_tail mtime 수 분째 정체
 - **PowerShell `Get-Process -Name kit -ErrorAction SilentlyContinue`** — row 없음 = 죽음, row 있으면 alive (CPU 고정 + WorkingSet 정체면 hang 의심)
 - **MCP `simulation_get_status`** — 응답 (duration_ms < 1000) = alive, connection refused = 죽음
 - **`curl http://localhost:8011/validation/v1/health`** — 200 응답 = alive

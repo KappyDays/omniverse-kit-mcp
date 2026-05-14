@@ -29,7 +29,7 @@
 - **프로세스 종료**: `taskkill /f /im kit.exe` 는 Git Bash 에서 옵션 파싱 실패 → `cmd //c "taskkill /F /IM kit.exe /T"` 또는 `powershell.exe -NoProfile -Command "Stop-Process -Name kit -Force"` 사용
 - **kit.exe 런타임 플래그**: `--ext-folder PATH` + `--enable EXT_ID` — 둘 다 있어야 Extension Manager 토글 없이 자동 활성
 - **Health endpoint**: `GET http://localhost:8011/validation/v1/health` 200 응답이 ProcessModule readiness 기준
-- **Code reload**: Extension 코드 수정 → `__pycache__` 삭제 → `isaac_sim_restart`. Manager 토글로는 반영 안 됨
+- **Code reload**: Extension 코드 수정 → `__pycache__` 삭제 → `kit_app_restart`. Manager 토글로는 반영 안 됨
 
 ## Stage / USD 로드 프로토콜 (변경 금지)
 > `../../../docs/invariants/usd-load.md` 가 4 줄 요약. 이 섹션이 근본 원인 + 해결 3 요소 + 재발 진단의 상세.

@@ -19,7 +19,7 @@
 
 ## 추가 규칙
 
-- **MCP import cache 우회**: `src/omniverse_kit_mcp/` 코드를 수정하면 Claude Code 재시작 전까지 MCP tool 호출로는 반영되지 않는다. `run_scenario_standalone.py` / `run_process_module_standalone.py` 는 매 실행마다 fresh Python process 로 import 하므로 최신 코드가 즉시 반영됨. Extension 코드 변경 (`kkr-extensions/`) 은 `isaac_sim_restart` 로 즉시 반영.
+- **MCP import cache 우회**: `src/omniverse_kit_mcp/` 코드를 수정하면 Claude Code 재시작 전까지 MCP tool 호출로는 반영되지 않는다. `run_scenario_standalone.py` / `run_process_module_standalone.py` 는 매 실행마다 fresh Python process 로 import 하므로 최신 코드가 즉시 반영됨. Extension 코드 변경 (`kkr-extensions/`) 은 `kit_app_restart` 로 즉시 반영.
 - **Live 스크립트 산출물**: `docs/artifacts/phase-{id}/` (예: `docs/artifacts/phase-e/`) 에 저장. 각 스크립트의 `PHASE_*_DIR` 상수가 이 경로로 설정됨. `%TEMP%/validation_api_captures/` 에 저장된 원본 캡처를 의미 있는 이름으로 복사.
 - **verify_mcp_sync.py 는 0 exit 필수**: 새 tool 을 커밋하기 전에 이 스크립트가 0 으로 끝나야 한다. Non-zero 면 regen 또는 frozenset 업데이트 누락.
 

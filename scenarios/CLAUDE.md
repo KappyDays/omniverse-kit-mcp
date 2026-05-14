@@ -84,7 +84,7 @@ AnimGraph / NavMesh / shutdown hang 상세는 `../src/omniverse_kit_mcp/modules/
 1. **navigate_to 전후**: R2 (playing 필수). 순서: `play → navigate → job.status → pause`
 2. **Viewport capture**: `Biped_Setup.usd` 는 lighting/camera 없음 → arrange 에 `DomeLight` + `viewport_set_active_camera("/OmniverseKit_Persp")`. 연속 호출 재캐시 회피는 사이 `simulation_play` 로 frame advance
 3. **캐릭터 선택**: `asset_list(category="people")` 로 탐색. DH UUID 이름은 `character_load` 의 `_sanitize_prim_name` 자동 적용 → 후속 step 은 response `sanitized_prim_path` 기준
-4. **Cleanup**: `simulation_play → simulation_stop` (최종 physics tick) 을 `isaac_sim_stop` 이전에 실행 — shutdown hang 방지
+4. **Cleanup**: `simulation_play → simulation_stop` (최종 physics tick) 을 `kit_app_stop` 이전에 실행 — shutdown hang 방지
 
 ## Context-aware action: `stage.diff_snapshots`
 

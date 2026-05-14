@@ -1,13 +1,14 @@
-"""Isaac Sim process control — start / stop / restart via OS commands.
+"""Kit application process control — start / stop / restart via OS commands.
 
-Launching Isaac Sim is the single most fundamental capability of this MCP server:
-everything else (stage / viewport / character / robot / sensor tools) is a no-op
-until kit.exe is up and ``/validation/v1/health`` responds. The start path has
-to be bullet-proof on a cold boot (no residual env, no warm shader cache).
+Launching the Kit app (Isaac Sim, USD Composer, or any registered KitAppProfile)
+is the single most fundamental capability of this MCP server: everything else
+(stage / viewport / character / robot / sensor tools) is a no-op until kit.exe
+is up and ``/validation/v1/health`` responds. The start path has to be
+bullet-proof on a cold boot (no residual env, no warm shader cache).
 
-**Why we mirror isaac-sim.bat instead of exec'ing kit.exe directly.**
-NVIDIA ships ``isaac-sim.bat`` as the canonical launcher. That script does two
-things before calling kit.exe:
+**Isaac-only ROS env mirroring (``ros_env_required=True`` profiles).**
+NVIDIA ships ``isaac-sim.bat`` as the canonical Isaac launcher. That script
+does two things before calling kit.exe:
 
     1. ``setlocal`` so env changes do not leak into the calling shell.
     2. ``call setup_ros_env.bat`` which, when ``ROS_DISTRO`` is unset:
@@ -22,8 +23,9 @@ loop stalls. Externally the process looks alive (kit.exe stays resident around
 times out. See ``modules/CLAUDE.md`` (``ProcessModule hang recovery``).
 
 ``_prepare_launch_env()`` re-creates the minimum env that makes kit.exe behave
-the same way the .bat does, so ``isaac_sim_start`` is reliable from a cold boot
-without depending on the operator having sourced ROS beforehand.
+the same way the .bat does, so ``kit_app_start`` is reliable from a cold boot
+without depending on the operator having sourced ROS beforehand. USD Composer
+and other ``ros_env_required=False`` profiles skip ROS env injection entirely.
 """
 
 from __future__ import annotations
@@ -54,7 +56,7 @@ _DEFAULT_RMW_IMPLEMENTATION = "rmw_fastrtps_cpp"
 
 
 class ProcessModule:
-    """Manages the Isaac Sim kit.exe process lifecycle."""
+    """Manages the Kit application kit.exe process lifecycle for the configured app profile."""
 
     def __init__(self, config: IsaacSimProcessConfig) -> None:
         self._config = config
@@ -63,7 +65,7 @@ class ProcessModule:
         self._stdout_handle = None
 
     async def start(self) -> dict[str, Any]:
-        """Launch Isaac Sim (or attach to an in-progress one) and wait for health.
+        """Launch the Kit application (or attach to an in-progress one) and wait for health.
 
         Decision tree (2026-04-23 redesign):
           1. kit.exe alive AND health responding → ``ready`` (idempotent).
@@ -75,7 +77,7 @@ class ProcessModule:
         distinguish "still loading slowly" (call again to keep polling) from
         "crashed" (read ``log_tail`` for cause). This avoids the prior failure
         mode where 240s timed out mid-cold-boot, kit.exe kept loading on its
-        own, and the next ``isaac_sim_start`` call returned ``already_running``
+        own, and the next ``kit_app_start`` call returned ``already_running``
         without verifying health (orphan masquerading as ready).
         """
         cfg = self._config
@@ -101,10 +103,10 @@ class ProcessModule:
             # Branch 2: kit.exe alive but health not up. Could be cold boot
             # in progress, or an orphan from a previous failed startup. We
             # do NOT respawn — that would kill a slowly-starting kit.exe.
-            # Caller can isaac_sim_stop + isaac_sim_start to force respawn.
+            # Caller can kit_app_stop + kit_app_start to force respawn.
             logger.info(
                 "kit.exe alive but health not responding — polling without respawn "
-                "(call isaac_sim_stop + isaac_sim_start to force respawn)."
+                "(call kit_app_stop + kit_app_start to force respawn)."
             )
         else:
             # Branch 3: spawn fresh.
@@ -130,7 +132,7 @@ class ProcessModule:
             self._stdout_log_path = _STARTUP_LOG_DIR / f"kit_{int(time.time())}.log"
             self._stdout_handle = self._stdout_log_path.open("w", encoding="utf-8")
 
-            logger.info("Starting Isaac Sim: %s", " ".join(cmd))
+            logger.info("Starting %s: %s", cfg.app_profile.name, " ".join(cmd))
             logger.info("kit.exe stdout/stderr → %s", self._stdout_log_path)
             logger.info(
                 "ROS env: ROS_DISTRO=%s RMW_IMPLEMENTATION=%s",
@@ -288,7 +290,7 @@ class ProcessModule:
         other MCP servers (multi-instance / multi-app), and user GUI
         launches alike. The response classifies each entry against THIS
         MCP server's config (``ext_port`` match) so the caller can tell
-        which kit the current ``isaac_sim_*`` tools control vs. which
+        which kit the current ``kit_app_*`` tools control vs. which
         live outside this server's reach.
 
         Use BEFORE destructive operations (Kit user.config.json edit,
@@ -383,7 +385,7 @@ class ProcessModule:
         }
 
     async def restart(self) -> dict[str, Any]:
-        """Stop Isaac Sim, clear caches, restart with fresh code."""
+        """Stop the Kit application, clear caches, restart with fresh code."""
         # Stop
         stop_result = await self.stop()
         if not stop_result["ok"] and stop_result["status"] != "not_running":

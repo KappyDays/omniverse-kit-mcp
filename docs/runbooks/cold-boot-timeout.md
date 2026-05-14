@@ -1,8 +1,8 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: isaac_sim_start timeout 응답 (still_loading / crashed) 분기 해석 -->
+<!-- Scope: kit_app_start timeout 응답 (still_loading / crashed) 분기 해석 -->
 # Cold boot timeout 응답 해석
 
-`isaac_sim_start` 가 `startup_timeout` 만료 후 timeout 응답을 줄 때, 다음 액션을
+`kit_app_start` 가 `startup_timeout` 만료 후 timeout 응답을 줄 때, 다음 액션을
 결정하는 분기 가이드.
 
 ## 응답 분기
@@ -17,7 +17,7 @@
 cold boot 가 GPU 셰이더 캐시 재빌드 등으로 5-10 분 걸릴 수 있음. timeout 후 status
 가 still_loading 이면:
 1. `log_tail` 마지막 line 확인 — ext registration 진행 중이면 정상
-2. `isaac_sim_start` 재호출 — Branch 2 (alive but health 무응답) 로 진입하여 spawn
+2. `kit_app_start` 재호출 — Branch 2 (alive but health 무응답) 로 진입하여 spawn
    없이 폴링만 이어감
 3. 여러 번 재호출해도 계속 still_loading 이면 hang 의심:
    - **stdin pipe deadlock 의심** → `docs/runbooks/kit-stdin-deadlock.md`

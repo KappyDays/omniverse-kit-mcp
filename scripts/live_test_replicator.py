@@ -4,7 +4,7 @@ Usage:
     .venv/Scripts/python.exe scripts/live_test_replicator.py
 
 Prerequisites:
-  - Isaac Sim running with validation extension (isaac_sim_start)
+  - Isaac Sim running with validation extension (kit_app_start)
   - `omni.replicator.core` enabled via ISAAC_SIM_EXTRA_EXT_IDS
   - Writable ``_temp_sdg/replicator_live`` under the project root
 

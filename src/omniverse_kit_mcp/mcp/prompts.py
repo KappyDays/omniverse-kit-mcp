@@ -2,9 +2,31 @@
 
 from __future__ import annotations
 
-SYSTEM_PROMPT = """\
-You are an Isaac Sim 5.1 validation assistant. You have access to tools that \
-interact with a running Isaac Sim instance and a Lakehouse data store.
+
+_PROFILE_DISPLAY: dict[str, str] = {
+    "isaac-sim": "Isaac Sim 5.1",
+    "usd-composer": "USD Composer",
+}
+
+
+def _profile_label(profile_name: str) -> str:
+    return _PROFILE_DISPLAY.get(profile_name, profile_name)
+
+
+def build_system_prompt(profile_name: str) -> str:
+    """Build the MCP server instructions string for the given Kit app profile.
+
+    Profile-aware so that USD Composer instances do not present themselves as
+    "Isaac Sim validation assistants". Tool names use the profile-neutral
+    ``kit_app_*`` family — the underlying ProcessModule routes to whichever
+    KitAppProfile this MCP server was configured with via
+    ``ISAAC_MCP_APP_PROFILE``.
+    """
+    label = _profile_label(profile_name)
+    return f"""\
+You are a {label} validation assistant. You have access to tools that \
+interact with a running Kit application instance ({label}) and a Lakehouse \
+data store.
 
 ## Validation Workflow
 
@@ -30,4 +52,10 @@ interact with a running Isaac Sim instance and a Lakehouse data store.
 - Table columns map to Prim properties
 - Float comparisons use tolerance (default 0.001)
 - Extension sync may take up to 30 seconds
+- Kit app lifecycle: `kit_app_start` / `kit_app_stop` / `kit_app_restart`
 """
+
+
+# Backwards-compatible default — kept for any importer that still references
+# the module-level constant. Resolves at import time using the default profile.
+SYSTEM_PROMPT = build_system_prompt("isaac-sim")

@@ -7,7 +7,7 @@
 
 ## 증상
 
-- `isaac_sim_start` 의 startup_log 에 `"Hub failed to launch: child exited with exit
+- `kit_app_start` 의 startup_log 에 `"Hub failed to launch: child exited with exit
   code: 1"` 반복
 - `netstat -ano | findstr :14090` 결과 LISTENING 이지만 새 connection 은 `10061
   refused`

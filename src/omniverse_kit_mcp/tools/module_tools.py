@@ -163,24 +163,24 @@ def register_module_tools(
     """Register all module-level MCP tools."""
 
     # ------------------------------------------------------------------
-    # Process control — Isaac Sim lifecycle
+    # Process control — Kit application lifecycle (Isaac Sim / USD Composer)
     # ------------------------------------------------------------------
 
     @mcp.tool()
-    async def isaac_sim_start() -> str:
-        """Start Isaac Sim (validation extension enabled); waits for health endpoint. Required before stage/sim/viewport ops."""
+    async def kit_app_start() -> str:
+        """Start the Kit application for this MCP instance (Isaac Sim or USD Composer per ISAAC_MCP_APP_PROFILE); waits for the validation REST health endpoint. Required before stage/sim/viewport ops."""
         result = await process.start()
         return json.dumps(result, indent=2)
 
     @mcp.tool()
-    async def isaac_sim_stop() -> str:
-        """Stop Isaac Sim process."""
+    async def kit_app_stop() -> str:
+        """Stop the Kit application (kit.exe) of this MCP instance only — other instances and other app profiles are unaffected."""
         result = await process.stop()
         return json.dumps(result, indent=2)
 
     @mcp.tool()
-    async def isaac_sim_restart() -> str:
-        """Restart Isaac Sim (stop → clear __pycache__ → start); use after modifying Extension code."""
+    async def kit_app_restart() -> str:
+        """Restart the Kit application (stop → clear __pycache__ → start); use after modifying Extension code."""
         result = await process.restart()
         return json.dumps(result, indent=2)
 
@@ -432,7 +432,7 @@ def register_module_tools(
 
     @mcp.tool()
     async def simulation_play() -> str:
-        """Start simulation timeline (play button). Does NOT launch the Isaac Sim application — use isaac_sim_start for that."""
+        """Start simulation timeline (play button). Does NOT launch the Kit application — use kit_app_start for that."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.play(meta)
         return _serialize(result)
@@ -446,7 +446,7 @@ def register_module_tools(
 
     @mcp.tool()
     async def simulation_stop() -> str:
-        """Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Isaac Sim process — use isaac_sim_stop for that."""
+        """Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Kit application — use kit_app_stop for that."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.stop(meta)
         return _serialize(result)

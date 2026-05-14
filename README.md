@@ -35,7 +35,7 @@ Two operational paths:
 
 | Path | Purpose | Example tools |
 |---|---|---|
-| **Subprocess lifecycle** | Start/stop/restart kit.exe — works without Isaac Sim running | `isaac_sim_start`, `isaac_sim_stop`, `isaac_sim_restart` |
+| **Subprocess lifecycle** | Start/stop/restart kit.exe — works without Isaac Sim running | `kit_app_start`, `kit_app_stop`, `kit_app_restart` |
 | **REST → Extension → Kit SDK** | Scene manipulation while Isaac Sim is running | `stage_load_usd`, `robot_navigate_path`, `replicator_trigger_once`, … |
 
 Scenario tools (`scenario_validate`, `scenario_plan`, …) are orchestrators — they compile an YAML Arrange/Act/Assert/Cleanup document into typed module calls.
@@ -79,7 +79,7 @@ omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Defau
    # Optional: cold-boot + shader compile budget (default 240s → 600s recommended)
    ISAAC_SIM_STARTUP_TIMEOUT=600.0
    ```
-4. **Kit Extension activation is automatic** — on `isaac_sim_start` the MCP server spawns Kit with `--ext-folder <repo>/kkr-extensions --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.
+4. **Kit Extension activation is automatic** — on `kit_app_start` the MCP server spawns Kit with `--ext-folder <repo>/kkr-extensions --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.
 
 Sanity check after first startup: `curl http://localhost:8011/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
 
@@ -101,7 +101,7 @@ The MCP server always ships the built-in `omni.mycompany.validation_api` Extensi
    ```dotenv
    ISAAC_SIM_EXTRA_EXT_IDS=["omni.anim.graph.bundle","omni.replicator.core","your.company.awesome"]
    ```
-3. `isaac_sim_restart` → Kit now enables your extension alongside `validation_api`.
+3. `kit_app_restart` → Kit now enables your extension alongside `validation_api`.
 
 **Option B — Use a different extension folder**
 
@@ -116,7 +116,7 @@ ISAAC_SIM_EXTRA_EXT_IDS=["your.company.awesome"]
 
 **Verifying your extension loaded**
 
-After `isaac_sim_start`, use the MCP tools:
+After `kit_app_start`, use the MCP tools:
 
 ```python
 # Option 1 — list every extension Kit knows (MCP tool, Phase H)

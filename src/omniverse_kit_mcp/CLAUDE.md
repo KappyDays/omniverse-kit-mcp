@@ -63,7 +63,7 @@ Claude Code 는 세션 시작 시 stdio 로 `omniverse-kit-mcp` 서버를 1회 s
 - `scripts/run_scenario_standalone.py <scenario_path>` — compiler/runner/modules 을 최신 코드로 실행. 상대경로는 `config.scenario.scenarios_dir` → 프로젝트 루트 순으로 해소
 - `scripts/run_process_module_standalone.py <start|stop|restart>` — ProcessModule 만 별도 실행
 
-Extension 코드 (`kkr-extensions/`) 는 MCP 서버와 별개 프로세스이므로 `isaac_sim_restart` / `__pycache__` 삭제로 즉시 반영.
+Extension 코드 (`kkr-extensions/`) 는 MCP 서버와 별개 프로세스이므로 `kit_app_restart` / `__pycache__` 삭제로 즉시 반영.
 
 ## 관련 경계
 
