@@ -6,7 +6,7 @@
 
 ## 세션 진입
 
-- **이 파일만** 매 턴 자동 로드 (CC 동작) — cap / 작성 룰: §메타
+- **이 파일만** 매 턴 자동 로드 (CC 동작). Codex CLI 는 `AGENTS.md` 가 진입점 — nested auto-load 없음 — cap / 작성 룰: §메타
 
 ## ⚠️ 작업 전 필수 pull-doc
 
@@ -55,7 +55,7 @@
 
 - **LakehouseModule** query only (인터뷰 스펙 확정) — 본문 `src/omniverse_kit_mcp/modules/CLAUDE.md` LakehouseModule
 - **Type boundary**: 내부 `@dataclass(slots=True, frozen=True)`, Pydantic 은 Extension REST 경계만. MCP 서버 코드 Pydantic 금지 — 본문 `src/omniverse_kit_mcp/CLAUDE.md` "Type Boundary Convention"
-- **MCP server import cache**: 세션 시작 1 회 spawn + import 캐시. `src/omniverse_kit_mcp/` 수정은 Claude Code 재시작 전까지 미반영. 세션 내 검증은 `scripts/run_process_module_standalone.py` / `scripts/run_scenario_standalone.py`
+- **MCP server import cache**: 세션 시작 1 회 spawn + import 캐시. `src/omniverse_kit_mcp/` 수정은 MCP host (Claude Code / Codex CLI) 재시작 전까지 미반영. 세션 내 검증은 `scripts/run_process_module_standalone.py` / `scripts/run_scenario_standalone.py`
 - **Test SoT**: `tests/unit/test_tools_registration.py` 의 EXPECTED frozenset
 - **uv 만 사용** (`pip install` 금지); 패키지 추가는 `uv add` / `uv add --dev` — 신규 PC 절차 `setup/CLAUDE.md`
 
@@ -72,7 +72,7 @@
 
 ## Subagent 디스패치 패턴
 
-Subagent 는 sub-CLAUDE.md 자동 로드 안 함. 디스패치 프롬프트에 `Read docs/invariants/<관련>.md first` 명시 또는 필수 맥락 직접 포함.
+Subagent / multi-agent context 는 sub-CLAUDE.md 자동 로드 안 함. 디스패치 프롬프트에 `Read docs/invariants/<관련>.md first` 명시 또는 필수 맥락 직접 포함.
 
 ## 문서 맵
 

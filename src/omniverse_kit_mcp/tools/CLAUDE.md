@@ -26,7 +26,7 @@ async def stage_load_usd(usd_url: str, prim_path: str, ...) -> str:
 - `@mcp.tool()` 데코레이터 — 함수명이 tool 이름
 - `make_meta(ModuleName.X)` 로 `OperationMeta` 생성. module 메서드에 첫 인자로 전달
 - 결과는 `_serialize(result)` 로 JSON 문자열 변환 후 return
-- Docstring = Claude Code UI에 표시되는 tool 설명
+- Docstring = MCP client UI (Claude Code, Codex CLI 등) 에 표시되는 tool 설명
 
 ## Boundary Validation
 
