@@ -26,6 +26,7 @@
 - **현재 SoT**: in-repo `workspaces/<profile>/instance-<N>/.mcp.json` 4 개 (committed, `uv --directory ../../..` 상대경로 — repo clone 위치 무관)
 - **NOT** `~/.claude.json` 의 global `mcpServers` — 옛 등록 방식. 본 setup 의 Step 4 가 cleanup
 - CC 진입은 `cd workspaces/<profile>/instance-<N>` 후 `claude` — 그 폴더에서만 해당 instance 의 MCP 1 개 로드 (tool prefix `mcp__isaacsim-mcp-1__*` 등, ~150 tool)
+- Codex 진입은 같은 폴더에서 `.\launch-codex.bat` — `CODEX_HOME=%~dp0.codex` 가 workspace-local `.codex/config.toml` 을 codex 에 로딩 (server name 동일, env 동일)
 
 ## Idempotent 설계
 

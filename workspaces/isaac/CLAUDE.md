@@ -1,9 +1,9 @@
 <!-- Parent: ../../CLAUDE.md (server repo root) -->
-<!-- Scope: Isaac Sim profile workspace — 사용자가 cd 해서 CC 시작하는 곳 -->
+<!-- Scope: Isaac Sim profile workspace — 사용자가 cd 해서 CC 또는 codex (`.\launch-codex.bat`) 시작하는 곳 -->
 # Isaac Sim Workspace
 
 Isaac Sim 5.1 으로 USD scene / 시나리오 / robot demo 작업하는 워크스페이스.
-instance-1 (port 8011) / instance-2 (port 8012) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 시작.
+instance-1 (port 8011) / instance-2 (port 8012) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 또는 codex (`.\launch-codex.bat`) 시작.
 
 ## ⚠️ 작업 전 필수 pull-doc
 

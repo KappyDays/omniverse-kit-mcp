@@ -30,7 +30,8 @@ claude
 - `{profile}/CLAUDE.md` — profile 별 작업 룰 + pull-doc 표 (server `docs/` 상대경로 참조)
 - `{profile}/scenarios/` — work-only YAML. R1 충족 시 commit 가능
 - `{profile}/scratch/` — gitignored. 임시 USD / 스크린샷
-- `{profile}/instance-{N}/.mcp.json` — committed. `uv --directory ../../..` 상대경로. CC 진입점
+- `{profile}/instance-{N}/.mcp.json` — committed. `uv --directory ../../..` 상대경로. CC (Claude Code) 진입점
+- `{profile}/instance-{N}/.codex/config.toml` + `launch-codex.bat` — committed. Codex CLI 진입점 (workspace 별 1 MCP entry)
 
 ## 확장
 
