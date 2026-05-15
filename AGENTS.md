@@ -50,7 +50,7 @@ sessions. Apply these guards to avoid resource conflicts:
 - **`.env` editing**: Both hosts read the same `.env`. Do not edit it from
   both sides concurrently — coordinate edits in one session.
 - **`kit.exe` ownership**: Each host owns only its own `kit.exe` instance.
-  Do not call `kit_app_start` for the same instance from both hosts.
+  Do not call `kit_app_start` for the same instance from both hosts (double-launch causes port conflict on 801N and hub-orphan symptoms — see `docs/runbooks/hub-orphan.md`).
 - **Git branch separation**: For parallel work, branch off so each session
   commits on its own branch.
 
@@ -78,7 +78,7 @@ The launcher sets `CODEX_HOME=%~dp0.codex` so codex reads the workspace-local
 
 ## Codex environment requirements
 
-Each workspace's `.codex/config.toml` ships with the following block:
+Each workspace's `.codex/config.toml` ships with the following block (informative — already deployed by Task 2; do not recreate):
 
 ```toml
 approval_policy = "on-request"
