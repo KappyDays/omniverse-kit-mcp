@@ -134,7 +134,7 @@ Loading is one step; surfacing your extension's functionality as natural-languag
 
 ### Wiring into Claude Code — workspace folders
 
-Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder = 1 CC session = 1 MCP entry loaded** (~150 tool names per session vs. ~1050 if all entries were global). Open Claude Code from inside a workspace folder:
+Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder = 1 MCP host session (Claude Code or codex) = 1 MCP entry loaded** (~150 tool names per session vs. ~1050 if all entries were global). Open Claude Code from inside a workspace folder:
 
 ```powershell
 cd workspaces/isaac/instance-1     # Isaac Sim instance 1, port 8011
@@ -149,9 +149,59 @@ claude
 | Isaac × 2 | 2 | `workspaces/isaac/instance-{1,2}` |
 | USD Composer × 2 | 2 | `workspaces/usd-composer/instance-{1,2}` |
 
-For server-code development (modifying the MCP server itself), open Claude Code at the repo root — no MCP loads there by design, keeping the dev session focused on code. Validate runtime behavior via `scripts/run_*_standalone.py` or by entering a workspace folder.
+For server-code development (modifying the MCP server itself), open Claude Code (or codex) at the repo root — no MCP loads there by design, keeping the dev session focused on code. Validate runtime behavior via `scripts/run_*_standalone.py` or by entering a workspace folder.
 
 For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows specifics), see **`setup/`**. Workspace layout / promote-path details: [`docs/superpowers/specs/2026-05-04-workspace-split-design.md`](docs/superpowers/specs/2026-05-04-workspace-split-design.md).
+
+### Wiring into Codex CLI — workspace folders
+
+Each workspace folder under `workspaces/` ships a `.codex/` directory with a single
+MCP server entry plus sandbox/approval/network_access settings, paired with a
+`launch-codex.bat` that points `CODEX_HOME` at that local `.codex/`.
+
+**First-time setup** (one per machine):
+
+```cmd
+:: 1. Install codex CLI (npm-based)
+npm install -g @openai/codex
+
+:: 2. Authenticate (ChatGPT account or API key — codex prompts for the method)
+codex login
+
+:: 3. Verify installation
+codex --version    :: should print 0.130.0 or later
+```
+
+**Per session** (Windows PowerShell or cmd):
+
+```cmd
+:: Enter the workspace folder for the app you want to drive
+cd workspaces\isaac\instance-1
+
+:: Launch codex with that workspace's MCP server activated
+.\launch-codex.bat
+
+:: First prompt example
+> Start Isaac Sim, load the Simple_Warehouse environment, place a NovaCarter at the origin.
+```
+
+**Two apps concurrently** — open two terminals and `cd` into two different workspace folders:
+
+| Terminal | Workspace | App | Port |
+|---|---|---|---|
+| A | `workspaces/isaac/instance-1` | Isaac Sim 5.1 | 8011 |
+| B | `workspaces/usd-composer/instance-1` | USD Composer | 8014 |
+
+Each codex session owns one MCP server entry → one `kit.exe` process. The two
+sessions are fully isolated.
+
+**Verification after first launch**:
+
+```cmd
+.\launch-codex.bat mcp list
+```
+
+The command lists exactly the workspace's single entry (`isaacsim-mcp-1`, `isaacsim-mcp-2`, `usdcomposer-mcp-1`, or `usdcomposer-mcp-2` depending on the folder).
 
 ---
 
@@ -188,11 +238,11 @@ Exact list in [`docs/tool-catalog.md`](./docs/tool-catalog.md) (auto-generated).
 
 ## Typical Workflows
 
-### 1 — Ask Claude to build a scene from scratch
+### 1 — Ask the agent (Claude / codex) to build a scene from scratch
 
 > "Load the Simple_Warehouse environment, place a NovaCarter at the origin, drop five SimReady boxes, bake the NavMesh, then capture both the viewport and the Kit window."
 
-Claude combines `asset_list` → `stage_load_usd` → `robot_load` → `physics_apply_rigid_body` → `simulation_stop` → `navigation_bake` → `viewport_capture` + `window_capture` automatically.
+The agent combines `asset_list` → `stage_load_usd` → `robot_load` → `physics_apply_rigid_body` → `simulation_stop` → `navigation_bake` → `viewport_capture` + `window_capture` automatically.
 
 ### 2 — Run a reproducible scenario
 
@@ -201,7 +251,7 @@ Claude combines `asset_list` → `stage_load_usd` → `robot_load` → `physics_
 scenarios/integration/phase_h_combined.yaml
 ```
 
-From Claude Code: `scenario_validate("phase_h_combined.yaml")` — the runner compiles the YAML, drives Arrange → Act → Assert → Cleanup, and returns a per-step pass/fail report.
+From Claude Code or codex: `scenario_validate("phase_h_combined.yaml")` — the runner compiles the YAML, drives Arrange → Act → Assert → Cleanup, and returns a per-step pass/fail report.
 
 ### 3 — Generate synthetic data (SDG)
 
@@ -228,7 +278,7 @@ uv run pytest tests/
 .venv/Scripts/python.exe scripts/live_test_physics.py      # -> docs/artifacts/phase-f/
 ```
 
-Process-level control without restarting Claude Code (bypasses the MCP import cache):
+Process-level control without restarting the MCP host (bypasses the MCP import cache):
 
 ```bash
 .venv/Scripts/python.exe scripts/run_process_module_standalone.py {start|stop|restart}
