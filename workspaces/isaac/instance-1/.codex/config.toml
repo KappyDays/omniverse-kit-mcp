@@ -1,0 +1,13 @@
+# Codex CLI repo-local config — loaded via `launch-codex.bat` (CODEX_HOME=$PWD/.codex)
+# Mirrors sibling .mcp.json (Claude Code) — drift guarded by tests/unit/test_codex_entrypoint_sync.py
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true   # localhost:8011 Extension REST 호출 필수
+
+[mcp_servers.isaacsim-mcp-1]
+command = "cmd"
+args = ["/c", "uv", "--directory", "../../..", "run", "--no-sync", "omniverse-kit-mcp"]
+env = { ISAAC_MCP_APP_PROFILE = "isaac-sim", ISAAC_MCP_INSTANCE_ID = "1" }
