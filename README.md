@@ -169,7 +169,8 @@ npm install -g @openai/codex
 codex login
 
 :: 3. Verify installation
-codex --version    :: should print 0.130.0 or later
+codex --version
+:: should print 0.130.0 or later
 ```
 
 **Per session** (Windows PowerShell or cmd):
@@ -181,7 +182,7 @@ cd workspaces\isaac\instance-1
 :: Launch codex with that workspace's MCP server activated
 .\launch-codex.bat
 
-:: First prompt example
+:: First prompt example (> is codex's input prefix, not a shell redirect)
 > Start Isaac Sim, load the Simple_Warehouse environment, place a NovaCarter at the origin.
 ```
 
