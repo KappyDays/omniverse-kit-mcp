@@ -37,8 +37,13 @@ def test_workspace_codex_configs_mirror_mcp_json():
     같은 workspace 의 .mcp.json 의 entry 와 server name / args / env 1:1 일치."""
     assert WORKSPACES, "no workspaces/*/instance-* directories found"
     for ws in WORKSPACES:
-        mcp_json = json.loads((ws / ".mcp.json").read_text(encoding="utf-8"))
-        codex_toml = tomllib.loads((ws / ".codex/config.toml").read_text(encoding="utf-8"))
+        mcp_json_path = ws / ".mcp.json"
+        codex_toml_path = ws / ".codex/config.toml"
+        assert mcp_json_path.exists(), f"missing: {mcp_json_path}"
+        assert codex_toml_path.exists(), f"missing: {codex_toml_path}"
+
+        mcp_json = json.loads(mcp_json_path.read_text(encoding="utf-8"))
+        codex_toml = tomllib.loads(codex_toml_path.read_text(encoding="utf-8"))
 
         json_entries = mcp_json["mcpServers"]
         toml_entries = codex_toml["mcp_servers"]
@@ -56,9 +61,11 @@ def test_workspace_codex_configs_mirror_mcp_json():
 
 
 def test_launch_codex_bats_byte_identical():
-    """t4: 4 workspace 의 launch-codex.bat 가 byte-identical (drift 방지)."""
+    """t4: 모든 workspace 의 launch-codex.bat 가 byte-identical (drift 방지)."""
     bats = sorted(ws / "launch-codex.bat" for ws in WORKSPACES)
-    assert bats, "no launch-codex.bat files found"
+    assert bats, "no launch-codex.bat candidates (WORKSPACES empty)"
+    for b in bats:
+        assert b.exists(), f"missing: {b}"
     contents = [b.read_bytes() for b in bats]
     first = contents[0]
     mismatches = [str(bats[i]) for i, c in enumerate(contents) if c != first]
@@ -69,10 +76,10 @@ def test_no_claude_only_phrasing_in_shared_docs():
     """t5: Shared docs 에 Claude-only 동사 결합 표현 재도입 방지."""
     deny_patterns = [
         re.compile(r"Claude Code\s*재시작"),
-        re.compile(r"Claude Code\s*가\s*(stdio|spawn|stdin|폴링|job_status)"),
+        re.compile(r"Claude Code\s*[가는]\s*(stdio|spawn|stdin|폴링|job_status)"),
+        re.compile(r"Claude Code\s*의\s*(stdio|stdin)"),
         re.compile(r"Claude Code\s*UI에\s*표시"),
         re.compile(r"Claude Code\s*와의\s*양방향"),
-        re.compile(r"Claude Code\s*는\s*stdin"),
     ]
     targets = [
         REPO / "CLAUDE.md",
