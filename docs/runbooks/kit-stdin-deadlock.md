@@ -39,12 +39,12 @@
 
 `subprocess.Popen` 의 **stdin inheritance**:
 
-- MCP server (`omniverse-kit-mcp`) 는 Claude Code 가 stdio 로 spawn → MCP server 의
-  stdin = Claude Code 와의 양방향 MCP protocol pipe
+- MCP server (`omniverse-kit-mcp`) 는 MCP host (Claude Code / Codex CLI) 가 stdio 로 spawn → MCP server 의
+  stdin = MCP host (Claude Code / Codex CLI) 와의 양방향 MCP protocol pipe
 - ProcessModule 의 `subprocess.Popen(...)` 가 `stdin` 인자 명시 안 했었음 →
   자식 kit.exe 가 그 MCP pipe stdin 을 그대로 상속
 - kit.exe cold boot 중 어느 init component (carb plugin / GLFW / 일부 Python ext) 가
-  stdin 을 read 시도 → MCP pipe 에서 block (Claude Code 는 stdin 채워주지 않음)
+  stdin 을 read 시도 → MCP pipe 에서 block (MCP host (Claude Code / Codex CLI) 는 stdin 채워주지 않음)
 - 그 thread block → 다른 init thread 도 join 대기 → 전체 boot 정지
 - 정확한 thread 가 어느 component 인지는 미특정 (~85ms 시점 = ext registration 끝 /
   ext startup 진입 직전)

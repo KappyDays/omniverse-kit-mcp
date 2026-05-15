@@ -58,7 +58,7 @@ uv run omniverse-kit-mcp
 
 ## MCP server import cache (개발 시 필독)
 
-Claude Code 는 세션 시작 시 stdio 로 `omniverse-kit-mcp` 서버를 1회 spawn 하고 Python import 를 캐시한다. 이 패키지 (`src/omniverse_kit_mcp/`) 내부 수정은 **Claude Code 재시작 전까지 MCP tool 호출에 반영되지 않음**. 세션 중 검증 시 standalone 스크립트 사용:
+MCP host (Claude Code / Codex CLI) 는 세션 시작 시 stdio 로 `omniverse-kit-mcp` 서버를 1회 spawn 하고 Python import 를 캐시한다. 이 패키지 (`src/omniverse_kit_mcp/`) 내부 수정은 **host 재시작 전까지 MCP tool 호출에 반영되지 않음**. 세션 중 검증 시 standalone 스크립트 사용:
 
 - `scripts/run_scenario_standalone.py <scenario_path>` — compiler/runner/modules 을 최신 코드로 실행. 상대경로는 `config.scenario.scenarios_dir` → 프로젝트 루트 순으로 해소
 - `scripts/run_process_module_standalone.py <start|stop|restart>` — ProcessModule 만 별도 실행

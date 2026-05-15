@@ -19,7 +19,7 @@ ProcessModule 호출 전 이 파일 Read.
 ## ⚠️ stdin=subprocess.DEVNULL 필수 (변경 금지 — DO-NOT-EDIT)
 
 `src/omniverse_kit_mcp/modules/process_module.py::start` 의 `subprocess.Popen(...)` 가
-`stdin=subprocess.DEVNULL` 명시 안 하면 MCP server 자식 kit.exe 가 Claude Code 의
+`stdin=subprocess.DEVNULL` 명시 안 하면 MCP server 자식 kit.exe 가 MCP host (Claude Code / Codex CLI) 의
 MCP protocol stdin pipe 를 상속 → cold boot 중 stdin read 시 indefinite block →
 전체 boot 정지. **240s timeout, 13s ready 검증 (L17)**. "extra_ext_ids race" 진단은
 무효 — stdin pipe 가 실원인.
