@@ -56,6 +56,7 @@ def test_workspace_codex_configs_mirror_mcp_json():
 
         json_entry = json_entries[json_name]
         toml_entry = toml_entries[toml_name]
+        assert json_entry["command"] == toml_entry["command"], f"{ws}: command mismatch"
         assert json_entry["args"] == toml_entry["args"], f"{ws}: args mismatch"
         assert json_entry["env"] == toml_entry["env"], f"{ws}: env mismatch"
 

@@ -70,7 +70,7 @@
 | `ISAAC_SIM_EXTRA_EXT_IDS` | config.py bundle | <!-- ⛔ DO-NOT-EDIT: "extra_ext_ids race" 진단은 무효 (L17 참조 `docs/runbooks/kit-stdin-deadlock.md`) --> JSON array. stdin DEVNULL fix 후 8 개 13s 통과 |
 | `LAKEHOUSE_BASE_URL` | `http://localhost:9000` | Lakehouse REST |
 
-## Subagent 디스패치 패턴
+## Subagent / 멀티에이전트 디스패치 패턴
 
 Subagent / multi-agent context 는 sub-CLAUDE.md 자동 로드 안 함. 디스패치 프롬프트에 `Read docs/invariants/<관련>.md first` 명시 또는 필수 맥락 직접 포함.
 

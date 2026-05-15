@@ -4,16 +4,17 @@
 
 ## 사용 패턴
 
-각 instance 폴더 = 1 개 CC 세션 = 1 MCP entry 로드 (~150 tool 이름). 멀티 앱 시나리오는 CC 창 2 개 동시 운영.
+각 instance 폴더 = 1 MCP host 세션 (Claude Code 또는 codex) = 1 MCP entry 로드 (~150 tool 이름). 멀티 앱 시나리오는 호스트 창 2 개 동시 운영.
 
 ```
 cd workspaces/isaac/instance-1   # Isaac Sim instance 1 (port 8011)
-claude
+claude                            # Claude Code 진입
+.\launch-codex.bat                # Codex CLI 진입 (대안)
 ```
 
 ## 첫 사용
 
-`.mcp.json` 은 4 개 instance 폴더에 commit 되어 있다 (`uv --directory ../../..` 상대경로 — CC working dir = instance 폴더 → repo root). clone 직후 추가 setup 없이 바로 `cd` + `claude` 가능. uv / Isaac Sim / USD Composer 자체 설치만 별도 — `../setup/CLAUDE.md`.
+`.mcp.json` 은 4 개 instance 폴더에 commit 되어 있다 (`uv --directory ../../..` 상대경로 — host working dir = instance 폴더 → repo root). clone 직후 추가 setup 없이 바로 `cd` + `claude` (또는 `.\launch-codex.bat`) 가능. uv / Isaac Sim / USD Composer 자체 설치만 별도 — `../setup/CLAUDE.md`. Codex CLI 자체 설치 (`npm install -g @openai/codex`) 는 `../README.md` Wiring 섹션.
 
 ## 시나리오 → 폴더 매트릭스
 
@@ -31,7 +32,7 @@ claude
 - `{profile}/scenarios/` — work-only YAML. R1 충족 시 commit 가능
 - `{profile}/scratch/` — gitignored. 임시 USD / 스크린샷
 - `{profile}/instance-{N}/.mcp.json` — committed. `uv --directory ../../..` 상대경로. CC (Claude Code) 진입점
-- `{profile}/instance-{N}/.codex/config.toml` + `launch-codex.bat` — committed. Codex CLI 진입점 (workspace 별 1 MCP entry)
+- `{profile}/instance-{N}/.codex/config.toml` + `.\launch-codex.bat` — committed. Codex CLI 진입점 (workspace 별 1 MCP entry)
 
 ## 확장
 
