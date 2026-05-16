@@ -191,3 +191,41 @@ def test_a6_invariant_and_runbook_hardcaps():
                     f"{md.relative_to(PROJECT)}: {lines} > {cap} (env {env})"
                 )
     assert not problems, "Oversized pull-doc:\n  " + "\n  ".join(problems)
+
+
+# ---------------------------------------------------------------------------
+# A7: `claude -p` (one-shot) banned in design artifacts (spec §7.1)
+# ---------------------------------------------------------------------------
+
+def test_a7_claude_p_oneshot_banned():
+    """spec/plan/runbook 에 `claude -p` mention 은 'ban' 컨텍스트만 허용.
+
+    추천 / 사용 예시로 다시 살아나면 fail (spec §7.1).
+    """
+    files = [
+        PROJECT / "docs" / "superpowers" / "specs"
+            / "2026-05-13-discord-omniverse-mcp-multi-agent-design.md",
+        PROJECT / "docs" / "superpowers" / "plans"
+            / "2026-05-13-discord-omniverse-mcp-multi-agent-plan.md",
+        PROJECT / "docs" / "superpowers" / "extracts" / "hermes-runbook.md",
+    ]
+    ban_markers = ("do not use", "금지", "사용 금지", "ban ")
+    bad: list[str] = []
+    for path in files:
+        if not path.exists():
+            continue
+        for line_no, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            if "claude -p" not in line:
+                continue
+            lowered = line.lower()
+            if not any(m in lowered for m in ban_markers):
+                bad.append(
+                    f"{path.relative_to(PROJECT)}:{line_no} "
+                    f"{line.strip()[:120]}"
+                )
+    assert not bad, (
+        "`claude -p` mention outside ban context (spec §7.1):\n  "
+        + "\n  ".join(bad)
+    )
