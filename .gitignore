@@ -75,3 +75,9 @@ _temp_sdg/
 docs/artifacts/multi-instance-smoke/
 docs/artifacts/multi-app-smoke/
 
+# Codex CLI runtime data (workspace-local; config.toml only)
+# codex CLI 가 `.codex/` 안에 sessions/, logs_*.sqlite, installation_id, state_*.sqlite, skills/, tmp/ 등 runtime 자동 생성
+# config.toml 만 commit, 나머지는 ignore (sensitive session content / 로그 보호)
+workspaces/*/instance-*/.codex/*
+!workspaces/*/instance-*/.codex/config.toml
+
