@@ -7,18 +7,18 @@
 
 ## Port 할당 (contiguous per-profile window)
 
-| Profile | Instance 1 | Instance 2 | Instance 3 |
-|---------|-----------|-----------|-----------|
-| `isaac-sim` | 8011 | 8012 | 8013 |
-| `usd-composer` | 8014 | 8015 | 8016 |
+| Profile | Instance 1 | Instance 2 |
+|---------|-----------|-----------|
+| `isaac-sim` | 8011 | 8012 |
+| `usd-composer` | 8014 | 8015 |
 
 파생 공식: `port = profile.default_ext_port + (instance_id - 1)`.
 
 포트 충돌 방지 규칙:
 - 새 profile 추가 시 `default_ext_port` 를 기존 profile 의 range 와 3-port
   간격 두고 할당 (kaolin → 8017 등)
-- Instance 상한 3 은 `setup/setup_omniverse_kit_mcp.ps1` 의 `$InstanceCount` 에만
-  명시. Code-level 제한 없음 — GPU 여유에 따라 늘릴 수 있음
+- Instance 한도 2 — `src/omniverse_kit_mcp/config.py` 의 `instance_id` Field
+  에 `ge=1, le=2` 가드. 사용자 결정 (2026-05-23) 으로 영구 한도 (확장 절차 없음)
 
 ## Process Identification (name scope 금지)
 

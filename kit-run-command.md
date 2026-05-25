@@ -18,10 +18,10 @@ MCP `kit_app_start` 가 `subprocess.Popen` 으로 띄우는 실제 커맨드를 
 
 ## Port 매트릭스 (instance_id → ext_port)
 
-| Profile | Instance 1 | Instance 2 | Instance 3 |
-|---------|-----------|-----------|-----------|
-| `isaac-sim` | 8011 | 8012 | 8013 |
-| `usd-composer` | 8014 | 8015 | 8016 |
+| Profile | Instance 1 | Instance 2 |
+|---------|-----------|-----------|
+| `isaac-sim` | 8011 | 8012 |
+| `usd-composer` | 8014 | 8015 |
 
 Health URL: `http://localhost:<PORT>/validation/v1/health`
 
@@ -110,7 +110,7 @@ export PATH="$PATH:C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-wi
 
 ### 다른 instance
 
-`port=8011` 부분만 `8012` (instance 2) 또는 `8013` (instance 3) 으로 교체.
+`port=8011` 부분만 `8012` (instance 2) 로 교체.
 
 ---
 
@@ -162,7 +162,7 @@ unset RMW_IMPLEMENTATION
 
 ### 다른 instance
 
-`port=8014` 부분만 `8015` (instance 2) 또는 `8016` (instance 3) 으로 교체.
+`port=8014` 부분만 `8015` (instance 2) 로 교체.
 
 ---
 
