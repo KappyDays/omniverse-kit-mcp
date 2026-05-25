@@ -123,27 +123,6 @@ async def test_usd_composer_instance_1_cmd_has_port_8014(monkeypatch):
         f"Isaac anim.graph leaked into usd-composer cmd: {cmd}"
 
 
-@pytest.mark.asyncio
-async def test_usd_composer_instance_3_port_8016(monkeypatch):
-    module = _module_for("usd-composer", 3)
-    captured: list[list[str]] = []
-
-    def fake_popen(cmd, **kwargs):
-        captured.append(cmd)
-        fake = MagicMock()
-        fake.pid = int("22223")
-        return fake
-
-    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
-    monkeypatch.setattr(ProcessModule, "_is_process_alive", lambda self: _async_false())
-    monkeypatch.setattr(ProcessModule, "_check_health", lambda self: _async_true())
-    monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
-
-    await module.start()
-    cmd = captured[0]
-    assert any("port=8016" in arg for arg in cmd)
-
-
 # --- ROS env only for isaac profile ---------------------------------------
 
 @pytest.mark.asyncio

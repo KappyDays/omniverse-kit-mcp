@@ -44,10 +44,10 @@ def test_isaac_instance_2_port_8012(monkeypatch):
     assert cfg.isaac_sim.base_url == "http://localhost:8012"
 
 
-def test_isaac_instance_3_port_8013(monkeypatch):
+def test_isaac_instance_3_rejected(monkeypatch):
     monkeypatch.setenv("ISAAC_MCP_INSTANCE_ID", "3")
-    cfg = AppConfig()
-    assert cfg.isaac_sim_process.ext_port == 8013
+    with pytest.raises(Exception):
+        AppConfig()
 
 
 # --- USD Composer profile (isolated port range) --------------------------
@@ -68,11 +68,11 @@ def test_usd_composer_instance_2_port_8015(monkeypatch):
     assert cfg.isaac_sim_process.ext_port == 8015
 
 
-def test_usd_composer_instance_3_port_8016(monkeypatch):
+def test_usd_composer_instance_3_rejected(monkeypatch):
     monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
     monkeypatch.setenv("ISAAC_MCP_INSTANCE_ID", "3")
-    cfg = AppConfig()
-    assert cfg.isaac_sim_process.ext_port == 8016
+    with pytest.raises(Exception):
+        AppConfig()
 
 
 # --- Profile-specific kit binary paths -----------------------------------

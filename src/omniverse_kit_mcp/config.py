@@ -83,7 +83,7 @@ class IsaacSimProcessConfig(BaseSettings):
     # returns `{status: "crashed", log_tail: [...]}` for immediate triage.
     startup_timeout: float = 120.0
 
-    instance_id: int = Field(default=1, ge=1, alias="ISAAC_MCP_INSTANCE_ID")
+    instance_id: int = Field(default=1, ge=1, le=2, alias="ISAAC_MCP_INSTANCE_ID")
     app_profile_name: str = Field(default="isaac-sim", alias="ISAAC_MCP_APP_PROFILE")
     ext_base_port: int | None = Field(default=None, ge=1024, le=65535)
 

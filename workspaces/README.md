@@ -36,7 +36,7 @@ claude                            # Claude Code 진입
 
 ## 확장
 
-instance-3 / cross-app `mixed/` / 신규 profile 추가 절차: `../docs/superpowers/specs/2026-05-04-workspace-split-design.md` § 14.
+신규 profile 추가 절차: `../docs/superpowers/specs/2026-05-04-workspace-split-design.md` § 14.3.
 
 ## Promote work scenario → server regression
 
