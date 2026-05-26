@@ -1125,6 +1125,17 @@ class MockIsaacRestClient:
             "horizontal_aperture": 20.955,
         })
 
+    async def viewport_set_camera_lookat(self, request: dict) -> dict:
+        self.calls.append(("viewport_set_camera_lookat", request))
+        return self.responses.get("viewport_set_camera_lookat", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", "Viewport"),
+            "camera_path": request.get("camera_path") or "/OmniverseKit_Persp",
+            "eye": request.get("eye", [0.0, 0.0, 0.0]),
+            "target": request.get("target", [0.0, 0.0, 0.0]),
+            "up": request.get("up", [0.0, 0.0, 1.0]),
+        })
+
     # Viewport multi (Phase E) — create / destroy
 
     async def viewport_create(self, request: dict) -> dict:

@@ -59,6 +59,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "stage_get_selection",
     "stage_set_selection",
     "viewport_set_active_camera",
+    "viewport_set_camera_lookat",
     # Phase C — Character
     "character_load",
     "character_play_animation",

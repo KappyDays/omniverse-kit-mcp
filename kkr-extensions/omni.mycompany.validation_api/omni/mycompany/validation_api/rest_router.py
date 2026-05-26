@@ -94,6 +94,7 @@ from .models.viewport import (
     WindowCaptureRequestModel,
 )
 from .models.viewport_render import (
+    ViewportSetCameraLookatRequestModel,
     ViewportSetFovRequestModel,
     ViewportSetRenderModeRequestModel,
     ViewportSetRenderQualityRequestModel,
@@ -807,6 +808,17 @@ async def viewport_set_fov(body: ViewportSetFovRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("viewport/set_fov failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/viewport/set_camera_lookat")
+async def viewport_set_camera_lookat(body: ViewportSetCameraLookatRequestModel) -> Any:
+    try:
+        return await _viewport_render.set_camera_lookat(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("viewport/set_camera_lookat failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

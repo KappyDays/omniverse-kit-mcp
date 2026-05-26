@@ -34,3 +34,13 @@ class ViewportSetFovRequestModel(BaseModel):
 
     viewport_name: str = "Viewport"
     fov_deg: float = Field(ge=1.0, le=179.0)
+
+
+class ViewportSetCameraLookatRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    eye: list[float] = Field(min_length=3, max_length=3)
+    target: list[float] = Field(min_length=3, max_length=3)
+    up: list[float] = Field(default=[0.0, 0.0, 1.0], min_length=3, max_length=3)
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None

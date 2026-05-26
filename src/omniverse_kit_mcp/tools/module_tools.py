@@ -128,6 +128,7 @@ from omniverse_kit_mcp.types.viewport import (
     ViewportCaptureRequest,
     ViewportCreateRequest,
     ViewportDestroyRequest,
+    ViewportSetCameraLookatRequest,
     ViewportSetFovRequest,
     ViewportSetRenderModeRequest,
     ViewportSetRenderQualityRequest,
@@ -1654,6 +1655,26 @@ def register_module_tools(
             viewport_name=viewport_name, fov_deg=fov_deg,
         )
         result = await viewport.set_fov(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def viewport_set_camera_lookat(
+        eye: list[float],
+        target: list[float],
+        up: list[float] | None = None,
+        viewport_name: str = "Viewport",
+        camera_path: str | None = None,
+    ) -> str:
+        """Aim a camera at a target via eye/target/up (deadlock-safe USD xformOp author on the REST path; default up=+Z). Moves the active viewport camera (Perspective included) unless camera_path is given. Use for live framing iteration without rebuilding the scene."""
+        meta = make_meta(ModuleName.VIEWPORT)
+        request = ViewportSetCameraLookatRequest(
+            eye=tuple(eye),
+            target=tuple(target),
+            up=tuple(up) if up is not None else (0.0, 0.0, 1.0),
+            viewport_name=viewport_name,
+            camera_path=camera_path,
+        )
+        result = await viewport.set_camera_lookat(meta, request)
         return _serialize(result)
 
     # ------------------------------------------------------------------
