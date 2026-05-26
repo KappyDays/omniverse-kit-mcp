@@ -43,7 +43,7 @@ Breaking any → STOP and report.
 - `docs/invariants/ext-reload.md` — extension `.py` 수정 후 reload (P4 동작 검증 전제)
 - `docs/mcp-enhance.md` — 선분석된 gap backlog (E1~E15, S1~S2) — 재사용
 - `docs/tool-diagnostic-map.md` — 진단 역색인
-- (**live stage 건드리는 tool 구현 시 추가**) `docs/invariants/usd-load.md` + `kkr-extensions/docs/usd-load-deadlock-recipe.md` — deadlock-safe baseline: 동기 MDL stage 편집/순회/render-query 는 freeze(deadlock) 유발. 해당 문서의 deadlock-safe 패턴 따를 것
+- (**live stage 를 동기 편집·순회·render-query 하는 tool 구현 시 — 읽기/traverse 포함**) `docs/invariants/usd-load.md` + `kkr-extensions/docs/usd-load-deadlock-recipe.md` — deadlock-safe baseline: 동기 MDL stage 편집/순회/render-query 는 freeze(deadlock) 유발. 해당 문서의 deadlock-safe 패턴 따를 것
 
 ## Workflow
 
@@ -53,13 +53,13 @@ All Python invocations use `.venv/Scripts/python.exe`.
 
 1. task 재진술 → 필요 capability 를 **N개로 분해**.
 2. capability 마다 `docs/tool-catalog.md` 검색 (research step 0). 이미 있으면 **재사용 표시** (gap 아님).
-3. 남은 gap **분류**:
+3. 남은 gap **잠정 분류** (확정은 step 4 research 후):
    - `(a)` 새 MCP tool (Kit command/API wrap) → `docs/invariants/mcp-tool-add.md` 7곳
    - `(b)` 기존 tool 확장 → 해당 tool 의 module/client/tool 함수 수정
    - `(c)` 새 module / scenario action → `docs/invariants/module-add.md`
    - `(d)` MCP resource → `src/omniverse_kit_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py`
-   - `(e)` MCP 영역 밖 = validation_api 가 in-process 로 도달 불가 (예: host app `.kit` 재빌드 필요) → blocker 보고만. **"어렵다" ≠ "영역 밖"** (carb.input wrap 가능한 OS-input 류는 (a)). 분류 기준 예시 = `docs/mcp-enhance.md` Skip 섹션(영역 밖) vs E#/S# 항목(구현 대상).
-4. gap 마다 research flow (`docs/references/AGENTS.md` step 1~6) 실행 → 감쌀 ext/API 확정. `docs/mcp-enhance.md` 에 선분석 항목(E#/S#) 있으면 그 스펙 재사용.
+   - `(e)` MCP 영역 밖 = validation_api 가 in-process 로 도달 불가 (예: host app `.kit` 재빌드 필요) → blocker 보고만. **"어렵다" ≠ "영역 밖"** (carb.input wrap 가능한 OS-input 류는 (a)). 분류 기준 예시 = `docs/mcp-enhance.md` Skip 섹션(영역 밖) vs E#/S# 항목(구현 대상). **(e) 확정은 step 4 research(step 1~4) 후에만 — in-process 경로 미발견을 확인. 미research 채 (e) 분류 금지 (false blocker 방지).**
+4. gap 마다 research flow (`docs/references/AGENTS.md` step 1~6) 실행 → 감쌀 ext/API 확정. `docs/mcp-enhance.md` 에 선분석 항목(E#/S#) 있으면 그 스펙 재사용. research 로 in-process 경로 발견 시 잠정 (e) → (a)/(b) 재분류; 경로 부재 확인 시에만 (e) 확정.
 5. 출력: **우선순위 매겨진 gap 리스트** (mcp-enhance 기준 = 직접 경험/예상되는 분 단위 pain + 우회비용).
 
 > **🔍 셀프 리뷰 ① — 필요성·재사용** (코드 쓰기 *전*. 모자: 사용자/낭비 방지)
