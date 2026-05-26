@@ -20,6 +20,7 @@
 | `harvest_extension_metadata.py` · `render_catalog_md.py` · `sync_testbed_snapshot.py` | Kit Extension 레퍼런스 재수집 | `docs/references/extensions-catalog.md` 업데이트 시 |
 | `diff_catalog.py` | 현재 `extensions.json` vs fresh harvest 비교 (added / removed / version_bumped / category_changed) | Kit / app 버전 bump 후 sync 필요 여부 판정 — workflow 는 `/omniverse-kit-extension-catalog-sync` skill |
 | `diff_asset_inventory.py` | `docs/assets/isaac/assets/*.md` 의 모든 USD URL 을 NVIDIA S3 에 HTTP HEAD 검증. 404 / NET / 5xx 보고 | Asset 경로 fail 보고 시 또는 Isaac Sim 5.x 패치 후 — workflow 는 `/omniverse-asset-inventory-sync` skill |
+| `rebuild_scene.py <builder.py> --out <out.usd> [--reopen]` | 씬 USD 를 anonymous-layer + `dont_write_bytecode` 로 재빌드(락/레지스트리/pycache 우회) | 라이브 Kit 이 USD 를 열어 re-export 가 silent 실패할 때. 상세: `../docs/runbooks/scene-reexport-lock.md` |
 
 ## 추가 규칙
 
