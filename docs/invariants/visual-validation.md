@@ -6,6 +6,20 @@
 규칙 준수. 위반 시 사용자 시각 검증에서 즉발 (예: v5 round-1 의 "2층
 belt", "Franka belt 통과", "ground 붙은 컨베이어").
 
+## 검증 타이밍 — 일괄 검증 + 인라인 stats (2026-05-26)
+
+(루트 CLAUDE.md Validation Rule R3 = "capture 후 Read 시각 검증 의무" 의 실행 워크플로.)
+
+- **인라인 (구현 중)**: `viewport_capture(return_stats=true)` 의 `pixel_mean`/`pixel_variance`
+  자동판정만 사용 — `pixel_mean` 채널 평균이 임계(예: < 8.0) 이하이거나 variance ≈ 0 이면
+  black/미갱신 의심. **이때만** `Read` 로 실제 확인. 매 변경마다 Read 하지 말 것.
+- **일괄 (기능 완료 후)**: 모든 기능 구현이 끝난 뒤 마지막에 `viewport_capture` → `Read` 시각
+  검증을 일괄 수행.
+- cold RTX 첫 프레임이 검으면 `viewport_capture(warmup_frames=N)`(예: 8) 또는
+  `simulation_play` 로 연속 렌더 강제.
+- **라이브 카메라 프레이밍**: `viewport_set_camera_lookat(eye, target, up)` — Perspective 포함
+  active 카메라를 deadlock-safe(USD xformOp author, REST 경로) 로 이동. build_scene rebuild 불필요.
+
 ## R1 — Ground = Grid (NVIDIA Flat Grid 사용)
 
 Plain solid-color ground (회색 add_ground_plane) **금지**. 사용자가
