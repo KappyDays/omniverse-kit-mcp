@@ -50,3 +50,13 @@ async def test_get_state(ext_module, meta):
     assert result.ok is True
     assert result.data is not None
     assert result.data.enabled is True
+
+
+@pytest.mark.asyncio
+async def test_reload_clean_success(ext_module, meta):
+    result = await ext_module.reload_clean(meta, "omni.mycompany.ui_demo")
+    assert result.ok is True
+    assert result.data is not None
+    assert result.data.reloaded is True
+    assert result.data.modules_purged == 3
+    assert ("extension_reload_clean", {"ext_id": "omni.mycompany.ui_demo"}) in ext_module._client.calls

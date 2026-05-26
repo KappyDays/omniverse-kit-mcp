@@ -870,9 +870,16 @@ def register_module_tools(
         ext_id: str,
         reload: bool = False,
     ) -> str:
-        """Enable Kit Extension by ext_id (Window → Extensions toggle). reload=True forces disable→enable but does NOT clear sys.modules — for .py source reimport rely on omni.ext.plugin fswatcher (auto-triggers on file save). 400 if ext_id unknown."""
+        """Enable Kit Extension by ext_id (Window → Extensions toggle). reload=True forces disable→enable but does NOT clear sys.modules — for reliable .py reimport use extension_reload instead. 400 if ext_id unknown."""
         meta = make_meta(ModuleName.EXTENSION)
         result = await extension.activate(meta, ext_id, reload=reload)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def extension_reload(ext_id: str) -> str:
+        """Clean-reload a Kit Extension's Python code WITHOUT restarting Kit: disable -> purge sys.modules tree (ext_id) -> invalidate import caches -> re-enable. Reflects .py edits + module-level singletons. 400 for 'omni.mycompany.validation_api' (self-reload unsupported -> use kit_app_restart) and unknown ext_id."""
+        meta = make_meta(ModuleName.EXTENSION)
+        result = await extension.reload_clean(meta, ext_id)
         return _serialize(result)
 
     @mcp.tool()

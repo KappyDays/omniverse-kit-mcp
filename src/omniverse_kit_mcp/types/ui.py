@@ -50,6 +50,15 @@ class ExtensionActivateResult:
     reloaded: bool
 
 
+@dataclass(slots=True, frozen=True)
+class ExtensionReloadResult:
+    ext_id: str
+    was_enabled: bool
+    enabled: bool
+    reloaded: bool
+    modules_purged: int
+
+
 # --- Phase H — Extension management extensions -------------------------------
 
 

@@ -68,6 +68,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "character_get_state",
     # Phase D — Extension UI automation + carb log capture
     "extension_activate",
+    "extension_reload",
     "extension_get_ui_tree",
     "extension_ui_invoke",
     "extension_capture_logs",

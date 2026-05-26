@@ -1434,6 +1434,17 @@ class MockIsaacRestClient:
             },
         })
 
+    async def extension_reload_clean(self, ext_id: str) -> dict:
+        self.calls.append(("extension_reload_clean", {"ext_id": ext_id}))
+        return self.responses.get("extension_reload_clean", {
+            "ok": True,
+            "ext_id": ext_id,
+            "was_enabled": True,
+            "enabled": True,
+            "reloaded": True,
+            "modules_purged": 3,
+        })
+
     async def kit_command_execute(
         self,
         name: str,
