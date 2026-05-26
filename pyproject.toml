@@ -36,7 +36,6 @@ dev = [
 asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
-    "live: requires a running Isaac Sim instance (plan §10.4 D1-D17)",
     "slow: reads external Kit / USD Composer install trees (catalog diff smoke)",
 ]
 
