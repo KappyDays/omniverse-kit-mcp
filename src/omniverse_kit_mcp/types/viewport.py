@@ -17,6 +17,8 @@ class ViewportCaptureRequest:
     settle_frames: int = 5
     output_format: Literal["png", "jpg"] = "png"
     transparent_background: bool = False
+    warmup_frames: int = 0
+    return_stats: bool = False
 
 
 @dataclass(slots=True, frozen=True)
@@ -27,6 +29,9 @@ class ImageArtifact:
     height: int
     sha256: str
     created_at_epoch_ms: int
+    pixel_mean: tuple[float, ...] | None = None
+    pixel_variance: tuple[float, ...] | None = None
+    warmup_frames_used: int = 0
 
 
 @dataclass(slots=True, frozen=True)

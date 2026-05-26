@@ -17,6 +17,8 @@ class ViewportCaptureRequestModel(BaseModel):
     settle_frames: int = Field(default=5, ge=0)
     output_format: str = "png"
     transparent_background: bool = False
+    warmup_frames: int = Field(default=0, ge=0)
+    return_stats: bool = False
 
 
 class SSIMComparisonRequestModel(BaseModel):

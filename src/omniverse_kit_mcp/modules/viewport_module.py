@@ -51,6 +51,8 @@ class ViewportModule:
                 "settle_frames": request.settle_frames,
                 "output_format": request.output_format,
                 "transparent_background": request.transparent_background,
+                "warmup_frames": request.warmup_frames,
+                "return_stats": request.return_stats,
             })
             artifact = ImageArtifact(
                 artifact_id=raw["artifact_id"],
@@ -59,6 +61,9 @@ class ViewportModule:
                 height=raw.get("height", request.height),
                 sha256=raw.get("sha256", ""),
                 created_at_epoch_ms=raw.get("created_at_epoch_ms", int(time.time() * 1000)),
+                pixel_mean=tuple(raw["pixel_mean"]) if raw.get("pixel_mean") is not None else None,
+                pixel_variance=tuple(raw["pixel_variance"]) if raw.get("pixel_variance") is not None else None,
+                warmup_frames_used=int(raw.get("warmup_frames_used", 0)),
             )
             return ok_result(artifact, started_ms=started, artifacts={"image": artifact.path})
         except Exception as exc:

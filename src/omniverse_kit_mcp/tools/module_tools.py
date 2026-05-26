@@ -281,8 +281,10 @@ def register_module_tools(
         width: int = 1280,
         height: int = 720,
         output_format: str = "png",
+        warmup_frames: int = 0,
+        return_stats: bool = False,
     ) -> str:
-        """Capture the 3D RTX render only (no Kit chrome) to PNG; returns artifact path. For the whole app window (menus + panels + viewport) use window_capture instead."""
+        """Capture the 3D RTX render only (no Kit chrome) to PNG; returns artifact path. For the whole app window (menus + panels + viewport) use window_capture instead. warmup_frames=N ticks extra frames before grab (cold-RTX black fix); return_stats=True adds pixel_mean/pixel_variance per channel so you can auto-detect a blank/black frame without reading the PNG."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportCaptureRequest(
             viewport_name=viewport_name,
@@ -291,6 +293,8 @@ def register_module_tools(
             width=width,
             height=height,
             output_format=output_format,  # type: ignore[arg-type]
+            warmup_frames=warmup_frames,
+            return_stats=return_stats,
         )
         result = await viewport.capture(meta, request)
         return _serialize(result)
