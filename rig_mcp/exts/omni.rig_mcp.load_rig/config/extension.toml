@@ -1,0 +1,15 @@
+[package]
+version = "0.1.0"
+title = "Mechanical Rig Under Load"
+description = "A 2-DOF lift rig (prismatic lift + revolute tilt, joint drives) raises a real pallet payload; reads back joint state and contact force."
+category = "Tools"
+keywords = ["physics", "joints", "drive", "contact-force", "demo"]
+authors = ["omniverse-kit-mcp / rig_mcp"]
+
+[dependencies]
+"omni.usd" = {}
+"omni.kit.commands" = {}
+"omni.physx" = {}
+
+[[python.module]]
+name = "omni.rig_mcp.load_rig"
