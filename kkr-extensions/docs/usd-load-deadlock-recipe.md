@@ -18,6 +18,7 @@
 1. **`log_capture` 비활성화** — `carb.logging.acquire_logging().add_logger(cb)` 를 kit.exe 가동 중 켜두면 MDL resolver loop 이 carb thread 와 경합. Extension `on_startup` 에서는 `_log_capture = None` 유지 (request-scoped 로 켰다 끄는 구조로만 허용)
 2. **`omni.kit.async_engine.run_coroutine` + `asyncio.wrap_future`** — FastAPI handler / UI 콜백의 event loop 와 Kit 메인 이벤트 루프는 분리되어 있음. 명령을 Kit 메인 루프에 명시 schedule 후, caller 는 `wrap_future` 로 await
 3. **`CreatePayloadCommand(instanceable=True)`** — `CreateReferenceCommand` 대신 payload 방식. Isaac Sim 5.1 GUI drag&drop 과 동등한 경로
+4. **MDL-payload 씬은 `stage_open`/`open_stage`(LoadAll) 로 열지 말 것** — nested office.usd MDL 을 동기 해소하다 92s deadlock (office 세션 실증). 반드시 **fresh stage + `CreatePayloadCommand` 경로**로만 로드.
 
 ## Copy-paste 레시피
 
@@ -39,6 +40,7 @@ async def safe_load_usd(
     prim_path: str,
     position: list[float] | None = None,
     rotation: list[float] | None = None,
+    instanceable: bool = True,
 ) -> dict[str, Any]:
     """Load a USD reference into the stage with deadlock protection.
 
@@ -58,13 +60,28 @@ async def safe_load_usd(
         if stage is None:
             raise RuntimeError("No USD stage available")
 
-        # GUI drag&drop 동등 — Payload + instanceable=True
+        # Parent must be a DEFINED prim. CreatePayloadCommand(path_to="/World/X")
+        # auto-creates the parent "/World" as an `over` (no defining specifier);
+        # an undefined ancestor prunes the whole subtree from the default-predicate
+        # Traverse() AND from Hydra rendering (black viewport, tags unreachable).
+        from pxr import Sdf
+        parent_path = Sdf.Path(prim_path).GetParentPath()
+        if not parent_path.isEmpty and parent_path != Sdf.Path.absoluteRootPath:
+            UsdGeom.Xform.Define(stage, parent_path)
+
+        # GUI drag&drop equivalent — Payload + instanceable.
+        # instanceable=True locks the payload into an instance prototype:
+        # great for STATIC heavy nested payloads (office.usd), but it makes
+        # prims unreachable to stage.Traverse() and un-editable. If THIS load
+        # has runtime-edited/traversed content (emissive cables, customData
+        # tags), pass instanceable=False for the OUTER load (nested static
+        # payloads keep True).
         omni.kit.commands.execute(
             "CreatePayloadCommand",
             usd_context=ctx,
             path_to=prim_path,
             asset_path=usd_url,
-            instanceable=True,
+            instanceable=instanceable,
         )
 
         # 대형 asset loading 완료까지 대기 (main loop 에서 tick 진행 가능)
@@ -99,17 +116,29 @@ async def safe_load_usd(
     return await asyncio.wrap_future(future)
 
 
-async def _wait_stage_loading(max_ticks: int = 1200) -> None:
-    """Tick the Kit app until stage loading completes."""
-    import omni.kit.app
+async def _wait_stage_loading(max_frames: int = 600) -> None:
+    """Tick the Kit app until stage loading completes.
+
+    Isaac 5.1 UsdContext has NO ``is_new_stage_loading`` /
+    ``is_new_stage_activation_pending`` (removed). Use
+    ``get_stage_loading_status() -> (msg, files_loaded, total_files)``;
+    ``isaacsim.core.utils.stage.is_stage_loading`` is preferred when present.
+    """
+    import omni.kit.app  # lazy
     import omni.usd
 
     app = omni.kit.app.get_app()
     ctx = omni.usd.get_context()
-    for _ in range(max_ticks):
-        if not ctx.is_new_stage_loading() and not ctx.is_new_stage_activation_pending():
-            return
+    for _ in range(max_frames):
         await app.next_update_async()
+        try:
+            from isaacsim.core.utils.stage import is_stage_loading
+            if not is_stage_loading():
+                return
+        except ImportError:
+            _, files_loaded, total_files = ctx.get_stage_loading_status()
+            if not (total_files > 0 and files_loaded < total_files):
+                return
 ```
 
 ## 사용 예 (독립 Extension 의 button 콜백)
@@ -142,6 +171,8 @@ def on_load_office_clicked() -> None:
 - [ ] USD url 은 forward slash (`/`) 인가? (backslash 는 MDL resolver 가 이상하게 해석)
 - [ ] `.env` `ISAAC_SIM_EXTRA_EXT_IDS` 에 `isaacsim.asset.browser` / `omni.kit.window.content_browser` 가 **없는가**? (S3 crawl thread 경합 방지)
 - [ ] `simulation.play` 중에 로드하려 하지 않는가? (timeline advance 가 추가 경합)
+- [ ] 런타임에 편집/순회할 prim 이 있으면 outer 로드는 `instanceable=False` 인가? (True 면 instance prototype 에 갇혀 Traverse 미도달)
+- [ ] payload 부모 prim 을 로드 전에 `UsdGeom.Xform.Define` 로 def 화했는가? (over 부모는 subtree prune)
 
 ## 근거
 
