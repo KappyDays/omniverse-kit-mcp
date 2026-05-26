@@ -144,3 +144,22 @@ class ViewportSetFovResult:
     fov_deg: float
     focal_length: float
     horizontal_aperture: float
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportSetCameraLookatRequest:
+    eye: tuple[float, float, float]
+    target: tuple[float, float, float]
+    up: tuple[float, float, float] = (0.0, 0.0, 1.0)
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportSetCameraLookatResult:
+    ok: bool
+    viewport_name: str
+    camera_path: str
+    eye: tuple[float, float, float]
+    target: tuple[float, float, float]
+    up: tuple[float, float, float]

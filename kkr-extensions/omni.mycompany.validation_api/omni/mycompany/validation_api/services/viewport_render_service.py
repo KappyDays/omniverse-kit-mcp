@@ -151,6 +151,65 @@ class ViewportRenderService:
             "horizontal_aperture": horiz_aperture,
         }
 
+    async def set_camera_lookat(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Author a camera's world transform from eye/target/up (deadlock-safe).
+
+        Runs on the REST handler path and writes only ``xformOp:transform`` —
+        same proven-safe class as ``set_fov``'s focalLength write. NOT the
+        ``kit_python_run`` main-thread path that deadlocked in the office session.
+        Default target is the viewport's active camera (Perspective included);
+        pass ``camera_path`` to author a specific (e.g. authored) camera.
+        """
+        import omni.kit.app
+        import omni.usd
+        from pxr import Gf, UsdGeom
+
+        viewport_name = request.get("viewport_name", "Viewport")
+        eye = [float(v) for v in request["eye"]]
+        target = [float(v) for v in request["target"]]
+        up = [float(v) for v in request.get("up", [0.0, 0.0, 1.0])]
+        explicit = request.get("camera_path")
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+
+        candidates = [explicit] if explicit else _candidate_camera_paths(viewport_name, stage)
+        camera_prim = None
+        camera_path: str | None = None
+        for candidate in candidates:
+            if not candidate:
+                continue
+            prim = stage.GetPrimAtPath(candidate)
+            if prim.IsValid():
+                camera_prim = prim
+                camera_path = candidate
+                break
+        if camera_prim is None:
+            raise ValueError(f"No camera prim found (tried {candidates}).")
+
+        # view = world->camera; camera local-to-world = its inverse.
+        view = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*target), Gf.Vec3d(*up))
+        cam_to_world = view.GetInverse()
+
+        xform = UsdGeom.Xformable(camera_prim)
+        xform.ClearXformOpOrder()  # reset to a single transform op (op-order safe)
+        xform.AddTransformOp().Set(cam_to_world)
+
+        # Let the viewport pick up the new transform for a subsequent capture.
+        app = omni.kit.app.get_app()
+        for _ in range(2):
+            await app.next_update_async()
+
+        return {
+            "ok": True,
+            "viewport_name": viewport_name,
+            "camera_path": camera_path,
+            "eye": eye,
+            "target": target,
+            "up": up,
+        }
+
 
 def _resolve_camera_path(viewport_name: str) -> str:
     """Look up the active camera for *viewport_name* with a safe fallback."""

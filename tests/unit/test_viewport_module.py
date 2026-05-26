@@ -82,3 +82,16 @@ async def test_capture_with_stats(viewport_module, meta):
     assert result.data.warmup_frames_used == 8
     sent = dict(viewport_module._client.calls)["viewport_capture"]
     assert sent["warmup_frames"] == 8 and sent["return_stats"] is True
+
+
+@pytest.mark.asyncio
+async def test_set_camera_lookat(viewport_module, meta):
+    from omniverse_kit_mcp.types.viewport import ViewportSetCameraLookatRequest
+    result = await viewport_module.set_camera_lookat(
+        meta,
+        ViewportSetCameraLookatRequest(eye=(5, 5, 5), target=(0, 0, 0)),
+    )
+    assert result.ok is True
+    assert result.data.camera_path == "/OmniverseKit_Persp"
+    sent = dict(viewport_module._client.calls)["viewport_set_camera_lookat"]
+    assert sent["eye"] == [5, 5, 5] and sent["up"] == [0.0, 0.0, 1.0]

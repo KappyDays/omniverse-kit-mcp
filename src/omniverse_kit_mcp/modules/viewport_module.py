@@ -19,6 +19,8 @@ from omniverse_kit_mcp.types.viewport import (
     ViewportCreateResult,
     ViewportDestroyRequest,
     ViewportDestroyResult,
+    ViewportSetCameraLookatRequest,
+    ViewportSetCameraLookatResult,
     ViewportSetFovRequest,
     ViewportSetFovResult,
     ViewportSetRenderModeRequest,
@@ -279,4 +281,33 @@ class ViewportModule:
             return error_result(
                 str(exc), started_ms=started,
                 error_code="VIEWPORT_SET_FOV_ERROR",
+            )
+
+    async def set_camera_lookat(
+        self, meta: OperationMeta, request: ViewportSetCameraLookatRequest,
+    ) -> ModuleResult[ViewportSetCameraLookatResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.viewport_set_camera_lookat({
+                "eye": list(request.eye),
+                "target": list(request.target),
+                "up": list(request.up),
+                "viewport_name": request.viewport_name,
+                "camera_path": request.camera_path,
+            })
+            return ok_result(
+                ViewportSetCameraLookatResult(
+                    ok=bool(raw.get("ok", True)),
+                    viewport_name=str(raw.get("viewport_name", request.viewport_name)),
+                    camera_path=str(raw.get("camera_path", "")),
+                    eye=tuple(raw.get("eye", request.eye)),
+                    target=tuple(raw.get("target", request.target)),
+                    up=tuple(raw.get("up", request.up)),
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="VIEWPORT_SET_CAMERA_LOOKAT_ERROR",
             )

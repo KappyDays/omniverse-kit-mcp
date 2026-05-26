@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 117
+**Tool count**: 118
 
 ## Table of contents
 
@@ -10,7 +10,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Stage — READ / ASSERT / file & selection](#stage--read--assert--file--selection) — 6 tools
 - [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
 - [Simulation — timeline](#simulation--timeline) — 4 tools
-- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 9 tools
+- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 10 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 12 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
@@ -382,6 +382,26 @@ Switch the viewport's active camera — GUI viewport toolbar camera selector.
 |------|------|---------|----------|
 | `camera_path` | `string` | `'—'` | ✓ |
 | `viewport_name` | `string` | `'Viewport'` |  |
+
+### `viewport_set_camera_lookat`
+
+```python
+viewport_set_camera_lookat(eye: 'list[float]', target: 'list[float]', up: 'list[float] | None' = None, viewport_name: 'str' = 'Viewport', camera_path: 'str | None' = None) -> 'str'
+```
+
+Aim a camera at a target via eye/target/up (deadlock-safe USD xformOp author on the REST path;
+default up=+Z). Moves the active viewport camera (Perspective included) unless camera_path is
+given. Use for live framing iteration without rebuilding the scene.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `eye` | `list[number]` | `'—'` | ✓ |
+| `target` | `list[number]` | `'—'` | ✓ |
+| `up` | `list[number] \| None` | `None` |  |
+| `viewport_name` | `string` | `'Viewport'` |  |
+| `camera_path` | `string \| None` | `None` |  |
 
 ### `viewport_set_fov`
 
