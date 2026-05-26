@@ -43,7 +43,7 @@ Breaking any → STOP and report.
 - `docs/invariants/ext-reload.md` — extension `.py` 수정 후 reload (P4 동작 검증 전제)
 - `docs/mcp-enhance.md` — 선분석된 gap backlog (E1~E15, S1~S2) — 재사용
 - `docs/tool-diagnostic-map.md` — 진단 역색인
-- (**live stage 건드리는 tool 구현 시 추가**) `docs/invariants/usd-load.md` + `kkr-extensions/docs/usd-load-deadlock-recipe.md` — deadlock-safe baseline: 동기 MDL stage 편집/순회/render-query → 92s freeze. run_coroutine + 틱 양보 패턴 따를 것
+- (**live stage 건드리는 tool 구현 시 추가**) `docs/invariants/usd-load.md` + `kkr-extensions/docs/usd-load-deadlock-recipe.md` — deadlock-safe baseline: 동기 MDL stage 편집/순회/render-query 는 freeze(deadlock) 유발. 해당 문서의 deadlock-safe 패턴 따를 것
 
 ## Workflow
 
@@ -58,7 +58,7 @@ All Python invocations use `.venv/Scripts/python.exe`.
    - `(b)` 기존 tool 확장 → 해당 tool 의 module/client/tool 함수 수정
    - `(c)` 새 module / scenario action → `docs/invariants/module-add.md`
    - `(d)` MCP resource → `src/omniverse_kit_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py`
-   - `(e)` MCP 영역 밖 = validation_api 가 in-process 로 도달 불가 (예: host app `.kit` 재빌드 필요) → blocker 보고만. **"어렵다" ≠ "영역 밖"** (carb.input wrap 가능한 OS-input 류는 (a)).
+   - `(e)` MCP 영역 밖 = validation_api 가 in-process 로 도달 불가 (예: host app `.kit` 재빌드 필요) → blocker 보고만. **"어렵다" ≠ "영역 밖"** (carb.input wrap 가능한 OS-input 류는 (a)). 분류 기준 예시 = `docs/mcp-enhance.md` Skip 섹션(영역 밖) vs E#/S# 항목(구현 대상).
 4. gap 마다 research flow (`docs/references/CLAUDE.md` step 1~6) 실행 → 감쌀 ext/API 확정. `docs/mcp-enhance.md` 에 선분석 항목(E#/S#) 있으면 그 스펙 재사용.
 5. 출력: **우선순위 매겨진 gap 리스트** (mcp-enhance 기준 = 직접 경험/예상되는 분 단위 pain + 우회비용).
 
@@ -70,22 +70,24 @@ All Python invocations use `.venv/Scripts/python.exe`.
 
 ### Phase 2~5 — gap 마다 반복 (우선순위 순)
 
-- **P2 설계**: 이름 / 시그니처 / params / return `@dataclass(slots=True, frozen=True)` / 7곳 매핑(or module-add·resource 경로) / mock 동작 스펙.
-- **P3 구현**: `docs/invariants/mcp-tool-add.md` 7곳 인라인 실행 (분류 (c)면 `module-add.md`, (d)면 resource 절차). Type boundary: 내부 dataclass, **MCP 서버 Pydantic 금지**. app-specific ext 면 `ISAAC_MCP_APP_PROFILE` 차원 반영 (research step1 `apps`).
+- **P2 설계**: 이름 / 시그니처 / params / return `@dataclass(slots=True, frozen=True)` / 7곳 매핑(or module-add·resource 경로) / mock 동작 스펙 (→ `mcp-tool-add.md` 7곳 item 5: conftest MockIsaacRestClient).
+- **P3 구현**: `docs/invariants/mcp-tool-add.md` 7곳 인라인 실행 (분류 (c)면 `module-add.md`, (d)면 resource 절차). Type boundary: 내부 dataclass, **MCP 서버 Pydantic 금지**. app-specific ext 면 `ISAAC_MCP_APP_PROFILE` 차원 반영 (research step1 `apps`). **7곳에는 EXPECTED frozenset(item 6) + tool group caveat(item 7) 포함 — P4-(i) verify_mcp_sync 의 drift 검사가 frozenset 일치를 요구하므로 P4 前 완료 필수.**
 
   > **🔍 셀프 리뷰 ② — 적대적 정확성** (구현 직후, 검증 *전*. 모자: 공격자)
   > - 고른 Kit API 실존+시그니처 맞나 — 실소스(`standalone_examples/` · ext source)로 확인했나, 추측인가?
   > - side-effect 는? (예: `CreateConveyorBelt({})` 가 default prim 오염 — mcp-enhance E3)
   > - R1 false-positive 가드: mock 이 항상 성공만 반환하지 않나? mock 충실도는 세션 내 live 확인 불가 → extension REST endpoint 의 **문서화된 계약** 기준으로 판정 (live 확인은 P4-(ii)).
-  > - deadlock-safe: 새 동작이 live(MDL) stage 를 동기 편집/순회/render-query 하지 않나? 하면 `docs/invariants/usd-load.md` 의 run_coroutine + 틱-양보 baseline 따랐나 (sync write → 92s freeze landmine)?
+  > - deadlock-safe: 새 동작이 live(MDL) stage 를 동기 편집/순회/render-query 하지 않나? 하면 `docs/invariants/usd-load.md` 의 deadlock-safe baseline 따랐나 (sync write → freeze landmine)?
   > 미통과 시 STOP (I3). TodoWrite pass/fail.
 
 - **P4 검증 — 두 층 분리**:
   - **(i) 등록/drift (세션 내, 필수 게이트)**: `.venv/Scripts/python.exe scripts/verify_mcp_sync.py` — fresh subprocess 로 코드 재import → catalog regen + drift pytest. import-cache 무관하게 green 확인 가능.
   - **(ii) 동작 (세션 밖)**: 실 REST 왕복은 live Isaac + MCP host 재시작 + ext reload 필요. 세션 내 standalone(`scripts/run_process_module_standalone.py` / `scripts/run_scenario_standalone.py`)은 mock 경유 — 실 endpoint 동작 증명 아님. 보고에 명시.
-- **P5 docs (tool 전용)**: 루트 `CLAUDE.md` "변경 파급 매트릭스" 적용 + tool-catalog regen(P4 (i) 포함) + 그룹 caveat (`src/omniverse_kit_mcp/tools/CLAUDE.md`) + EXPECTED frozenset (`tests/unit/test_tools_registration.py`) + 새 gap 을 `docs/mcp-enhance.md` 에 append. 광범위 CLAUDE.md 계층 동기화는 `omniverse-docs-sweep` 핸드오프.
+- **P5 docs (tool 전용)**: tool-catalog regen 은 P4-(i) `verify_mcp_sync` 에 포함됨 (그룹 caveat·frozenset 은 P3 의 7곳에서 이미 완료). P5 고유 작업 = 새로 발견한 gap 을 `docs/mcp-enhance.md` 에 append + 변경 파급 매트릭스상 추가 갱신분 확인. 광범위 CLAUDE.md 계층 동기화는 `omniverse-docs-sweep` 핸드오프.
 
 ### 종료
+
+모든 gap 의 P2~5 반복이 끝나면, 완료 선언 전에 1회:
 
 > **🔍 셀프 리뷰 ③ — 정합성·완결성** (완료 선언 *전*. 모자: 유지보수자)
 > - `mcp-tool-add.md` 7곳 전부? `verify_mcp_sync` green + drift pass? `git status` 생성파일 unchanged?
@@ -174,12 +176,8 @@ Action 필요: <원인> 해결 후 재호출.
 
 ## References (background only — do not read inline)
 
-- `docs/references/CLAUDE.md` — research flow 0~6단계 (SoT)
-- `docs/invariants/mcp-tool-add.md` — 7곳 + verify_mcp_sync + drift (SoT)
-- `docs/invariants/module-add.md` — module / scenario action
-- `docs/invariants/ext-reload.md` — ext reload (P4 (ii) 전제)
-- `docs/mcp-enhance.md` — 선분석 gap backlog
-- `scripts/verify_mcp_sync.py` — 등록/drift 가드
-- `.claude/skills/omniverse-docs-sweep/SKILL.md` — 동형 patterns reference
+- `.claude/skills/omniverse-docs-sweep/SKILL.md`, `.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md` — 동형 skill 구조 patterns reference
+
+(SoT 절차 문서는 위 "진입 시 필수 Read" 참조.)
 
 Answer in the same language as the question.
