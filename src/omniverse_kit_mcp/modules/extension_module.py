@@ -22,6 +22,7 @@ from omniverse_kit_mcp.types.ui import (
     ExtensionDeactivateResult,
     ExtensionInfoResult,
     ExtensionListAllResult,
+    ExtensionReloadResult,
     ExtensionSummary,
     UiInvokeResult,
     UiTreeResult,
@@ -127,6 +128,27 @@ class ExtensionModule:
         except Exception as exc:  # noqa: BLE001
             return error_result(
                 str(exc), started_ms=started, error_code="EXTENSION_ACTIVATE_ERROR",
+            )
+
+    async def reload_clean(
+        self, meta: OperationMeta, ext_id: str,
+    ) -> ModuleResult[ExtensionReloadResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.extension_reload_clean(ext_id)
+            return ok_result(
+                ExtensionReloadResult(
+                    ext_id=str(raw.get("ext_id", ext_id)),
+                    was_enabled=bool(raw.get("was_enabled", False)),
+                    enabled=bool(raw.get("enabled", False)),
+                    reloaded=bool(raw.get("reloaded", False)),
+                    modules_purged=int(raw.get("modules_purged", 0)),
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return error_result(
+                str(exc), started_ms=started, error_code="EXTENSION_RELOAD_ERROR",
             )
 
     async def get_ui_tree(

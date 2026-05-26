@@ -683,6 +683,11 @@ class IsaacRestClient:
             f"{BASE_PATH}/extension/get_info", json={"ext_id": ext_id},
         )
 
+    async def extension_reload_clean(self, ext_id: str) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/extension/reload_clean", json={"ext_id": ext_id},
+        )
+
     # --- Internal helpers ---
 
     async def _get(self, path: str) -> dict[str, Any]:

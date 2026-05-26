@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 116
+**Tool count**: 117
 
 ## Table of contents
 
@@ -12,7 +12,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Simulation — timeline](#simulation--timeline) — 4 tools
 - [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 9 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
-- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 11 tools
+- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 12 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
 - [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 9 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
@@ -574,8 +574,8 @@ extension_activate(ext_id: 'str', reload: 'bool' = False) -> 'str'
 ```
 
 Enable Kit Extension by ext_id (Window → Extensions toggle). reload=True forces disable→enable
-but does NOT clear sys.modules — for .py source reimport rely on omni.ext.plugin fswatcher
-(auto-triggers on file save). 400 if ext_id unknown.
+but does NOT clear sys.modules — for reliable .py reimport use extension_reload instead. 400 if
+ext_id unknown.
 
 **Parameters**
 
@@ -682,6 +682,23 @@ Item: {id, full_id, name, version, enabled, path, title}.
 | name | type | default | required |
 |------|------|---------|----------|
 | `enabled_only` | `boolean` | `False` |  |
+
+### `extension_reload`
+
+```python
+extension_reload(ext_id: 'str') -> 'str'
+```
+
+Clean-reload a Kit Extension's Python code WITHOUT restarting Kit: disable -> purge sys.modules
+tree (ext_id) -> invalidate import caches -> re-enable. Reflects .py edits + module-level
+singletons. 400 for 'omni.mycompany.validation_api' (self-reload unsupported -> use
+kit_app_restart) and unknown ext_id.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `ext_id` | `string` | `'—'` | ✓ |
 
 ### `extension_search`
 
