@@ -91,6 +91,11 @@ class IsaacSimProcessConfig(BaseSettings):
 
     extra_ext_ids: tuple[str, ...] = ()
 
+    # Out-of-tree extension folders (e.g. office_mcp/exts) registered via an
+    # additional --ext-folder each. JSON array only (pydantic-settings v2):
+    # ISAAC_SIM_EXTRA_EXT_FOLDERS='["C:/Users/<you>/workspace/omniverse-kit-mcp/office_mcp/exts"]'
+    extra_ext_folders: tuple[str, ...] = ()
+
     app_profile: KitAppProfile = Field(default_factory=lambda: get_profile("isaac-sim"))
 
     @property
