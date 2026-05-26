@@ -7,6 +7,7 @@
 ## 세션 진입
 
 - **이 파일만** 매 턴 자동 로드 (CC 동작). Codex CLI 는 `AGENTS.md` 가 진입점 — nested auto-load 없음 — cap / 작성 룰: §메타
+- **실제 라이브 MCP 진입점**: `workspaces/<app>/instance-N/.mcp.json` (CC 를 그 폴더에서 열면 server spawn). app ∈ {isaac, usd-composer}, N ∈ {1,2}. 상세: `workspaces/README.md` · `docs/invariants/multi-app.md`
 
 ## ⚠️ 작업 전 필수 pull-doc
 
