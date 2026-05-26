@@ -1,22 +1,22 @@
 ---
 name: omniverse-mcp-tool-upgrade
-description: Invoke when a natural-language omniverse task needs an MCP capability that omniverse-kit-mcp does not yet expose. Analyzes the task, decomposes it into capability gaps, then per gap runs the research flow, classifies, designs, implements (7-place edit), verifies (registration/drift in-session; behavioral only after host restart), and syncs tool-only docs. Autonomous with 3 distributed self-reviews (necessity, adversarial-correctness, integration). Not for executing the omniverse task itself, broad AGENTS.md sync (use omniverse-docs-sweep), Kit extension catalog sync (omniverse-kit-extension-catalog-sync), or asset URL/inventory (omniverse-asset-inventory-sync).
+description: Invoke after or during a Claude Code or Codex session that performed omniverse work, to retrospectively analyze that session's work (conversation — MCP tools called, workarounds, repeated friction — plus git diff), identify where MCP tools were missing or insufficient, then add new or upgrade existing MCP tools (7-place edit), verify (registration/drift in-session; behavioral only after host restart + ext reload), and sync tool-only docs. Autonomous with 3 distributed self-reviews (necessity, adversarial-correctness, integration). Input is the session's actual performed work, not an external task spec — it automates the manual harvesting that fills docs/mcp-enhance.md. Not for executing omniverse tasks, broad AGENTS.md sync (use omniverse-docs-sweep), Kit extension catalog sync (omniverse-kit-extension-catalog-sync), or asset URL/inventory (omniverse-asset-inventory-sync).
 user-invocable: true
 disable-model-invocation: true
 metadata:
   version: "1.0.0"
 ---
 
-# omniverse-mcp-tool-upgrade: Task-Driven MCP Surface Upgrade
+# omniverse-mcp-tool-upgrade: Session-Retrospective MCP Surface Upgrade
 
 Prefix your first line with 🔧 inline.
 
-**목표**: 자연어 omniverse 작업을 상세 분석해 그 작업 수행에 필요한 MCP capability gap 을 식별하고, omniverse-kit-mcp 의 MCP 표면을 업그레이드(신규 tool 구현 + 등록/drift 검증 + tool 전용 docs sync)까지 자율 완료한다. **원래 작업의 실행/시각검증은 범위 밖** — task 는 요구사항의 출처. 절차의 SoT 는 기존 invariant 문서이며 이 skill 은 *가리키기*만 한다 (hard-code 금지).
+**목표**: **이번 Claude Code / Codex 세션에서 수행된 omniverse 작업(구현 내용·호출한 MCP tool·우회/수동 단계·반복 마찰)을 상세 분석**해, MCP 표면의 gap 을 식별하고 — **신규 tool 추가 또는 기존 tool 업그레이드**가 필요하면 — 7곳 구현 + 등록/drift 검증 + tool 전용 docs sync 까지 자율 완료한다. **입력은 세션의 실제 작업(conversation + git diff)이지 외부에서 주어진 task 명세가 아니다** — `docs/mcp-enhance.md` 를 수동으로 채우던 회고형 harvest 의 자동화. 절차의 SoT 는 기존 invariant 문서이며 이 skill 은 *가리키기*만 한다 (hard-code 금지).
 
 ## When to Use
 
-User says "이 omniverse 작업을 MCP 로 하고 싶은데 tool 이 없다", "MCP tool 추가해줘", "이 작업하려면 MCP 업그레이드 필요" 등. **Skip** for:
-- 원래 omniverse 작업의 실제 실행/시각검증 (이 skill 은 표면 확장까지만)
+**세션 작업 회고가 트리거.** User says "이번 세션 omniverse 작업 분석해서 MCP 업그레이드해줘", "방금 작업하면서 불편했던 거 / 우회했던 거 MCP tool 로 만들어줘", "이번 세션에서 부족했던 MCP 기능 보강", "기존 tool 업그레이드 필요" 등. **Skip** for:
+- 분석 대상 omniverse 작업의 재실행/시각검증 (이 skill 은 MCP 표면 확장까지만)
 - 기존 tool 로 이미 가능한 작업 (Phase 1 에서 발견 시 early-exit)
 - 광범위 AGENTS.md 계층 동기화 → `omniverse-docs-sweep`
 - Kit Extension catalog 갱신 → `omniverse-kit-extension-catalog-sync`
@@ -49,23 +49,26 @@ Breaking any → STOP and report.
 
 All Python invocations use `.venv/Scripts/python.exe`.
 
-### Phase 1 — 분석 + research (task 당 1회)
+### Phase 1 — 세션 작업 분석 + research (세션당 1회)
 
-1. task 재진술 → 필요 capability 를 **N개로 분해**.
-2. capability 마다 `docs/tool-catalog.md` 검색 (research step 0). 이미 있으면 **재사용 표시** (gap 아님).
+1. **세션 작업 분석 (hybrid 입력 — `omniverse-docs-sweep` 와 동일 모델)**:
+   - (a) **conversation**: 이번 세션에 수행한 omniverse 작업 — 호출한 MCP tool, 사용한 **우회/수동 단계**, **반복된 마찰**, "이 tool 있었으면" 순간, 기존 tool 의 한계를 만난 지점.
+   - (b) **git diff**: omniverse 관련 코드/extension/scenario 변경 (`git diff HEAD` + 세션 커밋).
+   → 각 마찰점을 **gap 후보**로 추출 (어떤 기존 tool 이 부족했나 / 아예 없었나).
+2. gap 후보마다 `docs/tool-catalog.md` 검색 (research step 0). **기존 tool 로 충분히 커버되면** gap 아님 (마찰이 단순 사용법 문제였을 수 있음 → 제거).
 3. 남은 gap **잠정 분류** (확정은 step 4 research 후):
-   - `(a)` 새 MCP tool (Kit command/API wrap) → `docs/invariants/mcp-tool-add.md` 7곳
-   - `(b)` 기존 tool 확장 → 해당 tool 의 module/client/tool 함수 수정
+   - `(a)` **신규 MCP tool** (Kit command/API wrap) → `docs/invariants/mcp-tool-add.md` 7곳
+   - `(b)` **기존 tool 업그레이드** (시그니처 확장·파라미터 추가·반환 보강) → 해당 tool 의 service/client/module/tool 함수 수정 (예: mcp-enhance E5 `viewport_capture` + warmup/stats). frozenset 불변 시 catalog regen 만, 변경 시 7곳 동일
    - `(c)` 새 module / scenario action → `docs/invariants/module-add.md`
    - `(d)` MCP resource → `src/omniverse_kit_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py`
    - `(e)` MCP 영역 밖 = validation_api 가 in-process 로 도달 불가 (예: host app `.kit` 재빌드 필요) → blocker 보고만. **"어렵다" ≠ "영역 밖"** (carb.input wrap 가능한 OS-input 류는 (a)). 분류 기준 예시 = `docs/mcp-enhance.md` Skip 섹션(영역 밖) vs E#/S# 항목(구현 대상). **(e) 확정은 step 4 research(step 1~4) 후에만 — in-process 경로 미발견을 확인. 미research 채 (e) 분류 금지 (false blocker 방지).**
 4. gap 마다 research flow (`docs/references/AGENTS.md` step 1~6) 실행 → 감쌀 ext/API 확정. `docs/mcp-enhance.md` 에 선분석 항목(E#/S#) 있으면 그 스펙 재사용. research 로 in-process 경로 발견 시 잠정 (e) → (a)/(b) 재분류; 경로 부재 확인 시에만 (e) 확정.
-5. 출력: **우선순위 매겨진 gap 리스트** (mcp-enhance 기준 = 직접 경험/예상되는 분 단위 pain + 우회비용).
+5. 출력: **우선순위 매겨진 gap 리스트** (mcp-enhance 기준 = 이번 세션에서 직접 겪은 분 단위 pain + 우회비용).
 
 > **🔍 셀프 리뷰 ① — 필요성·재사용** (코드 쓰기 *전*. 모자: 사용자/낭비 방지)
-> - 이 gap 정말 필요? 기존 tool 조합(`kit_command_execute` / `extension_search` / `window_menu_trigger`)으로 우회 불가?
-> - `tool-catalog.md` 에 동등 tool 이미 없나 (step 0 재확인)?
-> - "있으면 좋겠다" 류 섞이지 않았나 (I5)?
+> - 이 gap 이 **이번 세션에서 실제로 분 단위 마찰**이었나, 아니면 단순 사용법 문제 / "있으면 좋겠다"인가 (I5)?
+> - 기존 tool 조합(`kit_command_execute` / `extension_search` / `window_menu_trigger`)으로 우회 가능했나?
+> - `tool-catalog.md` 에 동등 tool 이미 없나 (step 2 재확인)?
 > 통과 못한 gap 제거. TodoWrite 에 관점별 pass/fail 기록.
 
 ### Phase 2~5 — gap 마다 반복 (우선순위 순)
@@ -99,7 +102,7 @@ All Python invocations use `.venv/Scripts/python.exe`.
 ## Stop Conditions
 
 STOP and report on any:
-- Phase 1: 모든 capability 가 기존 tool 로 커버 → **early-exit ("업그레이드 불필요")** — error 아님.
+- Phase 1: 모든 gap 후보가 기존 tool 로 커버됨(단순 사용법 문제 포함) → **early-exit ("업그레이드 불필요")** — error 아님.
 - Phase 1: 모든 gap 이 (e) MCP 영역 밖 → 구조적 blocker 목록 보고 — error 아님.
 - 셀프 리뷰 ②/③ 미통과 → STOP + 보고 (I3).
 - P4 (i) verify_mcp_sync / drift fail → 해당 gap leave-clean 또는 revert (I6), STOP + 보고.
@@ -108,7 +111,7 @@ STOP and report on any:
 ## Never Do
 
 - ❌ 절차를 skill 안에 hard-code (7곳/research/module 의 SoT 는 invariant 문서)
-- ❌ 원래 omniverse 작업의 실행/시각검증 (범위 밖)
+- ❌ 분석 대상 omniverse 작업의 재실행/시각검증 (범위 밖)
 - ❌ "있으면 좋겠다" gap 구현 (리뷰 ①·I5)
 - ❌ MCP 서버 코드에 Pydantic (type boundary)
 - ❌ 7곳 부분 수정으로 drift-fail 트리 방치 (I6)
@@ -123,10 +126,11 @@ STOP and report on any:
 ```
 🔧 omniverse-mcp-tool-upgrade complete
 
-Task: <재진술>
-Gaps (우선순위 순):
-- [구현] <tool 이름> (<분류 a-d>) — <감쌀 ext/API> [mcp-enhance <E#/S#> 재사용 시 표기]
-- [재사용] <기존 tool> — <capability>
+세션 작업 요약: <이번 세션에 수행한 omniverse 작업>
+Gaps (세션 마찰에서 도출, 우선순위 순):
+- [신규] <tool> (a) — <감쌀 ext/API> ← 마찰: <무엇이 없었나> [mcp-enhance <E#/S#>]
+- [업그레이드] <기존 tool> (b) — <보강 내용> ← 마찰: <기존 한계>
+- [재사용] <기존 tool> — <마찰이 단순 사용법이었음>
 - [blocker(e)] <capability> — <도달 불가 사유>
 
 구현 결과 (gap 별):
@@ -144,7 +148,7 @@ docs:
 Next:
 1. MCP host (Claude Code / Codex CLI) 재시작 → 새 tool live 등록
 2. extension reload (`docs/invariants/ext-reload.md`) → 새 REST endpoint live
-3. 그 후 원래 작업 실행 / 광범위 docs 는 /omniverse-docs-sweep
+3. 그 후 새 tool 로 후속 작업 / 광범위 docs 는 /omniverse-docs-sweep
 ```
 
 ### Variant — Early-exit (업그레이드 불필요)
