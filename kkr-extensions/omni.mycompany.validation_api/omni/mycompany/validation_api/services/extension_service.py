@@ -88,6 +88,66 @@ class ExtensionService:
             "reloaded": reloaded,
         }
 
+    # Extensions whose code serves THIS REST request cannot be hot-reloaded —
+    # disabling them mid-request kills the endpoint. Restart Kit for these.
+    _SELF_RELOAD_BLOCKLIST = frozenset({"omni.mycompany.validation_api"})
+
+    async def reload_clean(self, ext_id: str) -> dict[str, Any]:
+        """Clean reload: disable -> purge sys.modules tree -> re-enable.
+
+        Unlike ``activate(reload=True)`` (which only toggles the manager and
+        leaves stale Python modules in ``sys.modules``), this deletes every
+        ``sys.modules`` entry under the extension's python.module name (== ext_id
+        by this repo's convention) so the next enable re-imports fresh code —
+        even module-level singletons. The parent namespace packages (``omni``,
+        ``omni.mycompany``) are preserved (shared by other extensions).
+        """
+        import importlib
+        import sys
+
+        import omni.kit.app  # lazy
+
+        if not ext_id:
+            raise ValueError("ext_id is required")
+        if ext_id in self._SELF_RELOAD_BLOCKLIST:
+            raise ValueError(
+                f"extension '{ext_id}' serves this REST request and cannot self-reload; "
+                "use kit_app_restart"
+            )
+
+        try:
+            manager = omni.kit.app.get_app().get_extension_manager()
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"ExtensionManager unavailable: {exc}") from exc
+
+        was_enabled = bool(manager.is_extension_enabled(ext_id))
+        if was_enabled:
+            manager.set_extension_enabled_immediate(ext_id, False)
+
+        # Purge the ext module tree (ext_id == [[python.module]] name in this repo).
+        purged = [
+            key for key in list(sys.modules)
+            if key == ext_id or key.startswith(ext_id + ".")
+        ]
+        for key in purged:
+            del sys.modules[key]
+        importlib.invalidate_caches()
+
+        if not manager.set_extension_enabled_immediate(ext_id, True):
+            raise ValueError(
+                f"extension '{ext_id}' failed to re-enable after purge — "
+                "check --ext-folder and the extension.toml manifest"
+            )
+
+        return {
+            "ok": True,
+            "ext_id": ext_id,
+            "was_enabled": was_enabled,
+            "enabled": bool(manager.is_extension_enabled(ext_id)),
+            "reloaded": True,
+            "modules_purged": len(purged),
+        }
+
     # ------------------------------------------------------------------
     # Phase H — extension management (deactivate / list_all / get_info)
     # ------------------------------------------------------------------

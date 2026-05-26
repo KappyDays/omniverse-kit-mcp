@@ -46,3 +46,13 @@ class ExtensionActivateRequestModel(BaseModel):
         default=False,
         description="If already enabled, disable then re-enable to reload.",
     )
+
+
+class ExtensionReloadCleanRequestModel(BaseModel):
+    """Disable, purge sys.modules for the ext tree, then re-enable (clean reload)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ext_id: str = Field(
+        description="Kit extension id == its [[python.module]] name, e.g. 'omni.mycompany.ui_demo'",
+    )

@@ -22,6 +22,7 @@ from .models.character import (
 )
 from .models.extension import (
     ExtensionActivateRequestModel,
+    ExtensionReloadCleanRequestModel,
     ExtensionResetRequestModel,
     ExtensionTriggerRequestModel,
 )
@@ -913,6 +914,17 @@ async def extension_activate(body: ExtensionActivateRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("extension/activate failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/extension/reload_clean")
+async def extension_reload_clean(body: ExtensionReloadCleanRequestModel) -> Any:
+    try:
+        return await _extension.reload_clean(body.ext_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("extension/reload_clean failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
