@@ -121,6 +121,8 @@ class ProcessModule:
                 # talking to the wrong kit.exe instance.
                 f"--/exts/omni.services.transport.server.http/port={cfg.ext_port}",
             ]
+            for extra_folder in cfg.extra_ext_folders:
+                cmd.extend(["--ext-folder", extra_folder])
             for extra in cfg.extra_ext_ids:
                 cmd.extend(["--enable", extra])
             env = _prepare_launch_env(cfg)
