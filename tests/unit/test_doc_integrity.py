@@ -266,3 +266,24 @@ def test_a8_pull_doc_counts_match():
                 f"{actual} files in docs/{cat}/"
             )
     assert not problems, "Pull-doc count drift:\n  " + "\n  ".join(problems)
+
+
+# ---------------------------------------------------------------------------
+# A9: every invariants/runbooks file is indexed in root or docs CLAUDE.md
+# ---------------------------------------------------------------------------
+
+def test_a9_pull_docs_indexed():
+    index_text = (
+        ROOT_CLAUDE.read_text(encoding="utf-8")
+        + "\n"
+        + (PROJECT / "docs" / "CLAUDE.md").read_text(encoding="utf-8")
+    )
+    missing: list[str] = []
+    for cat in ("invariants", "runbooks"):
+        for md in sorted((PROJECT / "docs" / cat).glob("*.md")):
+            if md.stem not in index_text:
+                missing.append(
+                    f"docs/{cat}/{md.name} (stem '{md.stem}') not indexed in "
+                    "root CLAUDE.md or docs/CLAUDE.md"
+                )
+    assert not missing, "Unindexed pull-doc:\n  " + "\n  ".join(missing)
