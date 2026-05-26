@@ -297,11 +297,13 @@ application — use kit_app_stop for that.
 ### `viewport_capture`
 
 ```python
-viewport_capture(viewport_name: 'str' = 'Viewport', camera_prim_path: 'str | None' = None, renderer: 'str' = 'rtx', width: 'int' = 1280, height: 'int' = 720, output_format: 'str' = 'png') -> 'str'
+viewport_capture(viewport_name: 'str' = 'Viewport', camera_prim_path: 'str | None' = None, renderer: 'str' = 'rtx', width: 'int' = 1280, height: 'int' = 720, output_format: 'str' = 'png', warmup_frames: 'int' = 0, return_stats: 'bool' = False) -> 'str'
 ```
 
 Capture the 3D RTX render only (no Kit chrome) to PNG; returns artifact path. For the whole app
-window (menus + panels + viewport) use window_capture instead.
+window (menus + panels + viewport) use window_capture instead. warmup_frames=N ticks extra
+frames before grab (cold-RTX black fix); return_stats=True adds pixel_mean/pixel_variance per
+channel so you can auto-detect a blank/black frame without reading the PNG.
 
 **Parameters**
 
@@ -313,6 +315,8 @@ window (menus + panels + viewport) use window_capture instead.
 | `width` | `integer` | `1280` |  |
 | `height` | `integer` | `720` |  |
 | `output_format` | `string` | `'png'` |  |
+| `warmup_frames` | `integer` | `0` |  |
+| `return_stats` | `boolean` | `False` |  |
 
 ### `viewport_compare_ssim`
 

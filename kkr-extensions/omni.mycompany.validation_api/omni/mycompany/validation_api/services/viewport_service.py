@@ -167,10 +167,14 @@ class ViewportService:
         height = request.get("height", 720)
         settle_frames = request.get("settle_frames", 5)
         output_format = request.get("output_format", "png")
+        warmup_frames = int(request.get("warmup_frames", 0))
+        return_stats = bool(request.get("return_stats", False))
 
-        # Let renderer settle
+        # Let renderer settle, then extra warmup ticks to force a cold-RTX frame.
         app = omni.kit.app.get_app()
         for _ in range(settle_frames):
+            await app.next_update_async()
+        for _ in range(warmup_frames):
             await app.next_update_async()
 
         # Try replicator API (handles Isaac Sim 5.x HydraTexture return type),
@@ -199,14 +203,21 @@ class ViewportService:
         # Compute hash
         sha = _sha256_file(filepath)
 
-        return {
+        result = {
             "artifact_id": artifact_id,
             "path": filepath,
             "width": int(data.shape[1]),
             "height": int(data.shape[0]),
             "sha256": sha,
             "created_at_epoch_ms": int(time.time() * 1000),
+            "warmup_frames_used": warmup_frames,
         }
+        if return_stats:
+            import numpy as np
+            rgb = data[:, :, :3].astype("float64")
+            result["pixel_mean"] = [float(v) for v in rgb.mean(axis=(0, 1))]
+            result["pixel_variance"] = [float(v) for v in rgb.var(axis=(0, 1))]
+        return result
 
     async def compare_ssim(self, request: dict[str, Any]) -> dict[str, Any]:
         """Compute SSIM between two captured images."""
