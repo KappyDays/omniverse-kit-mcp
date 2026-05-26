@@ -1,8 +1,10 @@
 """Static integrity tests for CLAUDE.md / docs markdown (카테고리 A).
 
 Detects drift introduced by documentation restructuring: broken relative
-links, oversized roots/subs, missing navigation sections, and pull-doc
-files growing past their per-category hard caps.
+links, oversized roots/subs, missing navigation sections, pull-doc files
+growing past their per-category hard caps, pull-doc "N 개" counts drifting
+from the actual file count (A8), and invariants/runbooks files missing from
+the root/docs index (A9).
 
 Hard caps are injected via env so the same test file is usable from both
 the pre baseline (permissive) and the post run (strict).
