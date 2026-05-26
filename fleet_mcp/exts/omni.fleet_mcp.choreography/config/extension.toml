@@ -1,0 +1,16 @@
+[package]
+version = "0.1.0"
+title = "Robot Fleet Choreography"
+description = "Drive 2-3 real wheeled robots through a time-synchronized waypoint choreography via an OmniGraph ActionGraph, with a sim_time formation change."
+category = "Tools"
+keywords = ["fleet", "omnigraph", "actiongraph", "articulation", "demo"]
+authors = ["omniverse-kit-mcp / fleet_mcp"]
+
+[dependencies]
+"omni.usd" = {}
+"omni.kit.commands" = {}
+"omni.graph.core" = {}
+"omni.graph.action" = {}
+
+[[python.module]]
+name = "omni.fleet_mcp.choreography"
