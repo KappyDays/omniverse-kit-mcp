@@ -103,6 +103,7 @@ class SimulationModule:
     ) -> ModuleResult[StageWriteResult]:
         started = int(time.time() * 1000)
         try:
+            await self._ensure_timeline_stopped(meta)
             raw = await self._client.stage_load_usd(request)
             result = StageWriteResult(
                 ok=raw.get("ok", True),
@@ -201,6 +202,7 @@ class SimulationModule:
     ) -> ModuleResult[StageFileResult]:
         started = int(time.time() * 1000)
         try:
+            await self._ensure_timeline_stopped(meta)
             raw = await self._client.stage_open(url)
             return ok_result(
                 StageFileResult(
@@ -220,6 +222,7 @@ class SimulationModule:
     ) -> ModuleResult[StageFileResult]:
         started = int(time.time() * 1000)
         try:
+            await self._ensure_timeline_stopped(meta)
             raw = await self._client.stage_new()
             return ok_result(
                 StageFileResult(
@@ -235,6 +238,18 @@ class SimulationModule:
             )
 
     # --- Internal ---
+
+    async def _ensure_timeline_stopped(self, meta: OperationMeta) -> None:
+        """Stop the timeline before a stage swap if it is playing.
+
+        Replacing the stage (stage_new / stage_open / stage_load_usd) while the
+        timeline is playing causes a 92s Kit event-loop hang (farm session).
+        Stop is idempotent, so this is safe — but we gate on is_playing to avoid
+        resetting time when already stopped/paused.
+        """
+        status = await self.get_status(meta)
+        if status.ok and status.data is not None and status.data.is_playing:
+            await self.stop(meta)
 
     async def _control(
         self, action: str, meta: OperationMeta

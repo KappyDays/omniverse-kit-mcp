@@ -37,6 +37,9 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 - `stage_open(url)` — root stage 전체 교체 (scene 전환)
 - `stage_load_usd(url, prim_path)` — 기존 stage 에 `/World/<name>` Payload 추가
   (multi-asset composition)
+- **play-guard (2026-05-26)**: `stage_new`/`stage_open`/`stage_load_usd` 는 MCP
+  `SimulationModule` 진입부에서 `is_playing` 이면 자동 `simulation_stop` 선행 (play 중 stage
+  교체 → 92s hang 방지). 호출자는 stop 을 따로 호출할 필요 없음.
 
 ## 근본 원인 (재발 진단용)
 
