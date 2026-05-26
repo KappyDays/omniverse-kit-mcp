@@ -5,18 +5,22 @@
 Extension `.py` 수정 후 어떤 reload 경로를 쓰든 `sys.modules` cleanup 은 보장 안 됨.
 `kkr-extensions/` 코드 수정 시 이 파일 Read.
 
-## 핵심 결론 (L9 재재진단 + L16)
+## 핵심 결론 (2026-05-26 갱신 — `extension_reload` 신설)
 
-- **`.py` 수정 후 코드 반영을 확실히 하려면 Kit process restart**
-  - `kit_app_restart` MCP tool, 또는
-  - `scripts/run_process_module_standalone.py stop + start`
-- omni.ext.plugin fswatcher (C++) 가 ext python 폴더를 자동 watch — 파일 저장 시
-  `FS Change triggers reloading` + disable→enable 시퀀스를 실행하긴 함.
-  **하지만 `_reload_enabled = False` (default) 가 fswatcher 경로에도 적용** —
-  sys.modules cleanup 안 됨
-- MCP `extension_activate(reload=True)` 도 sys.modules cleanup 안 함 (fswatcher 와 동일)
-- 특히 module-level singleton (`_window = WindowService()`, `_router = APIRouter()` 등)
-  패턴은 100% reload 실패
+- **데모/사용자 Extension `.py` 수정 반영**: `extension_reload(ext_id)` MCP tool 사용
+  (Kit 재시작 불필요). 이 tool 은 disable → **`sys.modules` 에서 ext_id 트리 purge** →
+  `importlib.invalidate_caches()` → enable 을 수행해 stale 모듈/싱글턴을 확실히 제거한다.
+- **여전히 Kit 재시작이 필요한 경우** (둘뿐):
+  1. `omni.mycompany.validation_api` **자기 자신** 의 코드 변경 — REST 서버를 disable 하면
+     `extension_reload` 응답이 불가하므로 self-reload 금지(HTTP 400). `kit_app_restart` 사용.
+  2. extension.toml `[dependencies]` 변경 — 의존성 그래프 재해소는 hot path 가 아님.
+- 과거 결론("모든 `.py` 수정에 restart 필수")은 `sys.modules` purge 가 없던 시절 기준이며,
+  `extension_reload` 로 해소됨. fswatcher 자동 reload 는 여전히 `_reload_enabled=False` 라
+  신뢰 불가 — `extension_reload` 를 명시 호출할 것. MCP `extension_activate(reload=True)` 도
+  토글만 하고 sys.modules 정리 안 함 (purge 는 `extension_reload` 전용).
+- **module-level singleton 주의**: `_window = WindowService()` / `_router = APIRouter()` 같은
+  import-time 싱글턴은 purge 후 모듈 재import 시 재생성되어 reload-safe 하지만, `on_shutdown`
+  정리가 없으면 zombie 가 남는다 (아래 zombie cleanup 패턴 참조).
 
 ## 검증 패턴 (reload 성공 여부 확인)
 
