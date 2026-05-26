@@ -82,6 +82,21 @@ def _line_count(path: Path) -> int:
     return text.count("\n") + (0 if text.endswith("\n") or not text else 1)
 
 
+def _stated_count(text: str, anchor: str) -> int | None:
+    """Return the integer before '개' on the first *anchor* line that has one.
+
+    Anchored count lookup (NOT a global '\\d+ 개' scan) so prose counts like
+    root CLAUDE.md's '8 개 13s 통과' (a DO-NOT-EDIT note, not an index count)
+    are never matched. Returns None if no anchor line carries a count.
+    """
+    for line in text.splitlines():
+        if anchor in line:
+            m = re.search(r"(\d+)\s*개", line)
+            if m:
+                return int(m.group(1))
+    return None
+
+
 # ---------------------------------------------------------------------------
 # A1: relative markdown links resolve
 # ---------------------------------------------------------------------------
@@ -229,3 +244,25 @@ def test_a7_claude_p_oneshot_banned():
         "`claude -p` mention outside ban context (spec §7.1):\n  "
         + "\n  ".join(bad)
     )
+
+
+# ---------------------------------------------------------------------------
+# A8: docs/CLAUDE.md pull-doc "N 개" counts match actual file counts
+# ---------------------------------------------------------------------------
+
+def test_a8_pull_doc_counts_match():
+    text = (PROJECT / "docs" / "CLAUDE.md").read_text(encoding="utf-8")
+    problems: list[str] = []
+    for cat in ("invariants", "runbooks"):
+        stated = _stated_count(text, f"`{cat}/`")
+        actual = len(list((PROJECT / "docs" / cat).glob("*.md")))
+        if stated is None:
+            problems.append(
+                f"could not locate 'N 개' count in docs/CLAUDE.md '{cat}/' row"
+            )
+        elif stated != actual:
+            problems.append(
+                f"docs/CLAUDE.md {cat} count says {stated} but found "
+                f"{actual} files in docs/{cat}/"
+            )
+    assert not problems, "Pull-doc count drift:\n  " + "\n  ".join(problems)
