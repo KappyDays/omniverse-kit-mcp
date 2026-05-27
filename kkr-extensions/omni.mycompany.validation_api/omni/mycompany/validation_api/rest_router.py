@@ -73,6 +73,7 @@ from .models.physics import (
     PhysicsApplyMaterialRequestModel,
     PhysicsApplyRigidBodyRequestModel,
     PhysicsCreateJointRequestModel,
+    PhysicsSetJointDriveRequestModel,
     PhysicsSetSceneRequestModel,
     PhysicsVisualizeRequestModel,
 )
@@ -622,6 +623,17 @@ async def physics_create_joint(body: PhysicsCreateJointRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("physics/create_joint failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/physics/set_joint_drive")
+async def physics_set_joint_drive(body: PhysicsSetJointDriveRequestModel) -> Any:
+    try:
+        return await _physics.set_joint_drive(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("physics/set_joint_drive failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

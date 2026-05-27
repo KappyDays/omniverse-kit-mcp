@@ -107,6 +107,7 @@ from omniverse_kit_mcp.types.physics import (
     PhysicsApplyMaterialRequest,
     PhysicsApplyRigidBodyRequest,
     PhysicsCreateJointRequest,
+    PhysicsSetJointDriveRequest,
     PhysicsSetSceneRequest,
     PhysicsVisualizeRequest,
 )
@@ -1476,6 +1477,30 @@ def register_module_tools(
             joint_prim_path=joint_prim_path,
         )
         result = await physics.create_joint(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def physics_set_joint_drive(
+        joint_prim_path: str,
+        drive_type: str = "angular",
+        target_position: float = 0.0,
+        target_velocity: float = 0.0,
+        stiffness: float = 0.0,
+        damping: float = 0.0,
+        max_force: float | None = None,
+    ) -> str:
+        """Configure a UsdPhysics DriveAPI on an existing joint so it actuates (physics_create_joint only creates the joint). drive_type ∈ {linear (Prismatic), angular (Revolute)}; target_position drives toward a pose (deg for angular, distance for linear), stiffness/damping form the PD gains, max_force=None leaves the PhysX default (unbounded). Body needs RigidBodyAPI + physics_set_scene + simulation_play to move."""
+        meta = make_meta(ModuleName.PHYSICS)
+        request = PhysicsSetJointDriveRequest(
+            joint_prim_path=joint_prim_path,
+            drive_type=drive_type,  # type: ignore[arg-type]
+            target_position=target_position,
+            target_velocity=target_velocity,
+            stiffness=stiffness,
+            damping=damping,
+            max_force=max_force,
+        )
+        result = await physics.set_joint_drive(meta, request)
         return _serialize(result)
 
     @mcp.tool()

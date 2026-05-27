@@ -335,6 +335,50 @@ class PhysicsService:
             "body_b": body_b,
         }
 
+    async def set_joint_drive(self, request: dict[str, Any]) -> dict[str, Any]:
+        import omni.usd
+        from pxr import Sdf, UsdPhysics
+
+        joint_path = request["joint_prim_path"]
+        drive_type = request.get("drive_type", "angular")
+        if drive_type not in ("linear", "angular"):
+            raise ValueError(
+                f"drive_type must be 'linear' or 'angular', got {drive_type!r}"
+            )
+        target_position = float(request.get("target_position", 0.0))
+        target_velocity = float(request.get("target_velocity", 0.0))
+        stiffness = float(request.get("stiffness", 0.0))
+        damping = float(request.get("damping", 0.0))
+        max_force = request.get("max_force")
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        joint_prim = stage.GetPrimAtPath(Sdf.Path(joint_path))
+        if not joint_prim.IsValid():
+            raise ValueError(f"Joint prim {joint_path!r} not found")
+
+        drive = UsdPhysics.DriveAPI.Apply(joint_prim, drive_type)
+        drive.CreateTargetPositionAttr().Set(target_position)
+        drive.CreateTargetVelocityAttr().Set(target_velocity)
+        drive.CreateStiffnessAttr().Set(stiffness)
+        drive.CreateDampingAttr().Set(damping)
+        applied_max_force: float | None = None
+        if max_force is not None:
+            applied_max_force = float(max_force)
+            drive.CreateMaxForceAttr().Set(applied_max_force)
+
+        return {
+            "ok": True,
+            "joint_prim_path": joint_path,
+            "drive_type": drive_type,
+            "target_position": target_position,
+            "target_velocity": target_velocity,
+            "stiffness": stiffness,
+            "damping": damping,
+            "max_force": applied_max_force,
+        }
+
     # ------------------------------------------------------------------
     # Scene
     # ------------------------------------------------------------------

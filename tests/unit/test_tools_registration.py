@@ -106,6 +106,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "physics_apply_collider",
     "physics_apply_material",
     "physics_create_joint",
+    "physics_set_joint_drive",
     "physics_set_scene",
     "physics_visualize",
     # Phase F — Lighting (UsdLux Dome/Distant/Disk/Rect/Sphere + exposure)

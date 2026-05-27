@@ -99,6 +99,37 @@ class PhysicsCreateJointResult:
 
 
 @dataclass(slots=True, frozen=True)
+class PhysicsSetJointDriveRequest:
+    """Configure a UsdPhysics.DriveAPI on an existing joint prim.
+
+    ``physics_create_joint`` makes the joint but cannot actuate it; this applies
+    a position/velocity drive (target + stiffness/damping) so the joint moves.
+    ``drive_type`` is 'angular' for Revolute, 'linear' for Prismatic. ``max_force``
+    None leaves the PhysX default (unbounded).
+    """
+
+    joint_prim_path: str
+    drive_type: Literal["linear", "angular"] = "angular"
+    target_position: float = 0.0
+    target_velocity: float = 0.0
+    stiffness: float = 0.0
+    damping: float = 0.0
+    max_force: float | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class PhysicsSetJointDriveResult:
+    ok: bool
+    joint_prim_path: str
+    drive_type: str
+    target_position: float
+    target_velocity: float
+    stiffness: float
+    damping: float
+    max_force: float | None
+
+
+@dataclass(slots=True, frozen=True)
 class PhysicsSetSceneRequest:
     gravity: tuple[float, float, float] = (0.0, 0.0, -9.81)
     timestep: float = 1.0 / 60.0
