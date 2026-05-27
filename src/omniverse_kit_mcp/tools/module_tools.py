@@ -647,8 +647,11 @@ def register_module_tools(
         (wheel_radius=0.14, wheel_base=0.413).
         """
         meta = make_meta(ModuleName.ROBOT)
+        # Accept 2D [x, y] (ground plane) or 3D [x, y, z]; pad z=0 for 2D so a
+        # 2-element waypoint no longer trips a cryptic "list index out of range".
         wp_tuple = tuple(
-            (float(p[0]), float(p[1]), float(p[2])) for p in waypoints
+            (float(p[0]), float(p[1]), float(p[2]) if len(p) > 2 else 0.0)
+            for p in waypoints
         )
         if len(wp_tuple) < 2:
             raise ValueError("waypoints must have at least 2 points")
