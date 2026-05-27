@@ -54,8 +54,9 @@ class ReplicatorService:
         try:
             import omni.replicator.core as rep  # type: ignore[import-not-found]
 
-            writer_cls = rep.WriterRegistry.get(writer_type)
-            writer = writer_cls()
+            # WriterRegistry.get returns a ready writer INSTANCE (not a class) —
+            # calling it raises "'BasicWriter' object is not callable".
+            writer = rep.WriterRegistry.get(writer_type)
             # BasicWriter.initialize signature — kwargs differ between
             # KittiWriter/CocoWriter; we pass the common subset + channel toggles.
             init_kwargs: dict[str, Any] = {"output_dir": output_dir}
@@ -64,6 +65,44 @@ class ReplicatorService:
                 init_kwargs["distance_to_camera"] = depth
                 init_kwargs["semantic_segmentation"] = semantic_segmentation
             writer.initialize(**init_kwargs)
+
+            # A writer with no render products attached writes nothing — bind it
+            # to camera render products so trigger_once actually emits frames.
+            # Camera selection: explicit request.camera_paths, else every
+            # UsdGeom.Camera under /World/Cameras, else the active viewport
+            # camera. Resolution kept modest (default 512x512) to stay within
+            # GPU budget (full-res multi-annotator runs have device-lost'd here).
+            import omni.usd
+            stage = omni.usd.get_context().get_stage()
+            cam_paths: list[str] = list(request.get("camera_paths") or [])
+            if not cam_paths and stage is not None:
+                for prim in stage.Traverse():
+                    if (
+                        prim.GetTypeName() == "Camera"
+                        and prim.GetPath().pathString.startswith("/World/Cameras")
+                    ):
+                        cam_paths.append(prim.GetPath().pathString)
+            if not cam_paths:
+                try:
+                    from omni.kit.viewport.utility import get_active_viewport
+                    vp = get_active_viewport()
+                    if vp is not None and vp.camera_path:
+                        cam_paths = [str(vp.camera_path)]
+                except Exception:  # noqa: BLE001
+                    pass
+            res = request.get("resolution") or [512, 512]
+            res_t = (int(res[0]), int(res[1]))
+            render_products = []
+            attached_cameras: list[str] = []
+            for cp in cam_paths:
+                try:
+                    render_products.append(rep.create.render_product(cp, res_t))
+                    attached_cameras.append(cp)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("render_product(%s) failed: %s", cp, exc)
+            if render_products:
+                writer.attach(render_products)
+
             self._writers[writer_id] = {
                 "writer": writer,
                 "writer_type": writer_type,
@@ -71,8 +110,11 @@ class ReplicatorService:
                 "rgb": rgb,
                 "depth": depth,
                 "semantic_segmentation": semantic_segmentation,
+                "render_products": render_products,
+                "attached_cameras": attached_cameras,
             }
         except Exception as exc:  # noqa: BLE001
+            logger.error("create_writer failed: %s", exc, exc_info=True)
             backend = f"fallback_metadata:{type(exc).__name__}"
             self._writers[writer_id] = {
                 "writer": None,
@@ -94,6 +136,7 @@ class ReplicatorService:
                 "depth": depth,
                 "semantic_segmentation": semantic_segmentation,
             },
+            "attached_cameras": self._writers[writer_id].get("attached_cameras", []),
             "backend": backend,
         }
 
