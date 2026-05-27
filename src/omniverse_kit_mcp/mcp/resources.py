@@ -36,6 +36,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 RESOURCE_SOURCES: dict[str, Path | None] = {
     "isaacsim://tool-catalog": _PROJECT_ROOT / "docs" / "tool-catalog.md",
     "isaacsim://sensor-menu": _PROJECT_ROOT / "docs" / "references" / "sensor_menu_catalog.md",
+    "isaacsim://asset-catalog": _PROJECT_ROOT / "docs" / "assets" / "isaac" / "asset_inventory.md",
     "isaacsim://scenario-schema": None,
     "isaacsim://scenarios": None,
 }
@@ -87,6 +88,34 @@ def register_resources(mcp: FastMCP, config: AppConfig) -> None:
                 "# Sensor menu catalog\n\n"
                 f"(Source file missing: `{path}`. Update "
                 "`RESOURCE_SOURCES['isaacsim://sensor-menu']` or restore "
+                "the file.)"
+            )
+        return path.read_text(encoding="utf-8")
+
+    @mcp.resource(
+        "isaacsim://asset-catalog",
+        name="Isaac Sim NVIDIA Asset Catalog Index",
+        description=(
+            "READ FIRST before building a scene or adding any robot / "
+            "character / environment / prop / SimReady asset — the curated "
+            "NVIDIA / Isaac Sim 5.1 asset inventory (robots 100+, "
+            "environments 10, people / animations, props, SimReady 1000+). "
+            "Maps a request type to the catalog file that holds concrete USD "
+            "URLs so you load a real NVIDIA asset (Validation Rule R1 — never "
+            "substitute a primitive Cube/Sphere). Pair with the asset_search "
+            "tool for natural-language lookup and docs/invariants/"
+            "asset-discovery.md for the full discovery workflow."
+        ),
+        mime_type="text/markdown",
+    )
+    def asset_catalog() -> str:
+        path = RESOURCE_SOURCES["isaacsim://asset-catalog"]
+        assert path is not None  # file-backed
+        if not path.exists():
+            return (
+                "# Asset catalog\n\n"
+                f"(Source file missing: `{path}`. Update "
+                "`RESOURCE_SOURCES['isaacsim://asset-catalog']` or restore "
                 "the file.)"
             )
         return path.read_text(encoding="utf-8")

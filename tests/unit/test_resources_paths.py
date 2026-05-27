@@ -23,6 +23,7 @@ from omniverse_kit_mcp.mcp.server import create_mcp_server
 EXPECTED_RESOURCES: frozenset[str] = frozenset({
     "isaacsim://tool-catalog",
     "isaacsim://sensor-menu",
+    "isaacsim://asset-catalog",
     "isaacsim://scenario-schema",
     "isaacsim://scenarios",
 })
