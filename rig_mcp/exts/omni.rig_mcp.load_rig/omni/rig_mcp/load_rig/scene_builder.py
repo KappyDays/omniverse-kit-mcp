@@ -10,7 +10,10 @@ from __future__ import annotations
 
 from . import config
 
-_MANAGED = (config.PHYSICS_SCENE, config.GROUND, config.RIG_ROOT, config.PAYLOAD_ROOT)
+_MANAGED = (
+    config.PHYSICS_SCENE, config.GROUND, config.RIG_ROOT, config.PAYLOAD_ROOT,
+    config.DOME_LIGHT, config.KEY_LIGHT,
+)
 
 
 def clear(stage) -> None:
@@ -51,6 +54,13 @@ def build(stage) -> dict:
     stage.SetDefaultPrim(world.GetPrim())
 
     clear(stage)
+
+    # Lighting (bare authored geometry has no env lights -> black RTX render).
+    from pxr import UsdLux
+    dome = UsdLux.DomeLight.Define(stage, config.DOME_LIGHT)
+    dome.CreateIntensityAttr(config.DOME_INTENSITY)
+    key = UsdLux.DistantLight.Define(stage, config.KEY_LIGHT)
+    key.CreateIntensityAttr(config.KEY_INTENSITY)
 
     scene = UsdPhysics.Scene.Define(stage, config.PHYSICS_SCENE)
     scene.CreateGravityDirectionAttr(Gf.Vec3f(0.0, 0.0, -1.0))

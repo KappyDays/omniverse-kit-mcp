@@ -15,6 +15,12 @@ PHYSICS_SCENE = "/World/PhysicsScene"
 GROUND = "/World/Ground"
 RIG_ROOT = "/World/Rig"
 PAYLOAD_ROOT = "/World/Payload"
+# Lighting — the rig is bare authored geometry (no env reference carrying lights),
+# so without these the RTX viewport renders all-black (live-observed 2026-05-28).
+DOME_LIGHT = "/World/DomeLight"
+KEY_LIGHT = "/World/KeyLight"
+DOME_INTENSITY = 1000.0
+KEY_INTENSITY = 3000.0
 
 BASE = "/World/Rig/Base"
 COLUMN = "/World/Rig/Column"
@@ -38,12 +44,15 @@ CARRIAGE_X = 0.35       # carriage offset from column (toward fork)
 CARRIAGE_Z0 = 0.4       # carriage rest height
 FORK_X = 1.0            # fork extends in +X from carriage
 
-# Drive
+# Drive — heavily damped so the lift is smooth: with low damping (e.g. 4000/400)
+# the carriage snaps up ~1.5 m in <0.5 s (~4 m/s) and LAUNCHES the unconstrained
+# pallet+box off the fork (live-observed 2026-05-28: payload flew to z=3.2). High
+# damping (450/1200) keeps the payload seated on the fork throughout the lift.
 LIFT_HEIGHT = 1.5       # prismatic target (m)
 LIFT_LOWER = 0.0
 LIFT_UPPER = 2.0
-LIFT_STIFFNESS = 4000.0
-LIFT_DAMPING = 400.0
+LIFT_STIFFNESS = 450.0
+LIFT_DAMPING = 1200.0
 LIFT_MAX_FORCE = 1.0e6
 TILT_ANGLE = 8.0        # revolute target (deg)
 TILT_STIFFNESS = 800.0
