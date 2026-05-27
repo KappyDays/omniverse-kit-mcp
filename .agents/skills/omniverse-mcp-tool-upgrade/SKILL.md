@@ -54,7 +54,7 @@ All Python invocations use `.venv/Scripts/python.exe`.
 1. **세션 작업 분석 (hybrid 입력 — `omniverse-docs-sweep` 와 동일 모델)**:
    - (a) **conversation (primary)**: 이번 세션에 수행한 omniverse 작업 — 호출한 MCP tool, 사용한 **우회/수동 단계**, **반복된 마찰**, "이 tool 있었으면" 순간, 기존 tool 의 한계를 만난 지점. retry·우회·수동 단계는 주로 여기 드러남.
    - (b) **git (corroboration)**: omniverse 관련 코드/extension/scenario 변경. **uncommitted `git diff HEAD` 만 보면 누락** — 이 프로젝트는 세션 중 커밋이 잦으므로 `git log --oneline <세션-base>..HEAD` 로 **세션 중 커밋된 작업까지** 포함 (base 불명 시 conversation 시작 시점 추정). conversation 이 빈약/compacted 면 git 이 주도.
-   → 각 마찰점을 **gap 후보**로 추출 (어떤 기존 tool 이 부족했나 / 아예 없었나).
+   → 각 마찰점을 **gap 후보**로 추출 (어떤 기존 tool 이 부족했나 / 아예 없었나). **작업/마찰을 못 찾으면 gap 을 지어내지 말고 STOP (입력 부족 — Stop Conditions).**
 2. gap 후보마다 `docs/tool-catalog.md` 검색 (research step 0). **기존 tool 로 충분히 커버되면** gap 아님 (마찰이 단순 사용법 문제였을 수 있음 → 제거).
 3. 남은 gap **잠정 분류** (확정은 step 4 research 후):
    - `(a)` **신규 MCP tool** (Kit command/API wrap) → `docs/invariants/mcp-tool-add.md` 7곳
@@ -102,6 +102,7 @@ All Python invocations use `.venv/Scripts/python.exe`.
 ## Stop Conditions
 
 STOP and report on any:
+- Phase 1: conversation·git 어디에도 분석할 omniverse 작업/마찰이 없음 → **STOP "분석할 세션 작업 부족"** (작업이 다른 세션이거나 미커밋/미기록/compact 유실 가능). **"업그레이드 불필요"(분석 후 gap 없음)와 구분** — 근거 없이 gap 날조 금지 (I5). error 아님.
 - Phase 1: 모든 gap 후보가 기존 tool 로 커버됨(단순 사용법 문제 포함) → **early-exit ("업그레이드 불필요")** — error 아님.
 - Phase 1: 모든 gap 이 (e) MCP 영역 밖 → 구조적 blocker 목록 보고 — error 아님.
 - 셀프 리뷰 ②/③ 미통과 → STOP + 보고 (I3).
@@ -113,6 +114,7 @@ STOP and report on any:
 - ❌ 절차를 skill 안에 hard-code (7곳/research/module 의 SoT 는 invariant 문서)
 - ❌ 분석 대상 omniverse 작업의 재실행/시각검증 (범위 밖)
 - ❌ "있으면 좋겠다" gap 구현 (리뷰 ①·I5)
+- ❌ 입력(conversation·git)에 근거 없는 gap 날조 — 입력 부족 시 구현 말고 STOP
 - ❌ MCP 서버 코드에 Pydantic (type boundary)
 - ❌ 7곳 부분 수정으로 drift-fail 트리 방치 (I6)
 - ❌ standalone(mock) 통과를 실 endpoint 동작 검증으로 보고 (I4)
@@ -149,6 +151,15 @@ Next:
 1. MCP host (Claude Code / Codex CLI) 재시작 → 새 tool live 등록
 2. extension reload (`docs/invariants/ext-reload.md`) → 새 REST endpoint live
 3. 그 후 새 tool 로 후속 작업 / 광범위 docs 는 /omniverse-docs-sweep
+```
+
+### Variant — 입력 부족 (분석 불가)
+
+```
+🔧 omniverse-mcp-tool-upgrade — 분석할 세션 작업 부족
+이번 세션 conversation·git 에서 omniverse 작업/마찰을 찾지 못함.
+- 원인 후보: 작업이 다른 세션 / 미커밋·미기록 / 컨텍스트 compact 로 유실
+- 조치: 작업한 세션에서 재호출, 또는 `git log <base>..HEAD` 로 대상 커밋 범위 명시
 ```
 
 ### Variant — Early-exit (업그레이드 불필요)
