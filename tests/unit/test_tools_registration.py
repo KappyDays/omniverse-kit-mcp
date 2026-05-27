@@ -52,6 +52,8 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "job_cancel",
     # Phase B+ — Asset catalog (GUI Asset Browser equivalent)
     "asset_list",
+    # Asset discovery — offline curated-catalog semantic search (no REST)
+    "asset_search",
     # Phase B+ — File / Selection / Camera (GUI File menu + Stage panel)
     "stage_save",
     "stage_open",

@@ -733,6 +733,38 @@ def register_module_tools(
         )
         return _serialize(result)
 
+    @mcp.tool()
+    async def asset_search(
+        query: str,
+        category: str | None = None,
+        limit: int = 20,
+    ) -> str:
+        """Search the curated NVIDIA / Isaac Sim 5.1 asset catalog OFFLINE — no Isaac Sim required.
+
+        Maps a natural-language need (e.g. "forklift", "warehouse", "franka",
+        "police character", "pallet") to concrete spawnable USD URLs by ranking
+        the curated markdown catalog under docs/assets/isaac/ (robots 100+,
+        environments, people/animations, props, SimReady 1000+). Use this at
+        planning time / before building a scene to pick a real asset (Validation
+        Rule R1 — never substitute a primitive); complements the live asset_list
+        (which needs Isaac up) and content_browse.
+
+        Args:
+          query: free-text terms matched against asset name / catalog text.
+          category: optional filter — one of robots / environments / people /
+            props / simready / other.
+          limit: max results (default 20).
+
+        Returns a ranked list of {name, url, category, source_file}. Load a
+        chosen url with stage_load_usd / robot_load / character_load per
+        docs/invariants/usd-load.md.
+        """
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.search(
+            meta, query=query, category=category, limit=limit
+        )
+        return _serialize(result)
+
     # ------------------------------------------------------------------
     # Character
     # ------------------------------------------------------------------

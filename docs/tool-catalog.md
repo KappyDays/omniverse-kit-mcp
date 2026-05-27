@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 118
+**Tool count**: 119
 
 ## Table of contents
 
@@ -16,7 +16,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
 - [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 9 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
-- [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 1 tools
+- [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 2 tools
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
@@ -1017,6 +1017,31 @@ is_folder=false entries have spawnable url.
 | `recursive` | `boolean` | `False` |  |
 | `max_depth` | `integer` | `2` |  |
 | `max_entries` | `integer` | `500` |  |
+
+### `asset_search`
+
+```python
+asset_search(query: 'str', category: 'str | None' = None, limit: 'int' = 20) -> 'str'
+```
+
+Search the curated NVIDIA / Isaac Sim 5.1 asset catalog OFFLINE — no Isaac Sim required.  Maps
+a natural-language need (e.g. "forklift", "warehouse", "franka", "police character", "pallet")
+to concrete spawnable USD URLs by ranking the curated markdown catalog under docs/assets/isaac/
+(robots 100+, environments, people/animations, props, SimReady 1000+). Use this at planning
+time / before building a scene to pick a real asset (Validation Rule R1 — never substitute a
+primitive); complements the live asset_list (which needs Isaac up) and content_browse.  Args:
+query: free-text terms matched against asset name / catalog text.   category: optional filter —
+one of robots / environments / people /     props / simready / other.   limit: max results
+(default 20).  Returns a ranked list of {name, url, category, source_file}. Load a chosen url
+with stage_load_usd / robot_load / character_load per docs/invariants/usd-load.md.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `query` | `string` | `'—'` | ✓ |
+| `category` | `string \| None` | `None` |  |
+| `limit` | `integer` | `20` |  |
 
 ## Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)
 
