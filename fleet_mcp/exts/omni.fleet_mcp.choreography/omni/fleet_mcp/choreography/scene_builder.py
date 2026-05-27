@@ -34,7 +34,7 @@ def build(stage, formation: str = "triangle") -> dict:
     for name, (x, y) in zip(config.ROBOT_NAMES, path_planner.start_poses(formation)):
         parent_path = f"{config.FLEET_ROOT}/{name}"
         parent = UsdGeom.Xform.Define(stage, parent_path)
-        parent.AddTranslateOp().Set(Gf.Vec3d(x, y, 0.0))
+        parent.AddTranslateOp().Set(Gf.Vec3d(x, y, config.ROBOT_START_Z))
         model = UsdGeom.Xform.Define(stage, f"{parent_path}/Model")
         model.GetPrim().GetReferences().AddReference(config.ROBOT_URL)
         robot_paths.append(parent_path)
