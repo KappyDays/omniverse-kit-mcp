@@ -590,6 +590,9 @@ class IsaacRestClient:
     async def simulation_step(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/simulation/step", json=request)
 
+    async def simulation_wait_until(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(f"{BASE_PATH}/simulation/wait_until", json=request)
+
     async def simulation_set_time(
         self, request: dict[str, Any],
     ) -> dict[str, Any]:

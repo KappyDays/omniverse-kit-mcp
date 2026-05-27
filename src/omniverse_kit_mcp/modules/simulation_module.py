@@ -14,6 +14,8 @@ from omniverse_kit_mcp.types.simulation import (
     SimulationStatus,
     SimulationStepRequest,
     SimulationStepResult,
+    SimulationWaitUntilRequest,
+    SimulationWaitUntilResult,
     StageWriteResult,
 )
 from omniverse_kit_mcp.types.stage import StageFileResult
@@ -69,6 +71,34 @@ class SimulationModule:
         except Exception as exc:
             return error_result(
                 str(exc), started_ms=started, error_code="SIMULATION_STEP_ERROR",
+            )
+
+    async def wait_until(
+        self,
+        meta: OperationMeta,
+        request: SimulationWaitUntilRequest,
+    ) -> ModuleResult[SimulationWaitUntilResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.simulation_wait_until({
+                "until_time": request.until_time,
+                "timeout_s": request.timeout_s,
+            })
+            return ok_result(
+                SimulationWaitUntilResult(
+                    status=_parse_status(raw),
+                    until_time=float(raw.get("until_time", request.until_time)),
+                    reached=bool(raw.get("reached", False)),
+                    timed_out=bool(raw.get("timed_out", False)),
+                    elapsed_s=float(raw.get("elapsed_s", 0.0)),
+                    frames_waited=int(raw.get("frames_waited", 0)),
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="SIMULATION_WAIT_UNTIL_ERROR",
             )
 
     async def set_time(

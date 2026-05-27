@@ -68,6 +68,7 @@ from .models.sensor import (
 from .models.simulation import (
     SimulationSetTimeRequestModel,
     SimulationStepRequestModel,
+    SimulationWaitUntilRequestModel,
 )
 from .models.physics import (
     PhysicsApplyColliderRequestModel,
@@ -391,6 +392,17 @@ async def simulation_step(body: SimulationStepRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("simulation/step failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/simulation/wait_until")
+async def simulation_wait_until(body: SimulationWaitUntilRequestModel) -> Any:
+    try:
+        return await _simulation.wait_until(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("simulation/wait_until failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

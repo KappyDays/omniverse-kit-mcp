@@ -53,3 +53,21 @@ class SimulationSetTimeResult:
     status: SimulationStatus
     requested_time: float
     previous_time: float
+
+
+@dataclass(slots=True, frozen=True)
+class SimulationWaitUntilRequest:
+    """Tick the timeline until current_time >= until_time (or wall timeout)."""
+
+    until_time: float
+    timeout_s: float = 30.0
+
+
+@dataclass(slots=True, frozen=True)
+class SimulationWaitUntilResult:
+    status: SimulationStatus
+    until_time: float
+    reached: bool
+    timed_out: bool
+    elapsed_s: float
+    frames_waited: int

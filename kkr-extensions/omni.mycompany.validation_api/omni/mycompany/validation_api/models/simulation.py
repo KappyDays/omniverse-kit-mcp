@@ -40,3 +40,12 @@ class SimulationSetTimeRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     time_seconds: float = Field(ge=0.0)
+
+
+class SimulationWaitUntilRequestModel(BaseModel):
+    """Tick until timeline current_time >= until_time (or wall timeout)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    until_time: float = Field(ge=0.0, description="Target sim time (seconds) to reach.")
+    timeout_s: float = Field(default=30.0, gt=0.0, le=600.0)
