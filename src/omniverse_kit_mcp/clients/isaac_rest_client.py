@@ -425,6 +425,11 @@ class IsaacRestClient:
     async def stage_set_property(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/stage/set_property", json=request)
 
+    async def stage_set_semantic_label(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self._post(f"{BASE_PATH}/stage/set_semantic_label", json=request)
+
     async def stage_create_prim(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/stage/create_prim", json=request)
 

@@ -277,6 +277,52 @@ class StageService:
             "value": _serialize_usd_value(typed_value),
         }
 
+    async def set_semantic_label(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Apply a semantic label to a prim so Replicator annotators classify it.
+
+        Authors the OpenUSD-standard UsdSemantics.LabelsAPI
+        (``semantics:labels:<label_type>``) and, best-effort, the legacy
+        ``Semantics.SemanticsAPI`` that older Replicator builds read — so the
+        label is picked up regardless of which schema the annotator honors.
+        """
+        import omni.usd  # lazy
+        from pxr import UsdSemantics
+
+        prim_path: str = request["prim_path"]
+        label_class: str = request["label_class"]
+        label_type: str = request.get("label_type", "class")
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim.IsValid():
+            raise ValueError(f"Prim not found at {prim_path}")
+
+        applied: list[str] = []
+        api = UsdSemantics.LabelsAPI.Apply(prim, label_type)
+        api.CreateLabelsAttr([label_class])
+        applied.append(f"SemanticsLabelsAPI:{label_type}")
+
+        # Legacy Semantics schema (pre-UsdSemantics Replicator annotators).
+        try:
+            from pxr import Semantics
+
+            sem = Semantics.SemanticsAPI.Apply(prim, f"Semantics_{label_type}")
+            sem.CreateSemanticTypeAttr().Set(label_type)
+            sem.CreateSemanticDataAttr().Set(label_class)
+            applied.append("legacy_Semantics")
+        except Exception:  # noqa: BLE001
+            pass
+
+        return {
+            "ok": True,
+            "prim_path": prim_path,
+            "label_type": label_type,
+            "label_class": label_class,
+            "applied_schemas": applied,
+        }
+
     async def create_prim(self, request: dict[str, Any]) -> dict[str, Any]:
         """Create a new prim in the stage."""
         import omni.kit.commands  # lazy

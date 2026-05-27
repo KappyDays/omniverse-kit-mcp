@@ -26,6 +26,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Stage WRITE (→ SimulationModule)
     "stage_load_usd",
     "stage_set_property",
+    "stage_set_semantic_label",
     "stage_create_prim",
     "stage_delete_prim",
     # Simulation
