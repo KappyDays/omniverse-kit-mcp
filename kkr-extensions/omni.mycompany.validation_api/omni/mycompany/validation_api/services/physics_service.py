@@ -182,14 +182,28 @@ class PhysicsService:
             if val is not None:
                 is_kinematic = bool(val)
 
+        # Sanitize non-finite floats (NaN/inf) — PhysX velocities can be NaN for
+        # a just-started / not-yet-ticked body, and NaN serializes to JSON null,
+        # which then crashes the MCP-side float() coercion
+        # (physics_module.get_rigid_body_state) with "float() argument ... not
+        # 'NoneType'". Emit 0.0 for any non-finite component so the readback is
+        # always JSON-clean.
+        def _fin(x: Any) -> float:
+            try:
+                xf = float(x)
+            except (TypeError, ValueError):
+                return 0.0
+            # NaN != NaN; also reject +/-inf
+            return xf if (xf == xf and xf not in (float("inf"), float("-inf"))) else 0.0
+
         return {
             "ok": True,
             "prim_path": prim_path,
             "source": source,
-            "linear_velocity": linear_vel,
-            "angular_velocity": angular_vel,
-            "mass": mass,
-            "center_of_mass": com,
+            "linear_velocity": [_fin(v) for v in linear_vel],
+            "angular_velocity": [_fin(v) for v in angular_vel],
+            "mass": _fin(mass),
+            "center_of_mass": [_fin(v) for v in com],
             "is_kinematic": is_kinematic,
             "is_enabled": is_enabled,
         }
