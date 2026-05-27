@@ -408,6 +408,22 @@ def register_module_tools(
         return _serialize(result)
 
     @mcp.tool()
+    async def stage_set_semantic_label(
+        prim_path: str,
+        label_class: str,
+        label_type: str = "class",
+    ) -> str:
+        """Apply a semantic label to a prim (inherits to its subtree) so Replicator segmentation / bbox annotators classify it. Authors UsdSemantics.LabelsAPI (semantics:labels:<label_type>) + best-effort legacy Semantics schema. Fills the gap left by sensor_set_annotator (which attaches annotators but cannot label the props). 400 if prim_path not found."""
+        meta = make_meta(ModuleName.STAGE)
+        request = {
+            "prim_path": prim_path,
+            "label_class": label_class,
+            "label_type": label_type,
+        }
+        result = await simulation.stage_set_semantic_label(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
     async def stage_create_prim(
         prim_path: str,
         prim_type: str = "Xform",

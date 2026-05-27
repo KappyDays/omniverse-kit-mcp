@@ -72,6 +72,14 @@ class StageSetPropertyRequestModel(BaseModel):
     )
 
 
+class StageSetSemanticLabelRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str = Field(description="Prim to label (label inherits to its subtree).")
+    label_class: str = Field(description="Semantic class, e.g. 'forklift'.")
+    label_type: str = Field(default="class", description="Label taxonomy bucket (e.g. 'class').")
+
+
 class StageCreatePrimRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

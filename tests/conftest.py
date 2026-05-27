@@ -177,6 +177,13 @@ class MockIsaacRestClient:
             {"ok": True, "prim_path": request.get("prim_path", ""), "property_name": request.get("property_name", ""), "value": request.get("value")},
         )
 
+    async def stage_set_semantic_label(self, request: dict) -> dict:
+        self.calls.append(("stage_set_semantic_label", request))
+        return self.responses.get(
+            "stage_set_semantic_label",
+            {"ok": True, "prim_path": request.get("prim_path", ""), "label_type": request.get("label_type", "class"), "label_class": request.get("label_class", ""), "applied_schemas": ["SemanticsLabelsAPI:class"]},
+        )
+
     async def stage_create_prim(self, request: dict) -> dict:
         self.calls.append(("stage_create_prim", request))
         return self.responses.get(

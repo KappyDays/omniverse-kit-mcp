@@ -49,6 +49,7 @@ from .models.stage import (
     StageCreatePrimRequestModel,
     StageLoadUsdRequestModel,
     StageSetPropertyRequestModel,
+    StageSetSemanticLabelRequestModel,
 )
 from .models.navigation import (
     NavigationSetVisualizationRequestModel,
@@ -249,6 +250,17 @@ async def stage_set_property(body: StageSetPropertyRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("stage/set_property failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/stage/set_semantic_label")
+async def stage_set_semantic_label(body: StageSetSemanticLabelRequestModel) -> Any:
+    try:
+        return await _stage.set_semantic_label(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("stage/set_semantic_label failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

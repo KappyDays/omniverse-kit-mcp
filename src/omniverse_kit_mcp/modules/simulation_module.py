@@ -135,6 +135,26 @@ class SimulationModule:
                 str(exc), started_ms=started, error_code="STAGE_PROPERTY_ERROR"
             )
 
+    async def stage_set_semantic_label(
+        self,
+        meta: OperationMeta,
+        request: dict,
+    ) -> ModuleResult[StageWriteResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.stage_set_semantic_label(request)
+            result = StageWriteResult(
+                ok=raw.get("ok", True),
+                prim_path=raw.get("prim_path", request.get("prim_path", "")),
+                detail=f"{raw.get('label_type', 'class')}={raw.get('label_class', '?')}",
+            )
+            return ok_result(result, started_ms=started)
+        except Exception as exc:
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="STAGE_SEMANTIC_LABEL_ERROR",
+            )
+
     async def stage_create_prim(
         self,
         meta: OperationMeta,

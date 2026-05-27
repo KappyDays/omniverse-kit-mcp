@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 120
+**Tool count**: 121
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (41)
+- Unclassified (42)
 
 ## Process — Kit app lifecycle
 
@@ -2033,3 +2033,22 @@ preserves prior play state.
 | name | type | default | required |
 |------|------|---------|----------|
 | `frames` | `integer` | `1` |  |
+
+### `stage_set_semantic_label`
+
+```python
+stage_set_semantic_label(prim_path: 'str', label_class: 'str', label_type: 'str' = 'class') -> 'str'
+```
+
+Apply a semantic label to a prim (inherits to its subtree) so Replicator segmentation / bbox
+annotators classify it. Authors UsdSemantics.LabelsAPI (semantics:labels:<label_type>) + best-
+effort legacy Semantics schema. Fills the gap left by sensor_set_annotator (which attaches
+annotators but cannot label the props). 400 if prim_path not found.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `label_class` | `string` | `'—'` | ✓ |
+| `label_type` | `string` | `'class'` |  |
