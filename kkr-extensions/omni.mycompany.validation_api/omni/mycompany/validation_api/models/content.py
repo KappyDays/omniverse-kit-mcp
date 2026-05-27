@@ -45,6 +45,14 @@ class ContentPreviewRequestModel(BaseModel):
     url: str = Field(description="URL to stat")
 
 
+class ContentInspectRequestModel(BaseModel):
+    """Open a USD asset off-thread and return its geometric info."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(description="USD URL to open + inspect (bbox / default prim / units)")
+
+
 class ContentResolveRequestModel(BaseModel):
     """Normalize a URL (collapse relative components, resolve prefix)."""
 

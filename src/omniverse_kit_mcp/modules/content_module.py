@@ -12,6 +12,8 @@ from omniverse_kit_mcp.types.content import (
     ContentBrowseRequest,
     ContentBrowseResult,
     ContentEntry,
+    ContentInspectRequest,
+    ContentInspectResult,
     ContentPreviewRequest,
     ContentPreviewResult,
     ContentResolveRequest,
@@ -80,6 +82,32 @@ class ContentModule:
             return error_result(
                 str(exc), started_ms=started,
                 error_code="CONTENT_PREVIEW_ERROR",
+            )
+
+    async def inspect(
+        self, meta: OperationMeta, request: ContentInspectRequest,
+    ) -> ModuleResult[ContentInspectResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.content_inspect({"url": request.url})
+            bmin = raw.get("bbox_min")
+            bmax = raw.get("bbox_max")
+            result = ContentInspectResult(
+                ok=bool(raw.get("ok", True)),
+                url=str(raw.get("url", request.url)),
+                default_prim=str(raw.get("default_prim", "")),
+                bbox_min=tuple(float(v) for v in bmin) if bmin else None,
+                bbox_max=tuple(float(v) for v in bmax) if bmax else None,
+                meters_per_unit=float(raw.get("meters_per_unit", 0.0)),
+                up_axis=str(raw.get("up_axis", "")),
+                prim_count=int(raw.get("prim_count", 0)),
+                backend=str(raw.get("backend", "")),
+            )
+            return ok_result(result, started_ms=started)
+        except Exception as exc:  # noqa: BLE001
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="CONTENT_INSPECT_ERROR",
             )
 
     async def resolve(

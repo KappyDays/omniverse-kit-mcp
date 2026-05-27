@@ -46,6 +46,7 @@ from omniverse_kit_mcp.types.character import (
 )
 from omniverse_kit_mcp.types.content import (
     ContentBrowseRequest,
+    ContentInspectRequest,
     ContentPreviewRequest,
     ContentResolveRequest,
 )
@@ -1891,6 +1892,14 @@ def register_module_tools(
         meta = make_meta(ModuleName.CONTENT)
         request = ContentPreviewRequest(url=url)
         result = await content.preview(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def content_inspect(url: str) -> str:
+        """Inspect a USD asset's GEOMETRY without adding it to the stage: opens the USD off the main thread and returns default_prim, world bbox (bbox_min/bbox_max), meters_per_unit, up_axis, and prim_count. Use at planning time to size/place an asset — content_preview only gives file metadata (size/mtime). Needs the Omniverse/HTTP resolver, so values are produced live; off-thread open keeps the Kit event loop unblocked."""
+        meta = make_meta(ModuleName.CONTENT)
+        request = ContentInspectRequest(url=url)
+        result = await content.inspect(meta, request)
         return _serialize(result)
 
     @mcp.tool()

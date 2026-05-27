@@ -673,6 +673,13 @@ class IsaacRestClient:
             f"{BASE_PATH}/content/preview", json=request,
         )
 
+    async def content_inspect(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/content/inspect", json=request,
+        )
+
     async def content_resolve(
         self, request: dict[str, Any],
     ) -> dict[str, Any]:
