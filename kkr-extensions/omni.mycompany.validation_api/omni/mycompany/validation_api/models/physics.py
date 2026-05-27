@@ -45,6 +45,18 @@ class PhysicsCreateJointRequestModel(BaseModel):
     joint_prim_path: str | None = None
 
 
+class PhysicsSetJointDriveRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    joint_prim_path: str = Field(description="Existing joint prim to drive.")
+    drive_type: Literal["linear", "angular"] = "angular"
+    target_position: float = 0.0
+    target_velocity: float = 0.0
+    stiffness: float = Field(default=0.0, ge=0.0)
+    damping: float = Field(default=0.0, ge=0.0)
+    max_force: float | None = Field(default=None, ge=0.0)
+
+
 class PhysicsSetSceneRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

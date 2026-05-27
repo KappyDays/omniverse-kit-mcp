@@ -978,6 +978,19 @@ class MockIsaacRestClient:
             "body_b": request.get("body_b", ""),
         })
 
+    async def physics_set_joint_drive(self, request: dict) -> dict:
+        self.calls.append(("physics_set_joint_drive", request))
+        return self.responses.get("physics_set_joint_drive", {
+            "ok": True,
+            "joint_prim_path": request.get("joint_prim_path", ""),
+            "drive_type": request.get("drive_type", "angular"),
+            "target_position": request.get("target_position", 0.0),
+            "target_velocity": request.get("target_velocity", 0.0),
+            "stiffness": request.get("stiffness", 0.0),
+            "damping": request.get("damping", 0.0),
+            "max_force": request.get("max_force"),
+        })
+
     async def physics_set_scene(self, request: dict) -> dict:
         self.calls.append(("physics_set_scene", request))
         gravity = request.get("gravity") or [0.0, 0.0, -9.81]

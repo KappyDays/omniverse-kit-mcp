@@ -18,6 +18,8 @@ from omniverse_kit_mcp.types.physics import (
     PhysicsCreateJointRequest,
     PhysicsCreateJointResult,
     PhysicsRigidBodyState,
+    PhysicsSetJointDriveRequest,
+    PhysicsSetJointDriveResult,
     PhysicsSetSceneRequest,
     PhysicsSetSceneResult,
     PhysicsVisualizeRequest,
@@ -47,6 +49,7 @@ def test_physics_tools_registered(mcp_server):
         "physics_apply_collider",
         "physics_apply_material",
         "physics_create_joint",
+        "physics_set_joint_drive",
         "physics_set_scene",
         "physics_visualize",
     ):
@@ -205,6 +208,68 @@ async def test_create_joint_all_types(joint_type):
     assert result.data.joint_type == joint_type
     assert result.data.body_a == "/World/A"
     assert result.data.body_b == "/World/B"
+
+
+@pytest.mark.asyncio
+async def test_set_joint_drive_linear_with_max_force():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = PhysicsModule(client)
+    request = PhysicsSetJointDriveRequest(
+        joint_prim_path="/World/Rig/LiftJoint",
+        drive_type="linear",
+        target_position=1.5,
+        stiffness=4000.0,
+        damping=400.0,
+        max_force=1.0e6,
+    )
+    result = await module.set_joint_drive(_meta(), request)
+
+    assert result.ok
+    assert isinstance(result.data, PhysicsSetJointDriveResult)
+    assert result.data.drive_type == "linear"
+    assert result.data.target_position == 1.5
+    assert result.data.stiffness == 4000.0
+    assert result.data.max_force == 1.0e6
+    sent = dict(client.calls)["physics_set_joint_drive"]
+    assert sent["joint_prim_path"] == "/World/Rig/LiftJoint"
+    assert sent["drive_type"] == "linear"
+
+
+@pytest.mark.asyncio
+async def test_set_joint_drive_max_force_none_stays_none():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = PhysicsModule(client)
+    request = PhysicsSetJointDriveRequest(
+        joint_prim_path="/World/Rig/TiltJoint",
+        drive_type="angular",
+        target_position=8.0,
+        stiffness=800.0,
+        damping=80.0,
+    )
+    result = await module.set_joint_drive(_meta(), request)
+
+    assert result.ok
+    assert result.data.drive_type == "angular"
+    assert result.data.max_force is None  # unset -> PhysX default (unbounded)
+
+
+@pytest.mark.asyncio
+async def test_set_joint_drive_propagates_400():
+    class FailingClient:
+        async def physics_set_joint_drive(self, _req):
+            raise ValueError("Joint prim '/World/Nope' not found")
+
+    module = PhysicsModule(FailingClient())  # type: ignore[arg-type]
+    request = PhysicsSetJointDriveRequest(joint_prim_path="/World/Nope")
+    result = await module.set_joint_drive(_meta(), request)
+
+    assert not result.ok
+    assert result.error_code == "PHYSICS_SET_JOINT_DRIVE_ERROR"
+    assert "not found" in (result.message or "")
 
 
 @pytest.mark.asyncio

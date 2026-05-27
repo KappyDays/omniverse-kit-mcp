@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 119
+**Tool count**: 120
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (40)
+- Unclassified (41)
 
 ## Process — Kit app lifecycle
 
@@ -1722,6 +1722,30 @@ values, velocities reflect pre-play state but mass/COM always accurate).
 | name | type | default | required |
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
+
+### `physics_set_joint_drive`
+
+```python
+physics_set_joint_drive(joint_prim_path: 'str', drive_type: 'str' = 'angular', target_position: 'float' = 0.0, target_velocity: 'float' = 0.0, stiffness: 'float' = 0.0, damping: 'float' = 0.0, max_force: 'float | None' = None) -> 'str'
+```
+
+Configure a UsdPhysics DriveAPI on an existing joint so it actuates (physics_create_joint only
+creates the joint). drive_type ∈ {linear (Prismatic), angular (Revolute)}; target_position
+drives toward a pose (deg for angular, distance for linear), stiffness/damping form the PD
+gains, max_force=None leaves the PhysX default (unbounded). Body needs RigidBodyAPI +
+physics_set_scene + simulation_play to move.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `joint_prim_path` | `string` | `'—'` | ✓ |
+| `drive_type` | `string` | `'angular'` |  |
+| `target_position` | `number` | `0.0` |  |
+| `target_velocity` | `number` | `0.0` |  |
+| `stiffness` | `number` | `0.0` |  |
+| `damping` | `number` | `0.0` |  |
+| `max_force` | `number \| None` | `None` |  |
 
 ### `physics_set_scene`
 

@@ -18,6 +18,8 @@ from omniverse_kit_mcp.types.physics import (
     PhysicsCreateJointRequest,
     PhysicsCreateJointResult,
     PhysicsRigidBodyState,
+    PhysicsSetJointDriveRequest,
+    PhysicsSetJointDriveResult,
     PhysicsSetSceneRequest,
     PhysicsSetSceneResult,
     PhysicsVisualizeRequest,
@@ -167,6 +169,40 @@ class PhysicsModule:
             return error_result(
                 str(exc), started_ms=started,
                 error_code="PHYSICS_CREATE_JOINT_ERROR",
+            )
+
+    async def set_joint_drive(
+        self, meta: OperationMeta, request: PhysicsSetJointDriveRequest,
+    ) -> ModuleResult[PhysicsSetJointDriveResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.physics_set_joint_drive({
+                "joint_prim_path": request.joint_prim_path,
+                "drive_type": request.drive_type,
+                "target_position": request.target_position,
+                "target_velocity": request.target_velocity,
+                "stiffness": request.stiffness,
+                "damping": request.damping,
+                "max_force": request.max_force,
+            })
+            mf = raw.get("max_force", request.max_force)
+            return ok_result(
+                PhysicsSetJointDriveResult(
+                    ok=bool(raw.get("ok", True)),
+                    joint_prim_path=str(raw.get("joint_prim_path", request.joint_prim_path)),
+                    drive_type=str(raw.get("drive_type", request.drive_type)),
+                    target_position=float(raw.get("target_position", request.target_position)),
+                    target_velocity=float(raw.get("target_velocity", request.target_velocity)),
+                    stiffness=float(raw.get("stiffness", request.stiffness)),
+                    damping=float(raw.get("damping", request.damping)),
+                    max_force=None if mf is None else float(mf),
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="PHYSICS_SET_JOINT_DRIVE_ERROR",
             )
 
     async def set_scene(

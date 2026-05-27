@@ -358,6 +358,13 @@ class IsaacRestClient:
             f"{BASE_PATH}/physics/create_joint", json=request,
         )
 
+    async def physics_set_joint_drive(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/physics/set_joint_drive", json=request,
+        )
+
     async def physics_set_scene(
         self, request: dict[str, Any],
     ) -> dict[str, Any]:
