@@ -1399,6 +1399,21 @@ class MockIsaacRestClient:
             "backend": "omni.client",
         })
 
+    async def content_inspect(self, request: dict) -> dict:
+        self.calls.append(("content_inspect", request))
+        url = request.get("url", "")
+        return self.responses.get("content_inspect", {
+            "ok": True,
+            "url": url,
+            "default_prim": "/World",
+            "bbox_min": [-1.0, -1.0, 0.0],
+            "bbox_max": [1.0, 1.0, 2.0],
+            "meters_per_unit": 0.01,
+            "up_axis": "Z",
+            "prim_count": 42,
+            "backend": "usd",
+        })
+
     async def content_resolve(self, request: dict) -> dict:
         self.calls.append(("content_resolve", request))
         url = request.get("url", "")

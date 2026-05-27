@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 121
+**Tool count**: 122
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (42)
+- Unclassified (43)
 
 ## Process — Kit app lifecycle
 
@@ -1343,6 +1343,24 @@ Entry: {url, name, is_folder, size, modified_time_ns, flags}.
 | `recursive` | `boolean` | `False` |  |
 | `max_depth` | `integer` | `2` |  |
 | `max_entries` | `integer` | `500` |  |
+
+### `content_inspect`
+
+```python
+content_inspect(url: 'str') -> 'str'
+```
+
+Inspect a USD asset's GEOMETRY without adding it to the stage: opens the USD off the main
+thread and returns default_prim, world bbox (bbox_min/bbox_max), meters_per_unit, up_axis, and
+prim_count. Use at planning time to size/place an asset — content_preview only gives file
+metadata (size/mtime). Needs the Omniverse/HTTP resolver, so values are produced live; off-
+thread open keeps the Kit event loop unblocked.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
 
 ### `content_preview`
 

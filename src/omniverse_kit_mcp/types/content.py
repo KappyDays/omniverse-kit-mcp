@@ -49,6 +49,26 @@ class ContentPreviewResult:
 
 
 @dataclass(slots=True, frozen=True)
+class ContentInspectRequest:
+    url: str
+
+
+@dataclass(slots=True, frozen=True)
+class ContentInspectResult:
+    """USD geometric info — what content_preview (file metadata only) lacks."""
+
+    ok: bool
+    url: str
+    default_prim: str
+    bbox_min: tuple[float, float, float] | None
+    bbox_max: tuple[float, float, float] | None
+    meters_per_unit: float
+    up_axis: str
+    prim_count: int
+    backend: str = ""
+
+
+@dataclass(slots=True, frozen=True)
 class ContentResolveRequest:
     url: str
 

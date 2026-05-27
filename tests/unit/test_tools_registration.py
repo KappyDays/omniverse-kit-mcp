@@ -153,6 +153,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Phase H — Content browser (browse / preview / resolve)
     "content_browse",
     "content_preview",
+    "content_inspect",
     "content_resolve",
     # Phase H — Extension management (deactivate / list_all / get_info)
     "extension_deactivate",

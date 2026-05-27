@@ -90,6 +90,67 @@ class ContentService:
             "backend": backend,
         }
 
+    async def inspect(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Open a USD asset and return geometric info (bbox / default prim / units).
+
+        ``Usd.Stage.Open`` is synchronous I/O (and may resolve heavy MDL payloads),
+        so it runs on a worker thread — the Kit main loop is never blocked
+        (deadlock-safe). The stage is independent of the live context stage.
+        """
+        url = request["url"]
+
+        def _do() -> dict[str, Any]:
+            from pxr import Usd, UsdGeom  # lazy — runtime only
+
+            stage = Usd.Stage.Open(url)
+            if stage is None:
+                raise ValueError(f"could not open USD stage {url!r}")
+
+            default_prim = stage.GetDefaultPrim()
+            has_default = bool(default_prim and default_prim.IsValid())
+            default_path = default_prim.GetPath().pathString if has_default else ""
+            mpu = float(UsdGeom.GetStageMetersPerUnit(stage) or 0.0)
+            up_axis = str(UsdGeom.GetStageUpAxis(stage) or "")
+            prim_count = sum(1 for _ in stage.Traverse())
+
+            root = default_prim if has_default else stage.GetPseudoRoot()
+            bbox_min = bbox_max = None
+            try:
+                cache = UsdGeom.BBoxCache(
+                    Usd.TimeCode.Default(),
+                    [UsdGeom.Tokens.default_, UsdGeom.Tokens.render],
+                )
+                rng = cache.ComputeWorldBound(root).ComputeAlignedRange()
+                if not rng.IsEmpty():
+                    mn, mx = rng.GetMin(), rng.GetMax()
+                    bbox_min = [float(mn[0]), float(mn[1]), float(mn[2])]
+                    bbox_max = [float(mx[0]), float(mx[1]), float(mx[2])]
+            except Exception:  # noqa: BLE001
+                pass  # bbox best-effort; metadata still useful
+
+            return {
+                "default_prim": default_path,
+                "bbox_min": bbox_min,
+                "bbox_max": bbox_max,
+                "meters_per_unit": mpu,
+                "up_axis": up_axis,
+                "prim_count": int(prim_count),
+            }
+
+        try:
+            data = await asyncio.to_thread(_do)
+        except ValueError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "ok": False, "url": url, "default_prim": "", "bbox_min": None,
+                "bbox_max": None, "meters_per_unit": 0.0, "up_axis": "",
+                "prim_count": 0, "backend": f"fallback:{type(exc).__name__}",
+                "error": str(exc),
+            }
+
+        return {"ok": True, "url": url, "backend": "usd", **data}
+
     async def resolve(self, request: dict[str, Any]) -> dict[str, Any]:
         url = request["url"]
         backend = "omni.client"

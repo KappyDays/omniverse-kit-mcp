@@ -13,6 +13,8 @@ from omniverse_kit_mcp.types.content import (
     ContentBrowseRequest,
     ContentBrowseResult,
     ContentEntry,
+    ContentInspectRequest,
+    ContentInspectResult,
     ContentPreviewRequest,
     ContentPreviewResult,
     ContentResolveRequest,
@@ -35,7 +37,42 @@ def test_content_tools_registered(mcp_server):
     names = set(mcp_server._tool_manager._tools)
     assert "content_browse" in names
     assert "content_preview" in names
+    assert "content_inspect" in names
     assert "content_resolve" in names
+
+
+@pytest.mark.asyncio
+async def test_inspect_returns_geometry():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = ContentModule(client)
+    result = await module.inspect(
+        _meta(),
+        ContentInspectRequest(url="omniverse://localhost/forklift.usd"),
+    )
+    assert result.status is ExecutionStatus.PASSED
+    assert isinstance(result.data, ContentInspectResult)
+    assert result.data.default_prim == "/World"
+    assert result.data.bbox_min == (-1.0, -1.0, 0.0)
+    assert result.data.bbox_max == (1.0, 1.0, 2.0)
+    assert result.data.meters_per_unit == 0.01
+    assert result.data.up_axis == "Z"
+    assert result.data.prim_count == 42
+
+
+@pytest.mark.asyncio
+async def test_inspect_open_failure_wraps_error():
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingClient(MockIsaacRestClient):
+        async def content_inspect(self, request):  # type: ignore[override]
+            raise ValueError("could not open USD stage 'bad://x'")
+
+    module = ContentModule(FailingClient())
+    result = await module.inspect(_meta(), ContentInspectRequest(url="bad://x"))
+    assert not result.ok
+    assert result.error_code == "CONTENT_INSPECT_ERROR"
 
 
 @pytest.mark.asyncio

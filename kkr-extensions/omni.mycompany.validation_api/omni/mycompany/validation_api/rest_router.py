@@ -104,6 +104,7 @@ from .models.viewport_render import (
 )
 from .models.content import (
     ContentBrowseRequestModel,
+    ContentInspectRequestModel,
     ContentPreviewRequestModel,
     ContentResolveRequestModel,
 )
@@ -1573,6 +1574,17 @@ async def content_preview(body: ContentPreviewRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("content/preview failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/content/inspect")
+async def content_inspect(body: ContentInspectRequestModel) -> Any:
+    try:
+        return await _content.inspect(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("content/inspect failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
