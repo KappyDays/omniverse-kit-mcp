@@ -126,6 +126,32 @@ class CommandsService:
             "returned": returned,
         }
 
+    async def python_run_main_thread(
+        self, code: str, return_keys: list[str],
+    ) -> dict[str, Any]:
+        """Run ``python_run`` ON THE KIT MAIN LOOP (deadlock-safe).
+
+        The sync ``/commands/python_run`` route ran ``exec`` in a Starlette
+        threadpool worker — NOT the Kit main thread — so any USD authoring /
+        mutation (even on a fresh stage) contended Tf-notice / omni.usd / Hydra
+        locks with the main loop and froze Kit for 92s. Mirror
+        ``stage_service.load_usd``: schedule the (sync) exec onto the Kit main
+        loop via ``omni.kit.async_engine.run_coroutine`` and ``await`` the
+        result through ``asyncio.wrap_future`` (the FastAPI loop stays free while
+        the Kit main loop ticks). This makes kit_python_run usable for the very
+        thing it advertises (USD relationship edits, EditContext walks, bulk
+        attribute author patterns).
+        """
+        import asyncio
+        import omni.kit.async_engine  # lazy
+
+        async def _impl() -> dict[str, Any]:
+            # Runs on the Kit main loop — exec executes on the main thread.
+            return self.python_run(code, return_keys)
+
+        future = omni.kit.async_engine.run_coroutine(_impl())
+        return await asyncio.wrap_future(future)
+
 
 def _coerce_result(value: Any) -> Any:
     """Best-effort JSON-safe conversion of a Kit command's result object."""

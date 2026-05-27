@@ -1675,7 +1675,7 @@ def commands_execute(body: KitCommandExecuteRequestModel) -> dict[str, Any]:
 
 
 @router.post("/commands/python_run")
-def commands_python_run(body: KitPythonExecRequestModel) -> dict[str, Any]:
+async def commands_python_run(body: KitPythonExecRequestModel) -> dict[str, Any]:
     """Run arbitrary Python source on the Kit main thread.
 
     Fills the gap the Kit command registry leaves — the registry has
@@ -1684,10 +1684,16 @@ def commands_python_run(body: KitPythonExecRequestModel) -> dict[str, Any]:
     omni.client direct calls) used to require pasting code into the GUI
     Script Editor. This route runs the code in the same context.
 
+    ASYNC + main-loop scheduled: a sync ``def`` route runs in a Starlette
+    threadpool worker (NOT the Kit main thread), so USD authoring/mutation
+    deadlocked the Kit event loop (92s, observed 2026-05-28). Use
+    ``python_run_main_thread`` which schedules the exec onto the Kit main loop
+    (run_coroutine + wrap_future), matching the deadlock-safe stage_service path.
+
     Endpoint name is ``python_run`` (not ``python_exec``) so the project's
     pre-tool security hook — which flags the substring ``exec(`` literally —
     doesn't trip on the function definition itself. The user-facing MCP
     tool is still named ``kit_python_exec``.
     """
     service = get_commands_service()
-    return service.python_run(body.code, body.return_keys)
+    return await service.python_run_main_thread(body.code, body.return_keys)
