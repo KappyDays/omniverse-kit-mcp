@@ -1,6 +1,8 @@
-"""Unit tests for AssetModule — catalog listing (Phase B+)."""
+"""Unit tests for AssetModule — catalog listing (Phase B+) + offline search."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
@@ -8,11 +10,25 @@ from omniverse_kit_mcp.modules.asset_module import AssetModule
 from omniverse_kit_mcp.types.asset import AssetCategory, AssetItem, AssetListResult
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 
+# Real curated catalog (format-guarded by test_asset_inventory_integrity.py).
+REAL_CATALOG_DIR = Path(__file__).resolve().parents[2] / "docs" / "assets" / "isaac"
+_ISAAC = (
+    "https://omniverse-content-production.s3-us-west-2.amazonaws.com"
+    "/Assets/Isaac/5.1/Isaac"
+)
+
 
 def _meta() -> OperationMeta:
     return OperationMeta(
         request_id="test", module=ModuleName.ASSET, started_at_epoch_ms=0
     )
+
+
+class _ExplodingClient:
+    """Any REST call fails — proves asset_search is fully offline (no Isaac)."""
+
+    async def asset_list(self, **kwargs):  # pragma: no cover - must never run
+        raise AssertionError("asset_search must not call the live REST client")
 
 
 @pytest.mark.asyncio
@@ -66,3 +82,158 @@ async def test_asset_list_propagates_error():
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "ASSET_LIST_ERROR"
     assert "S3" in (result.message or "")
+
+
+# ---------------------------------------------------------------------------
+# asset_search — offline semantic search over the curated markdown catalog
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_search_forklift_returns_props_canonical_url():
+    """'forklift' → the canonical Props/Forklift/forklift.usd URL, offline."""
+    module = AssetModule(_ExplodingClient(), catalog_dir=REAL_CATALOG_DIR)
+    result = await module.search(_meta(), query="forklift")
+
+    assert result.ok, result.message
+    assert result.data, "expected at least one forklift hit"
+    props_hits = [
+        h for h in result.data
+        if h["category"] == "props" and "forklift" in h["name"].lower()
+    ]
+    assert props_hits, f"no props forklift hit: {result.data}"
+    assert props_hits[0]["url"] == f"{_ISAAC}/Props/Forklift/forklift.usd"
+    assert props_hits[0]["source_file"] == "props.md"
+
+
+@pytest.mark.asyncio
+async def test_search_category_filter_environments():
+    module = AssetModule(_ExplodingClient(), catalog_dir=REAL_CATALOG_DIR)
+    result = await module.search(
+        _meta(), query="warehouse", category="environments"
+    )
+
+    assert result.ok
+    assert result.data
+    assert all(h["category"] == "environments" for h in result.data)
+    assert any("warehouse" in h["name"].lower() for h in result.data)
+
+
+@pytest.mark.asyncio
+async def test_search_robot_resolves_robots_url():
+    module = AssetModule(_ExplodingClient(), catalog_dir=REAL_CATALOG_DIR)
+    result = await module.search(_meta(), query="franka")
+
+    assert result.ok
+    robot_hits = [h for h in result.data if h["category"] == "robots"]
+    assert robot_hits, f"no robot hit: {result.data}"
+    assert "/Robots/" in robot_hits[0]["url"]
+    assert robot_hits[0]["url"].startswith("https://")
+
+
+@pytest.mark.asyncio
+async def test_search_no_match_returns_empty():
+    module = AssetModule(_ExplodingClient(), catalog_dir=REAL_CATALOG_DIR)
+    result = await module.search(_meta(), query="zzqq_nonexistent_asset_xyz")
+
+    assert result.ok
+    assert result.data == []
+
+
+@pytest.mark.asyncio
+async def test_search_response_fields_exact():
+    module = AssetModule(_ExplodingClient(), catalog_dir=REAL_CATALOG_DIR)
+    result = await module.search(_meta(), query="forklift", limit=5)
+
+    assert result.ok and result.data
+    for h in result.data:
+        assert set(h.keys()) == {"name", "url", "category", "source_file"}
+        assert h["url"].startswith("https://")
+        assert h["url"].endswith(".usd")
+
+
+@pytest.mark.asyncio
+async def test_search_limit_applied():
+    module = AssetModule(_ExplodingClient(), catalog_dir=REAL_CATALOG_DIR)
+    result = await module.search(_meta(), query="pallet", limit=3)
+
+    assert result.ok
+    assert len(result.data) <= 3
+
+
+@pytest.mark.asyncio
+async def test_search_ranks_exact_name_first():
+    """A query equal to an asset's filename stem ranks it ahead of substring hits."""
+    module = AssetModule(_ExplodingClient(), catalog_dir=REAL_CATALOG_DIR)
+    result = await module.search(_meta(), query="forklift")
+
+    assert result.ok and result.data
+    # forklift.usd (exact stem) must outrank warehouse_with_forklifts.usd
+    assert result.data[0]["name"].lower().startswith("forklift")
+
+
+@pytest.fixture
+def synthetic_catalog(tmp_path: Path) -> Path:
+    """Minimal catalog mirroring the real format — locks URL-construction rules."""
+    d = tmp_path / "isaac"
+    (d / "assets").mkdir(parents=True)
+    (d / "asset_inventory.md").write_text("# index\n", encoding="utf-8")
+    (d / "assets" / "environments.md").write_text(
+        "# Environments\n\n"
+        "`$ISAAC` = `https://example.com/Isaac`\n\n"
+        "루트: `$ISAAC/Environments/`\n\n"
+        "| 환경 | 주요 USD |\n|---|---|\n"
+        "| **Simple_Warehouse** | `warehouse.usd` ✓ |\n"
+        "| | `full_warehouse.usd` |\n",
+        encoding="utf-8",
+    )
+    (d / "assets" / "people.md").write_text(
+        "# People\n\n"
+        "`$ISAAC` = `https://example.com/Isaac`\n\n"
+        "루트: `$ISAAC/People/`\n\n"
+        "## Characters\n\n"
+        "루트: `$ISAAC/People/Characters/`\n\n"
+        "| 에셋 | USD 경로 |\n|---|---|\n"
+        "| F_Business_02 | `Characters/F_Business_02/F_Business_02.usd` ✓ |\n",
+        encoding="utf-8",
+    )
+    (d / "assets" / "simready.md").write_text(
+        "# SimReady\n\n"
+        "`$SIM` = `https://example.com/simready_content/props`\n\n"
+        "**팔레트 (Pallet)**\n"
+        "`woodpallet_a01` · `box_a01~a05`\n",
+        encoding="utf-8",
+    )
+    return d
+
+
+@pytest.mark.asyncio
+async def test_parser_bare_filename_uses_group_folder(synthetic_catalog: Path):
+    module = AssetModule(_ExplodingClient(), catalog_dir=synthetic_catalog)
+    result = await module.search(_meta(), query="warehouse")
+
+    assert result.ok
+    urls = {h["url"] for h in result.data}
+    assert "https://example.com/Isaac/Environments/Simple_Warehouse/warehouse.usd" in urls
+    # empty-col0 row inherits the bold group folder (rowspan idiom)
+    assert "https://example.com/Isaac/Environments/Simple_Warehouse/full_warehouse.usd" in urls
+
+
+@pytest.mark.asyncio
+async def test_parser_path_with_slashes_uses_file_root(synthetic_catalog: Path):
+    module = AssetModule(_ExplodingClient(), catalog_dir=synthetic_catalog)
+    result = await module.search(_meta(), query="business")
+
+    assert result.ok
+    urls = {h["url"] for h in result.data}
+    assert "https://example.com/Isaac/People/Characters/F_Business_02/F_Business_02.usd" in urls
+
+
+@pytest.mark.asyncio
+async def test_parser_simready_prose_canonical_url(synthetic_catalog: Path):
+    module = AssetModule(_ExplodingClient(), catalog_dir=synthetic_catalog)
+    result = await module.search(_meta(), query="woodpallet")
+
+    assert result.ok
+    urls = {h["url"] for h in result.data}
+    assert "https://example.com/simready_content/props/woodpallet_a01/woodpallet_a01.usd" in urls
