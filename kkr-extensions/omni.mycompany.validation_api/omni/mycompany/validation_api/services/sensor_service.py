@@ -28,6 +28,14 @@ _SUPPORTED_TYPES = {"rtx_camera", "rtx_lidar", "rtx_depth_camera"}
 class SensorService:
     """Attach RTX sensor prims under a robot chassis + toggle their overlays."""
 
+    def __init__(self) -> None:
+        # Cache live LidarRtx instances by prim path. The RTX lidar's scan
+        # buffer is driven by this runtime object's internal render product;
+        # if the instance is GC'd the GMO buffer tears down and readback
+        # returns 0 points. Keeping it alive (session lifetime) lets
+        # lidar_get_point_cloud reuse get_current_frame().
+        self._lidar_instances: dict[str, Any] = {}
+
     async def attach_rtx_camera(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._attach(request, sensor_type="rtx_camera")
 
@@ -99,10 +107,61 @@ class SensorService:
         custom_block["sensor_type"] = sensor_type
         custom_block["resolution"] = list(resolution)
         if sensor_type == "rtx_lidar":
-            custom_block["config_preset"] = request.get(
-                "config_preset", "Example_Rotary"
-            )
-            custom_block["annotator"] = "RtxSensorCpuIsaacCreateRTXLidarScanBuffer"
+            preset = request.get("config_preset", "Example_Rotary")
+            # A bare Camera prim emits NO scan buffer — it must be configured as
+            # an RTX lidar via LidarRtx(config_file_name=...) which applies the
+            # OmniSensorGenericLidarCoreAPI schema. Mirror robot_lidar/
+            # lidar_attach.py: ensure the ext, try requested preset then a
+            # 128ch fallback chain. Without this, sensor_lidar_get_point_cloud
+            # returns 0 points (the original bug).
+            try:
+                import omni.kit.app
+                _mgr = omni.kit.app.get_app().get_extension_manager()
+                if not _mgr.is_extension_enabled("isaacsim.sensors.rtx"):
+                    _mgr.set_extension_enabled_immediate("isaacsim.sensors.rtx", True)
+            except Exception as exc:  # noqa: BLE001
+                import logging as _lg
+                _lg.getLogger(__name__).warning("enable isaacsim.sensors.rtx failed: %s", exc)
+            chosen_preset = preset
+            lidar_rtx = None
+            try:
+                from isaacsim.sensors.rtx import LidarRtx  # type: ignore[import-not-found]
+                _presets = [preset, "Example_Rotary", "OS1_REV6_128ch10hz", "Hesai_PandarXT-32"]
+                _seen: set[str] = set()
+                _last_err: Exception | None = None
+                for _p in _presets:
+                    if _p in _seen:
+                        continue
+                    _seen.add(_p)
+                    try:
+                        lidar_rtx = LidarRtx(prim_path=sensor_path, config_file_name=_p)
+                        chosen_preset = _p
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        _last_err = exc
+                        lidar_rtx = None
+                if lidar_rtx is None:
+                    import logging as _lg
+                    _lg.getLogger(__name__).warning(
+                        "no LidarRtx preset worked (last: %s)", _last_err
+                    )
+                else:
+                    # Attach the scan-buffer annotator on the live instance and
+                    # keep it alive (cache by prim path) so get_point_cloud can
+                    # read get_current_frame(). Discarding it -> 0 points.
+                    try:
+                        lidar_rtx.attach_annotator("IsaacCreateRTXLidarScanBuffer")
+                    except Exception as exc:  # noqa: BLE001
+                        import logging as _lg
+                        _lg.getLogger(__name__).warning("attach_annotator failed: %s", exc)
+                    self._lidar_instances[sensor_path] = lidar_rtx
+            except ImportError:
+                import logging as _lg
+                _lg.getLogger(__name__).warning(
+                    "isaacsim.sensors.rtx.LidarRtx unavailable — stamping preset only"
+                )
+            custom_block["config_preset"] = chosen_preset
+            custom_block["annotator"] = "IsaacCreateRTXLidarScanBuffer"
         if sensor_type == "rtx_depth_camera":
             custom_block["annotator"] = "distance_to_camera"
         custom["validation_api"] = custom_block
@@ -357,7 +416,7 @@ class SensorService:
 
         Symmetric readback for ``attach_rtx_lidar``. Reuses the annotator
         name stamped on the sensor prim by ``attach_rtx_lidar``
-        (``RtxSensorCpuIsaacCreateRTXLidarScanBuffer`` by default), creates
+        (``IsaacCreateRTXLidarScanBuffer`` by default), creates
         a render product, attaches the annotator, awaits *frames_to_wait*
         Kit ticks, and reads ``annotator.get_data()``.
 
@@ -398,7 +457,7 @@ class SensorService:
             )
 
         annotator_name = block.get(
-            "annotator", "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+            "annotator", "IsaacCreateRTXLidarScanBuffer",
         )
 
         backend = "omni.replicator.core"
@@ -408,11 +467,68 @@ class SensorService:
         raw_keys: list[str] = []
         truncated = False
 
+        # Preferred path: a cached live LidarRtx instance (kept alive from
+        # attach) whose internal render product is bound to the GMO scan
+        # buffer. get_current_frame()["data"] is an (N,3) cartesian array.
+        # A fresh annotator on a throwaway render product (legacy path below)
+        # returns empty because the lidar runtime isn't bound to it.
+        cached = self._lidar_instances.get(sensor_prim_path)
+        if cached is not None:
+            try:
+                import omni.kit.app
+                app = omni.kit.app.get_app()
+                for _ in range(frames_to_wait):
+                    await app.next_update_async()
+                frame = cached.get_current_frame()
+                if isinstance(frame, dict):
+                    raw_keys = sorted(str(k) for k in frame.keys())
+                    arr = frame.get("data")
+                    shape = getattr(arr, "shape", None)
+                    if (
+                        arr is not None and shape is not None
+                        and len(shape) == 2 and shape[1] == 3
+                    ):
+                        n = min(int(shape[0]), max_points)
+                        truncated = int(shape[0]) > max_points
+                        for i in range(n):
+                            row = arr[i]
+                            points.append(
+                                [float(row[0]), float(row[1]), float(row[2])]
+                            )
+                        inten = frame.get("intensity")
+                        if inten is not None:
+                            try:
+                                intensities = [float(inten[i]) for i in range(n)]
+                            except Exception:  # noqa: BLE001
+                                intensities = []
+                if points:
+                    return {
+                        "ok": True,
+                        "sensor_prim": sensor_prim_path,
+                        "annotator": annotator_name,
+                        "backend": "isaacsim.sensors.rtx.LidarRtx",
+                        "num_points": len(points),
+                        "points": points,
+                        "intensities": intensities,
+                        "truncated": truncated,
+                        "frames_waited": frames_to_wait,
+                        "raw_keys": raw_keys,
+                        "warning": None,
+                    }
+                warning = "cached LidarRtx get_current_frame returned no points yet"
+            except Exception as exc:  # noqa: BLE001
+                warning = f"cached LidarRtx readback failed: {exc}"
+
         try:
             import omni.kit.app
             import omni.replicator.core as rep  # type: ignore[import-not-found]
 
-            render_product = rep.create.render_product(sensor_prim_path, (1, 1))
+            # Render product must be >= 64x64 — a 1x1 product trips
+            # "DLSS Skipped: Target resolution below 64x64" and on some RTX
+            # setups a device-lost / GPU pagefault. The lidar scan data comes
+            # from the sensor GMO buffer, not the product pixels, so a small
+            # but valid 128x128 product is enough to drive the render graph.
+            render_product = rep.create.render_product(sensor_prim_path, (128, 128))
             annotator = rep.AnnotatorRegistry.get_annotator(annotator_name)
             annotator.attach(render_product)
 
@@ -434,22 +550,47 @@ class SensorService:
                 if isinstance(raw, dict):
                     raw_keys = sorted(str(k) for k in raw.keys())
                     if "data" in raw and raw["data"] is not None:
-                        # Structured numpy — try to extract x/y/z fields directly.
                         struct = raw["data"]
                         try:
-                            xs = struct["x"] if "x" in struct.dtype.names else None
-                            ys = struct["y"] if "y" in struct.dtype.names else None
-                            zs = struct["z"] if "z" in struct.dtype.names else None
-                            ints = struct["intensity"] if "intensity" in struct.dtype.names else None
-                            if xs is not None and ys is not None and zs is not None:
-                                n = min(len(xs), max_points)
-                                truncated = len(xs) > max_points
+                            names = getattr(getattr(struct, "dtype", None), "names", None)
+                            shape = getattr(struct, "shape", None)
+                            if (
+                                names is None and shape is not None
+                                and len(shape) == 2 and shape[1] == 3
+                            ):
+                                # IsaacCreateRTXLidarScanBuffer: plain (N,3) cartesian
+                                # float array (NOT a structured dtype). Intensity is a
+                                # sibling array under the "intensity" key.
+                                n = min(int(shape[0]), max_points)
+                                truncated = int(shape[0]) > max_points
                                 for i in range(n):
-                                    points.append([float(xs[i]), float(ys[i]), float(zs[i])])
-                                if ints is not None:
-                                    intensities = [float(ints[i]) for i in range(n)]
+                                    row = struct[i]
+                                    points.append(
+                                        [float(row[0]), float(row[1]), float(row[2])]
+                                    )
+                                inten = raw.get("intensity")
+                                if inten is not None:
+                                    try:
+                                        intensities = [float(inten[i]) for i in range(n)]
+                                    except Exception:  # noqa: BLE001
+                                        intensities = []
+                            elif names is not None:
+                                # Structured numpy with named x/y/z fields.
+                                xs = struct["x"] if "x" in names else None
+                                ys = struct["y"] if "y" in names else None
+                                zs = struct["z"] if "z" in names else None
+                                ints = struct["intensity"] if "intensity" in names else None
+                                if xs is not None and ys is not None and zs is not None:
+                                    n = min(len(xs), max_points)
+                                    truncated = len(xs) > max_points
+                                    for i in range(n):
+                                        points.append(
+                                            [float(xs[i]), float(ys[i]), float(zs[i])]
+                                        )
+                                    if ints is not None:
+                                        intensities = [float(ints[i]) for i in range(n)]
                         except Exception as exc:  # noqa: BLE001
-                            warning = f"structured field extraction failed: {exc}"
+                            warning = f"field extraction failed: {exc}"
                     if not points and "azimuth" in raw and "elevation" in raw and "distance" in raw:
                         # Polar → Cartesian
                         az = raw["azimuth"]
