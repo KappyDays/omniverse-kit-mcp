@@ -181,7 +181,24 @@ class ViewportService:
         # falls back to omni.kit.viewport.utility on apps without replicator
         # (USD Composer). Each path collects a diag string so the failure mode
         # is readable instead of generic "empty data".
+        #
+        # Cold-RTX auto-recover: the RTX path can hand back an all-black frame
+        # (mean+variance ~0) for the first lit frame(s) after sim activity even
+        # when warmup_frames was set. Detect it and tick extra warmup + re-capture
+        # (a few times) instead of returning a useless black PNG.
+        import numpy as np
+        extra_warmup_used = 0
         data, diag = await _capture_via_replicator(camera_path, width, height)
+        for _retry in range(4):
+            if data is None or (hasattr(data, "size") and data.size == 0):
+                break  # empty handled below
+            _rgb = data[:, :, :3].astype("float64")
+            if float(_rgb.mean()) > 1.0 or float(_rgb.var()) > 1.0:
+                break  # non-black frame
+            for _ in range(8):
+                await app.next_update_async()
+            extra_warmup_used += 8
+            data, diag = await _capture_via_replicator(camera_path, width, height)
 
         if data is None or (hasattr(data, "size") and data.size == 0):
             raise RuntimeError(
@@ -210,10 +227,9 @@ class ViewportService:
             "height": int(data.shape[0]),
             "sha256": sha,
             "created_at_epoch_ms": int(time.time() * 1000),
-            "warmup_frames_used": warmup_frames,
+            "warmup_frames_used": warmup_frames + extra_warmup_used,
         }
         if return_stats:
-            import numpy as np
             rgb = data[:, :, :3].astype("float64")
             result["pixel_mean"] = [float(v) for v in rgb.mean(axis=(0, 1))]
             result["pixel_variance"] = [float(v) for v in rgb.var(axis=(0, 1))]
