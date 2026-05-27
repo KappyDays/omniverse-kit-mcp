@@ -243,6 +243,24 @@ class MockIsaacRestClient:
             "was_playing": False,
         })
 
+    async def simulation_wait_until(self, request: dict) -> dict:
+        self.calls.append(("simulation_wait_until", request))
+        until = float(request.get("until_time", 0.0))
+        return self.responses.get("simulation_wait_until", {
+            "ok": True,
+            "is_playing": True,
+            "is_stopped": False,
+            "current_time": until,
+            "start_time": 0.0,
+            "end_time": 100.0,
+            "time_codes_per_second": 60.0,
+            "until_time": until,
+            "reached": True,
+            "timed_out": False,
+            "elapsed_s": until,
+            "frames_waited": int(until * 60),
+        })
+
     async def simulation_set_time(self, request: dict) -> dict:
         self.calls.append(("simulation_set_time", request))
         target = float(request.get("time_seconds", 0.0))

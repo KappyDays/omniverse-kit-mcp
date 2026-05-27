@@ -40,6 +40,42 @@ async def test_stage_new_no_stop_when_idle(meta):
 
 
 @pytest.mark.asyncio
+async def test_wait_until_reached(meta):
+    from omniverse_kit_mcp.types.simulation import SimulationWaitUntilRequest
+
+    client = MockIsaacRestClient()
+    mod = SimulationModule(client)
+    result = await mod.wait_until(meta, SimulationWaitUntilRequest(until_time=12.0, timeout_s=30.0))
+    assert result.ok is True
+    assert result.data is not None
+    assert result.data.until_time == 12.0
+    assert result.data.reached is True
+    assert result.data.timed_out is False
+    assert result.data.status.current_time == 12.0
+    sent = dict(client.calls)["simulation_wait_until"]
+    assert sent["until_time"] == 12.0 and sent["timeout_s"] == 30.0
+
+
+@pytest.mark.asyncio
+async def test_wait_until_timeout(meta):
+    from omniverse_kit_mcp.types.simulation import SimulationWaitUntilRequest
+
+    client = MockIsaacRestClient()
+    client.responses["simulation_wait_until"] = {
+        "ok": True, "is_playing": False, "is_stopped": True, "current_time": 3.0,
+        "start_time": 0.0, "end_time": 100.0, "time_codes_per_second": 60.0,
+        "until_time": 12.0, "reached": False, "timed_out": True,
+        "elapsed_s": 30.0, "frames_waited": 1800,
+    }
+    mod = SimulationModule(client)
+    from omniverse_kit_mcp.types.simulation import SimulationWaitUntilRequest as _R
+    result = await mod.wait_until(meta, _R(until_time=12.0, timeout_s=30.0))
+    assert result.ok is True
+    assert result.data.reached is False
+    assert result.data.timed_out is True
+
+
+@pytest.mark.asyncio
 async def test_stage_set_semantic_label(meta):
     client = MockIsaacRestClient()
     mod = SimulationModule(client)

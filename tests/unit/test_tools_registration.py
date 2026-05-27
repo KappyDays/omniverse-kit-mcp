@@ -139,6 +139,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "sensor_set_annotator",
     # Phase G — Simulation timeline extensions (step / set_time)
     "simulation_step",
+    "simulation_wait_until",
     "simulation_set_time",
     # Phase H — Replicator (writer / randomizer / trigger)
     "replicator_create_writer",

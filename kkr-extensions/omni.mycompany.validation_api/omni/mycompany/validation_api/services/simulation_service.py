@@ -85,6 +85,46 @@ class SimulationService:
         })
         return status
 
+    async def wait_until(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Tick the Kit loop until current_time >= until_time or wall timeout.
+
+        Yields each tick via ``next_update_async`` so the event loop is never
+        blocked (deadlock-safe). The timeline must be PLAYING for current_time
+        to advance — otherwise this returns ``timed_out=True``.
+        """
+        import time as _time
+
+        import omni.kit.app  # lazy
+        import omni.timeline
+
+        until_time = float(request["until_time"])
+        timeout_s = float(request.get("timeout_s", 30.0))
+
+        timeline = omni.timeline.get_timeline_interface()
+        app = omni.kit.app.get_app()
+
+        wall_start = _time.time()
+        frames = 0
+        reached = False
+        while True:
+            if float(timeline.get_current_time()) >= until_time:
+                reached = True
+                break
+            if (_time.time() - wall_start) >= timeout_s:
+                break
+            await app.next_update_async()
+            frames += 1
+
+        status = self._status_dict(timeline)
+        status.update({
+            "until_time": until_time,
+            "reached": reached,
+            "timed_out": not reached,
+            "elapsed_s": _time.time() - wall_start,
+            "frames_waited": frames,
+        })
+        return status
+
     async def set_time(self, request: dict[str, Any]) -> dict[str, Any]:
         """Seek the timeline to ``time_seconds`` (Phase G)."""
         import omni.timeline  # lazy
