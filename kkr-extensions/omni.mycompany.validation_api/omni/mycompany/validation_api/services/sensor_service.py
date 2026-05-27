@@ -70,27 +70,56 @@ class SensorService:
             raise ValueError(f"Parent prim {robot_prim!r} not found for sensor attach")
 
         sensor_path = _safe_child_path(robot_prim, sensor_name)
-        # All sensor classes derive from UsdGeom.Camera — Kit's viewport binding
-        # and Isaac Sim's sensor pipelines both consume Camera prims; the Lidar
-        # / Depth differentiation is driven by the sensor_type custom attr plus
-        # the annotator configured on capture.
-        omni.kit.commands.execute(
-            "CreatePrimWithDefaultXformCommand",
-            prim_type="Camera",
-            prim_path=sensor_path,
-        )
-
-        sensor_prim = stage.GetPrimAtPath(sensor_path)
-        if not sensor_prim.IsValid():
-            raise RuntimeError(f"Sensor prim creation failed at {sensor_path}")
-
-        # Mount transform (relative to parent robot prim via xformOp on child)
-        t_attr = sensor_prim.GetAttribute("xformOp:translate")
-        if t_attr.IsValid():
-            t_attr.Set(Gf.Vec3d(*mount_offset))
-        r_attr = sensor_prim.GetAttribute("xformOp:rotateXYZ")
-        if r_attr.IsValid():
-            r_attr.Set(Gf.Vec3f(*mount_rotation))
+        if sensor_type == "rtx_lidar":
+            # Proper RTX lidar = an OmniLidar prim carrying the
+            # OmniSensorGenericLidarCoreAPI schema + a beam config, created via the
+            # IsaacSensorCreateRtxLidar command. A bare UsdGeom.Camera prim has NO
+            # scan emitter, so the scan-buffer annotator stays empty (0 points) —
+            # the original bug. The command applies the schema + config + mount.
+            preset = request.get("config_preset", "Example_Rotary")
+            try:
+                import omni.kit.app
+                _mgr = omni.kit.app.get_app().get_extension_manager()
+                if not _mgr.is_extension_enabled("isaacsim.sensors.rtx"):
+                    _mgr.set_extension_enabled_immediate("isaacsim.sensors.rtx", True)
+            except Exception as exc:  # noqa: BLE001
+                import logging as _lg
+                _lg.getLogger(__name__).warning("enable isaacsim.sensors.rtx failed: %s", exc)
+            _child = sensor_path.rsplit("/", 1)[-1]
+            omni.kit.commands.execute(
+                "IsaacSensorCreateRtxLidar",
+                path="/" + _child,
+                parent=robot_prim,
+                config=preset,
+                translation=tuple(float(v) for v in mount_offset),
+                orientation=(1.0, 0.0, 0.0, 0.0),
+            )
+            sensor_prim = stage.GetPrimAtPath(sensor_path)
+            if not sensor_prim.IsValid():
+                raise RuntimeError(f"RTX lidar creation failed at {sensor_path}")
+            r_attr = sensor_prim.GetAttribute("xformOp:rotateXYZ")
+            if r_attr and r_attr.IsValid():
+                r_attr.Set(Gf.Vec3f(*mount_rotation))
+        else:
+            # rtx_camera / rtx_depth_camera ride on a UsdGeom.Camera prim — Kit's
+            # viewport binding + Isaac sensor pipelines consume Camera prims; the
+            # depth differentiation is driven by the sensor_type custom attr + the
+            # annotator configured on capture.
+            omni.kit.commands.execute(
+                "CreatePrimWithDefaultXformCommand",
+                prim_type="Camera",
+                prim_path=sensor_path,
+            )
+            sensor_prim = stage.GetPrimAtPath(sensor_path)
+            if not sensor_prim.IsValid():
+                raise RuntimeError(f"Sensor prim creation failed at {sensor_path}")
+            # Mount transform (relative to parent robot prim via xformOp on child)
+            t_attr = sensor_prim.GetAttribute("xformOp:translate")
+            if t_attr.IsValid():
+                t_attr.Set(Gf.Vec3d(*mount_offset))
+            r_attr = sensor_prim.GetAttribute("xformOp:rotateXYZ")
+            if r_attr.IsValid():
+                r_attr.Set(Gf.Vec3f(*mount_rotation))
 
         # Resolution + camera defaults
         if sensor_type in {"rtx_camera", "rtx_depth_camera"}:
@@ -107,58 +136,28 @@ class SensorService:
         custom_block["sensor_type"] = sensor_type
         custom_block["resolution"] = list(resolution)
         if sensor_type == "rtx_lidar":
-            preset = request.get("config_preset", "Example_Rotary")
-            # A bare Camera prim emits NO scan buffer — it must be configured as
-            # an RTX lidar via LidarRtx(config_file_name=...) which applies the
-            # OmniSensorGenericLidarCoreAPI schema. Mirror robot_lidar/
-            # lidar_attach.py: ensure the ext, try requested preset then a
-            # 128ch fallback chain. Without this, sensor_lidar_get_point_cloud
-            # returns 0 points (the original bug).
-            try:
-                import omni.kit.app
-                _mgr = omni.kit.app.get_app().get_extension_manager()
-                if not _mgr.is_extension_enabled("isaacsim.sensors.rtx"):
-                    _mgr.set_extension_enabled_immediate("isaacsim.sensors.rtx", True)
-            except Exception as exc:  # noqa: BLE001
-                import logging as _lg
-                _lg.getLogger(__name__).warning("enable isaacsim.sensors.rtx failed: %s", exc)
-            chosen_preset = preset
-            lidar_rtx = None
+            chosen_preset = request.get("config_preset", "Example_Rotary")
+            # The OmniLidar prim is already schema+config'd (created above via
+            # IsaacSensorCreateRtxLidar). Cache a LidarRtx wrapper + attach the
+            # scan-buffer annotator for the get_current_frame readback path.
             try:
                 from isaacsim.sensors.rtx import LidarRtx  # type: ignore[import-not-found]
-                _presets = [preset, "Example_Rotary", "OS1_REV6_128ch10hz", "Hesai_PandarXT-32"]
-                _seen: set[str] = set()
-                _last_err: Exception | None = None
-                for _p in _presets:
-                    if _p in _seen:
-                        continue
-                    _seen.add(_p)
-                    try:
-                        lidar_rtx = LidarRtx(prim_path=sensor_path, config_file_name=_p)
-                        chosen_preset = _p
-                        break
-                    except Exception as exc:  # noqa: BLE001
-                        _last_err = exc
-                        lidar_rtx = None
-                if lidar_rtx is None:
+                lidar_rtx = LidarRtx(prim_path=sensor_path)
+                try:
+                    lidar_rtx.initialize()
+                except Exception as exc:  # noqa: BLE001
                     import logging as _lg
-                    _lg.getLogger(__name__).warning(
-                        "no LidarRtx preset worked (last: %s)", _last_err
-                    )
-                else:
-                    # Attach the scan-buffer annotator on the live instance and
-                    # keep it alive (cache by prim path) so get_point_cloud can
-                    # read get_current_frame(). Discarding it -> 0 points.
-                    try:
-                        lidar_rtx.attach_annotator("IsaacCreateRTXLidarScanBuffer")
-                    except Exception as exc:  # noqa: BLE001
-                        import logging as _lg
-                        _lg.getLogger(__name__).warning("attach_annotator failed: %s", exc)
-                    self._lidar_instances[sensor_path] = lidar_rtx
+                    _lg.getLogger(__name__).warning("LidarRtx.initialize failed: %s", exc)
+                try:
+                    lidar_rtx.attach_annotator("IsaacCreateRTXLidarScanBuffer")
+                except Exception as exc:  # noqa: BLE001
+                    import logging as _lg
+                    _lg.getLogger(__name__).warning("attach_annotator failed: %s", exc)
+                self._lidar_instances[sensor_path] = lidar_rtx
             except ImportError:
                 import logging as _lg
                 _lg.getLogger(__name__).warning(
-                    "isaacsim.sensors.rtx.LidarRtx unavailable — stamping preset only"
+                    "isaacsim.sensors.rtx.LidarRtx unavailable — annotator-only readback"
                 )
             custom_block["config_preset"] = chosen_preset
             custom_block["annotator"] = "IsaacCreateRTXLidarScanBuffer"

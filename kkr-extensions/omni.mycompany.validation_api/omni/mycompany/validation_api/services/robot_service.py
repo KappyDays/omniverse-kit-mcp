@@ -491,9 +491,18 @@ class RobotService:
         waypoints = request["waypoints"]
         if len(waypoints) < 2:
             raise ValueError("waypoints must contain at least 2 points")
+        # Accept 2D [x, y] (ground plane) or 3D [x, y, z]; pad z=0 for 2D so a
+        # caller passing [[x, y], ...] gets a clear behaviour instead of a cryptic
+        # "list index out of range" downstream.
+        norm_wps: list[list[float]] = []
         for p in waypoints:
-            if len(p) != 3:
-                raise ValueError("each waypoint must be [x, y, z]")
+            if len(p) == 2:
+                norm_wps.append([float(p[0]), float(p[1]), 0.0])
+            elif len(p) == 3:
+                norm_wps.append([float(p[0]), float(p[1]), float(p[2])])
+            else:
+                raise ValueError("each waypoint must be [x, y] or [x, y, z]")
+        waypoints = norm_wps
 
         _assert_articulation(prim_path)
 
