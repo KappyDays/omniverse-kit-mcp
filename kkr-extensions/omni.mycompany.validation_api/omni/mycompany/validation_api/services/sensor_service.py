@@ -527,9 +527,23 @@ class SensorService:
             # setups a device-lost / GPU pagefault. The lidar scan data comes
             # from the sensor GMO buffer, not the product pixels, so a small
             # but valid 128x128 product is enough to drive the render graph.
-            render_product = rep.create.render_product(sensor_prim_path, (128, 128))
+            # force_new=True is REQUIRED — without it rep.create.render_product
+            # reuses the default Replicator hydra texture (the viewport's
+            # product) and the lidar's scan emitter is never bound, so
+            # data stays empty (live-verified 2026-05-28: force_new=False
+            # -> data_shape=[0]; force_new=True -> data_shape=[41180,3]).
+            # The annotator must also be attached via [render_product.path] —
+            # a LIST containing the path string (matches isaacsim.sensors.rtx
+            # source pattern); passing the object directly does not bind.
+            render_product = rep.create.render_product(
+                sensor_prim_path, (128, 128), force_new=True,
+            )
             annotator = rep.AnnotatorRegistry.get_annotator(annotator_name)
-            annotator.attach(render_product)
+            try:
+                annotator.initialize()
+            except Exception:  # noqa: BLE001
+                pass
+            annotator.attach([render_product.path])
 
             app = omni.kit.app.get_app()
             for _ in range(frames_to_wait):
