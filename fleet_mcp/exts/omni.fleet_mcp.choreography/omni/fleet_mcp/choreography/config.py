@@ -40,4 +40,14 @@ WHEEL_BASE = 0.41
 # ground (settles via gravity) -> clean contact -> drive reaches waypoints.
 ROBOT_START_Z = 0.30
 
+# Pure Pursuit / DifferentialController params for the inline drive loop
+# (extension.py:_drive_fleet — mirrors robot_drive_physics but per-tick in-process).
+DRIVE_MAX_LINEAR = 1.0    # m/s wheel velocity cap
+DRIVE_MAX_ANGULAR = 1.2   # rad/s turn rate cap
+DRIVE_ARRIVAL_TOL = 1.5   # m — generous corridor: at max_linear ~1 m/s with the
+                          # free-running fast physics, carter overshoots a tight 0.35m
+                          # tolerance and then oscillates (live-observed: 180° spin).
+DRIVE_LOOKAHEAD = 0.8     # m (currently unused; reserved for full Pure Pursuit)
+DRIVE_MAX_TICKS = 900     # ~15 s wall + sim ticks before timeout
+
 MARKER_RADIUS = 0.2

@@ -57,23 +57,74 @@ class LoadRigExtension(omni.ext.IExt):
         if not self._built:
             self._status.text = "Status: build rig first"
             return
+        # Run the sampling loop as an asyncio task that awaits next_update_async.
+        # Synchronously calling app.update() inside the UI callback re-enters the
+        # Kit update loop and after ~30+ ticks corrupts Vulkan command buffers ->
+        # GPU crash (live-observed 2026-05-28: VkResult NOT_READY after Measure).
+        import asyncio
+        self._status.text = "Status: measuring..."
+        asyncio.ensure_future(self._measure_async())
+
+    async def _measure_async(self) -> None:
         try:
-            summary = self._read_measurements()
+            summary = await self._sample_lift_series()
             self._status.text = (
-                f"Status: max_force={summary['max_force']:.1f}N samples={summary['samples']}"
+                f"Status: samples={summary['samples']} "
+                f"max_force={summary['max_force']:.1f}N "
+                f"max_vel={summary['max_effort']:.2f}m/s"
             )
             carb.log_info(f"[rig] measurement {summary}")
         except Exception as exc:  # noqa: BLE001
             carb.log_error(f"[rig] measure failed: {exc}")
-            self._status.text = "Status: measure error (see console)"
+            self._status.text = f"Status: measure error: {exc}"
 
-    def _read_measurements(self) -> dict:
-        """LIVE path: sample contact force + joint effort. The exact contact-sensor /
-        articulation-effort read APIs are LIVE-confirm (rig_make.md) — wire on first
-        live run; this returns the reduced summary of the collected series."""
+    async def _sample_lift_series(self) -> dict:
+        """LIVE async sampling: (sim_time, drive_force_est_N, carriage_vel_z m/s).
+
+        Awaits ``app.next_update_async`` between samples — the deadlock-safe async
+        yield (synchronous ``app.update()`` from a UI callback corrupts Vulkan and
+        crashes the GPU). Reads carriage world Z via BBoxCache; estimates the linear
+        drive force from the position error (stiffness * (target - current));
+        reports z-velocity as the kinematic effort proxy (the rig is rigid bodies +
+        joints, not a SingleArticulation, so no joint-effort tensor)."""
+        import omni.kit.app
+        import omni.timeline
+        import omni.usd
+        from pxr import Usd, UsdGeom
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            return measure.summarize([])
+        tl = omni.timeline.get_timeline_interface()
+        app = omni.kit.app.get_app()
+
+        def carriage_z() -> float:
+            bc = UsdGeom.BBoxCache(
+                Usd.TimeCode.Default(),
+                [UsdGeom.Tokens.default_, UsdGeom.Tokens.render],
+            )
+            p = stage.GetPrimAtPath(config.CARRIAGE)
+            if not p.IsValid():
+                return 0.0
+            r = bc.ComputeWorldBound(p).ComputeAlignedRange()
+            return float((r.GetMin()[2] + r.GetMax()[2]) * 0.5)
+
         series: list[tuple[float, float, float]] = []
-        # LIVE: append (sim_time, contact_force_N, joint_effort) samples here via the
-        # Isaac contact sensor + articulation effort readout once confirmed in session.
+        prev_z = carriage_z()
+        prev_t = float(tl.get_current_time())
+        z_target = config.CARRIAGE_Z0 + config.LIFT_HEIGHT
+        for _ in range(15):
+            for _ in range(3):
+                await app.next_update_async()
+            t = float(tl.get_current_time())
+            z = carriage_z()
+            err = z_target - z
+            force = float(config.LIFT_STIFFNESS * err)
+            dt = max(1e-3, t - prev_t)
+            vel = (z - prev_z) / dt
+            series.append((t, force, float(vel)))
+            prev_z, prev_t = z, t
+        carb.log_info(f"[rig] sampled series: {series}")
         return measure.summarize(series)
 
     def on_shutdown(self) -> None:

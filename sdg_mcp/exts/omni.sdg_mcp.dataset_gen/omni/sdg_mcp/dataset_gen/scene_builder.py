@@ -22,8 +22,22 @@ def clear(stage) -> None:
 def _author_label(prim, label_class: str) -> None:
     from pxr import UsdSemantics
 
+    # UsdSemantics (OpenUSD standard).
     api = UsdSemantics.LabelsAPI.Apply(prim, config.SEMANTIC_LABEL_TYPE)
     api.CreateLabelsAttr([label_class])
+    # Legacy Semantics schema — omni.replicator's semantic_segmentation annotator
+    # in Isaac Sim 5.1 reads this; without it the labels JSON may stay empty (live-
+    # verified 2026-05-28 via MCP stage_set_semantic_label). Mirror that pattern.
+    try:
+        from pxr import Semantics
+        sem = Semantics.SemanticsAPI.Apply(prim, f"Semantics_{config.SEMANTIC_LABEL_TYPE}")
+        sem.CreateSemanticTypeAttr().Set(config.SEMANTIC_LABEL_TYPE)
+        sem.CreateSemanticDataAttr().Set(label_class)
+    except Exception:  # noqa: BLE001
+        # pxr.Semantics not present in this build (e.g. usd-core headless) —
+        # UsdSemantics alone is authored; runtime can still apply legacy via
+        # the MCP stage_set_semantic_label tool.
+        pass
 
 
 def build(stage) -> dict:
