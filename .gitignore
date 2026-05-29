@@ -11,6 +11,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+# office_mcp/build/ holds the scene-authoring *source* (build_scene.py), not
+# build output — keep it tracked despite the generic build/ rule above.
+!office_mcp/build/
+!office_mcp/build/**
 
 # Virtual environment
 .venv/
@@ -67,6 +71,11 @@ docs/artifacts/**/*.json
 
 # Phase H replicator scenario output (default output_dir for replicator_create_writer)
 _temp_sdg/
+sdg_mcp/scenes/dataset/
+sdg_mcp/scenes/dataset_prev/
+
+# Workspace-local task prompts
+workspaces/*/instance-*/*-task-prompt.md
 
 # Worktree dir (future use; keep ignored even if we don't create one now)
 .worktrees/
