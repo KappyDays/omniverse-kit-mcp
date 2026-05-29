@@ -1,0 +1,16 @@
+[package]
+version = "0.1.0"
+title = "Office-DataCenter Network Demo"
+description = "Load an office + datacenter scene, then click the PC power button while playing to visualize a sequential network transmission across cables and server LEDs."
+category = "Tools"
+keywords = ["office", "network", "datacenter", "demo", "visualization"]
+authors = ["omniverse-kit-mcp / office_mcp"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.ui" = {}
+"omni.usd" = {}
+"omni.kit.commands" = {}
+
+[[python.module]]
+name = "omni.office_mcp.network_demo"
