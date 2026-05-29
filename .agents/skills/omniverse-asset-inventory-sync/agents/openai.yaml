@@ -1,0 +1,7 @@
+interface:
+  display_name: "Omniverse Asset Inventory Sync"
+  short_description: "Sync Omniverse asset URL inventories"
+  default_prompt: "Use $omniverse-asset-inventory-sync to validate and repair stale NVIDIA Omniverse asset inventory URLs."
+
+policy:
+  allow_implicit_invocation: false

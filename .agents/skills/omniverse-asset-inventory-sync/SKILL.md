@@ -1,8 +1,6 @@
 ---
 name: omniverse-asset-inventory-sync
 description: Invoke after Isaac Sim 5.x or NVIDIA SimReady asset bucket update, or when an asset path in docs/assets/isaac/assets/*.md or docs/assets/composer/*.md is reported as 404 / missing. Validates every USD URL in both inventories against NVIDIA Omniverse public S3 (HTTP HEAD) and walks the human through fixing invalid entries. Not for adding brand-new assets to the inventory, and not for Kit Extension code packages (use omniverse-kit-extension-catalog-sync for those).
-user-invocable: true
-disable-model-invocation: true
 metadata:
   version: "1.1.0"
 ---

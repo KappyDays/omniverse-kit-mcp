@@ -1,0 +1,7 @@
+interface:
+  display_name: "Omniverse Docs Sweep"
+  short_description: "Sweep project docs after work"
+  default_prompt: "Use $omniverse-docs-sweep to sync AGENTS.md hierarchy and related docs after the current work."
+
+policy:
+  allow_implicit_invocation: false
