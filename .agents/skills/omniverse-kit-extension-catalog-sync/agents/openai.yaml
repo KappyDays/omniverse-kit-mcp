@@ -1,0 +1,7 @@
+interface:
+  display_name: "Omniverse Kit Extension Catalog Sync"
+  short_description: "Resync Kit Extension catalog"
+  default_prompt: "Use $omniverse-kit-extension-catalog-sync to resync the Kit Extension catalog after an app or Kit update."
+
+policy:
+  allow_implicit_invocation: false

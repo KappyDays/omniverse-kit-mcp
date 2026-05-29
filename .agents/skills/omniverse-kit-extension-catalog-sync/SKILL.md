@@ -1,8 +1,6 @@
 ---
 name: omniverse-kit-extension-catalog-sync
 description: Invoke after Kit / Isaac Sim / USD Composer install has been updated, to re-sync the project's Kit Extension catalog (docs/references/extensions.json) with the file system. Runs the canonical 6-step workflow (diff → integrity → harvest → render → enrichment → commit). Not for one-off catalog edits, and not for USD asset URLs (use omniverse-asset-inventory-sync for those).
-user-invocable: true
-disable-model-invocation: true
 metadata:
   version: "1.2.0"
 ---

@@ -1,8 +1,6 @@
 ---
 name: omniverse-docs-sweep
 description: "Invoke during a working session to sync project docs (AGENTS.md hierarchy + invariants/runbooks/pull-doc 표) with the work just completed. Hybrid input — git diff HEAD + conversation 의 결정 사항. Auto-edits L1 (변경 파급 매트릭스 함께-수정 누락) + L2 (tactical: 카운터·pointer·표 항목·라인캡), reports L3 (영구 규칙·신규 디렉토리·신규 sub-AGENTS.md·lessons-learned 영구 규칙) candidates as dry-run for user approval. Skip if no diff. Not for: auto-generated docs (tool-catalog.md, phase-*-validation-report.md, references/testbed-snapshot/**), other skills' domains (extensions.json/extensions-catalog.md, docs/assets/isaac/assets/*.md/asset_inventory.md)."
-user-invocable: true
-disable-model-invocation: true
 metadata:
   version: "1.0.0"
 ---

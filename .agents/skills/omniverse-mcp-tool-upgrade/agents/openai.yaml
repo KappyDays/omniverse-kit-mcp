@@ -1,0 +1,7 @@
+interface:
+  display_name: "Omniverse MCP Tool Upgrade"
+  short_description: "Upgrade MCP tools from session gaps"
+  default_prompt: "Use $omniverse-mcp-tool-upgrade to analyze this session for MCP tool gaps and implement needed upgrades."
+
+policy:
+  allow_implicit_invocation: false

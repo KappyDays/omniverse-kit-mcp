@@ -1,8 +1,6 @@
 ---
 name: omniverse-mcp-tool-upgrade
 description: Invoke after or during a Claude Code or Codex session that performed omniverse work, to retrospectively analyze that session's work (conversation — MCP tools called, workarounds, repeated friction — plus git diff), identify where MCP tools were missing or insufficient, then add new or upgrade existing MCP tools (7-place edit), verify (registration/drift in-session; behavioral only after host restart + ext reload), and sync tool-only docs. Autonomous with 3 distributed self-reviews (necessity, adversarial-correctness, integration). Input is the session's actual performed work, not an external task spec — it automates the manual harvesting that fills docs/mcp-enhance.md. Not for executing omniverse tasks, broad AGENTS.md sync (use omniverse-docs-sweep), Kit extension catalog sync (omniverse-kit-extension-catalog-sync), or asset URL/inventory (omniverse-asset-inventory-sync).
-user-invocable: true
-disable-model-invocation: true
 metadata:
   version: "1.0.0"
 ---
