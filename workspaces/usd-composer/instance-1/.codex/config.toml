@@ -8,7 +8,7 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
-network_access = true   # localhost:8114 Extension REST 호출 필수
+network_access = true   # 127.0.0.1:8114 Extension REST 호출 필수
 
 [mcp_servers.usdcomposer-mcp-1]
 command = "cmd"

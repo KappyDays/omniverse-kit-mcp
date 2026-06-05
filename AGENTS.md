@@ -101,8 +101,8 @@ rules:
 - Global Codex MCP entries may appear alongside the workspace entry.
 - Codex shell sandbox settings apply to model-generated shell commands only.
   The MCP server process and its child `kit.exe` are separate process trees.
-- Localhost network access is required because MCP tools call the Extension
-  REST bridge at `http://localhost:801N`.
+- Local loopback network access is required because MCP tools call the
+  Extension REST bridge at `http://127.0.0.1:811N`.
 
 ## Final Response Checklist
 

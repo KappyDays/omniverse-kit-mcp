@@ -90,7 +90,7 @@ if (Test-Path $EnvFile) {
     Write-Host "  [OK]   .env already exists." -ForegroundColor Green
 } elseif (Test-Path $EnvExample) {
     Copy-Item $EnvExample $EnvFile
-    Write-Host "  [OK]   Created .env from .env.example (default: localhost:8111)" -ForegroundColor Green
+    Write-Host "  [OK]   Created .env from .env.example (default: 127.0.0.1:8111)" -ForegroundColor Green
 } else {
     # Create minimal .env
     @"
