@@ -67,7 +67,7 @@
 
 | 변수 | 기본값 | 설명 |
 |------|-------|------|
-| `ISAAC_SIM_BASE_URL` | `http://localhost:8111` | Extension REST |
+| `ISAAC_SIM_BASE_URL` | `http://127.0.0.1:8111` | Extension REST |
 | `ISAAC_MCP_APP_PROFILE` | `isaac-sim` | Kit app profile — `isaac-sim` or `usd-composer`. 상세: `docs/invariants/multi-app.md` |
 | `ISAAC_MCP_INSTANCE_ID` | `1` | 멀티 인스턴스 (1..2 영구 한도, `le=2` 가드). profile base_port 에 offset (Isaac 8111-12 / USD Composer 8114-15) |
 | `ISAAC_SIM_STARTUP_TIMEOUT` | `120.0` | ProcessModule health 대기 상한. 상세: `docs/invariants/process-lifecycle.md` |

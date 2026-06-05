@@ -133,7 +133,7 @@ class IsaacSimProcessConfig(BaseSettings):
         if self.health_url is None:
             object.__setattr__(
                 self, "health_url",
-                f"http://localhost:{self.ext_port}/validation/v1/health",
+                f"http://127.0.0.1:{self.ext_port}/validation/v1/health",
             )
         return self
 
@@ -164,7 +164,7 @@ class AppConfig(BaseSettings):
         the HTTP client that talks to Extension REST.
         """
         if self.isaac_sim.base_url is None:
-            derived = f"http://localhost:{self.isaac_sim_process.ext_port}"
+            derived = f"http://127.0.0.1:{self.isaac_sim_process.ext_port}"
             object.__setattr__(self.isaac_sim, "base_url", derived)
         return self
 

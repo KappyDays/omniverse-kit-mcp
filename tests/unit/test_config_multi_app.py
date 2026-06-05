@@ -33,15 +33,15 @@ def test_default_profile_is_isaac_sim():
     assert cfg.isaac_sim_process.app_profile.name == "isaac-sim"
     assert cfg.isaac_sim_process.instance_id == 1
     assert cfg.isaac_sim_process.ext_port == 8111
-    assert cfg.isaac_sim_process.health_url == "http://localhost:8111/validation/v1/health"
-    assert cfg.isaac_sim.base_url == "http://localhost:8111"
+    assert cfg.isaac_sim_process.health_url == "http://127.0.0.1:8111/validation/v1/health"
+    assert cfg.isaac_sim.base_url == "http://127.0.0.1:8111"
 
 
 def test_isaac_instance_2_port_8112(monkeypatch):
     monkeypatch.setenv("ISAAC_MCP_INSTANCE_ID", "2")
     cfg = AppConfig()
     assert cfg.isaac_sim_process.ext_port == 8112
-    assert cfg.isaac_sim.base_url == "http://localhost:8112"
+    assert cfg.isaac_sim.base_url == "http://127.0.0.1:8112"
 
 
 def test_isaac_instance_3_rejected(monkeypatch):
@@ -58,7 +58,7 @@ def test_usd_composer_profile_instance_1_port_8114(monkeypatch):
     cfg = AppConfig()
     assert cfg.isaac_sim_process.app_profile.name == "usd-composer"
     assert cfg.isaac_sim_process.ext_port == 8114
-    assert cfg.isaac_sim.base_url == "http://localhost:8114"
+    assert cfg.isaac_sim.base_url == "http://127.0.0.1:8114"
 
 
 def test_usd_composer_instance_2_port_8115(monkeypatch):

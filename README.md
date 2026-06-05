@@ -81,7 +81,7 @@ omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Defau
    ```
 4. **Kit Extension activation is automatic** — on `kit_app_start` the MCP server spawns Kit with `--ext-folder <repo>/kkr-extensions --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.
 
-Sanity check after first startup: `curl http://localhost:8111/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
+Sanity check after first startup: `curl http://127.0.0.1:8111/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
 
 ### Using Your Own Kit Extension
 
@@ -126,7 +126,7 @@ extension_list_all(enabled_only=True)   # filter to currently-enabled
 extension_get_info(ext_id="your.company.awesome")
 ```
 
-Or hit the REST route directly: `POST http://localhost:8111/validation/v1/extension/get_info {"ext_id":"your.company.awesome"}`.
+Or hit the REST route directly: `POST http://127.0.0.1:8111/validation/v1/extension/get_info {"ext_id":"your.company.awesome"}`.
 
 **Exposing your extension as MCP tools**
 

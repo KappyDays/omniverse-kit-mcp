@@ -23,7 +23,7 @@ MCP `kit_app_start` 가 `subprocess.Popen` 으로 띄우는 실제 커맨드를 
 | `isaac-sim` | 8111 | 8112 |
 | `usd-composer` | 8114 | 8115 |
 
-Health URL: `http://localhost:<PORT>/validation/v1/health`
+Health URL: `http://127.0.0.1:<PORT>/validation/v1/health`
 
 ---
 
@@ -185,8 +185,8 @@ Remove-Item "$env:TEMP/hub-*.lock", "$env:TEMP/hub-*.config.json" -ErrorAction S
 기동 후 health 확인:
 
 ```powershell
-curl http://localhost:8111/validation/v1/health   # Isaac Sim instance 1
-curl http://localhost:8114/validation/v1/health   # USD Composer instance 1
+curl http://127.0.0.1:8111/validation/v1/health   # Isaac Sim instance 1
+curl http://127.0.0.1:8114/validation/v1/health   # USD Composer instance 1
 ```
 
 200 응답 = ready. cold boot 는 stdin DEVNULL fix 후 13–30s, GPU 셰이더 캐시 재빌드 시 5–10 분.
@@ -236,8 +236,8 @@ curl http://localhost:8114/validation/v1/health   # USD Composer instance 1
 수정 후 사용자가 직접 두 앱을 다시 띄우고:
 
 ```powershell
-curl http://localhost:8111/validation/v1/health   # Isaac Sim
-curl http://localhost:8114/validation/v1/health   # USD Composer
+curl http://127.0.0.1:8111/validation/v1/health   # Isaac Sim
+curl http://127.0.0.1:8114/validation/v1/health   # USD Composer
 ```
 
 두 응답 모두 200 → MCP `kit_app_start` (instance_id=1, profile=isaac-sim / usd-composer) 호출 시 `status=ready` (idempotent attach).
