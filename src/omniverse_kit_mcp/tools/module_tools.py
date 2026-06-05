@@ -259,7 +259,7 @@ def register_module_tools(
         tolerance: float | None = None,
         property_kind: str = "attribute",
     ) -> str:
-        """Assert a Prim attribute/relationship value. comparator ∈ {equals, approx, regex, contains, exists}; approx requires tolerance; set property_kind='relationship' for rels."""
+        """Assert a Prim attribute/relationship value. comparator ∈ {equals, not_equals, approx, gt, gte, lt, lte, regex, contains, exists}; approx requires tolerance; set property_kind='relationship' for rels."""
         meta = make_meta(ModuleName.STAGE)
         expected = None
         if expected_value is not None:
@@ -972,6 +972,40 @@ def register_module_tools(
         """Invoke widget by path. action ∈ {click, double_click, type, select, check, uncheck}; type/select take value. Returns post-action widget state."""
         meta = make_meta(ModuleName.EXTENSION)
         result = await extension.ui_invoke(meta, widget_path, action, value=value)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def extension_ui_run_and_wait(
+        widget_path: str,
+        action: str = "click",
+        value: Any = None,
+        wait_prim_path: str = "",
+        wait_property_name: str = "",
+        wait_expected_value: Any = None,
+        wait_comparator: str = "equals",
+        wait_expected_type_name: str | None = None,
+        wait_property_kind: str = "attribute",
+        wait_tolerance: float | None = None,
+        timeout_s: float = 45.0,
+        poll_interval_s: float = 0.5,
+    ) -> str:
+        """Invoke an omni.ui widget, then poll a Stage property assertion until it passes or times out."""
+        meta = make_meta(ModuleName.EXTENSION)
+        result = await extension.ui_run_and_wait(
+            meta,
+            widget_path=widget_path,
+            action=action,
+            value=value,
+            wait_prim_path=wait_prim_path,
+            wait_property_name=wait_property_name,
+            wait_expected_value=wait_expected_value,
+            wait_comparator=wait_comparator,
+            wait_expected_type_name=wait_expected_type_name,
+            wait_property_kind=wait_property_kind,
+            wait_tolerance=wait_tolerance,
+            timeout_s=timeout_s,
+            poll_interval_s=poll_interval_s,
+        )
         return _serialize(result)
 
     @mcp.tool()

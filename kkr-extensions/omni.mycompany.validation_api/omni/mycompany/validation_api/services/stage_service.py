@@ -812,6 +812,10 @@ def _assert_attribute(
         tol = tolerance if tolerance is not None else 0.001
         if not _approx_equal(actual_val, expected_value, tol):
             return _fail("VALUE_NOT_APPROX", f"Expected ~{expected_value} (+-{tol}), got {actual_val}")
+    elif comparator in ("gt", "gte", "lt", "lte"):
+        threshold_failure = _numeric_threshold_failure(comparator, actual_val, expected_value)
+        if threshold_failure is not None:
+            return _fail(threshold_failure[0], threshold_failure[1])
     elif comparator == "contains":
         if not _contains(actual_val, expected_value):
             return _fail("VALUE_NOT_CONTAINS", f"Expected {actual_val} to contain {expected_value}")
@@ -830,6 +834,37 @@ def _approx_equal(actual: Any, expected: Any, tol: float) -> bool:
             return False
         return all(_approx_equal(a, e, tol) for a, e in zip(actual, expected))
     return actual == expected
+
+
+def _numeric_threshold_failure(
+    comparator: str,
+    actual: Any,
+    expected: Any,
+) -> tuple[str, str] | None:
+    actual_num = _as_plain_number(actual)
+    expected_num = _as_plain_number(expected)
+    if actual_num is None or expected_num is None:
+        return (
+            "VALUE_NOT_NUMERIC",
+            f"Expected numeric comparison {comparator} {expected}, got {actual}",
+        )
+    if comparator == "gt" and not actual_num > expected_num:
+        return ("VALUE_AT_OR_BELOW_MIN", f"Expected > {expected}, got {actual}")
+    if comparator == "gte" and not actual_num >= expected_num:
+        return ("VALUE_BELOW_MIN", f"Expected >= {expected}, got {actual}")
+    if comparator == "lt" and not actual_num < expected_num:
+        return ("VALUE_AT_OR_ABOVE_MAX", f"Expected < {expected}, got {actual}")
+    if comparator == "lte" and not actual_num <= expected_num:
+        return ("VALUE_ABOVE_MAX", f"Expected <= {expected}, got {actual}")
+    return None
+
+
+def _as_plain_number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
 
 
 def _contains(actual: Any, expected: Any) -> bool:

@@ -76,6 +76,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "extension_reload",
     "extension_get_ui_tree",
     "extension_ui_invoke",
+    "extension_ui_run_and_wait",
     "extension_capture_logs",
     # Phase E — log ring buffer management
     "extension_clear_logs",
