@@ -1,7 +1,7 @@
 """Codex entrypoint drift guards.
 
 - Group A: AGENTS.md ↔ root CLAUDE.md / invariants 정합
-- Group B: .codex/config.toml ↔ .mcp.json 미러 + launcher byte-identical
+- Group B: .codex/config.toml ↔ .mcp.json 미러 + no legacy launcher
 - Group C: shared docs 에 Claude-only 표현 재도입 방지
 - Group D: AGENTS.md hard rules ↔ root CLAUDE.md key phrase sync
 """
@@ -16,20 +16,82 @@ INVARIANTS = sorted((REPO / "docs/invariants").glob("*.md"))
 RUNBOOKS = sorted((REPO / "docs/runbooks").glob("*.md"))
 
 
+def _agents_text() -> str:
+    return (REPO / "AGENTS.md").read_text(encoding="utf-8")
+
+
+def _plain_agents_text() -> str:
+    return re.sub(r"\s+", " ", _agents_text().replace("`", ""))
+
+
 def test_agents_md_references_root_claude_md():
     """t1: AGENTS.md 가 root CLAUDE.md 를 진입점으로 참조."""
-    text = (REPO / "AGENTS.md").read_text(encoding="utf-8")
+    text = _agents_text()
     assert "Read root `CLAUDE.md`" in text or "Read root CLAUDE.md" in text
 
 
 def test_agents_md_references_all_invariants():
     """t2: AGENTS.md 가 모든 docs/invariants/*.md 파일을 reference (drift 가드)."""
-    text = (REPO / "AGENTS.md").read_text(encoding="utf-8")
+    text = _agents_text()
     # 디렉토리 통합 reference 인정
     if "docs/invariants/" in text or "docs\\invariants\\" in text:
         return
     missing = [p.name for p in INVARIANTS if p.name not in text]
     assert not missing, f"AGENTS.md 가 빠뜨린 invariants: {missing}"
+
+
+def test_agents_md_declares_codex_adapter_not_canonical_copy():
+    """t7: AGENTS.md 는 Codex adapter 이고 CLAUDE.md hierarchy 가 canonical."""
+    text = _plain_agents_text()
+    assert re.search(r"CLAUDE\.md[^.]*canonical", text, re.IGNORECASE)
+    assert re.search(r"AGENTS\.md[^.]*(adapter|entrypoint)", text, re.IGNORECASE)
+
+
+def test_agents_md_requires_manual_claude_walk_before_editing():
+    """t8: nested CLAUDE.md 자동 로드 부재를 path walk 규칙으로 보완."""
+    text = _plain_agents_text()
+    assert re.search(r"nested[^.]*CLAUDE\.md[^.]*not auto-loaded", text, re.IGNORECASE)
+    assert re.search(r"repo root[^.]*target path", text, re.IGNORECASE)
+    assert re.search(r"multiple paths[^.]*(union|repeat)", text, re.IGNORECASE)
+
+
+def test_agents_md_references_pull_docs_and_runbooks():
+    """t9: pull-doc table, invariants, runbooks are explicit entrypoint concepts."""
+    text = _agents_text()
+    required = [
+        "작업 전 필수 pull-doc",
+        "docs/invariants/",
+        "docs/runbooks/",
+    ]
+    missing = [phrase for phrase in required if phrase not in text]
+    assert not missing, f"AGENTS.md missing pull-doc references: {missing}"
+
+
+def test_agents_md_protects_claude_hierarchy_from_migration():
+    """t10: AGENTS.md must not become a migrated copy of CLAUDE.md files."""
+    text = _plain_agents_text()
+    assert re.search(r"do not[^.]*(migrate|copy)[^.]*CLAUDE\.md", text, re.IGNORECASE)
+    assert re.search(
+        r"do not[^.]*(delete|rename|replace)[^.]*CLAUDE\.md",
+        text,
+        re.IGNORECASE,
+    )
+
+
+def test_agents_md_final_report_requires_doc_and_risk_details():
+    """t11: final report checklist keeps Codex honest about docs and verification."""
+    text = _agents_text()
+    required = [
+        "files changed",
+        "CLAUDE.md files read",
+        "pull-docs read",
+        "runbooks read",
+        "tests/checks run",
+        "commands not run",
+        "remaining risks",
+    ]
+    missing = [phrase for phrase in required if phrase not in text]
+    assert not missing, f"AGENTS.md final report checklist missing: {missing}"
 
 
 def test_workspace_codex_configs_mirror_mcp_json():
@@ -61,16 +123,17 @@ def test_workspace_codex_configs_mirror_mcp_json():
         assert json_entry["env"] == toml_entry["env"], f"{ws}: env mismatch"
 
 
-def test_launch_codex_bats_byte_identical():
-    """t4: 모든 workspace 의 launch-codex.bat 가 byte-identical (drift 방지)."""
-    bats = sorted(ws / "launch-codex.bat" for ws in WORKSPACES)
-    assert bats, "no launch-codex.bat candidates (WORKSPACES empty)"
-    for b in bats:
-        assert b.exists(), f"missing: {b}"
-    contents = [b.read_bytes() for b in bats]
-    first = contents[0]
-    mismatches = [str(bats[i]) for i, c in enumerate(contents) if c != first]
-    assert not mismatches, f"launch-codex.bat drift: {mismatches}"
+def test_no_legacy_launch_codex_bats():
+    """t4: Codex 진입은 workspace 폴더에서 직접 `codex`; launcher 재도입 금지."""
+    assert WORKSPACES, "no workspaces/*/instance-* directories found"
+    leftovers = [
+        str(ws / "launch-codex.bat")
+        for ws in WORKSPACES
+        if (ws / "launch-codex.bat").exists()
+    ]
+    assert not leftovers, (
+        "legacy launch-codex.bat files should not be present: " + ", ".join(leftovers)
+    )
 
 
 def test_no_claude_only_phrasing_in_shared_docs():
