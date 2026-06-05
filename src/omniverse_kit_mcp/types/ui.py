@@ -43,6 +43,21 @@ class UiInvokeResult:
 
 
 @dataclass(slots=True, frozen=True)
+class UiRunAndWaitResult:
+    widget_path: str
+    action_performed: str
+    invoked: bool
+    wait_prim_path: str
+    wait_property_name: str
+    wait_comparator: str
+    wait_passed: bool
+    timed_out: bool
+    poll_count: int
+    elapsed_s: float
+    last_failures: tuple[dict[str, Any], ...] = field(default_factory=tuple)
+
+
+@dataclass(slots=True, frozen=True)
 class ExtensionActivateResult:
     ext_id: str
     was_enabled: bool

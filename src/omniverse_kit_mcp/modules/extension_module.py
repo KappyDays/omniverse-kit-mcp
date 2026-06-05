@@ -9,7 +9,7 @@ from typing import Any
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.exceptions import ExtensionBusyError
-from omniverse_kit_mcp.modules.base import error_result, ok_result
+from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
 from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
 from omniverse_kit_mcp.types.extension import (
     ExtensionResetRequest,
@@ -25,6 +25,7 @@ from omniverse_kit_mcp.types.ui import (
     ExtensionReloadResult,
     ExtensionSummary,
     UiInvokeResult,
+    UiRunAndWaitResult,
     UiTreeResult,
     WidgetInfo,
     WindowMeta,
@@ -204,6 +205,97 @@ class ExtensionModule:
         except Exception as exc:  # noqa: BLE001
             return error_result(
                 str(exc), started_ms=started, error_code="EXTENSION_UI_INVOKE_ERROR",
+            )
+
+    async def ui_run_and_wait(
+        self,
+        meta: OperationMeta,
+        widget_path: str,
+        action: str,
+        value: Any,
+        wait_prim_path: str,
+        wait_property_name: str,
+        wait_expected_value: Any,
+        wait_comparator: str = "equals",
+        wait_expected_type_name: str | None = None,
+        wait_property_kind: str = "attribute",
+        wait_tolerance: float | None = None,
+        timeout_s: float = 45.0,
+        poll_interval_s: float = 0.5,
+    ) -> ModuleResult[UiRunAndWaitResult]:
+        started = int(time.time() * 1000)
+        clock_start = time.monotonic()
+        try:
+            invoke_raw = await self._client.extension_ui_invoke(
+                widget_path, action, value=value,
+            )
+            action_performed = str(invoke_raw.get("action_performed", action))
+            payload: dict[str, Any] = {
+                "prim_path": wait_prim_path,
+                "property_name": wait_property_name,
+                "property_type": wait_property_kind,
+                "comparator": wait_comparator,
+            }
+            if wait_expected_value is not None:
+                payload["expected_value"] = wait_expected_value
+            if wait_expected_type_name is not None:
+                payload["expected_type_name"] = wait_expected_type_name
+            if wait_tolerance is not None:
+                payload["tolerance"] = wait_tolerance
+
+            poll_count = 0
+            last_failures: tuple[dict[str, Any], ...] = ()
+            deadline = clock_start + max(0.0, timeout_s)
+            while True:
+                poll_count += 1
+                wait_raw = await self._client.stage_assert_property(payload)
+                if bool(wait_raw.get("passed", False)):
+                    elapsed_s = time.monotonic() - clock_start
+                    return ok_result(
+                        UiRunAndWaitResult(
+                            widget_path=widget_path,
+                            action_performed=action_performed,
+                            invoked=True,
+                            wait_prim_path=wait_prim_path,
+                            wait_property_name=wait_property_name,
+                            wait_comparator=wait_comparator,
+                            wait_passed=True,
+                            timed_out=False,
+                            poll_count=poll_count,
+                            elapsed_s=round(elapsed_s, 3),
+                        ),
+                        started_ms=started,
+                    )
+                last_failures = tuple(wait_raw.get("failures") or ())
+                if time.monotonic() >= deadline:
+                    break
+                await asyncio.sleep(max(0.01, poll_interval_s))
+
+            elapsed_s = time.monotonic() - clock_start
+            result = UiRunAndWaitResult(
+                widget_path=widget_path,
+                action_performed=action_performed,
+                invoked=True,
+                wait_prim_path=wait_prim_path,
+                wait_property_name=wait_property_name,
+                wait_comparator=wait_comparator,
+                wait_passed=False,
+                timed_out=True,
+                poll_count=poll_count,
+                elapsed_s=round(elapsed_s, 3),
+                last_failures=last_failures,
+            )
+            return fail_result(
+                f"Timed out waiting for {wait_prim_path}.{wait_property_name}",
+                started_ms=started,
+                data=result,
+                error_code="EXTENSION_UI_WAIT_TIMEOUT",
+            )
+        except Exception as exc:  # noqa: BLE001
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code="EXTENSION_UI_RUN_AND_WAIT_ERROR",
             )
 
     async def clear_logs(

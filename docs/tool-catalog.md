@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 124
+**Tool count**: 125
 
 ## Table of contents
 
@@ -12,7 +12,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Simulation — timeline](#simulation--timeline) — 4 tools
 - [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 11 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
-- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 12 tools
+- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 13 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
 - [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 9 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
@@ -78,8 +78,9 @@ status.
 stage_assert_property(prim_path: 'str', property_name: 'str', comparator: 'str' = 'equals', expected_value: 'Any' = None, expected_type_name: 'str | None' = None, tolerance: 'float | None' = None, property_kind: 'str' = 'attribute') -> 'str'
 ```
 
-Assert a Prim attribute/relationship value. comparator ∈ {equals, approx, regex, contains,
-exists}; approx requires tolerance; set property_kind='relationship' for rels.
+Assert a Prim attribute/relationship value. comparator ∈ {equals, not_equals, approx, gt, gte,
+lt, lte, regex, contains, exists}; approx requires tolerance; set property_kind='relationship'
+for rels.
 
 **Parameters**
 
@@ -800,6 +801,31 @@ type/select take value. Returns post-action widget state.
 | `widget_path` | `string` | `'—'` | ✓ |
 | `action` | `string` | `'click'` |  |
 | `value` | `Any` | `None` |  |
+
+### `extension_ui_run_and_wait`
+
+```python
+extension_ui_run_and_wait(widget_path: 'str', action: 'str' = 'click', value: 'Any' = None, wait_prim_path: 'str' = '', wait_property_name: 'str' = '', wait_expected_value: 'Any' = None, wait_comparator: 'str' = 'equals', wait_expected_type_name: 'str | None' = None, wait_property_kind: 'str' = 'attribute', wait_tolerance: 'float | None' = None, timeout_s: 'float' = 45.0, poll_interval_s: 'float' = 0.5) -> 'str'
+```
+
+Invoke an omni.ui widget, then poll a Stage property assertion until it passes or times out.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `widget_path` | `string` | `'—'` | ✓ |
+| `action` | `string` | `'click'` |  |
+| `value` | `Any` | `None` |  |
+| `wait_prim_path` | `string` | `''` |  |
+| `wait_property_name` | `string` | `''` |  |
+| `wait_expected_value` | `Any` | `None` |  |
+| `wait_comparator` | `string` | `'equals'` |  |
+| `wait_expected_type_name` | `string \| None` | `None` |  |
+| `wait_property_kind` | `string` | `'attribute'` |  |
+| `wait_tolerance` | `number \| None` | `None` |  |
+| `timeout_s` | `number` | `45.0` |  |
+| `poll_interval_s` | `number` | `0.5` |  |
 
 ## Lakehouse — query-only
 

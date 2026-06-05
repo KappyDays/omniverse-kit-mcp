@@ -115,6 +115,10 @@ class PropertyAssertion:
         "contains",
         "regex",
         "approx",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
         "exists",
     ] = "equals"
     expected: UsdPropertyValue | None = None
