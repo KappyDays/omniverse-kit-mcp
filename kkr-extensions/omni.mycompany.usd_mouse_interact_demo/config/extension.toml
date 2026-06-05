@@ -1,0 +1,21 @@
+[package]
+version = "0.4.0"
+title = "USD Mouse Interact Demo"
+description = "Offscreen camera cache and Exploring viewport tour demo."
+category = "Viewport"
+keywords = ["viewport", "camera", "offscreen", "tour", "overlay", "button"]
+
+[dependencies]
+"omni.kit.uiapp" = {}
+"omni.ui" = {}
+"omni.kit.viewport.utility" = {}
+"omni.kit.commands" = {}
+"omni.timeline" = {}
+"omni.usd" = {}
+"omni.appwindow" = {}
+"omni.physx" = { optional = true }
+"omni.kit.livestream.messaging" = { optional = true }
+"omni.replicator.core" = { optional = true }
+
+[[python.module]]
+name = "omni.mycompany.usd_mouse_interact_demo"
