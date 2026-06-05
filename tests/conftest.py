@@ -1174,6 +1174,22 @@ class MockIsaacRestClient:
             "up": request.get("up", [0.0, 0.0, 1.0]),
         })
 
+    async def viewport_focus_prim(self, request: dict) -> dict:
+        self.calls.append(("viewport_focus_prim", request))
+        return self.responses.get("viewport_focus_prim", {
+            "ok": True,
+            "prim_path": request.get("prim_path", ""),
+            "viewport_name": request.get("viewport_name", "Viewport"),
+            "camera_path": request.get("camera_path") or "/OmniverseKit_Persp",
+            "method": "frame_viewport_prims",
+            "target": [0.0, 0.0, 0.0],
+            "eye": None,
+            "bbox_min": [-0.5, -0.5, -0.5],
+            "bbox_max": [0.5, 0.5, 0.5],
+            "radius": 0.8660254,
+            "selected": bool(request.get("select", True)),
+        })
+
     # Viewport multi (Phase E) — create / destroy
 
     async def viewport_create(self, request: dict) -> dict:

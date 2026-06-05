@@ -97,6 +97,7 @@ from .models.viewport import (
     WindowCaptureRequestModel,
 )
 from .models.viewport_render import (
+    ViewportFocusPrimRequestModel,
     ViewportSetCameraLookatRequestModel,
     ViewportSetFovRequestModel,
     ViewportSetRenderModeRequestModel,
@@ -856,6 +857,17 @@ async def viewport_set_camera_lookat(body: ViewportSetCameraLookatRequestModel) 
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("viewport/set_camera_lookat failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/viewport/focus_prim")
+async def viewport_focus_prim(body: ViewportFocusPrimRequestModel) -> Any:
+    try:
+        return await _viewport_render.focus_prim(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("viewport/focus_prim failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

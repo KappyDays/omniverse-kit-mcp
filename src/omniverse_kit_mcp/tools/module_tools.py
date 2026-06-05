@@ -131,6 +131,7 @@ from omniverse_kit_mcp.types.viewport import (
     ViewportCaptureRequest,
     ViewportCreateRequest,
     ViewportDestroyRequest,
+    ViewportFocusPrimRequest,
     ViewportSetCameraLookatRequest,
     ViewportSetFovRequest,
     ViewportSetRenderModeRequest,
@@ -1761,6 +1762,26 @@ def register_module_tools(
             camera_path=camera_path,
         )
         result = await viewport.set_camera_lookat(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def viewport_focus_prim(
+        prim_path: str,
+        viewport_name: str = "Viewport",
+        camera_path: str | None = None,
+        padding: float = 1.35,
+        select: bool = True,
+    ) -> str:
+        """Focus the viewport on a prim, like pressing F / Frame Selected in the GUI."""
+        meta = make_meta(ModuleName.VIEWPORT)
+        request = ViewportFocusPrimRequest(
+            prim_path=prim_path,
+            viewport_name=viewport_name,
+            camera_path=camera_path,
+            padding=padding,
+            select=select,
+        )
+        result = await viewport.focus_prim(meta, request)
         return _serialize(result)
 
     # ------------------------------------------------------------------

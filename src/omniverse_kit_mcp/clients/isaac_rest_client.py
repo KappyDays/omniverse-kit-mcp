@@ -322,6 +322,9 @@ class IsaacRestClient:
             f"{BASE_PATH}/viewport/set_camera_lookat", json=request,
         )
 
+    async def viewport_focus_prim(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(f"{BASE_PATH}/viewport/focus_prim", json=request)
+
     # --- Physics (Phase F) ---
 
     async def physics_apply_rigid_body(
