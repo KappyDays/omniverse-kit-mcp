@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
@@ -19,6 +18,8 @@ from omniverse_kit_mcp.types.viewport import (
     ViewportCreateResult,
     ViewportDestroyRequest,
     ViewportDestroyResult,
+    ViewportFocusPrimRequest,
+    ViewportFocusPrimResult,
     ViewportSetCameraLookatRequest,
     ViewportSetCameraLookatResult,
     ViewportSetFovRequest,
@@ -310,4 +311,38 @@ class ViewportModule:
             return error_result(
                 str(exc), started_ms=started,
                 error_code="VIEWPORT_SET_CAMERA_LOOKAT_ERROR",
+            )
+
+    async def focus_prim(
+        self, meta: OperationMeta, request: ViewportFocusPrimRequest,
+    ) -> ModuleResult[ViewportFocusPrimResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.viewport_focus_prim({
+                "prim_path": request.prim_path,
+                "viewport_name": request.viewport_name,
+                "camera_path": request.camera_path,
+                "padding": request.padding,
+                "select": request.select,
+            })
+            return ok_result(
+                ViewportFocusPrimResult(
+                    ok=bool(raw.get("ok", True)),
+                    prim_path=str(raw.get("prim_path", request.prim_path)),
+                    viewport_name=str(raw.get("viewport_name", request.viewport_name)),
+                    camera_path=str(raw.get("camera_path", "")),
+                    method=str(raw.get("method", "")),
+                    target=tuple(raw.get("target", (0.0, 0.0, 0.0))),
+                    eye=tuple(raw["eye"]) if raw.get("eye") is not None else None,
+                    bbox_min=tuple(raw["bbox_min"]) if raw.get("bbox_min") is not None else None,
+                    bbox_max=tuple(raw["bbox_max"]) if raw.get("bbox_max") is not None else None,
+                    radius=float(raw.get("radius", 0.0)),
+                    selected=bool(raw.get("selected", request.select)),
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="VIEWPORT_FOCUS_PRIM_ERROR",
             )

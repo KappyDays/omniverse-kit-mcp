@@ -163,3 +163,27 @@ class ViewportSetCameraLookatResult:
     eye: tuple[float, float, float]
     target: tuple[float, float, float]
     up: tuple[float, float, float]
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportFocusPrimRequest:
+    prim_path: str
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None
+    padding: float = 1.35
+    select: bool = True
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportFocusPrimResult:
+    ok: bool
+    prim_path: str
+    viewport_name: str
+    camera_path: str
+    method: str
+    target: tuple[float, float, float]
+    eye: tuple[float, float, float] | None = None
+    bbox_min: tuple[float, float, float] | None = None
+    bbox_max: tuple[float, float, float] | None = None
+    radius: float = 0.0
+    selected: bool = False

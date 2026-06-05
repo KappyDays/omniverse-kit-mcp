@@ -210,6 +210,104 @@ class ViewportRenderService:
             "up": up,
         }
 
+    async def focus_prim(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Frame a prim in the viewport, matching the user's F-key workflow."""
+        import omni.kit.app
+        import omni.usd
+        from pxr import Gf, Usd, UsdGeom
+
+        prim_path = str(request["prim_path"])
+        viewport_name = str(request.get("viewport_name", "Viewport"))
+        camera_path = request.get("camera_path")
+        padding = float(request.get("padding", 1.35))
+        select = bool(request.get("select", True))
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim or not prim.IsValid():
+            raise ValueError(f"Prim does not exist: {prim_path}")
+
+        bounds = _compute_prim_bounds(prim, Usd, UsdGeom)
+        viewport = _resolve_viewport(viewport_name)
+        if camera_path is None and viewport is not None and getattr(viewport, "camera_path", None):
+            camera_path = str(viewport.camera_path)
+
+        if select:
+            omni.usd.get_context().get_selection().set_selected_prim_paths([prim_path], True)
+
+        app = omni.kit.app.get_app()
+        if viewport is not None:
+            try:
+                from omni.kit.viewport.utility import frame_viewport_prims
+
+                frame_viewport_prims(viewport, prim_paths=[prim_path])
+                for _ in range(2):
+                    await app.next_update_async()
+                return _focus_response(
+                    prim_path=prim_path,
+                    viewport_name=viewport_name,
+                    camera_path=str(camera_path or ""),
+                    method="frame_viewport_prims",
+                    bounds=bounds,
+                    eye=None,
+                    selected=select,
+                )
+            except Exception:  # noqa: BLE001
+                logger.debug("frame_viewport_prims failed", exc_info=True)
+            try:
+                from omni.kit.viewport.utility import frame_viewport_selection
+
+                frame_viewport_selection(viewport)
+                for _ in range(2):
+                    await app.next_update_async()
+                return _focus_response(
+                    prim_path=prim_path,
+                    viewport_name=viewport_name,
+                    camera_path=str(camera_path or ""),
+                    method="frame_viewport_selection",
+                    bounds=bounds,
+                    eye=None,
+                    selected=select,
+                )
+            except Exception:  # noqa: BLE001
+                logger.debug("frame_viewport_selection failed", exc_info=True)
+
+        if camera_path is None:
+            candidates = _candidate_camera_paths(viewport_name, stage)
+            camera_path = next(
+                (candidate for candidate in candidates if stage.GetPrimAtPath(candidate).IsValid()),
+                None,
+            )
+        if not camera_path:
+            raise ValueError("No camera prim found for viewport focus fallback.")
+
+        forward = _camera_forward(stage, str(camera_path), Gf, Usd, UsdGeom)
+        distance = max(bounds["radius"] * padding * 2.5, 1.0)
+        target_vec = Gf.Vec3d(*bounds["target"])
+        eye_vec = target_vec - forward * distance
+        up = _safe_up_for_forward(forward)
+
+        await self.set_camera_lookat({
+            "eye": [float(eye_vec[0]), float(eye_vec[1]), float(eye_vec[2])],
+            "target": bounds["target"],
+            "up": up,
+            "viewport_name": viewport_name,
+            "camera_path": str(camera_path),
+        })
+        for _ in range(2):
+            await app.next_update_async()
+        return _focus_response(
+            prim_path=prim_path,
+            viewport_name=viewport_name,
+            camera_path=str(camera_path),
+            method="camera_lookat",
+            bounds=bounds,
+            eye=[float(eye_vec[0]), float(eye_vec[1]), float(eye_vec[2])],
+            selected=select,
+        )
+
 
 def _resolve_camera_path(viewport_name: str) -> str:
     """Look up the active camera for *viewport_name* with a safe fallback."""
@@ -222,6 +320,103 @@ def _resolve_camera_path(viewport_name: str) -> str:
     except Exception:  # noqa: BLE001
         logger.debug("get_viewport_from_window_name failed", exc_info=True)
     return "/OmniverseKit_Persp"
+
+
+def _resolve_viewport(viewport_name: str) -> Any:
+    try:
+        from omni.kit.viewport.utility import get_viewport_from_window_name
+
+        viewport = get_viewport_from_window_name(viewport_name)
+        if viewport is not None:
+            return viewport
+    except Exception:  # noqa: BLE001
+        logger.debug("get_viewport_from_window_name failed", exc_info=True)
+    try:
+        from omni.kit.viewport.utility import get_active_viewport
+
+        return get_active_viewport()
+    except Exception:  # noqa: BLE001
+        logger.debug("get_active_viewport failed", exc_info=True)
+    return None
+
+
+def _compute_prim_bounds(prim: Any, Usd: Any, UsdGeom: Any) -> dict[str, Any]:
+    cache = UsdGeom.BBoxCache(
+        Usd.TimeCode.Default(),
+        includedPurposes=[UsdGeom.Tokens.default_, UsdGeom.Tokens.proxy],
+        useExtentsHint=True,
+    )
+    box = cache.ComputeWorldBound(prim)
+    aligned = box.ComputeAlignedRange()
+    if aligned.IsEmpty():
+        raise ValueError(f"Prim has no finite world bounds: {prim.GetPath()}")
+    min_pt = aligned.GetMin()
+    max_pt = aligned.GetMax()
+    target = aligned.GetMidpoint()
+    size = aligned.GetSize()
+    radius = max(
+        math.sqrt(float(size[0]) ** 2 + float(size[1]) ** 2 + float(size[2]) ** 2) * 0.5,
+        0.001,
+    )
+    return {
+        "target": [float(target[0]), float(target[1]), float(target[2])],
+        "bbox_min": [float(min_pt[0]), float(min_pt[1]), float(min_pt[2])],
+        "bbox_max": [float(max_pt[0]), float(max_pt[1]), float(max_pt[2])],
+        "radius": float(radius),
+    }
+
+
+def _normalize_vec(vec: Any, Gf: Any) -> Any:
+    mag = math.sqrt(float(vec[0]) ** 2 + float(vec[1]) ** 2 + float(vec[2]) ** 2)
+    if mag <= 1e-6:
+        mag = math.sqrt(2.36)
+        return Gf.Vec3d(-1.0 / mag, -1.0 / mag, -0.6 / mag)
+    return Gf.Vec3d(float(vec[0]) / mag, float(vec[1]) / mag, float(vec[2]) / mag)
+
+
+def _camera_forward(stage: Any, camera_path: str, Gf: Any, Usd: Any, UsdGeom: Any) -> Any:
+    try:
+        camera_prim = stage.GetPrimAtPath(camera_path)
+        if camera_prim and camera_prim.IsValid():
+            world = UsdGeom.Xformable(camera_prim).ComputeLocalToWorldTransform(
+                Usd.TimeCode.Default()
+            )
+            return _normalize_vec(world.TransformDir(Gf.Vec3d(0.0, 0.0, -1.0)), Gf)
+    except Exception:  # noqa: BLE001
+        logger.debug("camera forward read failed", exc_info=True)
+    return _normalize_vec(Gf.Vec3d(-1.0, -1.0, -0.6), Gf)
+
+
+def _safe_up_for_forward(forward: Any) -> list[float]:
+    z_dot = abs(float(forward[2]))
+    if z_dot > 0.98:
+        return [0.0, 1.0, 0.0]
+    return [0.0, 0.0, 1.0]
+
+
+def _focus_response(
+    *,
+    prim_path: str,
+    viewport_name: str,
+    camera_path: str,
+    method: str,
+    bounds: dict[str, Any],
+    eye: list[float] | None,
+    selected: bool,
+) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "prim_path": prim_path,
+        "viewport_name": viewport_name,
+        "camera_path": camera_path,
+        "method": method,
+        "target": bounds["target"],
+        "eye": eye,
+        "bbox_min": bounds["bbox_min"],
+        "bbox_max": bounds["bbox_max"],
+        "radius": bounds["radius"],
+        "selected": selected,
+    }
 
 
 def _candidate_camera_paths(viewport_name: str, stage: Any) -> list[str]:

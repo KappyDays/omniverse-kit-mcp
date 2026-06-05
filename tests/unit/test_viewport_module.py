@@ -5,8 +5,12 @@ from __future__ import annotations
 import pytest
 
 from omniverse_kit_mcp.modules.viewport_module import ViewportModule
-from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
-from omniverse_kit_mcp.types.viewport import SSIMComparisonRequest, ViewportCaptureRequest
+from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
+from omniverse_kit_mcp.types.viewport import (
+    SSIMComparisonRequest,
+    ViewportCaptureRequest,
+    ViewportFocusPrimRequest,
+)
 from tests.conftest import MockIsaacRestClient
 
 
@@ -95,3 +99,30 @@ async def test_set_camera_lookat(viewport_module, meta):
     assert result.data.camera_path == "/OmniverseKit_Persp"
     sent = dict(viewport_module._client.calls)["viewport_set_camera_lookat"]
     assert sent["eye"] == [5, 5, 5] and sent["up"] == [0.0, 0.0, 1.0]
+
+
+@pytest.mark.asyncio
+async def test_focus_prim(viewport_module, meta):
+    result = await viewport_module.focus_prim(
+        meta,
+        ViewportFocusPrimRequest(
+            prim_path="/World/Cube",
+            viewport_name="Viewport",
+            padding=1.5,
+            select=True,
+        ),
+    )
+
+    assert result.ok is True
+    assert result.data is not None
+    assert result.data.prim_path == "/World/Cube"
+    assert result.data.camera_path == "/OmniverseKit_Persp"
+    assert result.data.method == "frame_viewport_prims"
+    sent = dict(viewport_module._client.calls)["viewport_focus_prim"]
+    assert sent == {
+        "prim_path": "/World/Cube",
+        "viewport_name": "Viewport",
+        "camera_path": None,
+        "padding": 1.5,
+        "select": True,
+    }

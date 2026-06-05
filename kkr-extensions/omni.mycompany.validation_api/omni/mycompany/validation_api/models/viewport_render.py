@@ -44,3 +44,13 @@ class ViewportSetCameraLookatRequestModel(BaseModel):
     up: list[float] = Field(default=[0.0, 0.0, 1.0], min_length=3, max_length=3)
     viewport_name: str = "Viewport"
     camera_path: str | None = None
+
+
+class ViewportFocusPrimRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None
+    padding: float = Field(default=1.35, ge=1.0, le=10.0)
+    select: bool = True
