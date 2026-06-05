@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 125
+**Tool count**: 133
 
 ## Table of contents
 
@@ -10,17 +10,17 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Stage — READ / ASSERT / file & selection](#stage--read--assert--file--selection) — 6 tools
 - [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
 - [Simulation — timeline](#simulation--timeline) — 4 tools
-- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 11 tools
+- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 14 tools
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 13 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
-- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 9 tools
+- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 10 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 2 tools
 - [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (44)
+- Unclassified (48)
 
 ## Process — Kit app lifecycle
 
@@ -319,6 +319,29 @@ channel so you can auto-detect a blank/black frame without reading the PNG.
 | `warmup_frames` | `integer` | `0` |  |
 | `return_stats` | `boolean` | `False` |  |
 
+### `viewport_capture_assert`
+
+```python
+viewport_capture_assert(viewport_name: 'str' = 'Viewport', camera_prim_path: 'str | None' = None, renderer: 'str' = 'rtx', width: 'int' = 1280, height: 'int' = 720, output_format: 'str' = 'png', warmup_frames: 'int' = 0, min_mean: 'float' = 8.0, min_variance: 'float' = 1.0) -> 'str'
+```
+
+Capture the 3D viewport with return_stats=True and fail fast on likely black/blank frames using
+pixel mean/variance thresholds. Lower-stress precheck before visual Read.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `viewport_name` | `string` | `'Viewport'` |  |
+| `camera_prim_path` | `string \| None` | `None` |  |
+| `renderer` | `string` | `'rtx'` |  |
+| `width` | `integer` | `1280` |  |
+| `height` | `integer` | `720` |  |
+| `output_format` | `string` | `'png'` |  |
+| `warmup_frames` | `integer` | `0` |  |
+| `min_mean` | `number` | `8.0` |  |
+| `min_variance` | `number` | `1.0` |  |
+
 ### `viewport_compare_ssim`
 
 ```python
@@ -375,7 +398,8 @@ Destroy secondary viewport window by name. Idempotent — destroyed=False if not
 viewport_focus_prim(prim_path: 'str', viewport_name: 'str' = 'Viewport', camera_path: 'str | None' = None, padding: 'float' = 1.35, select: 'bool' = True) -> 'str'
 ```
 
-Focus the viewport on a prim, like pressing F / Frame Selected in the GUI.
+Frame a prim in the viewport, matching the F-key workflow. Selects the prim by default and
+falls back to authored camera look-at when Kit viewport utility is unavailable.
 
 **Parameters**
 
@@ -386,6 +410,48 @@ Focus the viewport on a prim, like pressing F / Frame Selected in the GUI.
 | `camera_path` | `string \| None` | `None` |  |
 | `padding` | `number` | `1.35` |  |
 | `select` | `boolean` | `True` |  |
+
+### `viewport_frame_prims`
+
+```python
+viewport_frame_prims(prim_paths: 'list[str]', viewport_name: 'str' = 'Viewport', camera_path: 'str | None' = None, include_purposes: 'list[str] | None' = None, margin: 'float' = 0.15, fov_deg: 'float' = 60.0, view_direction: 'list[float] | None' = None, up: 'list[float] | None' = None, set_camera: 'bool' = True) -> 'str'
+```
+
+Compute a camera eye/target/up that frames the given prim bboxes and optionally author it to
+the active camera. Reduces camera-placement trial-and-error before viewport_capture.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_paths` | `list[string]` | `'—'` | ✓ |
+| `viewport_name` | `string` | `'Viewport'` |  |
+| `camera_path` | `string \| None` | `None` |  |
+| `include_purposes` | `list[string] \| None` | `None` |  |
+| `margin` | `number` | `0.15` |  |
+| `fov_deg` | `number` | `60.0` |  |
+| `view_direction` | `list[number] \| None` | `None` |  |
+| `up` | `list[number] \| None` | `None` |  |
+| `set_camera` | `boolean` | `True` |  |
+
+### `viewport_project_points`
+
+```python
+viewport_project_points(points: 'list[list[float]]', viewport_name: 'str' = 'Viewport', camera_path: 'str | None' = None, width: 'int' = 1280, height: 'int' = 720) -> 'str'
+```
+
+Project world-space XYZ points through the active camera into normalized and pixel viewport
+coordinates. Use to check whether important prim corners should appear in frame before capture.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `points` | `list[list[number]]` | `'—'` | ✓ |
+| `viewport_name` | `string` | `'Viewport'` |  |
+| `camera_path` | `string \| None` | `None` |  |
+| `width` | `integer` | `1280` |  |
+| `height` | `integer` | `720` |  |
 
 ### `viewport_set_active_camera`
 
@@ -876,6 +942,22 @@ wheel_base=0.413).
 | `arrival_tolerance` | `number` | `0.3` |  |
 | `timeout_s` | `number` | `60.0` |  |
 | `lookahead` | `number` | `0.8` |  |
+
+### `robot_get_ee_pose`
+
+```python
+robot_get_ee_pose(prim_path: 'str', end_effector_frame: 'str | None' = None) -> 'str'
+```
+
+Read the current end-effector world pose [position + qw,qx,qy,qz]. Prefer this for checking
+whether a Franka controller is approaching the object before grasp.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `end_effector_frame` | `string \| None` | `None` |  |
 
 ### `robot_get_joint_config`
 
@@ -1681,6 +1763,26 @@ unavailable → graph only (response.ros2_available=false).
 | `source_prim` | `string` | `'—'` | ✓ |
 | `msg_type` | `string` | `'sensor_msgs/msg/Image'` |  |
 
+### `omnigraph_create_script_controller`
+
+```python
+omnigraph_create_script_controller(script_path: 'str', graph_path: 'str' = '/World/ActionGraph', node_name: 'str' = 'ScriptNode', tick_node_name: 'str' = 'OnPlaybackTick', evaluator: 'str' = 'execution', reset_state: 'bool' = True) -> 'str'
+```
+
+Create ActionGraph OnPlaybackTick→ScriptNode and bind script_path. This mirrors Isaac Sim
+example style: MCP builds wiring; controller logic runs in Kit on playback ticks.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `script_path` | `string` | `'—'` | ✓ |
+| `graph_path` | `string` | `'/World/ActionGraph'` |  |
+| `node_name` | `string` | `'ScriptNode'` |  |
+| `tick_node_name` | `string` | `'OnPlaybackTick'` |  |
+| `evaluator` | `string` | `'execution'` |  |
+| `reset_state` | `boolean` | `True` |  |
+
 ### `omnigraph_execute`
 
 ```python
@@ -2096,6 +2198,24 @@ preserves prior play state.
 |------|------|---------|----------|
 | `frames` | `integer` | `1` |  |
 
+### `simulation_step_observe`
+
+```python
+simulation_step_observe(frames: 'int' = 1, observe_prims: 'list[str] | None' = None, observe_joints: 'list[str] | None' = None, observe_ee: 'list[dict[str, Any]] | None' = None) -> 'str'
+```
+
+Advance N frames, then return synchronized prim/joint/end-effector observations. Use this for
+deterministic ScriptNode/controller debugging instead of sleep+separate polling.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `frames` | `integer` | `1` |  |
+| `observe_prims` | `list[string] \| None` | `None` |  |
+| `observe_joints` | `list[string] \| None` | `None` |  |
+| `observe_ee` | `list[object] \| None` | `None` |  |
+
 ### `simulation_wait_until`
 
 ```python
@@ -2115,6 +2235,22 @@ it times out.
 | `until_time` | `number` | `'—'` | ✓ |
 | `timeout_s` | `number` | `30.0` |  |
 
+### `stage_compute_world_bbox`
+
+```python
+stage_compute_world_bbox(prim_path: 'str', include_purposes: 'list[str] | None' = None) -> 'str'
+```
+
+Compute a prim's world-space aligned bbox via USD BBoxCache. Returns min/max/center/size plus
+world translate/orientation; use before camera framing or layout checks.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `include_purposes` | `list[string] \| None` | `None` |  |
+
 ### `stage_set_semantic_label`
 
 ```python
@@ -2133,3 +2269,22 @@ annotators but cannot label the props). 400 if prim_path not found.
 | `prim_path` | `string` | `'—'` | ✓ |
 | `label_class` | `string` | `'—'` | ✓ |
 | `label_type` | `string` | `'class'` |  |
+
+### `stage_visual_alignment_report`
+
+```python
+stage_visual_alignment_report(reference_prim_path: 'str', candidate_prim_paths: 'list[str]', min_iou_xy: 'float' = 0.5, max_center_delta_m: 'float' = 0.05, include_purposes: 'list[str] | None' = None) -> 'str'
+```
+
+Compare candidate prim world bboxes against a reference bbox. Reports XY IoU and center deltas
+to catch visual/physics/acceptance-volume misalignment.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `reference_prim_path` | `string` | `'—'` | ✓ |
+| `candidate_prim_paths` | `list[string]` | `'—'` | ✓ |
+| `min_iou_xy` | `number` | `0.5` |  |
+| `max_center_delta_m` | `number` | `0.05` |  |
+| `include_purposes` | `list[string] \| None` | `None` |  |

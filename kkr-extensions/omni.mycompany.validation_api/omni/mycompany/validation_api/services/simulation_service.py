@@ -85,6 +85,29 @@ class SimulationService:
         })
         return status
 
+    async def step_observe(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Advance frames and gather synchronized runtime observations.
+
+        This avoids the usual "step, then several unrelated polls" skew when
+        debugging a live controller. It keeps capture/GPU out of the loop.
+        """
+        status = await self.step({"frames": int(request.get("frames", 1))})
+        status.update({
+            "prim_states": [
+                _observe_prim_state(str(path))
+                for path in request.get("observe_prims") or []
+            ],
+            "joint_states": [
+                _observe_joint_state(str(path))
+                for path in request.get("observe_joints") or []
+            ],
+            "ee_states": [
+                _observe_ee_state(item)
+                for item in request.get("observe_ee") or []
+            ],
+        })
+        return status
+
     async def wait_until(self, request: dict[str, Any]) -> dict[str, Any]:
         """Tick the Kit loop until current_time >= until_time or wall timeout.
 
@@ -157,3 +180,110 @@ class SimulationService:
             "end_time": timeline.get_end_time(),
             "time_codes_per_second": timeline.get_time_codes_per_seconds(),
         }
+
+
+def _observe_prim_state(prim_path: str) -> dict[str, Any]:
+    import omni.usd
+    from pxr import Usd, UsdGeom
+
+    try:
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        prim = stage.GetPrimAtPath(prim_path)
+        if not prim.IsValid():
+            raise ValueError(f"Prim not found at {prim_path}")
+        matrix = UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(
+            Usd.TimeCode.Default(),
+        )
+        translate = matrix.ExtractTranslation()
+        rotation = matrix.ExtractRotation()
+        quat = rotation.GetQuat()
+        imag = quat.GetImaginary()
+        return {
+            "prim_path": prim_path,
+            "position": [float(translate[0]), float(translate[1]), float(translate[2])],
+            "orientation": [
+                float(quat.GetReal()),
+                float(imag[0]),
+                float(imag[1]),
+                float(imag[2]),
+            ],
+            "linear_velocity": None,
+            "angular_velocity": None,
+            "has_rigid_body": _has_rigid_body_api(prim),
+            "source": "usd_world_transform",
+            "error": None,
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "prim_path": prim_path,
+            "position": None,
+            "orientation": None,
+            "linear_velocity": None,
+            "angular_velocity": None,
+            "has_rigid_body": False,
+            "source": "error",
+            "error": str(exc),
+        }
+
+
+def _observe_joint_state(prim_path: str) -> dict[str, Any]:
+    try:
+        from isaacsim.core.prims import SingleArticulation
+
+        art = SingleArticulation(prim_path)
+        try:
+            art.initialize()
+        except Exception:
+            pass
+        positions = art.get_joint_positions()
+        if positions is None:
+            raise ValueError("get_joint_positions returned None")
+        values = positions.tolist() if hasattr(positions, "tolist") else list(positions)
+        return {
+            "prim_path": prim_path,
+            "positions": [float(v) for v in values],
+            "dof_names": [str(v) for v in (art.dof_names or [])],
+            "source": "SingleArticulation",
+            "error": None,
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "prim_path": prim_path,
+            "positions": [],
+            "dof_names": [],
+            "source": "error",
+            "error": str(exc),
+        }
+
+
+def _observe_ee_state(spec: dict[str, Any]) -> dict[str, Any]:
+    prim_path = str(spec.get("prim_path", ""))
+    end_effector_frame = spec.get("end_effector_frame")
+    try:
+        from .robot_service import _compute_ee_pose
+
+        return _compute_ee_pose(
+            prim_path,
+            str(end_effector_frame) if end_effector_frame is not None else None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "prim_path": prim_path,
+            "end_effector_frame": str(end_effector_frame or ""),
+            "position": None,
+            "orientation": None,
+            "source": "error",
+            "error": str(exc),
+        }
+
+
+def _has_rigid_body_api(prim: Any) -> bool:
+    try:
+        return any(
+            "RigidBody" in schema
+            for schema in prim.GetAppliedSchemas()
+        )
+    except Exception:
+        return False

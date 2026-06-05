@@ -54,6 +54,7 @@ from omniverse_kit_mcp.types.omnigraph import (
     OmnigraphConnectRequest,
     OmnigraphCreateNodeRequest,
     OmnigraphCreateRos2PublisherRequest,
+    OmnigraphCreateScriptControllerRequest,
     OmnigraphExecuteRequest,
 )
 from omniverse_kit_mcp.types.replicator import (
@@ -82,6 +83,8 @@ from omniverse_kit_mcp.types.stage import (
     PrimExistenceAssertion,
     PropertyAssertion,
     StageCaptureFilter,
+    StageVisualAlignmentRequest,
+    StageWorldBboxRequest,
     UsdPropertyValue,
 )
 from omniverse_kit_mcp.types.navigation import (
@@ -100,7 +103,9 @@ from omniverse_kit_mcp.types.sensor import (
     SensorSetVisualizationRequest,
 )
 from omniverse_kit_mcp.types.simulation import (
+    SimulationEESpec,
     SimulationSetTimeRequest,
+    SimulationStepObserveRequest,
     SimulationStepRequest,
     SimulationWaitUntilRequest,
 )
@@ -128,10 +133,13 @@ from omniverse_kit_mcp.types.material import (
 )
 from omniverse_kit_mcp.types.viewport import (
     SSIMComparisonRequest,
+    ViewportCaptureAssertRequest,
     ViewportCaptureRequest,
     ViewportCreateRequest,
     ViewportDestroyRequest,
     ViewportFocusPrimRequest,
+    ViewportFramePrimsRequest,
+    ViewportProjectPointsRequest,
     ViewportSetCameraLookatRequest,
     ViewportSetFovRequest,
     ViewportSetRenderModeRequest,
@@ -229,6 +237,40 @@ def register_module_tools(
         before = _parse_snapshot(before_raw, StageCaptureFilter())
         after = _parse_snapshot(after_raw, StageCaptureFilter())
         result = await stage.diff_snapshots(meta, before, after)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def stage_compute_world_bbox(
+        prim_path: str,
+        include_purposes: list[str] | None = None,
+    ) -> str:
+        """Compute a prim's world-space aligned bbox via USD BBoxCache. Returns min/max/center/size plus world translate/orientation; use before camera framing or layout checks."""
+        meta = make_meta(ModuleName.STAGE)
+        request = StageWorldBboxRequest(
+            prim_path=prim_path,
+            include_purposes=tuple(include_purposes or ["default", "render"]),
+        )
+        result = await stage.compute_world_bbox(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def stage_visual_alignment_report(
+        reference_prim_path: str,
+        candidate_prim_paths: list[str],
+        min_iou_xy: float = 0.5,
+        max_center_delta_m: float = 0.05,
+        include_purposes: list[str] | None = None,
+    ) -> str:
+        """Compare candidate prim world bboxes against a reference bbox. Reports XY IoU and center deltas to catch visual/physics/acceptance-volume misalignment."""
+        meta = make_meta(ModuleName.STAGE)
+        request = StageVisualAlignmentRequest(
+            reference_prim_path=reference_prim_path,
+            candidate_prim_paths=tuple(candidate_prim_paths),
+            include_purposes=tuple(include_purposes or ["default", "render"]),
+            min_iou_xy=min_iou_xy,
+            max_center_delta_m=max_center_delta_m,
+        )
+        result = await stage.visual_alignment_report(meta, request)
         return _serialize(result)
 
     @mcp.tool()
@@ -492,6 +534,35 @@ def register_module_tools(
         return _serialize(result)
 
     @mcp.tool()
+    async def simulation_step_observe(
+        frames: int = 1,
+        observe_prims: list[str] | None = None,
+        observe_joints: list[str] | None = None,
+        observe_ee: list[dict[str, Any]] | None = None,
+    ) -> str:
+        """Advance N frames, then return synchronized prim/joint/end-effector observations. Use this for deterministic ScriptNode/controller debugging instead of sleep+separate polling."""
+        meta = make_meta(ModuleName.SIMULATION)
+        ee_specs = tuple(
+            SimulationEESpec(
+                prim_path=str(item.get("prim_path", "")),
+                end_effector_frame=(
+                    str(item["end_effector_frame"])
+                    if item.get("end_effector_frame") is not None
+                    else None
+                ),
+            )
+            for item in observe_ee or []
+        )
+        request = SimulationStepObserveRequest(
+            frames=frames,
+            observe_prims=tuple(observe_prims or ()),
+            observe_joints=tuple(observe_joints or ()),
+            observe_ee=ee_specs,
+        )
+        result = await simulation.step_observe(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
     async def simulation_wait_until(until_time: float, timeout_s: float = 30.0) -> str:
         """Tick the timeline until current_time >= until_time (or timeout_s wall-clock elapses), then return final status + reached/timed_out/elapsed_s/frames_waited. Ticks via next_update_async on the Kit loop (deadlock-safe, non-blocking). Replaces sleep+poll loops for sim_time-precise timing (e.g. trigger an event at t=12s). Requires the timeline PLAYING to advance — otherwise it times out."""
         meta = make_meta(ModuleName.SIMULATION)
@@ -625,6 +696,16 @@ def register_module_tools(
             end_effector_frame=end_effector_frame,
         )
         result = await robot.set_ee_target(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_get_ee_pose(
+        prim_path: str,
+        end_effector_frame: str | None = None,
+    ) -> str:
+        """Read the current end-effector world pose [position + qw,qx,qy,qz]. Prefer this for checking whether a Franka controller is approaching the object before grasp."""
+        meta = make_meta(ModuleName.ROBOT)
+        result = await robot.get_ee_pose(meta, prim_path, end_effector_frame)
         return _serialize(result)
 
     @mcp.tool()
@@ -1806,7 +1887,7 @@ def register_module_tools(
         padding: float = 1.35,
         select: bool = True,
     ) -> str:
-        """Focus the viewport on a prim, like pressing F / Frame Selected in the GUI."""
+        """Frame a prim in the viewport, matching the F-key workflow. Selects the prim by default and falls back to authored camera look-at when Kit viewport utility is unavailable."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportFocusPrimRequest(
             prim_path=prim_path,
@@ -1816,6 +1897,82 @@ def register_module_tools(
             select=select,
         )
         result = await viewport.focus_prim(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def viewport_project_points(
+        points: list[list[float]],
+        viewport_name: str = "Viewport",
+        camera_path: str | None = None,
+        width: int = 1280,
+        height: int = 720,
+    ) -> str:
+        """Project world-space XYZ points through the active camera into normalized and pixel viewport coordinates. Use to check whether important prim corners should appear in frame before capture."""
+        meta = make_meta(ModuleName.VIEWPORT)
+        request = ViewportProjectPointsRequest(
+            points=tuple(tuple(point) for point in points),  # type: ignore[arg-type]
+            viewport_name=viewport_name,
+            camera_path=camera_path,
+            width=width,
+            height=height,
+        )
+        result = await viewport.project_points(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def viewport_frame_prims(
+        prim_paths: list[str],
+        viewport_name: str = "Viewport",
+        camera_path: str | None = None,
+        include_purposes: list[str] | None = None,
+        margin: float = 0.15,
+        fov_deg: float = 60.0,
+        view_direction: list[float] | None = None,
+        up: list[float] | None = None,
+        set_camera: bool = True,
+    ) -> str:
+        """Compute a camera eye/target/up that frames the given prim bboxes and optionally author it to the active camera. Reduces camera-placement trial-and-error before viewport_capture."""
+        meta = make_meta(ModuleName.VIEWPORT)
+        request = ViewportFramePrimsRequest(
+            prim_paths=tuple(prim_paths),
+            viewport_name=viewport_name,
+            camera_path=camera_path,
+            include_purposes=tuple(include_purposes or ["default", "render"]),
+            margin=margin,
+            fov_deg=fov_deg,
+            view_direction=tuple(view_direction or [1.0, -1.0, 0.65]),  # type: ignore[arg-type]
+            up=tuple(up or [0.0, 0.0, 1.0]),  # type: ignore[arg-type]
+            set_camera=set_camera,
+        )
+        result = await viewport.frame_prims(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def viewport_capture_assert(
+        viewport_name: str = "Viewport",
+        camera_prim_path: str | None = None,
+        renderer: str = "rtx",
+        width: int = 1280,
+        height: int = 720,
+        output_format: str = "png",
+        warmup_frames: int = 0,
+        min_mean: float = 8.0,
+        min_variance: float = 1.0,
+    ) -> str:
+        """Capture the 3D viewport with return_stats=True and fail fast on likely black/blank frames using pixel mean/variance thresholds. Lower-stress precheck before visual Read."""
+        meta = make_meta(ModuleName.VIEWPORT)
+        request = ViewportCaptureAssertRequest(
+            viewport_name=viewport_name,
+            camera_prim_path=camera_prim_path,
+            renderer=renderer,  # type: ignore[arg-type]
+            width=width,
+            height=height,
+            output_format=output_format,  # type: ignore[arg-type]
+            warmup_frames=warmup_frames,
+            min_mean=min_mean,
+            min_variance=min_variance,
+        )
+        result = await viewport.capture_assert(meta, request)
         return _serialize(result)
 
     # ------------------------------------------------------------------
@@ -1929,6 +2086,28 @@ def register_module_tools(
             msg_type=msg_type,
         )
         result = await omnigraph.create_ros2_publisher(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def omnigraph_create_script_controller(
+        script_path: str,
+        graph_path: str = "/World/ActionGraph",
+        node_name: str = "ScriptNode",
+        tick_node_name: str = "OnPlaybackTick",
+        evaluator: str = "execution",
+        reset_state: bool = True,
+    ) -> str:
+        """Create ActionGraph OnPlaybackTick→ScriptNode and bind script_path. This mirrors Isaac Sim example style: MCP builds wiring; controller logic runs in Kit on playback ticks."""
+        meta = make_meta(ModuleName.OMNIGRAPH)
+        request = OmnigraphCreateScriptControllerRequest(
+            graph_path=graph_path,
+            script_path=script_path,
+            node_name=node_name,
+            tick_node_name=tick_node_name,
+            evaluator=evaluator,
+            reset_state=reset_state,
+        )
+        result = await omnigraph.create_script_controller(meta, request)
         return _serialize(result)
 
     # ------------------------------------------------------------------

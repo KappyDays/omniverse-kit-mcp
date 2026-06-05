@@ -59,6 +59,18 @@ class OmnigraphCreateRos2PublisherRequest:
 
 
 @dataclass(slots=True, frozen=True)
+class OmnigraphCreateScriptControllerRequest:
+    """Create an ActionGraph ScriptNode controller driven by playback ticks."""
+
+    graph_path: str
+    script_path: str
+    node_name: str = "ScriptNode"
+    tick_node_name: str = "OnPlaybackTick"
+    evaluator: str = "execution"
+    reset_state: bool = True
+
+
+@dataclass(slots=True, frozen=True)
 class OmnigraphNodeRef:
     name: str
     type: str
@@ -82,3 +94,16 @@ class OmnigraphCreateRos2PublisherResult:
     nodes_created: tuple[OmnigraphNodeRef, ...] = field(default_factory=tuple)
     edges_created: tuple[OmnigraphEdgeRef, ...] = field(default_factory=tuple)
     backend: str = ""
+
+
+@dataclass(slots=True, frozen=True)
+class OmnigraphCreateScriptControllerResult:
+    ok: bool
+    graph_path: str
+    script_path: str
+    node_path: str
+    tick_node_path: str
+    nodes_created: tuple[OmnigraphNodeRef, ...] = field(default_factory=tuple)
+    edges_created: tuple[OmnigraphEdgeRef, ...] = field(default_factory=tuple)
+    backend: str = ""
+    reset_state: bool = True

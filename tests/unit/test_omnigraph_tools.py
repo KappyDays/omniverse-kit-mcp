@@ -16,6 +16,8 @@ from omniverse_kit_mcp.types.omnigraph import (
     OmnigraphCreateNodeResult,
     OmnigraphCreateRos2PublisherRequest,
     OmnigraphCreateRos2PublisherResult,
+    OmnigraphCreateScriptControllerRequest,
+    OmnigraphCreateScriptControllerResult,
     OmnigraphExecuteRequest,
     OmnigraphExecuteResult,
 )
@@ -38,6 +40,7 @@ def test_omnigraph_tools_registered(mcp_server):
     assert "omnigraph_connect" in names
     assert "omnigraph_execute" in names
     assert "omnigraph_create_ros2_publisher" in names
+    assert "omnigraph_create_script_controller" in names
 
 
 @pytest.mark.asyncio
@@ -113,6 +116,28 @@ async def test_create_ros2_publisher_reports_ros2_available():
     assert result.data.topic == "/camera/image_raw"
     assert len(result.data.nodes_created) >= 1
     assert result.data.ros2_available in (True, False)
+
+
+@pytest.mark.asyncio
+async def test_create_script_controller_wires_tick_to_script_node():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = OmnigraphModule(client)
+    result = await module.create_script_controller(
+        _meta(),
+        OmnigraphCreateScriptControllerRequest(
+            graph_path="/World/ActionGraph",
+            script_path="C:/tmp/franka_pick_place_controller.py",
+            node_name="PickPlaceController",
+        ),
+    )
+    assert result.status is ExecutionStatus.PASSED
+    assert isinstance(result.data, OmnigraphCreateScriptControllerResult)
+    assert result.data.node_path == "/World/ActionGraph/PickPlaceController"
+    assert result.data.tick_node_path == "/World/ActionGraph/OnPlaybackTick"
+    assert result.data.edges_created[0].dst.endswith("PickPlaceController.inputs:execIn")
+    assert result.data.reset_state is True
 
 
 def test_action_registry_phase_h_omnigraph_builders():

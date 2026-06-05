@@ -85,6 +85,9 @@ class IsaacRestClient:
     async def stage_assert_property(self, assertion: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/stage/assert/property", json=assertion)
 
+    async def stage_compute_world_bbox(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(f"{BASE_PATH}/stage/compute_world_bbox", json=request)
+
     # --- Viewport ---
 
     async def viewport_capture(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -325,6 +328,16 @@ class IsaacRestClient:
     async def viewport_focus_prim(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/viewport/focus_prim", json=request)
 
+    async def viewport_project_points(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/viewport/project_points", json=request,
+        )
+
+    async def viewport_frame_prims(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/viewport/frame_prims", json=request,
+        )
+
     # --- Physics (Phase F) ---
 
     async def physics_apply_rigid_body(
@@ -506,6 +519,18 @@ class IsaacRestClient:
     async def robot_set_ee_target(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/robot/set_ee_target", json=request)
 
+    async def robot_get_ee_pose(
+        self,
+        prim_path: str,
+        end_effector_frame: str | None = None,
+    ) -> dict[str, Any]:
+        params = {"prim_path": prim_path}
+        if end_effector_frame is not None:
+            params["end_effector_frame"] = end_effector_frame
+        return await self._request(
+            "GET", f"{BASE_PATH}/robot/ee_pose", params=params,
+        )
+
     # --- Jobs (Phase B) ---
 
     async def job_status(self, job_id: str) -> dict[str, Any]:
@@ -593,6 +618,11 @@ class IsaacRestClient:
     async def simulation_step(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/simulation/step", json=request)
 
+    async def simulation_step_observe(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/simulation/step_observe", json=request,
+        )
+
     async def simulation_wait_until(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/simulation/wait_until", json=request)
 
@@ -661,6 +691,13 @@ class IsaacRestClient:
     ) -> dict[str, Any]:
         return await self._post(
             f"{BASE_PATH}/omnigraph/create_ros2_publisher", json=request,
+        )
+
+    async def omnigraph_create_script_controller(
+        self, request: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/omnigraph/create_script_controller", json=request,
         )
 
     # --- Content (Phase H) ---

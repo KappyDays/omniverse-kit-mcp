@@ -23,6 +23,11 @@ from omniverse_kit_mcp.types.stage import (
     StageDiffEntry,
     StageSelection,
     StageSnapshot,
+    StageVisualAlignmentEntry,
+    StageVisualAlignmentReport,
+    StageVisualAlignmentRequest,
+    StageWorldBbox,
+    StageWorldBboxRequest,
     UsdPropertyValue,
 )
 
@@ -123,6 +128,79 @@ class StageModule:
             )
         except Exception as exc:
             return error_result(str(exc), started_ms=started, error_code="PROPERTY_ASSERTION_FAILED")
+
+    async def compute_world_bbox(
+        self, meta: OperationMeta, request: StageWorldBboxRequest
+    ) -> ModuleResult[StageWorldBbox]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.stage_compute_world_bbox({
+                "prim_path": request.prim_path,
+                "include_purposes": list(request.include_purposes),
+            })
+            return ok_result(_parse_world_bbox(raw), started_ms=started)
+        except Exception as exc:
+            return error_result(
+                str(exc), started_ms=started, error_code="STAGE_WORLD_BBOX_ERROR"
+            )
+
+    async def visual_alignment_report(
+        self, meta: OperationMeta, request: StageVisualAlignmentRequest
+    ) -> ModuleResult[StageVisualAlignmentReport]:
+        started = int(time.time() * 1000)
+        try:
+            ref_raw = await self._client.stage_compute_world_bbox({
+                "prim_path": request.reference_prim_path,
+                "include_purposes": list(request.include_purposes),
+            })
+            reference = _parse_world_bbox(ref_raw)
+            entries: list[StageVisualAlignmentEntry] = []
+            for candidate_path in request.candidate_prim_paths:
+                cand_raw = await self._client.stage_compute_world_bbox({
+                    "prim_path": candidate_path,
+                    "include_purposes": list(request.include_purposes),
+                })
+                candidate = _parse_world_bbox(cand_raw)
+                center_delta = tuple(
+                    candidate.center[i] - reference.center[i] for i in range(3)
+                )
+                center_delta_m = math.sqrt(sum(v * v for v in center_delta))
+                iou_xy = _bbox_iou_xy(reference, candidate)
+                failures: list[str] = []
+                if iou_xy < request.min_iou_xy:
+                    failures.append("IOU_XY_BELOW_THRESHOLD")
+                if center_delta_m > request.max_center_delta_m:
+                    failures.append("CENTER_DELTA_ABOVE_THRESHOLD")
+                entries.append(
+                    StageVisualAlignmentEntry(
+                        candidate_prim_path=candidate_path,
+                        passed=not failures,
+                        iou_xy=iou_xy,
+                        center_delta_m=center_delta_m,
+                        center_delta=center_delta,  # type: ignore[arg-type]
+                        failure_codes=tuple(failures),
+                        candidate_bbox=candidate,
+                    )
+                )
+            report = StageVisualAlignmentReport(
+                reference_prim_path=request.reference_prim_path,
+                passed=all(entry.passed for entry in entries),
+                reference_bbox=reference,
+                entries=tuple(entries),
+            )
+            if report.passed:
+                return ok_result(report, started_ms=started)
+            return fail_result(
+                "Visual alignment thresholds failed",
+                started_ms=started,
+                data=report,
+                error_code="STAGE_VISUAL_ALIGNMENT_FAILED",
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="STAGE_VISUAL_ALIGNMENT_ERROR",
+            )
 
     # ------------------------------------------------------------------
     # Selection (Phase B+) — GUI Stage panel selection
@@ -267,3 +345,39 @@ def _parse_assertion_report(raw: dict) -> AssertionReport:
         failures=failures,
         checked_count=raw.get("checked_count", 0),
     )
+
+
+def _vec3(raw: list | tuple, default: tuple[float, float, float]) -> tuple[float, float, float]:
+    if len(raw) < 3:
+        return default
+    return (float(raw[0]), float(raw[1]), float(raw[2]))
+
+
+def _parse_world_bbox(raw: dict) -> StageWorldBbox:
+    return StageWorldBbox(
+        ok=bool(raw.get("ok", True)),
+        prim_path=str(raw.get("prim_path", "")),
+        min=_vec3(raw.get("min", (0.0, 0.0, 0.0)), (0.0, 0.0, 0.0)),
+        max=_vec3(raw.get("max", (0.0, 0.0, 0.0)), (0.0, 0.0, 0.0)),
+        center=_vec3(raw.get("center", (0.0, 0.0, 0.0)), (0.0, 0.0, 0.0)),
+        size=_vec3(raw.get("size", (0.0, 0.0, 0.0)), (0.0, 0.0, 0.0)),
+        world_translate=_vec3(
+            raw.get("world_translate", (0.0, 0.0, 0.0)), (0.0, 0.0, 0.0)
+        ),
+        world_orient_wxyz=tuple(
+            float(v) for v in raw.get("world_orient_wxyz", (1.0, 0.0, 0.0, 0.0))[:4]
+        ),  # type: ignore[arg-type]
+        is_empty=bool(raw.get("is_empty", False)),
+    )
+
+
+def _bbox_iou_xy(a: StageWorldBbox, b: StageWorldBbox) -> float:
+    ix = max(0.0, min(a.max[0], b.max[0]) - max(a.min[0], b.min[0]))
+    iy = max(0.0, min(a.max[1], b.max[1]) - max(a.min[1], b.min[1]))
+    intersection = ix * iy
+    area_a = max(0.0, a.max[0] - a.min[0]) * max(0.0, a.max[1] - a.min[1])
+    area_b = max(0.0, b.max[0] - b.min[0]) * max(0.0, b.max[1] - b.min[1])
+    union = area_a + area_b - intersection
+    if union <= 0:
+        return 0.0
+    return intersection / union

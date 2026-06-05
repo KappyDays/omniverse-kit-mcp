@@ -421,6 +421,19 @@ class RobotService:
             "solution": [float(v) for v in sol_arr.tolist()],
         }
 
+    async def get_ee_pose(
+        self,
+        prim_path: str,
+        end_effector_frame: str | None = None,
+    ) -> dict[str, Any]:
+        """Read a robot end-effector world pose from the live USD stage.
+
+        This deliberately reads the articulated link transform after PhysX
+        has advanced instead of solving another IK problem. It is meant for
+        controller telemetry: "where is the hand now?".
+        """
+        return _compute_ee_pose(prim_path, end_effector_frame)
+
     async def navigate_path(
         self,
         prim_path: str,
@@ -916,6 +929,70 @@ def _assert_articulation(prim_path: str) -> None:
             "joint control requires a robot with ArticulationRoot. "
             "Use continueOnFailure: true in scenarios where optional."
         )
+
+
+def _compute_ee_pose(
+    prim_path: str,
+    end_effector_frame: str | None = None,
+) -> dict[str, Any]:
+    """Return end-effector world pose by reading the current USD link transform."""
+    import omni.usd
+    from pxr import Gf, Usd, UsdGeom
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+    robot_prim = stage.GetPrimAtPath(prim_path)
+    if not robot_prim.IsValid():
+        raise ValueError(f"Prim not found at {prim_path}")
+    if not _has_articulation_api(robot_prim):
+        raise ValueError(f"Prim at {prim_path} has no PhysX articulation API")
+
+    frame_name = end_effector_frame or "panda_hand"
+    ee_prim = None
+    if frame_name.startswith("/"):
+        candidate = stage.GetPrimAtPath(frame_name)
+        if candidate.IsValid():
+            ee_prim = candidate
+    else:
+        for prim in Usd.PrimRange(robot_prim):
+            if prim.GetName() == frame_name:
+                ee_prim = prim
+                break
+        if ee_prim is None:
+            for fallback in ("panda_hand", "right_gripper", "tool0", "ee_link"):
+                for prim in Usd.PrimRange(robot_prim):
+                    if prim.GetName() == fallback:
+                        ee_prim = prim
+                        frame_name = fallback
+                        break
+                if ee_prim is not None:
+                    break
+    if ee_prim is None or not ee_prim.IsValid():
+        raise ValueError(
+            f"End-effector frame {frame_name!r} not found under {prim_path}"
+        )
+
+    matrix = UsdGeom.Xformable(ee_prim).ComputeLocalToWorldTransform(
+        Usd.TimeCode.Default(),
+    )
+    translate = matrix.ExtractTranslation()
+    rotation = matrix.ExtractRotation()
+    quat = rotation.GetQuat() if hasattr(rotation, "GetQuat") else Gf.Quatd(1.0)
+    imag = quat.GetImaginary()
+    return {
+        "ok": True,
+        "prim_path": prim_path,
+        "end_effector_frame": frame_name,
+        "position": [float(translate[0]), float(translate[1]), float(translate[2])],
+        "orientation": [
+            float(quat.GetReal()),
+            float(imag[0]),
+            float(imag[1]),
+            float(imag[2]),
+        ],
+        "source": "usd_world_transform",
+    }
 
 
 # ---------------------------------------------------------------------------

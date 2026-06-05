@@ -29,6 +29,24 @@ class SimulationStepRequestModel(BaseModel):
     frames: int = Field(default=1, ge=1, le=10000)
 
 
+class SimulationEESpecModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prim_path: str
+    end_effector_frame: str | None = None
+
+
+class SimulationStepObserveRequestModel(BaseModel):
+    """Advance frames and return synchronized prim/joint/EE observations."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    frames: int = Field(default=1, ge=1, le=10000)
+    observe_prims: list[str] = Field(default_factory=list)
+    observe_joints: list[str] = Field(default_factory=list)
+    observe_ee: list[SimulationEESpecModel] = Field(default_factory=list)
+
+
 class SimulationSetTimeRequestModel(BaseModel):
     """Seek the timeline to *time_seconds* (Phase G).
 

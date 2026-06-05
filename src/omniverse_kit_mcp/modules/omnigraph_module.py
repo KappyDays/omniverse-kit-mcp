@@ -15,6 +15,8 @@ from omniverse_kit_mcp.types.omnigraph import (
     OmnigraphCreateNodeResult,
     OmnigraphCreateRos2PublisherRequest,
     OmnigraphCreateRos2PublisherResult,
+    OmnigraphCreateScriptControllerRequest,
+    OmnigraphCreateScriptControllerResult,
     OmnigraphEdgeRef,
     OmnigraphExecuteRequest,
     OmnigraphExecuteResult,
@@ -140,4 +142,52 @@ class OmnigraphModule:
             return error_result(
                 str(exc), started_ms=started, exc=exc,
                 error_code="OMNIGRAPH_ROS2_PUBLISHER_ERROR",
+            )
+
+    async def create_script_controller(
+        self,
+        meta: OperationMeta,
+        request: OmnigraphCreateScriptControllerRequest,
+    ) -> ModuleResult[OmnigraphCreateScriptControllerResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.omnigraph_create_script_controller({
+                "graph_path": request.graph_path,
+                "script_path": request.script_path,
+                "node_name": request.node_name,
+                "tick_node_name": request.tick_node_name,
+                "evaluator": request.evaluator,
+                "reset_state": request.reset_state,
+            })
+            nodes = tuple(
+                OmnigraphNodeRef(
+                    name=str(n.get("name", "")),
+                    type=str(n.get("type", "")),
+                    path=str(n.get("path", "")),
+                )
+                for n in raw.get("nodes_created") or []
+            )
+            edges = tuple(
+                OmnigraphEdgeRef(
+                    src=str(e.get("src", "")),
+                    dst=str(e.get("dst", "")),
+                )
+                for e in raw.get("edges_created") or []
+            )
+            result = OmnigraphCreateScriptControllerResult(
+                ok=bool(raw.get("ok", True)),
+                graph_path=str(raw.get("graph_path", request.graph_path)),
+                script_path=str(raw.get("script_path", request.script_path)),
+                node_path=str(raw.get("node_path", "")),
+                tick_node_path=str(raw.get("tick_node_path", "")),
+                nodes_created=nodes,
+                edges_created=edges,
+                backend=str(raw.get("backend", "")),
+                reset_state=bool(raw.get("reset_state", request.reset_state)),
+            )
+            return ok_result(result, started_ms=started)
+        except Exception as exc:  # noqa: BLE001
+            return error_result(
+                str(exc), started_ms=started, exc=exc,
+                error_code="OMNIGRAPH_SCRIPT_CONTROLLER_ERROR",
             )

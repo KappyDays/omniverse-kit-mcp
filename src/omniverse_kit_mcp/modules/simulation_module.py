@@ -9,9 +9,14 @@ from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.modules.base import error_result, ok_result
 from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
 from omniverse_kit_mcp.types.simulation import (
+    ObservedEETarget,
+    ObservedJointState,
+    ObservedPrimState,
     SimulationSetTimeRequest,
     SimulationSetTimeResult,
     SimulationStatus,
+    SimulationStepObserveRequest,
+    SimulationStepObserveResult,
     SimulationStepRequest,
     SimulationStepResult,
     SimulationWaitUntilRequest,
@@ -71,6 +76,51 @@ class SimulationModule:
         except Exception as exc:
             return error_result(
                 str(exc), started_ms=started, error_code="SIMULATION_STEP_ERROR",
+            )
+
+    async def step_observe(
+        self,
+        meta: OperationMeta,
+        request: SimulationStepObserveRequest,
+    ) -> ModuleResult[SimulationStepObserveResult]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.simulation_step_observe({
+                "frames": request.frames,
+                "observe_prims": list(request.observe_prims),
+                "observe_joints": list(request.observe_joints),
+                "observe_ee": [
+                    {
+                        "prim_path": spec.prim_path,
+                        "end_effector_frame": spec.end_effector_frame,
+                    }
+                    for spec in request.observe_ee
+                ],
+            })
+            return ok_result(
+                SimulationStepObserveResult(
+                    status=_parse_status(raw),
+                    frames=int(raw.get("frames", request.frames)),
+                    start_time=float(raw.get("start_time", 0.0)),
+                    advance_mode=str(raw.get("advance_mode", "")),
+                    was_playing=bool(raw.get("was_playing", False)),
+                    prim_states=tuple(
+                        _parse_prim_state(item) for item in raw.get("prim_states") or []
+                    ),
+                    joint_states=tuple(
+                        _parse_joint_state(item)
+                        for item in raw.get("joint_states") or []
+                    ),
+                    ee_states=tuple(
+                        _parse_ee_state(item) for item in raw.get("ee_states") or []
+                    ),
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="SIMULATION_STEP_OBSERVE_ERROR",
             )
 
     async def wait_until(
@@ -323,4 +373,50 @@ def _parse_status(raw: dict) -> SimulationStatus:
         start_time=raw.get("start_time", 0.0),
         end_time=raw.get("end_time", 0.0),
         time_codes_per_second=raw.get("time_codes_per_second", 24.0),
+    )
+
+
+def _vec3(raw: object) -> tuple[float, float, float] | None:
+    if not isinstance(raw, (list, tuple)) or len(raw) != 3:
+        return None
+    return (float(raw[0]), float(raw[1]), float(raw[2]))
+
+
+def _quat(raw: object) -> tuple[float, float, float, float] | None:
+    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
+        return None
+    return (float(raw[0]), float(raw[1]), float(raw[2]), float(raw[3]))
+
+
+def _parse_prim_state(raw: dict) -> ObservedPrimState:
+    return ObservedPrimState(
+        prim_path=str(raw.get("prim_path", "")),
+        position=_vec3(raw.get("position")),
+        orientation=_quat(raw.get("orientation")),
+        linear_velocity=_vec3(raw.get("linear_velocity")),
+        angular_velocity=_vec3(raw.get("angular_velocity")),
+        has_rigid_body=bool(raw.get("has_rigid_body", False)),
+        source=str(raw.get("source", "")),
+        error=raw.get("error"),
+    )
+
+
+def _parse_joint_state(raw: dict) -> ObservedJointState:
+    return ObservedJointState(
+        prim_path=str(raw.get("prim_path", "")),
+        positions=tuple(float(v) for v in raw.get("positions") or ()),
+        dof_names=tuple(str(v) for v in raw.get("dof_names") or ()),
+        source=str(raw.get("source", "")),
+        error=raw.get("error"),
+    )
+
+
+def _parse_ee_state(raw: dict) -> ObservedEETarget:
+    return ObservedEETarget(
+        prim_path=str(raw.get("prim_path", "")),
+        end_effector_frame=str(raw.get("end_effector_frame", "")),
+        position=_vec3(raw.get("position")),
+        orientation=_quat(raw.get("orientation")),
+        source=str(raw.get("source", "")),
+        error=raw.get("error"),
     )
