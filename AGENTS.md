@@ -1,70 +1,87 @@
-# AGENTS.md — Codex Entry Point for omniverse-kit-mcp
+# AGENTS.md — Codex Adapter for omniverse-kit-mcp
 
-This repository was originally organized for Claude Code. The canonical project
-instructions remain in `CLAUDE.md`; do not duplicate or reinterpret them here.
+This repository is Claude Code-first. The `CLAUDE.md` hierarchy is the
+canonical project memory and SoT; `AGENTS.md` is only a Codex adapter and
+entrypoint.
 
-## Required startup procedure
+Do not migrate or copy `CLAUDE.md` content into `AGENTS.md`. Do not delete,
+rename, or replace `CLAUDE.md` files. Keep the Pull-First Architecture:
+root `CLAUDE.md` routes, `docs/invariants/*.md` holds durable rules,
+`docs/runbooks/*.md` holds failure/debug procedures, local `CLAUDE.md` files
+hold directory rules, and tests guard drift.
+
+## Codex Loading Rule
+
+Claude Code auto-loads some `CLAUDE.md` context. Codex does not: nested
+`CLAUDE.md` files are not auto-loaded. Codex must manually read the applicable
+`CLAUDE.md` files and pull-docs before planning or editing.
+
+## Startup Checklist
 
 Before planning or editing:
 
 1. Read root `CLAUDE.md`.
-2. Use its "작업 전 필수 pull-doc" table to choose required documents.
-3. Read all relevant `docs/invariants/*.md` documents before touching files.
-4. If diagnosing failures, read the relevant `docs/runbooks/*.md` document.
-5. If touching a directory that has its own `CLAUDE.md`, read that file before editing.
-6. If `CLAUDE.md` references a `.claude/skills/*/SKILL.md` workflow, read the
-   `SKILL.md` directly and follow it as a written procedure.
+2. Use its "작업 전 필수 pull-doc" table to choose required pull-docs.
+3. Read all relevant `docs/invariants/*.md` files before touching files.
+4. If diagnosing failures, read the relevant `docs/runbooks/*.md` file.
+5. Enumerate available local rules when scope is unclear:
+   - `rg --files -g CLAUDE.md`
+   - `rg --files docs/invariants -g "*.md"`
+   - `rg --files docs/runbooks -g "*.md"`
+6. If `CLAUDE.md` references a `.claude/skills/*/SKILL.md` workflow, read that
+   `SKILL.md` directly and follow it before acting.
 
-## Codex-specific interpretation
+## Before-Editing Checklist
 
-- Do not rely on Claude Code's auto-loading behavior for nested `CLAUDE.md` files.
-- Treat `CLAUDE.md` files as project documentation, not as Claude-only instructions.
-- Preserve the Pull-First Architecture:
-  - root `CLAUDE.md` stays under its line cap,
-  - durable rules belong in `docs/invariants/*.md`,
-  - incident/debug procedures belong in `docs/runbooks/*.md`,
-  - subdirectory rules stay in local `CLAUDE.md` files.
-- Do not create duplicated Codex-only copies of existing rules unless explicitly requested.
+Before editing any path:
 
-## Hard project rules
+1. Walk from repo root to the target path and read every applicable
+   `CLAUDE.md` on that path.
+2. For multiple paths, repeat the walk for each path and follow the union of
+   instructions.
+3. Read the pull-docs selected from root `CLAUDE.md` and any local
+   `CLAUDE.md` table.
+4. Preserve protected regions, especially DO-NOT-EDIT blocks in `CLAUDE.md`.
+5. Use `uv`; do not use `pip install`.
 
-- Use `uv`; do not use `pip install`.
-- Do not violate DO-NOT-EDIT protected regions in `CLAUDE.md`.
-- Keep MCP server internal types as `@dataclass(slots=True, frozen=True)`.
+## Failure-Diagnosis Checklist
+
+When debugging a failure:
+
+1. Read `docs/tool-diagnostic-map.md` if the failure path is unclear.
+2. Read only the relevant `docs/runbooks/*.md`; do not duplicate runbook
+   content into `AGENTS.md`.
+3. For Isaac/Kit process lifecycle issues, start with
+   `docs/invariants/process-lifecycle.md`, then the matching runbook.
+4. For Extension `.py`, Scenario YAML, new MCP tools, or new modules, follow
+   the corresponding invariant named in root `CLAUDE.md`.
+
+## Shared Project Rules
+
+These are pointers to canonical rules, not replacements for them:
+
+- MCP server internal types stay `@dataclass(slots=True, frozen=True)`.
 - Use Pydantic only at the Extension REST boundary.
-- For new MCP tools, follow `docs/invariants/mcp-tool-add.md`.
-- For new modules or scenario actions, follow `docs/invariants/module-add.md`.
-- For Extension `.py` changes, follow `docs/invariants/ext-reload.md`.
-- For Scenario YAML changes, follow `docs/invariants/scenario-validation.md`.
-- For Isaac/Kit process lifecycle issues, follow `docs/invariants/process-lifecycle.md`.
-- Do not commit, push, or create PRs unless explicitly asked. Summarize changes before any git operation.
+- New MCP tools follow `docs/invariants/mcp-tool-add.md`.
+- New modules or scenario actions follow `docs/invariants/module-add.md`.
+- Extension `.py` changes follow `docs/invariants/ext-reload.md`.
+- Scenario YAML changes follow `docs/invariants/scenario-validation.md`.
+- Isaac/Kit lifecycle work follows `docs/invariants/process-lifecycle.md`.
+- Do not commit, push, or create PRs unless explicitly asked. Summarize
+  changes before any git operation.
 
-## Concurrent use with Claude Code
+## Parallel Claude Code + Codex Use
 
-This repository is designed to support Claude Code and Codex CLI in parallel
-sessions. Apply these guards to avoid resource conflicts:
+This repo supports parallel Claude Code and Codex sessions. Avoid resource
+conflicts:
 
-- **Instance separation**: Use different `ISAAC_MCP_INSTANCE_ID` per host
-  (e.g., Claude Code on instance-1, Codex CLI on instance-2). Each workspace
-  binds to a distinct port (Isaac: 8011 / 8012, USD Composer: 8014 / 8015).
-- **`.env` editing**: Both hosts read the same `.env`. Do not edit it from
-  both sides concurrently — coordinate edits in one session.
-- **`kit.exe` ownership**: Each host owns only its own `kit.exe` instance.
-  Do not call `kit_app_start` for the same instance from both hosts (double-launch causes port conflict on 801N and hub-orphan symptoms — see `docs/runbooks/hub-orphan.md`).
-- **Git branch separation**: For parallel work, branch off so each session
-  commits on its own branch.
+- Use a distinct `ISAAC_MCP_INSTANCE_ID` per host/session.
+- Do not edit shared `.env` concurrently.
+- Each host owns only its own `kit.exe`; do not double-launch the same
+  instance.
+- Use separate git branches for parallel implementation work.
 
-## Codex MCP server access
-
-Each workspace folder activates a single Isaac Sim or USD Composer instance:
-
-```cmd
-cd workspaces\isaac\instance-1
-.\launch-codex.bat
-```
-
-Up to two apps can run concurrently — open two terminals and `cd` into two
-different workspace folders. Each codex session owns one `kit.exe` process.
+Workspace mapping:
 
 | Workspace | MCP server | App | Port |
 |---|---|---|---|
@@ -73,51 +90,43 @@ different workspace folders. Each codex session owns one `kit.exe` process.
 | `workspaces/usd-composer/instance-1` | `usdcomposer-mcp-1` | USD Composer | 8014 |
 | `workspaces/usd-composer/instance-2` | `usdcomposer-mcp-2` | USD Composer | 8015 |
 
-The launcher sets `CODEX_HOME=%~dp0.codex` so codex reads the workspace-local
-`.codex/config.toml` (which mirrors the sibling `.mcp.json` used by Claude Code).
+## Codex Runtime Details
 
-## Codex environment requirements
+These details are Codex-specific runtime notes, separate from shared project
+rules:
 
-Each workspace's `.codex/config.toml` ships with the following block (informative — already deployed by Task 2; do not recreate):
+- Start Codex directly from a workspace folder with `codex`.
+- Codex reads the workspace-local `.codex/config.toml` for that folder.
+- Each `.codex/config.toml` mirrors the sibling `.mcp.json` server entry.
+- Global Codex MCP entries may appear alongside the workspace entry.
+- Codex shell sandbox settings apply to model-generated shell commands only.
+  The MCP server process and its child `kit.exe` are separate process trees.
+- Localhost network access is required because MCP tools call the Extension
+  REST bridge at `http://localhost:801N`.
 
-```toml
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
-
-[sandbox_workspace_write]
-network_access = true   # required for localhost:801N Extension REST calls
-```
-
-**Scope of these settings**: `sandbox_mode` and `approval_policy` apply only to
-*model-generated shell commands* the codex agent runs directly. The MCP server
-(spawned by codex via stdio) and its child `kit.exe` are **separate process
-trees** — they are not constrained by these sandbox settings, so file writes
-to `%TEMP%/omniverse_kit_mcp/`, `%LOCALAPPDATA%/ov/`, etc. proceed normally.
-
-`network_access = true` is required because the MCP server tools call the
-Kit Extension REST at `http://localhost:801N`. If localhost is blocked,
-all MCP tool calls fail.
-
-## Verification expectations
+## Final Response Checklist
 
 Before claiming completion, report:
 
-- files changed,
-- relevant pull-docs read,
-- tests/checks run,
-- commands that could not be run and why,
-- remaining risks.
+- files changed
+- CLAUDE.md files read
+- pull-docs read
+- runbooks read, if any
+- tests/checks run
+- commands not run and why
+- remaining risks
 
-Prefer targeted tests first, then broader checks when appropriate:
+Prefer targeted checks first, then broader checks when appropriate:
 
 ```bash
 uv run pytest tests/
 .venv/Scripts/python.exe scripts/verify_mcp_sync.py
 ```
 
+Codex first-session MCP check, run inside a workspace folder:
+
 ```cmd
-:: Codex first-session verification (run inside a workspace folder):
-.\launch-codex.bat mcp list   :: should list this workspace's single MCP entry
+codex mcp list
 ```
 
 On Windows-host workflows, prefer the repo's documented Windows commands when

@@ -134,7 +134,7 @@ Loading is one step; surfacing your extension's functionality as natural-languag
 
 ### Wiring into Claude Code — workspace folders
 
-Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder = 1 MCP host session (Claude Code or codex) = 1 MCP entry loaded** (~150 tool names per session vs. ~1050 if all entries were global). Open Claude Code from inside a workspace folder:
+Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder provides one Kit MCP entry** (~150 tool names for that app/instance instead of registering every app/instance globally). Open Claude Code from inside a workspace folder:
 
 ```powershell
 cd workspaces/isaac/instance-1     # Isaac Sim instance 1, port 8011
@@ -149,15 +149,16 @@ claude
 | Isaac × 2 | 2 | `workspaces/isaac/instance-{1,2}` |
 | USD Composer × 2 | 2 | `workspaces/usd-composer/instance-{1,2}` |
 
-For server-code development (modifying the MCP server itself), open Claude Code (or codex) at the repo root — no MCP loads there by design, keeping the dev session focused on code. Validate runtime behavior via `scripts/run_*_standalone.py` or by entering a workspace folder.
+For server-code development (modifying the MCP server itself), open Claude Code (or codex) at the repo root — no workspace Kit MCP loads there by design, keeping the dev session focused on code. Validate runtime behavior via `scripts/run_*_standalone.py` or by entering a workspace folder.
 
 For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows specifics), see **`setup/`**. Workspace layout / promote-path details: [`docs/superpowers/specs/2026-05-04-workspace-split-design.md`](docs/superpowers/specs/2026-05-04-workspace-split-design.md).
 
 ### Wiring into Codex CLI — workspace folders
 
-Each workspace folder under `workspaces/` ships a `.codex/` directory with a single
-MCP server entry plus sandbox/approval/network_access settings, paired with a
-`launch-codex.bat` that points `CODEX_HOME` at that local `.codex/`.
+Each workspace folder under `workspaces/` ships a `.codex/` directory with a
+workspace MCP server entry plus sandbox/approval/network_access settings. Run
+`codex` from that workspace folder to activate the matching Isaac Sim or USD
+Composer entry. Any global Codex MCP entries may also be listed.
 
 **First-time setup** (one per machine):
 
@@ -179,8 +180,8 @@ codex --version
 :: Enter the workspace folder for the app you want to drive
 cd workspaces\isaac\instance-1
 
-:: Launch codex with that workspace's MCP server activated
-.\launch-codex.bat
+:: Launch codex with that workspace's MCP server available
+codex
 
 :: First prompt example (> is codex's input prefix, not a shell redirect)
 > Start Isaac Sim, load the Simple_Warehouse environment, place a NovaCarter at the origin.
@@ -193,16 +194,16 @@ cd workspaces\isaac\instance-1
 | A | `workspaces/isaac/instance-1` | Isaac Sim 5.1 | 8011 |
 | B | `workspaces/usd-composer/instance-1` | USD Composer | 8014 |
 
-Each codex session owns one MCP server entry → one `kit.exe` process. The two
-sessions are fully isolated.
+Each codex workspace entry owns one `kit.exe` process. The two app instances are
+isolated by profile and port.
 
 **Verification after first launch**:
 
 ```cmd
-.\launch-codex.bat mcp list
+codex mcp list
 ```
 
-The command lists exactly the workspace's single entry (`isaacsim-mcp-1`, `isaacsim-mcp-2`, `usdcomposer-mcp-1`, or `usdcomposer-mcp-2` depending on the folder).
+The command should include the workspace entry (`isaacsim-mcp-1`, `isaacsim-mcp-2`, `usdcomposer-mcp-1`, or `usdcomposer-mcp-2` depending on the folder). Global Codex MCP entries may appear too.
 
 ---
 

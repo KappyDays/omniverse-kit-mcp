@@ -3,7 +3,7 @@
 # USD Composer Workspace
 
 USD Composer 로 USD scene authoring / DCC 작업하는 워크스페이스.
-instance-1 (port 8014) / instance-2 (port 8015) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 또는 codex (`.\launch-codex.bat`) 시작.
+instance-1 (port 8014) / instance-2 (port 8015) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 또는 codex 시작.
 
 ## ⚠️ Capability 제약
 

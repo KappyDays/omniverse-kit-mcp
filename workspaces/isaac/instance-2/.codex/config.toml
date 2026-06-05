@@ -1,5 +1,8 @@
-# Codex CLI repo-local config — loaded via `launch-codex.bat` (CODEX_HOME=$PWD/.codex)
+# Codex CLI workspace config — loaded when running `codex` from this workspace folder
 # Mirrors sibling .mcp.json (Claude Code) — drift guarded by tests/unit/test_codex_entrypoint_sync.py
+
+project_doc_fallback_filenames = ["CLAUDE.md"]
+project_doc_max_bytes = 65536
 
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
