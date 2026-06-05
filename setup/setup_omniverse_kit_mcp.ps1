@@ -90,11 +90,10 @@ if (Test-Path $EnvFile) {
     Write-Host "  [OK]   .env already exists." -ForegroundColor Green
 } elseif (Test-Path $EnvExample) {
     Copy-Item $EnvExample $EnvFile
-    Write-Host "  [OK]   Created .env from .env.example (default: localhost:8011)" -ForegroundColor Green
+    Write-Host "  [OK]   Created .env from .env.example (default: localhost:8111)" -ForegroundColor Green
 } else {
     # Create minimal .env
     @"
-ISAAC_SIM_BASE_URL=http://localhost:8011
 ISAAC_SIM_TIMEOUT=30.0
 MCP_SERVER_NAME=isaacsim-validation-mcp
 MCP_SERVER_PORT=8080
@@ -196,8 +195,8 @@ Write-Host "     C:\Users\$env:USERNAME\workspace\branch\isaac-sim-standalone-5.
 Write-Host "  2. Ensure USD Composer built at:" -ForegroundColor Cyan
 Write-Host "     C:\Users\$env:USERNAME\workspace\branch\kit-app-template\_build\windows-x86_64\release\" -ForegroundColor DarkGray
 Write-Host "  3. cd into a workspace folder + start Claude Code:" -ForegroundColor Cyan
-Write-Host "     cd workspaces\isaac\instance-1     # Isaac Sim instance 1, port 8011" -ForegroundColor DarkGray
-Write-Host "     cd workspaces\usd-composer\instance-1  # USD Composer instance 1, port 8014" -ForegroundColor DarkGray
+Write-Host "     cd workspaces\isaac\instance-1     # Isaac Sim instance 1, port 8111" -ForegroundColor DarkGray
+Write-Host "     cd workspaces\usd-composer\instance-1  # USD Composer instance 1, port 8114" -ForegroundColor DarkGray
 Write-Host "  4. Tools appear with prefix:" -ForegroundColor Cyan
 Write-Host "     mcp__isaacsim-mcp-{1,2}__*       (Isaac instance)" -ForegroundColor DarkGray
 Write-Host "     mcp__usdcomposer-mcp-{1,2}__*    (USD Composer instance)" -ForegroundColor DarkGray

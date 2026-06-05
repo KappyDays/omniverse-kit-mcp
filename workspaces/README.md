@@ -7,7 +7,7 @@
 각 instance 폴더 = 1 MCP host 세션 (Claude Code 또는 codex) = 해당 app/instance 의 Kit MCP entry 제공 (~150 tool 이름). Codex 전역 MCP entry 가 있으면 함께 표시될 수 있다. 멀티 앱 시나리오는 호스트 창 2 개 동시 운영.
 
 ```
-cd workspaces/isaac/instance-1   # Isaac Sim instance 1 (port 8011)
+cd workspaces/isaac/instance-1   # Isaac Sim instance 1 (port 8111)
 claude                            # Claude Code 진입
 codex                             # Codex CLI 진입
 ```

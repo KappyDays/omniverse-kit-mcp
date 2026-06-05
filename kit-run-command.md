@@ -20,8 +20,8 @@ MCP `kit_app_start` 가 `subprocess.Popen` 으로 띄우는 실제 커맨드를 
 
 | Profile | Instance 1 | Instance 2 |
 |---------|-----------|-----------|
-| `isaac-sim` | 8011 | 8012 |
-| `usd-composer` | 8014 | 8015 |
+| `isaac-sim` | 8111 | 8112 |
+| `usd-composer` | 8114 | 8115 |
 
 Health URL: `http://localhost:<PORT>/validation/v1/health`
 
@@ -59,7 +59,7 @@ omni.mycompany.navmesh_playground
 | `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` |
 | `PATH` | 기존 `PATH` + `;C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/exts/isaacsim.ros2.bridge/humble/lib` |
 
-### 커맨드 (instance 1, port 8011)
+### 커맨드 (instance 1, port 8111)
 
 PowerShell:
 
@@ -72,7 +72,7 @@ $env:PATH = "$env:PATH;C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.
   "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit" `
   --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" `
   --enable omni.mycompany.validation_api `
-  --/exts/omni.services.transport.server.http/port=8011 `
+  --/exts/omni.services.transport.server.http/port=8111 `
   --enable omni.anim.graph.bundle `
   --enable omni.anim.navigation.bundle `
   --enable isaacsim.replicator.agent.core `
@@ -96,7 +96,7 @@ export PATH="$PATH:C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-wi
   "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit" \
   --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" \
   --enable omni.mycompany.validation_api \
-  --/exts/omni.services.transport.server.http/port=8011 \
+  --/exts/omni.services.transport.server.http/port=8111 \
   --enable omni.anim.graph.bundle \
   --enable omni.anim.navigation.bundle \
   --enable isaacsim.replicator.agent.core \
@@ -110,7 +110,7 @@ export PATH="$PATH:C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-wi
 
 ### 다른 instance
 
-`port=8011` 부분만 `8012` (instance 2) 로 교체.
+`port=8111` 부분만 `8112` (instance 2) 로 교체.
 
 ---
 
@@ -129,7 +129,7 @@ profile 기본값이 비어있다 (`extra_ext_ids=()`). `validation_api` 만 ena
 
 **불필요**. `_prepare_launch_env` 가 `ROS_DISTRO` / `RMW_IMPLEMENTATION` 을 명시적으로 env 에서 제거. 부모 셸에 ROS env 가 설정돼 있으면 unset 후 실행할 것.
 
-### 커맨드 (instance 1, port 8014)
+### 커맨드 (instance 1, port 8114)
 
 PowerShell:
 
@@ -141,7 +141,7 @@ Remove-Item Env:RMW_IMPLEMENTATION -ErrorAction SilentlyContinue
   "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit" `
   --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" `
   --enable omni.mycompany.validation_api `
-  --/exts/omni.services.transport.server.http/port=8014 `
+  --/exts/omni.services.transport.server.http/port=8114 `
   *> "$env:TEMP/omniverse_kit_mcp/kit_usdcomposer_$(Get-Date -UFormat %s).log" `
   < $null
 ```
@@ -156,13 +156,13 @@ unset RMW_IMPLEMENTATION
   "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit" \
   --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" \
   --enable omni.mycompany.validation_api \
-  --/exts/omni.services.transport.server.http/port=8014 \
+  --/exts/omni.services.transport.server.http/port=8114 \
   > /tmp/kit_usdcomposer.log 2>&1 < /dev/null &
 ```
 
 ### 다른 instance
 
-`port=8014` 부분만 `8015` (instance 2) 로 교체.
+`port=8114` 부분만 `8115` (instance 2) 로 교체.
 
 ---
 
@@ -171,7 +171,7 @@ unset RMW_IMPLEMENTATION
 ```powershell
 # 특정 instance 만 (port 로 식별 — 다른 instance 영향 없음)
 $pid = Get-CimInstance Win32_Process -Filter "Name='kit.exe'" |
-       Where-Object { $_.CommandLine -like "*port=8011*" } |
+       Where-Object { $_.CommandLine -like "*port=8111*" } |
        Select-Object -First 1 -ExpandProperty ProcessId
 taskkill /F /PID $pid /T
 
@@ -185,8 +185,8 @@ Remove-Item "$env:TEMP/hub-*.lock", "$env:TEMP/hub-*.config.json" -ErrorAction S
 기동 후 health 확인:
 
 ```powershell
-curl http://localhost:8011/validation/v1/health   # Isaac Sim instance 1
-curl http://localhost:8014/validation/v1/health   # USD Composer instance 1
+curl http://localhost:8111/validation/v1/health   # Isaac Sim instance 1
+curl http://localhost:8114/validation/v1/health   # USD Composer instance 1
 ```
 
 200 응답 = ready. cold boot 는 stdin DEVNULL fix 후 13–30s, GPU 셰이더 캐시 재빌드 시 5–10 분.
@@ -210,13 +210,13 @@ curl http://localhost:8014/validation/v1/health   # USD Composer instance 1
 
 - `[dependencies]` 끝에 9 개 추가 (validation_api + 8 개 character/sensor/replicator/omnigraph 의존성)
   - `omni.mycompany.validation_api`, `omni.anim.graph.bundle`, `omni.anim.navigation.bundle`, `isaacsim.replicator.agent.core`, `omni.kit.ui_test`, `isaacsim.sensors.rtx`, `omni.graph.action`, `omni.replicator.core`, `omni.mycompany.navmesh_playground`
-- `[settings]` 에 `exts."omni.services.transport.server.http".port = 8011`
+- `[settings]` 에 `exts."omni.services.transport.server.http".port = 8111`
 - `[settings.app.exts.folders] '++'` 배열에 `"C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions"` 추가
 
 ### USD Composer — `branch/kit-app-template/source/apps/kkr_usd_composer.kit` (build artifact 자동 동기화)
 
 - `[dependencies]` 끝에 `omni.mycompany.validation_api` 1 개만 추가 (USD Composer 는 common tool 만 지원)
-- `[settings.exts]` 에 `"omni.services.transport.server.http".port = 8014` (8011 충돌 회피)
+- `[settings.exts]` 에 `"omni.services.transport.server.http".port = 8114` (Isaac Sim 과 충돌 회피)
 - `[settings.app.exts.folders] '++'` 배열에 `"C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions"` 추가
 
 ### 가설 검증 — browser ext 무해성 (2026-04-25 자동 검증)
@@ -236,8 +236,8 @@ curl http://localhost:8014/validation/v1/health   # USD Composer instance 1
 수정 후 사용자가 직접 두 앱을 다시 띄우고:
 
 ```powershell
-curl http://localhost:8011/validation/v1/health   # Isaac Sim
-curl http://localhost:8014/validation/v1/health   # USD Composer
+curl http://localhost:8111/validation/v1/health   # Isaac Sim
+curl http://localhost:8114/validation/v1/health   # USD Composer
 ```
 
 두 응답 모두 200 → MCP `kit_app_start` (instance_id=1, profile=isaac-sim / usd-composer) 호출 시 `status=ready` (idempotent attach).

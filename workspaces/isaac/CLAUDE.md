@@ -3,7 +3,7 @@
 # Isaac Sim Workspace
 
 Isaac Sim 5.1 으로 USD scene / 시나리오 / robot demo 작업하는 워크스페이스.
-instance-1 (port 8011) / instance-2 (port 8012) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 또는 codex 시작.
+instance-1 (port 8111) / instance-2 (port 8112) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 또는 codex 시작.
 
 ## ⚠️ 작업 전 필수 pull-doc
 

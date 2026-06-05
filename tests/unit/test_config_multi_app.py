@@ -32,16 +32,16 @@ def test_default_profile_is_isaac_sim():
     cfg = AppConfig()
     assert cfg.isaac_sim_process.app_profile.name == "isaac-sim"
     assert cfg.isaac_sim_process.instance_id == 1
-    assert cfg.isaac_sim_process.ext_port == 8011
-    assert cfg.isaac_sim_process.health_url == "http://localhost:8011/validation/v1/health"
-    assert cfg.isaac_sim.base_url == "http://localhost:8011"
+    assert cfg.isaac_sim_process.ext_port == 8111
+    assert cfg.isaac_sim_process.health_url == "http://localhost:8111/validation/v1/health"
+    assert cfg.isaac_sim.base_url == "http://localhost:8111"
 
 
-def test_isaac_instance_2_port_8012(monkeypatch):
+def test_isaac_instance_2_port_8112(monkeypatch):
     monkeypatch.setenv("ISAAC_MCP_INSTANCE_ID", "2")
     cfg = AppConfig()
-    assert cfg.isaac_sim_process.ext_port == 8012
-    assert cfg.isaac_sim.base_url == "http://localhost:8012"
+    assert cfg.isaac_sim_process.ext_port == 8112
+    assert cfg.isaac_sim.base_url == "http://localhost:8112"
 
 
 def test_isaac_instance_3_rejected(monkeypatch):
@@ -52,20 +52,20 @@ def test_isaac_instance_3_rejected(monkeypatch):
 
 # --- USD Composer profile (isolated port range) --------------------------
 
-def test_usd_composer_profile_instance_1_port_8014(monkeypatch):
+def test_usd_composer_profile_instance_1_port_8114(monkeypatch):
     monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
     monkeypatch.setenv("ISAAC_MCP_INSTANCE_ID", "1")
     cfg = AppConfig()
     assert cfg.isaac_sim_process.app_profile.name == "usd-composer"
-    assert cfg.isaac_sim_process.ext_port == 8014
-    assert cfg.isaac_sim.base_url == "http://localhost:8014"
+    assert cfg.isaac_sim_process.ext_port == 8114
+    assert cfg.isaac_sim.base_url == "http://localhost:8114"
 
 
-def test_usd_composer_instance_2_port_8015(monkeypatch):
+def test_usd_composer_instance_2_port_8115(monkeypatch):
     monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
     monkeypatch.setenv("ISAAC_MCP_INSTANCE_ID", "2")
     cfg = AppConfig()
-    assert cfg.isaac_sim_process.ext_port == 8015
+    assert cfg.isaac_sim_process.ext_port == 8115
 
 
 def test_usd_composer_instance_3_rejected(monkeypatch):
@@ -148,8 +148,8 @@ def test_invalid_instance_id_rejects(monkeypatch):
 def test_profile_module_exports_isaac_and_usd_composer():
     from omniverse_kit_mcp.types.profile import get_profile, list_profile_names
     assert set(list_profile_names()) == {"isaac-sim", "usd-composer"}
-    assert get_profile("isaac-sim").default_ext_port == 8011
-    assert get_profile("usd-composer").default_ext_port == 8014
+    assert get_profile("isaac-sim").default_ext_port == 8111
+    assert get_profile("usd-composer").default_ext_port == 8114
 
 
 def test_get_profile_raises_on_unknown():
