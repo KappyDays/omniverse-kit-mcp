@@ -1,5 +1,8 @@
-# Environment variables
+# Environment variables (machine-local; keep .env.example tracked)
 .env
+.env.*
+!.env.example
+!.env.*.example
 
 # Temporary measurement snapshots (probe_mcp_surface.py)
 tmp_*.json
@@ -18,12 +21,18 @@ build/
 
 # Virtual environment
 .venv/
+venv/
+env/
 
 # Testing / Linting caches
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.pyre/
+.tox/
+.nox/
 .coverage
+.coverage.*
 htmlcov/
 
 # IDE
@@ -32,19 +41,30 @@ htmlcov/
 .vs/
 *.swp
 *.swo
+*.tmp
+*.temp
 
 # Node.js
 node_modules/
+.npm/
+.pnpm-store/
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # OMC (local tool state)
 .omc/
 
+# Superpowers runtime state (brainstorm servers, generated HTML/logs)
+.superpowers/
+
 # Application state
 state/
+*.sqlite
+*.sqlite3
+*.db
 
 # Claude Code runtime state (scheduled_tasks.lock etc. — not project code)
 .claude/*
@@ -53,6 +73,7 @@ state/
 
 # Local log files (kit.exe stdout redirect lands in %TEMP%, but catch any that slip into repo)
 *.log
+logs/
 
 # Binary capture artifacts (viewport PNGs, recordings, numpy dumps).
 # Default capture target is %TEMP%/validation_api_captures/ — these patterns guard
