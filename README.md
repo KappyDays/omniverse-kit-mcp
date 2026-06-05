@@ -81,7 +81,7 @@ omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Defau
    ```
 4. **Kit Extension activation is automatic** — on `kit_app_start` the MCP server spawns Kit with `--ext-folder <repo>/kkr-extensions --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.
 
-Sanity check after first startup: `curl http://localhost:8011/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
+Sanity check after first startup: `curl http://localhost:8111/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
 
 ### Using Your Own Kit Extension
 
@@ -126,7 +126,7 @@ extension_list_all(enabled_only=True)   # filter to currently-enabled
 extension_get_info(ext_id="your.company.awesome")
 ```
 
-Or hit the REST route directly: `POST http://localhost:8011/validation/v1/extension/get_info {"ext_id":"your.company.awesome"}`.
+Or hit the REST route directly: `POST http://localhost:8111/validation/v1/extension/get_info {"ext_id":"your.company.awesome"}`.
 
 **Exposing your extension as MCP tools**
 
@@ -137,7 +137,7 @@ Loading is one step; surfacing your extension's functionality as natural-languag
 Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder provides one Kit MCP entry** (~150 tool names for that app/instance instead of registering every app/instance globally). Open Claude Code from inside a workspace folder:
 
 ```powershell
-cd workspaces/isaac/instance-1     # Isaac Sim instance 1, port 8011
+cd workspaces/isaac/instance-1     # Isaac Sim instance 1, port 8111
 claude
 ```
 
@@ -191,8 +191,8 @@ codex
 
 | Terminal | Workspace | App | Port |
 |---|---|---|---|
-| A | `workspaces/isaac/instance-1` | Isaac Sim 5.1 | 8011 |
-| B | `workspaces/usd-composer/instance-1` | USD Composer | 8014 |
+| A | `workspaces/isaac/instance-1` | Isaac Sim 5.1 | 8111 |
+| B | `workspaces/usd-composer/instance-1` | USD Composer | 8114 |
 
 Each codex workspace entry owns one `kit.exe` process. The two app instances are
 isolated by profile and port.
@@ -218,7 +218,7 @@ The command should include the workspace entry (`isaacsim-mcp-1`, `isaacsim-mcp-
 | `tests/` | Mock-based pytest suite (309 tests) |
 | `setup/` | Windows installer + `~/.claude.json` wiring helpers |
 | `docs/` | `tool-catalog.md` (auto-generated), `invariants/`, `runbooks/`, live artifacts, `assets/isaac/` + `assets/composer/` (asset URL catalogs) |
-| `isaac-pick-place/` · `usd-mouse-interact/` | Workshop material (design / verification / captures / tests) — extensions live in `kkr-extensions/` |
+| `isaac-pick-place/` · `kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/` | Workshop material (design / verification / captures / tests) for extension demos |
 
 ---
 
