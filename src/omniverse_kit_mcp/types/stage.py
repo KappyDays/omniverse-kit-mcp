@@ -69,6 +69,53 @@ class StageSnapshot:
     capture_filter: StageCaptureFilter
 
 
+@dataclass(slots=True, frozen=True)
+class StageWorldBboxRequest:
+    prim_path: str
+    include_purposes: tuple[str, ...] = ("default", "render")
+
+
+@dataclass(slots=True, frozen=True)
+class StageWorldBbox:
+    ok: bool
+    prim_path: str
+    min: tuple[float, float, float]
+    max: tuple[float, float, float]
+    center: tuple[float, float, float]
+    size: tuple[float, float, float]
+    world_translate: tuple[float, float, float]
+    world_orient_wxyz: tuple[float, float, float, float]
+    is_empty: bool
+
+
+@dataclass(slots=True, frozen=True)
+class StageVisualAlignmentRequest:
+    reference_prim_path: str
+    candidate_prim_paths: tuple[str, ...]
+    include_purposes: tuple[str, ...] = ("default", "render")
+    min_iou_xy: float = 0.5
+    max_center_delta_m: float = 0.05
+
+
+@dataclass(slots=True, frozen=True)
+class StageVisualAlignmentEntry:
+    candidate_prim_path: str
+    passed: bool
+    iou_xy: float
+    center_delta_m: float
+    center_delta: tuple[float, float, float]
+    failure_codes: tuple[str, ...]
+    candidate_bbox: StageWorldBbox
+
+
+@dataclass(slots=True, frozen=True)
+class StageVisualAlignmentReport:
+    reference_prim_path: str
+    passed: bool
+    reference_bbox: StageWorldBbox
+    entries: tuple[StageVisualAlignmentEntry, ...]
+
+
 class DiffKind(str, Enum):
     PRIM_ADDED = "prim_added"
     PRIM_REMOVED = "prim_removed"

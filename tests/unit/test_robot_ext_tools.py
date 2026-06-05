@@ -10,6 +10,7 @@ from omniverse_kit_mcp.modules.robot_module import RobotModule
 from omniverse_kit_mcp.scenario.action_registry import build_request
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.robot import (
+    RobotEEPose,
     RobotGripperControlRequest,
     RobotGripperControlResult,
     RobotNavigatePathRequest,
@@ -33,6 +34,7 @@ def test_robot_ext_tools_registered(mcp_server):
     assert "robot_navigate_path" in names
     assert "robot_gripper_control" in names
     assert "robot_set_ee_target" in names
+    assert "robot_get_ee_pose" in names
 
 
 @pytest.mark.asyncio
@@ -103,6 +105,21 @@ async def test_set_ee_target_success():
     assert isinstance(result.data, RobotSetEETargetResult)
     assert result.data.ik_success is True
     assert len(result.data.solution) == 7
+
+
+@pytest.mark.asyncio
+async def test_get_ee_pose_success():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+    result = await module.get_ee_pose(_meta(), "/World/Franka", "panda_hand")
+    assert result.status is ExecutionStatus.PASSED
+    assert isinstance(result.data, RobotEEPose)
+    assert result.data.prim_path == "/World/Franka"
+    assert result.data.end_effector_frame == "panda_hand"
+    assert result.data.position == pytest.approx((0.5, 0.0, 0.4))
+    assert result.data.orientation == pytest.approx((1.0, 0.0, 0.0, 0.0))
 
 
 def test_action_registry_phase_g_robot_builders():

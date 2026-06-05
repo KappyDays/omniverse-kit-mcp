@@ -132,6 +132,15 @@ class RobotSetEETargetResult:
     solution: tuple[float, ...]
 
 
+@dataclass(slots=True, frozen=True)
+class RobotEEPose:
+    prim_path: str
+    end_effector_frame: str
+    position: tuple[float, float, float]
+    orientation: tuple[float, float, float, float]
+    source: str
+
+
 # --- Phase J (NavMesh Playground) ---
 
 

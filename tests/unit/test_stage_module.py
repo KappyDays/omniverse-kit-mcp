@@ -13,6 +13,8 @@ from omniverse_kit_mcp.types.stage import (
     PropertyAssertion,
     StageCaptureFilter,
     StageSnapshot,
+    StageVisualAlignmentRequest,
+    StageWorldBboxRequest,
     UsdPropertyValue,
 )
 from tests.conftest import MockIsaacRestClient
@@ -124,3 +126,74 @@ def test_parse_snapshot_converts_properties(snapshot_after_raw):
     assert "size" in cube.properties
     assert cube.properties["size"].type_name == "double"
     assert cube.properties["size"].value == 1.0
+
+
+@pytest.mark.asyncio
+async def test_compute_world_bbox(stage_module, meta):
+    stage_module._client.responses["stage_compute_world_bbox"] = {
+        "ok": True,
+        "prim_path": "/World/Cube",
+        "min": [0.0, 0.0, 0.0],
+        "max": [1.0, 2.0, 3.0],
+        "center": [0.5, 1.0, 1.5],
+        "size": [1.0, 2.0, 3.0],
+        "world_translate": [0.0, 0.0, 0.0],
+        "world_orient_wxyz": [1.0, 0.0, 0.0, 0.0],
+        "is_empty": False,
+    }
+
+    result = await stage_module.compute_world_bbox(
+        meta, StageWorldBboxRequest(prim_path="/World/Cube")
+    )
+
+    assert result.ok is True
+    assert result.data is not None
+    assert result.data.center == (0.5, 1.0, 1.5)
+    assert stage_module._client.calls[-1] == (
+        "stage_compute_world_bbox",
+        {"prim_path": "/World/Cube", "include_purposes": ["default", "render"]},
+    )
+
+
+@pytest.mark.asyncio
+async def test_visual_alignment_report_flags_xy_iou_failure(stage_module, meta):
+    stage_module._client.responses["stage_compute_world_bbox_sequence"] = [
+        {
+            "ok": True,
+            "prim_path": "/World/Reference",
+            "min": [0.0, 0.0, 0.0],
+            "max": [1.0, 1.0, 1.0],
+            "center": [0.5, 0.5, 0.5],
+            "size": [1.0, 1.0, 1.0],
+            "world_translate": [0.0, 0.0, 0.0],
+            "world_orient_wxyz": [1.0, 0.0, 0.0, 0.0],
+            "is_empty": False,
+        },
+        {
+            "ok": True,
+            "prim_path": "/World/Candidate",
+            "min": [2.0, 2.0, 0.0],
+            "max": [3.0, 3.0, 1.0],
+            "center": [2.5, 2.5, 0.5],
+            "size": [1.0, 1.0, 1.0],
+            "world_translate": [0.0, 0.0, 0.0],
+            "world_orient_wxyz": [1.0, 0.0, 0.0, 0.0],
+            "is_empty": False,
+        },
+    ]
+
+    result = await stage_module.visual_alignment_report(
+        meta,
+        StageVisualAlignmentRequest(
+            reference_prim_path="/World/Reference",
+            candidate_prim_paths=("/World/Candidate",),
+            min_iou_xy=0.1,
+            max_center_delta_m=0.25,
+        ),
+    )
+
+    assert result.ok is False
+    assert result.data is not None
+    assert result.data.passed is False
+    assert result.data.entries[0].iou_xy == 0.0
+    assert "IOU_XY_BELOW_THRESHOLD" in result.data.entries[0].failure_codes

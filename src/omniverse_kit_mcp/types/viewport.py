@@ -35,6 +35,88 @@ class ImageArtifact:
 
 
 @dataclass(slots=True, frozen=True)
+class ViewportProjectedPoint:
+    world: tuple[float, float, float]
+    ndc_xy: tuple[float, float]
+    pixel_xy: tuple[float, float]
+    depth: float | None
+    in_front: bool
+    in_frame: bool
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportProjectPointsRequest:
+    points: tuple[tuple[float, float, float], ...]
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None
+    width: int = 1280
+    height: int = 720
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportProjectPointsResult:
+    ok: bool
+    viewport_name: str
+    camera_path: str
+    width: int
+    height: int
+    points: tuple[ViewportProjectedPoint, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportFramePrimsRequest:
+    prim_paths: tuple[str, ...]
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None
+    include_purposes: tuple[str, ...] = ("default", "render")
+    margin: float = 0.15
+    fov_deg: float = 60.0
+    view_direction: tuple[float, float, float] = (1.0, -1.0, 0.65)
+    up: tuple[float, float, float] = (0.0, 0.0, 1.0)
+    set_camera: bool = True
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportFramePrimsResult:
+    ok: bool
+    viewport_name: str
+    camera_path: str
+    prim_paths: tuple[str, ...]
+    eye: tuple[float, float, float]
+    target: tuple[float, float, float]
+    up: tuple[float, float, float]
+    fov_deg: float
+    distance: float
+    combined_bbox: dict[str, object]
+    prim_bboxes: tuple[dict[str, object], ...]
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportCaptureAssertRequest:
+    viewport_name: str = "Viewport"
+    camera_prim_path: str | None = None
+    renderer: Literal["rtx", "hydra"] = "rtx"
+    width: int = 1280
+    height: int = 720
+    samples_per_pixel: int = 64
+    settle_frames: int = 5
+    output_format: Literal["png", "jpg"] = "png"
+    transparent_background: bool = False
+    warmup_frames: int = 0
+    min_mean: float = 8.0
+    min_variance: float = 1.0
+
+
+@dataclass(slots=True, frozen=True)
+class ViewportCaptureAssertResult:
+    passed: bool
+    artifact: ImageArtifact
+    pixel_mean_average: float | None
+    pixel_variance_average: float | None
+    failure_codes: tuple[str, ...]
+
+
+@dataclass(slots=True, frozen=True)
 class SSIMComparisonRequest:
     baseline_artifact_path: str
     candidate_artifact_path: str

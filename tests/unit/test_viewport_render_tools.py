@@ -9,6 +9,12 @@ from omniverse_kit_mcp.mcp.server import create_mcp_server
 from omniverse_kit_mcp.modules.viewport_module import ViewportModule
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.viewport import (
+    ViewportCaptureAssertRequest,
+    ViewportCaptureAssertResult,
+    ViewportFramePrimsRequest,
+    ViewportFramePrimsResult,
+    ViewportProjectPointsRequest,
+    ViewportProjectPointsResult,
     ViewportSetFovRequest,
     ViewportSetFovResult,
     ViewportSetRenderModeRequest,
@@ -41,6 +47,9 @@ def test_viewport_render_tools_registered(mcp_server):
         "viewport_set_render_quality",
         "viewport_toggle_overlay",
         "viewport_set_fov",
+        "viewport_project_points",
+        "viewport_frame_prims",
+        "viewport_capture_assert",
     ):
         assert tool in names, f"{tool} not registered"
 
@@ -115,6 +124,73 @@ async def test_set_fov_returns_focal_length():
     assert result.data.fov_deg == 60.0
     assert result.data.focal_length > 0
     assert result.data.camera_path == "/OmniverseKit_Persp"
+
+
+@pytest.mark.asyncio
+async def test_project_points_returns_screen_coordinates():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = ViewportModule(client)
+    request = ViewportProjectPointsRequest(
+        points=((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)),
+        viewport_name="Viewport",
+        width=640,
+        height=480,
+    )
+    result = await module.project_points(_meta(), request)
+
+    assert result.ok
+    assert isinstance(result.data, ViewportProjectPointsResult)
+    assert result.data.width == 640
+    assert result.data.points[0].pixel_xy == (320.0, 240.0)
+    assert client.calls[-1][0] == "viewport_project_points"
+
+
+@pytest.mark.asyncio
+async def test_frame_prims_returns_camera_pose():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = ViewportModule(client)
+    request = ViewportFramePrimsRequest(
+        prim_paths=("/World/Cube",),
+        viewport_name="Viewport",
+        margin=0.2,
+        set_camera=True,
+    )
+    result = await module.frame_prims(_meta(), request)
+
+    assert result.ok
+    assert isinstance(result.data, ViewportFramePrimsResult)
+    assert result.data.prim_paths == ("/World/Cube",)
+    assert result.data.eye[2] > result.data.target[2]
+    assert client.calls[-1][0] == "viewport_frame_prims"
+
+
+@pytest.mark.asyncio
+async def test_capture_assert_fails_blank_frame():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["viewport_capture"] = {
+        "artifact_id": "blank",
+        "path": "/tmp/blank.png",
+        "width": 1280,
+        "height": 720,
+        "sha256": "abc",
+        "created_at_epoch_ms": 0,
+        "pixel_mean": [0.0, 0.0, 0.0],
+        "pixel_variance": [0.0, 0.0, 0.0],
+    }
+    module = ViewportModule(client)
+    request = ViewportCaptureAssertRequest(min_mean=8.0, min_variance=1.0)
+    result = await module.capture_assert(_meta(), request)
+
+    assert result.ok is False
+    assert isinstance(result.data, ViewportCaptureAssertResult)
+    assert result.data.passed is False
+    assert "PIXEL_MEAN_BELOW_THRESHOLD" in result.data.failure_codes
 
 
 @pytest.mark.asyncio

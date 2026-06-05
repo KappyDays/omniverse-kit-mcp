@@ -10,8 +10,13 @@ from omniverse_kit_mcp.modules.simulation_module import SimulationModule
 from omniverse_kit_mcp.scenario.action_registry import build_request
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.simulation import (
+    ObservedEETarget,
+    ObservedPrimState,
+    SimulationEESpec,
     SimulationSetTimeRequest,
     SimulationSetTimeResult,
+    SimulationStepObserveRequest,
+    SimulationStepObserveResult,
     SimulationStepRequest,
     SimulationStepResult,
 )
@@ -31,6 +36,7 @@ def mcp_server():
 def test_simulation_ext_tools_registered(mcp_server):
     names = set(mcp_server._tool_manager._tools)
     assert "simulation_step" in names
+    assert "simulation_step_observe" in names
     assert "simulation_set_time" in names
 
 
@@ -46,6 +52,32 @@ async def test_simulation_step_advances_time():
     assert result.data.frames == 60
     assert result.data.advance_mode in {"forward_one_frame", "play_burst"}
     assert result.data.status.current_time == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
+async def test_simulation_step_observe_returns_runtime_evidence():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = SimulationModule(client)
+    result = await module.step_observe(
+        _meta(),
+        SimulationStepObserveRequest(
+            frames=2,
+            observe_prims=("/World/Cube",),
+            observe_joints=("/World/Franka",),
+            observe_ee=(SimulationEESpec("/World/Franka", "panda_hand"),),
+        ),
+    )
+    assert result.status is ExecutionStatus.PASSED
+    assert isinstance(result.data, SimulationStepObserveResult)
+    assert result.data.frames == 2
+    assert isinstance(result.data.prim_states[0], ObservedPrimState)
+    assert result.data.prim_states[0].prim_path == "/World/Cube"
+    assert result.data.prim_states[0].position == pytest.approx((0.1, 0.2, 0.3))
+    assert result.data.joint_states[0].prim_path == "/World/Franka"
+    assert isinstance(result.data.ee_states[0], ObservedEETarget)
+    assert result.data.ee_states[0].position == pytest.approx((0.5, 0.0, 0.4))
 
 
 @pytest.mark.asyncio

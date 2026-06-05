@@ -54,3 +54,29 @@ class ViewportFocusPrimRequestModel(BaseModel):
     camera_path: str | None = None
     padding: float = Field(default=1.35, ge=1.0, le=10.0)
     select: bool = True
+
+
+class ViewportProjectPointsRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    points: list[list[float]] = Field(min_length=1)
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None
+    width: int = Field(default=1280, ge=1, le=16384)
+    height: int = Field(default=720, ge=1, le=16384)
+
+
+class ViewportFramePrimsRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prim_paths: list[str] = Field(min_length=1)
+    viewport_name: str = "Viewport"
+    camera_path: str | None = None
+    include_purposes: list[str] = Field(default=["default", "render"])
+    margin: float = Field(default=0.15, ge=0.0, le=5.0)
+    fov_deg: float = Field(default=60.0, ge=1.0, le=179.0)
+    view_direction: list[float] = Field(
+        default=[1.0, -1.0, 0.65], min_length=3, max_length=3
+    )
+    up: list[float] = Field(default=[0.0, 0.0, 1.0], min_length=3, max_length=3)
+    set_camera: bool = True

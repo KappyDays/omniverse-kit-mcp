@@ -67,6 +67,7 @@ from .models.sensor import (
 )
 from .models.simulation import (
     SimulationSetTimeRequestModel,
+    SimulationStepObserveRequestModel,
     SimulationStepRequestModel,
     SimulationWaitUntilRequestModel,
 )
@@ -98,6 +99,8 @@ from .models.viewport import (
 )
 from .models.viewport_render import (
     ViewportFocusPrimRequestModel,
+    ViewportFramePrimsRequestModel,
+    ViewportProjectPointsRequestModel,
     ViewportSetCameraLookatRequestModel,
     ViewportSetFovRequestModel,
     ViewportSetRenderModeRequestModel,
@@ -119,6 +122,7 @@ from .models.omnigraph import (
     OmnigraphConnectRequestModel,
     OmnigraphCreateNodeRequestModel,
     OmnigraphCreateRos2PublisherRequestModel,
+    OmnigraphCreateScriptControllerRequestModel,
     OmnigraphExecuteRequestModel,
 )
 from .models.replicator import (
@@ -393,6 +397,17 @@ async def simulation_step(body: SimulationStepRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("simulation/step failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/simulation/step_observe")
+async def simulation_step_observe(body: SimulationStepObserveRequestModel) -> Any:
+    try:
+        return await _simulation.step_observe(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("simulation/step_observe failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -871,6 +886,28 @@ async def viewport_focus_prim(body: ViewportFocusPrimRequestModel) -> Any:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.post("/viewport/project_points")
+async def viewport_project_points(body: ViewportProjectPointsRequestModel) -> Any:
+    try:
+        return await _viewport_render.project_points(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("viewport/project_points failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/viewport/frame_prims")
+async def viewport_frame_prims(body: ViewportFramePrimsRequestModel) -> Any:
+    try:
+        return await _viewport_render.frame_prims(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("viewport/frame_prims failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 # ---------------------------------------------------------------------------
 # Window — full Kit application capture (GUI panels + viewport + menus)
 # ---------------------------------------------------------------------------
@@ -1173,6 +1210,24 @@ async def robot_set_ee_target(body: RobotSetEETargetRequestModel) -> Any:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("robot/set_ee_target failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/robot/ee_pose")
+async def robot_get_ee_pose(
+    prim_path: str = Query(..., description="Articulation prim path"),
+    end_effector_frame: str | None = Query(
+        None,
+        description="End-effector link/frame name; defaults to panda_hand",
+    ),
+) -> Any:
+    require_robot_stack()
+    try:
+        return await _robot.get_ee_pose(prim_path, end_effector_frame)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("robot/ee_pose failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
@@ -1570,6 +1625,21 @@ async def omnigraph_create_ros2_publisher(
     except Exception as exc:
         logger.error(
             "omnigraph/create_ros2_publisher failed: %s", exc, exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/omnigraph/create_script_controller")
+async def omnigraph_create_script_controller(
+    body: OmnigraphCreateScriptControllerRequestModel,
+) -> Any:
+    try:
+        return await _omnigraph.create_script_controller(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error(
+            "omnigraph/create_script_controller failed: %s", exc, exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

@@ -21,6 +21,8 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Stage READ/ASSERT
     "stage_capture_snapshot",
     "stage_diff_snapshots",
+    "stage_compute_world_bbox",
+    "stage_visual_alignment_report",
     "stage_assert_prim_exists",
     "stage_assert_property",
     # Stage WRITE (→ SimulationModule)
@@ -128,10 +130,14 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "viewport_set_render_quality",
     "viewport_toggle_overlay",
     "viewport_set_fov",
+    "viewport_project_points",
+    "viewport_frame_prims",
+    "viewport_capture_assert",
     # Phase G — Robot extensions (navigate_path / gripper_control / set_ee_target)
     "robot_navigate_path",
     "robot_gripper_control",
     "robot_set_ee_target",
+    "robot_get_ee_pose",
     # Phase G — Character extensions (animation variant / crowd load)
     "character_play_animation_variant",
     "character_load_crowd",
@@ -141,6 +147,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "sensor_set_annotator",
     # Phase G — Simulation timeline extensions (step / set_time)
     "simulation_step",
+    "simulation_step_observe",
     "simulation_wait_until",
     "simulation_set_time",
     # Phase H — Replicator (writer / randomizer / trigger)
@@ -153,6 +160,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "omnigraph_connect",
     "omnigraph_execute",
     "omnigraph_create_ros2_publisher",
+    "omnigraph_create_script_controller",
     # Phase H — Content browser (browse / preview / resolve)
     "content_browse",
     "content_preview",

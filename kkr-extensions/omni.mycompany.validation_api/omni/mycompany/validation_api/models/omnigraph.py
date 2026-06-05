@@ -66,3 +66,22 @@ class OmnigraphCreateRos2PublisherRequestModel(BaseModel):
         default="sensor_msgs/msg/Image",
         description="ROS2 message type — only sensor_msgs/msg/Image is wired today",
     )
+
+
+class OmnigraphCreateScriptControllerRequestModel(BaseModel):
+    """Create OnPlaybackTick -> ScriptNode and bind a Python script path."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    graph_path: str = Field(
+        default="/World/ActionGraph",
+        description="Graph path to create/use",
+    )
+    script_path: str = Field(description="Absolute Python file path for ScriptNode")
+    node_name: str = Field(default="ScriptNode")
+    tick_node_name: str = Field(default="OnPlaybackTick")
+    evaluator: str = Field(default="execution")
+    reset_state: bool = Field(
+        default=True,
+        description="Clear ScriptNode internal cached script/use_path state",
+    )

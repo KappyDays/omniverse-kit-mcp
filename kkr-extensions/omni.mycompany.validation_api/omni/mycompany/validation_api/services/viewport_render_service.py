@@ -308,6 +308,92 @@ class ViewportRenderService:
             selected=select,
         )
 
+    async def project_points(self, request: dict[str, Any]) -> dict[str, Any]:
+        import omni.usd
+
+        viewport_name = request.get("viewport_name", "Viewport")
+        width = int(request.get("width", 1280))
+        height = int(request.get("height", 720))
+        points = request.get("points", [])
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+        camera_prim, camera_path = _select_camera_prim(
+            stage, viewport_name, request.get("camera_path")
+        )
+        projected = _project_points_with_camera(
+            camera_prim, points, width=width, height=height
+        )
+        return {
+            "ok": True,
+            "viewport_name": viewport_name,
+            "camera_path": camera_path,
+            "width": width,
+            "height": height,
+            "points": projected,
+        }
+
+    async def frame_prims(self, request: dict[str, Any]) -> dict[str, Any]:
+        import omni.usd
+
+        viewport_name = request.get("viewport_name", "Viewport")
+        prim_paths = list(request.get("prim_paths", []))
+        if not prim_paths:
+            raise ValueError("prim_paths must contain at least one prim path")
+        fov_deg = float(request.get("fov_deg", 60.0))
+        margin = float(request.get("margin", 0.15))
+        view_direction = [float(v) for v in request.get("view_direction", [1.0, -1.0, 0.65])]
+        up = [float(v) for v in request.get("up", [0.0, 0.0, 1.0])]
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+
+        prim_bboxes = [
+            _compute_world_bbox(stage, path, request.get("include_purposes"))
+            for path in prim_paths
+        ]
+        combined = _combine_bboxes(prim_bboxes)
+        target = combined["center"]
+
+        direction_len = math.sqrt(sum(v * v for v in view_direction))
+        if direction_len <= 1e-9:
+            raise ValueError("view_direction must be non-zero")
+        direction = [v / direction_len for v in view_direction]
+
+        size = combined["size"]
+        radius = max(math.sqrt(sum((float(v) / 2.0) ** 2 for v in size)), 0.01)
+        distance = radius * (1.0 + margin) / math.tan(math.radians(fov_deg) / 2.0)
+        eye = [float(target[i]) + direction[i] * distance for i in range(3)]
+        camera_path = request.get("camera_path")
+
+        if request.get("set_camera", True):
+            lookat = await self.set_camera_lookat({
+                "eye": eye,
+                "target": target,
+                "up": up,
+                "viewport_name": viewport_name,
+                "camera_path": camera_path,
+            })
+            camera_path = lookat.get("camera_path", camera_path)
+        else:
+            _, camera_path = _select_camera_prim(stage, viewport_name, camera_path)
+
+        return {
+            "ok": True,
+            "viewport_name": viewport_name,
+            "camera_path": camera_path,
+            "prim_paths": prim_paths,
+            "eye": eye,
+            "target": target,
+            "up": up,
+            "fov_deg": fov_deg,
+            "distance": distance,
+            "combined_bbox": combined,
+            "prim_bboxes": prim_bboxes,
+        }
+
 
 def _resolve_camera_path(viewport_name: str) -> str:
     """Look up the active camera for *viewport_name* with a safe fallback."""
@@ -416,6 +502,117 @@ def _focus_response(
         "bbox_max": bounds["bbox_max"],
         "radius": bounds["radius"],
         "selected": selected,
+    }
+
+
+def _select_camera_prim(stage: Any, viewport_name: str, camera_path: str | None) -> tuple[Any, str]:
+    candidates = [camera_path] if camera_path else _candidate_camera_paths(viewport_name, stage)
+    for candidate in candidates:
+        if not candidate:
+            continue
+        prim = stage.GetPrimAtPath(candidate)
+        if prim.IsValid():
+            return prim, str(candidate)
+    raise ValueError(f"No camera prim found (tried {candidates}).")
+
+
+def _project_points_with_camera(
+    camera_prim: Any,
+    points: list[list[float]],
+    *,
+    width: int,
+    height: int,
+) -> list[dict[str, Any]]:
+    from pxr import Gf, Usd, UsdGeom
+
+    xform_cache = UsdGeom.XformCache(Usd.TimeCode.Default())
+    camera_to_world = xform_cache.GetLocalToWorldTransform(camera_prim)
+    world_to_camera = camera_to_world.GetInverse()
+
+    focal_attr = camera_prim.GetAttribute("focalLength")
+    horiz_attr = camera_prim.GetAttribute("horizontalAperture")
+    vert_attr = camera_prim.GetAttribute("verticalAperture")
+    focal = float(focal_attr.Get() or 50.0) if focal_attr.IsValid() else 50.0
+    horiz = float(horiz_attr.Get() or 20.955) if horiz_attr.IsValid() else 20.955
+    vert_default = horiz * (height / width)
+    vert = float(vert_attr.Get() or vert_default) if vert_attr.IsValid() else vert_default
+
+    projected: list[dict[str, Any]] = []
+    for point in points:
+        world = [float(point[0]), float(point[1]), float(point[2])]
+        local = world_to_camera.Transform(Gf.Vec3d(*world))
+        depth = -float(local[2])
+        in_front = depth > 1e-9
+        if in_front:
+            ndc_x = 0.5 + ((focal * float(local[0]) / depth) / horiz)
+            ndc_y = 0.5 - ((focal * float(local[1]) / depth) / vert)
+            pixel_x = ndc_x * width
+            pixel_y = ndc_y * height
+        else:
+            ndc_x = ndc_y = pixel_x = pixel_y = float("nan")
+        projected.append({
+            "world": world,
+            "ndc_xy": [ndc_x, ndc_y],
+            "pixel_xy": [pixel_x, pixel_y],
+            "depth": depth if in_front else None,
+            "in_front": in_front,
+            "in_frame": bool(in_front and 0.0 <= ndc_x <= 1.0 and 0.0 <= ndc_y <= 1.0),
+        })
+    return projected
+
+
+def _compute_world_bbox(
+    stage: Any,
+    prim_path: str,
+    include_purposes: list[str] | None = None,
+) -> dict[str, Any]:
+    from pxr import Usd, UsdGeom
+
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim or not prim.IsValid():
+        raise ValueError(f"Prim not found at {prim_path}")
+    purposes_map = {
+        "default": UsdGeom.Tokens.default_,
+        "proxy": UsdGeom.Tokens.proxy,
+        "render": UsdGeom.Tokens.render,
+        "guide": UsdGeom.Tokens.guide,
+    }
+    tokens = [
+        purposes_map[p]
+        for p in (include_purposes or ["default", "render"])
+        if p in purposes_map
+    ]
+    if not tokens:
+        tokens = [UsdGeom.Tokens.default_]
+    cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), tokens, useExtentsHint=True)
+    aligned = cache.ComputeWorldBound(prim).ComputeAlignedRange()
+    mn, mx, ctr, sz = (
+        aligned.GetMin(),
+        aligned.GetMax(),
+        aligned.GetMidpoint(),
+        aligned.GetSize(),
+    )
+    return {
+        "prim_path": prim_path,
+        "min": [mn[0], mn[1], mn[2]],
+        "max": [mx[0], mx[1], mx[2]],
+        "center": [ctr[0], ctr[1], ctr[2]],
+        "size": [sz[0], sz[1], sz[2]],
+        "is_empty": bool(aligned.IsEmpty()),
+    }
+
+
+def _combine_bboxes(bboxes: list[dict[str, Any]]) -> dict[str, Any]:
+    mn = [min(float(b["min"][i]) for b in bboxes) for i in range(3)]
+    mx = [max(float(b["max"][i]) for b in bboxes) for i in range(3)]
+    center = [(mn[i] + mx[i]) / 2.0 for i in range(3)]
+    size = [mx[i] - mn[i] for i in range(3)]
+    return {
+        "min": mn,
+        "max": mx,
+        "center": center,
+        "size": size,
+        "is_empty": all(bool(b.get("is_empty", False)) for b in bboxes),
     }
 
 

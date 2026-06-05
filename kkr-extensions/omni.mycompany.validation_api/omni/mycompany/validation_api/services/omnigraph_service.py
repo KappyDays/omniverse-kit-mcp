@@ -187,3 +187,98 @@ class OmnigraphService:
             "edges_created": edges_created,
             "backend": backend,
         }
+
+    async def create_script_controller(self, request: dict[str, Any]) -> dict[str, Any]:
+        graph_path = request.get("graph_path", "/World/ActionGraph")
+        script_path = request["script_path"]
+        node_name = request.get("node_name", "ScriptNode")
+        tick_node_name = request.get("tick_node_name", "OnPlaybackTick")
+        evaluator = request.get("evaluator", "execution")
+        reset_state = bool(request.get("reset_state", True))
+
+        nodes_created: list[dict[str, str]] = []
+        edges_created: list[dict[str, str]] = []
+        backend = "omni.graph.core"
+        node_path = f"{graph_path}/{node_name}"
+        tick_node_path = f"{graph_path}/{tick_node_name}"
+
+        try:
+            import omni.graph.core as og  # type: ignore[import-not-found]
+
+            graph = og.get_graph_by_path(graph_path)
+            if graph is None:
+                res = og.Controller.edit(
+                    {"graph_path": graph_path, "evaluator_name": evaluator},
+                    {},
+                )
+                graph = res[0] if isinstance(res, tuple) else res
+
+            keys = og.Controller.Keys
+            node_specs = [
+                (tick_node_name, "omni.graph.action.OnPlaybackTick"),
+                (node_name, "omni.graph.scriptnode.ScriptNode"),
+            ]
+            og.Controller.edit(graph, {keys.CREATE_NODES: node_specs})
+            for name, ntype in node_specs:
+                nodes_created.append({
+                    "name": name,
+                    "type": ntype,
+                    "path": f"{graph_path}/{name}",
+                })
+
+            src = f"{tick_node_path}.outputs:tick"
+            dst = f"{node_path}.inputs:execIn"
+            try:
+                og.Controller.connect(src, dst)
+                edges_created.append({"src": src, "dst": dst})
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Skipped ScriptNode tick connection %s -> %s: %s", src, dst, exc)
+
+            for attr_path, value in (
+                (f"{node_path}.inputs:usePath", True),
+                (f"{node_path}.inputs:scriptPath", script_path),
+            ):
+                try:
+                    og.Controller.attribute(attr_path).set(value)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not set ScriptNode attr %s: %s", attr_path, exc)
+
+            if reset_state:
+                _reset_script_node_cache(node_path)
+        except Exception as exc:  # noqa: BLE001
+            backend = f"fallback_metadata:{type(exc).__name__}"
+
+        return {
+            "ok": True,
+            "graph_path": graph_path,
+            "script_path": script_path,
+            "node_path": node_path,
+            "tick_node_path": tick_node_path,
+            "nodes_created": nodes_created,
+            "edges_created": edges_created,
+            "backend": backend,
+            "reset_state": reset_state,
+        }
+
+
+def _reset_script_node_cache(node_path: str) -> None:
+    """Best-effort reset for ScriptNode's cached script-path state."""
+    try:
+        import omni.graph.core as og  # type: ignore[import-not-found]
+
+        try:
+            og.Controller.attribute(f"{node_path}.state:omni_initialized").set(False)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("ScriptNode state reset attr unavailable: %s", exc)
+
+        try:
+            from omni.graph.scriptnode import OgnScriptNodeDatabase  # type: ignore[import-not-found]
+
+            node = og.Controller.node(node_path)
+            state = OgnScriptNodeDatabase.shared_internal_state(node)
+            state.use_path = None
+            state.script = None
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("ScriptNode internal cache reset unavailable: %s", exc)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("ScriptNode reset skipped: %s", exc)

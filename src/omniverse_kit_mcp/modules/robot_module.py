@@ -15,6 +15,7 @@ from omniverse_kit_mcp.types.robot import (
     JointPositionsSetResult,
     RobotDrivePhysicsRequest,
     RobotDrivePhysicsResult,
+    RobotEEPose,
     RobotGripperControlRequest,
     RobotGripperControlResult,
     RobotLoadRequest,
@@ -245,6 +246,38 @@ class RobotModule:
         except Exception as exc:
             return error_result(
                 str(exc), started_ms=started, exc=exc, error_code="ROBOT_SET_EE_TARGET_ERROR",
+            )
+
+    async def get_ee_pose(
+        self,
+        meta: OperationMeta,
+        prim_path: str,
+        end_effector_frame: str | None = None,
+    ) -> ModuleResult[RobotEEPose]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.robot_get_ee_pose(
+                prim_path=prim_path,
+                end_effector_frame=end_effector_frame,
+            )
+            position = raw.get("position", (0.0, 0.0, 0.0))
+            orientation = raw.get("orientation", (1.0, 0.0, 0.0, 0.0))
+            return ok_result(
+                RobotEEPose(
+                    prim_path=str(raw.get("prim_path", prim_path)),
+                    end_effector_frame=str(
+                        raw.get("end_effector_frame", end_effector_frame or ""),
+                    ),
+                    position=tuple(float(v) for v in position),  # type: ignore[arg-type]
+                    orientation=tuple(float(v) for v in orientation),  # type: ignore[arg-type]
+                    source=str(raw.get("source", "")),
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc), started_ms=started, exc=exc,
+                error_code="ROBOT_GET_EE_POSE_ERROR",
             )
 
     async def drive_physics(

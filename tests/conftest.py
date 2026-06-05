@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 import yaml
 
-# Add an extension root to sys.path so `omni.mycompany.*`
+# Add kkr-extensions directory to sys.path so `omni.mycompany.validation_api`
 # is importable via Python namespace packages (PEP 420). MUST come before any
 # submodule stubbing — otherwise standalone `omni` ModuleType blocks the namespace.
 _ext_root = Path(__file__).parent.parent / "kkr-extensions" / "omni.mycompany.validation_api"
@@ -141,6 +141,23 @@ class MockIsaacRestClient:
         self.calls.append(("stage_assert_property", assertion))
         return self.responses.get("stage_assert_property", {"passed": True, "failures": [], "checked_count": 1})
 
+    async def stage_compute_world_bbox(self, request: dict) -> dict:
+        self.calls.append(("stage_compute_world_bbox", request))
+        sequence = self.responses.get("stage_compute_world_bbox_sequence")
+        if sequence:
+            return sequence.pop(0)
+        return self.responses.get("stage_compute_world_bbox", {
+            "ok": True,
+            "prim_path": request.get("prim_path", ""),
+            "min": [0.0, 0.0, 0.0],
+            "max": [1.0, 1.0, 1.0],
+            "center": [0.5, 0.5, 0.5],
+            "size": [1.0, 1.0, 1.0],
+            "world_translate": [0.0, 0.0, 0.0],
+            "world_orient_wxyz": [1.0, 0.0, 0.0, 0.0],
+            "is_empty": False,
+        })
+
     async def viewport_capture(self, request: dict) -> dict:
         self.calls.append(("viewport_capture", request))
         return self.responses.get("viewport_capture", {"artifact_id": "test_img", "path": "/tmp/test.png", "width": 1280, "height": 720, "sha256": "abc", "created_at_epoch_ms": 0})
@@ -241,6 +258,56 @@ class MockIsaacRestClient:
             "frames": frames,
             "advance_mode": "forward_one_frame",
             "was_playing": False,
+        })
+
+    async def simulation_step_observe(self, request: dict) -> dict:
+        self.calls.append(("simulation_step_observe", request))
+        frames = int(request.get("frames", 1))
+        return self.responses.get("simulation_step_observe", {
+            "ok": True,
+            "is_playing": False,
+            "is_stopped": False,
+            "current_time": frames / 60.0,
+            "start_time": 0.0,
+            "end_time": 10.0,
+            "time_codes_per_second": 60.0,
+            "frames": frames,
+            "advance_mode": "forward_one_frame",
+            "was_playing": False,
+            "prim_states": [
+                {
+                    "prim_path": path,
+                    "position": [0.1, 0.2, 0.3],
+                    "orientation": [1.0, 0.0, 0.0, 0.0],
+                    "linear_velocity": [0.0, 0.0, 0.0],
+                    "angular_velocity": [0.0, 0.0, 0.0],
+                    "has_rigid_body": True,
+                    "source": "mock",
+                    "error": None,
+                }
+                for path in request.get("observe_prims", [])
+            ],
+            "joint_states": [
+                {
+                    "prim_path": path,
+                    "positions": [0.0] * 7,
+                    "dof_names": [f"panda_joint{i + 1}" for i in range(7)],
+                    "source": "mock",
+                    "error": None,
+                }
+                for path in request.get("observe_joints", [])
+            ],
+            "ee_states": [
+                {
+                    "prim_path": item.get("prim_path", ""),
+                    "end_effector_frame": item.get("end_effector_frame") or "panda_hand",
+                    "position": [0.5, 0.0, 0.4],
+                    "orientation": [1.0, 0.0, 0.0, 0.0],
+                    "source": "mock",
+                    "error": None,
+                }
+                for item in request.get("observe_ee", [])
+            ],
         })
 
     async def simulation_wait_until(self, request: dict) -> dict:
@@ -394,6 +461,27 @@ class MockIsaacRestClient:
                 "lula_import_path": "isaacsim.robot_motion",
                 "ik_success": True,
                 "solution": [0.0, -0.5, 0.0, -2.0, 0.0, 1.5, 0.8],
+            },
+        )
+
+    async def robot_get_ee_pose(
+        self,
+        prim_path: str,
+        end_effector_frame: str | None = None,
+    ) -> dict:
+        self.calls.append((
+            "robot_get_ee_pose",
+            {"prim_path": prim_path, "end_effector_frame": end_effector_frame},
+        ))
+        return self.responses.get(
+            "robot_get_ee_pose",
+            {
+                "ok": True,
+                "prim_path": prim_path,
+                "end_effector_frame": end_effector_frame or "panda_hand",
+                "position": [0.5, 0.0, 0.4],
+                "orientation": [1.0, 0.0, 0.0, 0.0],
+                "source": "mock",
             },
         )
 
@@ -1190,6 +1278,54 @@ class MockIsaacRestClient:
             "selected": bool(request.get("select", True)),
         })
 
+    async def viewport_project_points(self, request: dict) -> dict:
+        self.calls.append(("viewport_project_points", request))
+        width = int(request.get("width", 1280))
+        height = int(request.get("height", 720))
+        points = [
+            {
+                "world": point,
+                "ndc_xy": [0.5, 0.5],
+                "pixel_xy": [width / 2.0, height / 2.0],
+                "depth": 1.0,
+                "in_front": True,
+                "in_frame": True,
+            }
+            for point in request.get("points", [])
+        ]
+        return self.responses.get("viewport_project_points", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", "Viewport"),
+            "camera_path": request.get("camera_path") or "/OmniverseKit_Persp",
+            "width": width,
+            "height": height,
+            "points": points,
+        })
+
+    async def viewport_frame_prims(self, request: dict) -> dict:
+        self.calls.append(("viewport_frame_prims", request))
+        target = [0.5, 0.5, 0.5]
+        eye = [2.0, -1.0, 1.5]
+        return self.responses.get("viewport_frame_prims", {
+            "ok": True,
+            "viewport_name": request.get("viewport_name", "Viewport"),
+            "camera_path": request.get("camera_path") or "/OmniverseKit_Persp",
+            "prim_paths": request.get("prim_paths", []),
+            "eye": eye,
+            "target": target,
+            "up": request.get("up", [0.0, 0.0, 1.0]),
+            "fov_deg": request.get("fov_deg", 60.0),
+            "distance": 2.0,
+            "combined_bbox": {
+                "min": [0.0, 0.0, 0.0],
+                "max": [1.0, 1.0, 1.0],
+                "center": target,
+                "size": [1.0, 1.0, 1.0],
+                "is_empty": False,
+            },
+            "prim_bboxes": [],
+        })
+
     # Viewport multi (Phase E) — create / destroy
 
     async def viewport_create(self, request: dict) -> dict:
@@ -1396,6 +1532,28 @@ class MockIsaacRestClient:
                 {"src": f"{graph}/RenderProduct.outputs:execOut", "dst": f"{graph}/PublishImage.inputs:execIn"},
             ],
             "backend": "omni.graph.core",
+        })
+
+    async def omnigraph_create_script_controller(self, request: dict) -> dict:
+        self.calls.append(("omnigraph_create_script_controller", request))
+        graph = request.get("graph_path", "/ActionGraph")
+        node_name = request.get("node_name", "ScriptNode")
+        tick_name = request.get("tick_node_name", "OnPlaybackTick")
+        return self.responses.get("omnigraph_create_script_controller", {
+            "ok": True,
+            "graph_path": graph,
+            "script_path": request.get("script_path", ""),
+            "node_path": f"{graph}/{node_name}",
+            "tick_node_path": f"{graph}/{tick_name}",
+            "nodes_created": [
+                {"name": tick_name, "type": "omni.graph.action.OnPlaybackTick", "path": f"{graph}/{tick_name}"},
+                {"name": node_name, "type": "omni.graph.scriptnode.ScriptNode", "path": f"{graph}/{node_name}"},
+            ],
+            "edges_created": [
+                {"src": f"{graph}/{tick_name}.outputs:tick", "dst": f"{graph}/{node_name}.inputs:execIn"},
+            ],
+            "backend": "omni.graph.core",
+            "reset_state": bool(request.get("reset_state", True)),
         })
 
     # --- Phase H — Content browser ---
