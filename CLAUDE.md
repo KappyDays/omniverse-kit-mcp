@@ -67,9 +67,9 @@
 
 | 변수 | 기본값 | 설명 |
 |------|-------|------|
-| `ISAAC_SIM_BASE_URL` | `http://localhost:8011` | Extension REST |
+| `ISAAC_SIM_BASE_URL` | `http://localhost:8111` | Extension REST |
 | `ISAAC_MCP_APP_PROFILE` | `isaac-sim` | Kit app profile — `isaac-sim` or `usd-composer`. 상세: `docs/invariants/multi-app.md` |
-| `ISAAC_MCP_INSTANCE_ID` | `1` | 멀티 인스턴스 (1..2 영구 한도, `le=2` 가드). profile base_port 에 offset (Isaac 8011-12 / USD Composer 8014-15) |
+| `ISAAC_MCP_INSTANCE_ID` | `1` | 멀티 인스턴스 (1..2 영구 한도, `le=2` 가드). profile base_port 에 offset (Isaac 8111-12 / USD Composer 8114-15) |
 | `ISAAC_SIM_STARTUP_TIMEOUT` | `120.0` | ProcessModule health 대기 상한. 상세: `docs/invariants/process-lifecycle.md` |
 | `ISAAC_SIM_EXTRA_EXT_IDS` | config.py bundle | <!-- ⛔ DO-NOT-EDIT: "extra_ext_ids race" 진단은 무효 (L17 참조 `docs/runbooks/kit-stdin-deadlock.md`) --> JSON array. stdin DEVNULL fix 후 8 개 13s 통과 |
 | `ISAAC_SIM_EXTRA_EXT_FOLDERS` | `[]` | JSON array. out-of-tree extension 폴더마다 `--ext-folder` 추가 (산출물을 office_mcp/exts 등 자기 폴더에 영구 등록). 빈 list 면 현행 동일 |

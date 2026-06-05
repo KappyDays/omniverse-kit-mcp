@@ -9,8 +9,8 @@
 
 | Profile | Instance 1 | Instance 2 |
 |---------|-----------|-----------|
-| `isaac-sim` | 8011 | 8012 |
-| `usd-composer` | 8014 | 8015 |
+| `isaac-sim` | 8111 | 8112 |
+| `usd-composer` | 8114 | 8115 |
 
 파생 공식: `port = profile.default_ext_port + (instance_id - 1)`.
 

@@ -11,10 +11,10 @@ from typing import Any
 import pytest
 import yaml
 
-# Add kkr-extensions directory to sys.path so `omni.mycompany.isaac_tutorial`
+# Add an extension root to sys.path so `omni.mycompany.*`
 # is importable via Python namespace packages (PEP 420). MUST come before any
 # submodule stubbing — otherwise standalone `omni` ModuleType blocks the namespace.
-_ext_root = Path(__file__).parent.parent / "kkr-extensions" / "omni.mycompany.isaac_tutorial"
+_ext_root = Path(__file__).parent.parent / "kkr-extensions" / "omni.mycompany.validation_api"
 if str(_ext_root) not in sys.path:
     sys.path.insert(0, str(_ext_root))
 

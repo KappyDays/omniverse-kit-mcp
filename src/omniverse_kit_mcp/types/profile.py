@@ -22,8 +22,8 @@ class KitAppProfile:
       kit_exe: Absolute path to kit.exe binary.
       kit_file: Absolute path to the .kit launch file.
       default_ext_port: Base port for instance_id=1. instance_id=N binds to
-                       default_ext_port + (N - 1). Isaac starts at 8011,
-                       USD Composer at 8014, giving each profile a
+                       default_ext_port + (N - 1). Isaac starts at 8111,
+                       USD Composer at 8114, giving each profile a
                        contiguous 3-port window.
       ros_env_required: If true, ProcessModule._prepare_launch_env adds
                         ROS_DISTRO / RMW_IMPLEMENTATION / PATH entries.
@@ -49,7 +49,7 @@ ISAAC_SIM_PROFILE = KitAppProfile(
     name="isaac-sim",
     kit_exe="C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/kit/kit.exe",
     kit_file="C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit",
-    default_ext_port=8011,
+    default_ext_port=8111,
     ros_env_required=True,
     extra_ext_ids=(
         "omni.anim.graph.bundle",
@@ -75,7 +75,7 @@ USD_COMPOSER_PROFILE = KitAppProfile(
     name="usd-composer",
     kit_exe="C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kit/kit.exe",
     kit_file="C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit",
-    default_ext_port=8014,
+    default_ext_port=8114,
     ros_env_required=False,
     extra_ext_ids=(),
     supported_module_groups=frozenset({

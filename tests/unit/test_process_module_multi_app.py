@@ -62,7 +62,7 @@ async def _async_false():
 # --- Port flag injection --------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_isaac_instance_1_cmd_has_port_8011_and_ext_folder(monkeypatch):
+async def test_isaac_instance_1_cmd_has_port_8111_and_ext_folder(monkeypatch):
     module = _module_for("isaac-sim", 1)
     captured: list[list[str]] = []
 
@@ -86,13 +86,13 @@ async def test_isaac_instance_1_cmd_has_port_8011_and_ext_folder(monkeypatch):
     await module.start()
 
     cmd = captured[0]
-    assert any("port=8011" in arg for arg in cmd), f"port flag missing: {cmd}"
+    assert any("port=8111" in arg for arg in cmd), f"port flag missing: {cmd}"
     assert "--ext-folder" in cmd, f"--ext-folder missing: {cmd}"
     assert "omni.mycompany.validation_api" in cmd, f"--enable validation_api missing: {cmd}"
 
 
 @pytest.mark.asyncio
-async def test_usd_composer_instance_1_cmd_has_port_8014(monkeypatch):
+async def test_usd_composer_instance_1_cmd_has_port_8114(monkeypatch):
     module = _module_for("usd-composer", 1)
     captured: list[list[str]] = []
 
@@ -116,7 +116,7 @@ async def test_usd_composer_instance_1_cmd_has_port_8014(monkeypatch):
     await module.start()
 
     cmd = captured[0]
-    assert any("port=8014" in arg for arg in cmd)
+    assert any("port=8114" in arg for arg in cmd)
     assert any("kkr_usd_composer.kit" in arg for arg in cmd), \
         f"USD Composer kit file missing: {cmd}"
     assert not any("omni.anim.graph.bundle" in arg for arg in cmd), \
@@ -304,5 +304,5 @@ async def test_start_response_includes_profile_and_instance(monkeypatch):
     assert result["ok"] is True
     assert result["app_profile"] == "usd-composer"
     assert result["instance_id"] == 2
-    assert result["ext_port"] == 8015
+    assert result["ext_port"] == 8115
     assert result["pid"] == 77777

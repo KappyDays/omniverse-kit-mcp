@@ -49,7 +49,7 @@ uv run omniverse-kit-mcp
 
 | Client | Target | 환경 변수 |
 |--------|--------|-----------|
-| `isaac_rest_client.py` | Extension REST `/validation/v1` | `ISAAC_SIM_BASE_URL` (기본 `http://localhost:8011`) |
+| `isaac_rest_client.py` | Extension REST `/validation/v1` | `ISAAC_SIM_BASE_URL` (기본 `http://localhost:8111`) |
 | `lakehouse_client.py` | Lakehouse REST | `LAKEHOUSE_BASE_URL` (기본 `http://localhost:9000`) |
 
 - 모두 async (httpx 기반)
