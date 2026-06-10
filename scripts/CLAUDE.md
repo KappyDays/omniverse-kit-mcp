@@ -17,8 +17,8 @@
 | `live_test_character_crowd.py` · `live_test_robot_ext.py` · `live_test_sensor_contact_imu.py` · `live_test_timeline.py` | Phase G — 군중·로봇 ext(navigate/gripper/ee)·접촉/IMU·타임라인 live | Isaac Sim 기동 중 수동 실행 (stdout 리포트) |
 | `live_test_replicator.py` · `live_test_omnigraph.py` · `live_test_content.py` · `live_test_extension_ext.py` | Phase H — replicator·omnigraph·content·extension mgmt live REST | → `docs/artifacts/phase-h/` |
 | `live_test_gui_equiv.py` | GUI-equiv live — stage save/open/selection 등 **FS 의존**(mock 불가) 검증 | unit test 갭 보강 (tests/CLAUDE.md 참조) |
-| `harvest_extension_metadata.py` · `render_catalog_md.py` · `sync_testbed_snapshot.py` | Kit Extension 레퍼런스 재수집 | `docs/references/extensions-catalog.md` 업데이트 시 |
-| `diff_catalog.py` | 현재 `extensions.json` vs fresh harvest 비교 (added / removed / version_bumped / category_changed) | Kit / app 버전 bump 후 sync 필요 여부 판정 — workflow 는 `/omniverse-kit-extension-catalog-sync` skill |
+| `harvest_extension_metadata.py` · `render_catalog_md.py` · `sync_testbed_snapshot.py` | Kit Extension 레퍼런스 로컬 재수집 | ignored `docs/references/extensions*.json/md` 필요 시 |
+| `diff_catalog.py` | 현재 local `extensions.json` vs fresh harvest 비교 (added / removed / version_bumped / category_changed) | Kit / app 버전 bump 후 local sync 필요 여부 판정 — workflow 는 `/omniverse-kit-extension-catalog-sync` skill |
 | `diff_asset_inventory.py` | `docs/assets/isaac/assets/*.md` 의 모든 USD URL 을 NVIDIA S3 에 HTTP HEAD 검증. 404 / NET / 5xx 보고 | Asset 경로 fail 보고 시 또는 Isaac Sim 5.x 패치 후 — workflow 는 `/omniverse-asset-inventory-sync` skill |
 | `rebuild_scene.py <builder.py> --out <out.usd> [--reopen]` | 씬 USD 를 anonymous-layer + `dont_write_bytecode` 로 재빌드(락/레지스트리/pycache 우회) | 라이브 Kit 이 USD 를 열어 re-export 가 silent 실패할 때. 상세: `../docs/runbooks/scene-reexport-lock.md` |
 

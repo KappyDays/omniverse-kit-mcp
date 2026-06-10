@@ -6,15 +6,15 @@
 
 **진단**:
 ```bash
-ls "<local-kit-template>/_build/windows-x86_64/release/kit/kit.exe"
-ls "<local-kit-template>/_build/windows-x86_64/release/apps/kkr_usd_composer.kit"
+ls "/c/path/to/usd-composer-root/kit/kit.exe"
+ls "/c/path/to/usd-composer-root/apps/kkr_usd_composer.kit"
 ```
 
 둘 중 하나 없으면: USD Composer 빌드 손상.
 
 **복구**:
 ```bash
-cd <local-kit-template>
+cd /c/path/to/kit-app-template-root
 ./repo.bat build --release
 ```
 빌드 완료 후 재시도.

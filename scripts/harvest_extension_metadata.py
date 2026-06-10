@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import sys
 import tomllib
@@ -17,10 +18,10 @@ from pathlib import Path
 from typing import Any
 
 ISAAC_SIM_ROOT = Path(
-    "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64"
+    os.environ.get("ISAAC_SIM_ROOT", "C:/IsaacSim")
 )
 USD_COMPOSER_ROOT = Path(
-    "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release"
+    os.environ.get("USD_COMPOSER_ROOT", "C:/USDComposer")
 )
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_JSON = PROJECT_ROOT / "docs" / "references" / "extensions.json"

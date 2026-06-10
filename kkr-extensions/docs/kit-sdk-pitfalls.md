@@ -53,7 +53,7 @@ PhysX 가 articulation view 를 populate 하려면 **최소 1 physics step** 이
 
 ### Lula IK — 모듈 경로 두 가지
 
-`_resolve_lula_modules()` 가 `isaacsim.robot_motion.motion_generation.lula` 와 `omni.isaac.motion_generation.lula` 중 importable 경로 선택, 실패 시 `ValueError → 400`. `load_supported_robot_motion_policy_configs(robot_description, "RMPflow")` 로 URDF/robot_description path 획득.
+`_resolve_lula_modules()` 가 `isaacsim.robot_motion.motion_generation.lula` 와 `omni.isaac.motion_generation.lula` 중 importable 경로 선택, 실패 시 `ValueError → 400`. Isaac Sim 5.1 은 `load_supported_motion_policy_config(robot_description, "RMPflow")` 로 URDF/robot_description path 를 획득한다. 구버전 호환 fallback 으로 `load_supported_robot_motion_policy_configs(...)` 도 유지한다.
 
 ---
 

@@ -47,7 +47,7 @@
 - **`stage_open` vs `stage_load_usd`**: 전자는 root stage 교체 (scene 전환), 후자는 `/World/<name>` Payload 추가 (multi-asset composition)
 - **실측** (2026-04-20 hang 해결 후): Simple_Warehouse 2.4 s / NovaCarter 3.1 s / Biped_Setup 2.6 s / SimReady cold 10~57 s / multi-asset composition OK
 - **재발 시 진단 순서**:
-  1. Kit log `C:\Users\<you>\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\5.1\kit_*.log` 마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 후 silent = deadlock 확정
+  1. Kit log `%USERPROFILE%\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\5.1\kit_*.log` 마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 후 silent = deadlock 확정
   2. `simulation_get_status` 가 92 s timeout → Kit main loop 차단
   3. `cmd //c "taskkill /F /IM kit.exe /T"` — PowerShell `Stop-Process` 는 Access Denied 확정
   4. `.venv/Scripts/python.exe scripts/run_process_module_standalone.py start` 로 fresh restart
@@ -60,7 +60,7 @@
 - **R2 (timeline playing 필수)**: `navigate_to` / `navigate_path` / `get/set_joint_positions` 는 `omni.timeline.is_playing()` 필수. Extension `robot_service.navigate_path` 는 미통과 시 HTTP 400
 - **`RobotModule.navigate_to`**: `xformOp:translate` linear interp over `duration_s` (60 fps). 베이스 이동 전용 — 관절/IK 는 `set_joint_positions` 사용
 - **`robot_gripper_control` DOF 자동 감지**: `SingleArticulation.dof_names` 에서 `finger` / `gripper` substring. Franka 매치, UR10 불일치 → 400. `simulation_play → pause` warm-up 후 호출
-- **`robot_set_ee_target` Franka 전용**: `_resolve_lula_modules()` 가 `isaacsim.robot_motion.motion_generation.lula` → `omni.isaac.motion_generation.lula` 순 시도. 비Franka robot_description 은 `load_supported_robot_motion_policy_configs` KeyError → 400. scenario 에서 `continueOnFailure: true` 로 감쌀 것
+- **`robot_set_ee_target` Franka/FR3 Lula IK**: `_resolve_lula_modules()` 가 `isaacsim.robot_motion.motion_generation.lula` → `omni.isaac.motion_generation.lula` 순 시도. Isaac Sim 5.1 은 `load_supported_motion_policy_config(robot_description, "RMPflow")`, 구버전은 `load_supported_robot_motion_policy_configs(...)` fallback. 미지원 robot_description 은 400. scenario 에서 `continueOnFailure: true` 로 감쌀 것
 
 ## Character / AnimGraph
 > 세밀한 함정은 `CLAUDE.md §"Character domain constraints"` (sibling) 참조.

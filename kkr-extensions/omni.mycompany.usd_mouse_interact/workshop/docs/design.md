@@ -145,7 +145,8 @@ def translation_from_input(forward: Vec3, right: Vec3, up: Vec3,
 5. Prim highlight — 마우스 중심으로 prim 가리키면 selection outline 출현 (전후 캡처)
 6. Timeline Stop → 비활성화 + cursor 복원 (캡처)
 
-각 단계 `window_capture` (app 전체) + `viewport_capture` (viewport) 2 장씩 저장 → `kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/captures/` .
+각 단계 `window_capture` (app 전체) + `viewport_capture` (viewport) 2 장씩 저장.
+`workshop/captures/` 는 local verification output 이며 public repo 에 commit 하지 않는다.
 
 ## File Layout
 
@@ -173,16 +174,7 @@ kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/
 │   ├── test_camera_math.py
 │   ├── test_input_state.py
 │   └── test_interaction_state_machine.py
-└── captures/
-    ├── 01_idle_app.png / 01_idle_viewport.png
-    ├── 02_play_active_app.png / 02_play_active_viewport.png
-    ├── 03_crosshair_app.png / 03_crosshair_viewport.png
-    ├── 04_mouselook_before_app.png / 04_mouselook_before_viewport.png
-    ├── 05_mouselook_after_app.png / 05_mouselook_after_viewport.png
-    ├── 06_wasd_before_app.png / 06_wasd_before_viewport.png
-    ├── 07_wasd_after_app.png / 07_wasd_after_viewport.png
-    ├── 08_highlight_app.png / 08_highlight_viewport.png
-    └── 09_idle_after_stop_app.png / 09_idle_after_stop_viewport.png
+└── captures/                         (local only; ignored)
 ```
 
 ## Dependencies (extension.toml)

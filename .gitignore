@@ -90,6 +90,18 @@ docs/artifacts/**/*.pkl
 # Live test JSON reports (regenerated per run; summaries are captured in phase-*-validation-report.md)
 docs/artifacts/**/*.json
 
+# Public repo hygiene: local/generated reference corpora.
+# These can be regenerated from installed Kit apps, but should not be
+# committed because they mirror local extension metadata or copied docs.
+docs/references/extensions.json
+docs/references/extensions-catalog.md
+docs/references/harvest-progress.json
+docs/references/app-specific/
+docs/references/testbed-snapshot/
+
+# Workshop verification screenshots are local evidence, not source.
+kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/captures/
+
 # Phase H replicator scenario output (default output_dir for replicator_create_writer)
 _temp_sdg/
 sdg_mcp/scenes/dataset/

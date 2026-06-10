@@ -1,38 +1,35 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: docs/references/ 편집 규칙 + 재생성 파이프라인 (extensions-catalog · sensor_menu_catalog · app-specific 관리) -->
-<!-- Sibling: testbed-snapshot/CLAUDE.md (읽기 순서 가이드 — 모듈 구현 시 어떤 파일부터 볼지) -->
+<!-- Scope: docs/references/ 편집 규칙 + public-safe reference 관리 -->
 
-# docs/references/ — 편집 규칙 & 재생성 파이프라인
+# docs/references/ — 편집 규칙 & public-safe reference 관리
 
-> 이 파일은 **편집 / 재생성 규칙**. 읽기 순서 (모듈 구현 시 어느 문서부터 볼지) 는 `testbed-snapshot/CLAUDE.md` 참조.
->
-> **Multi-app 범위** (2026-04-24~): 본 디렉토리의 카탈로그는 **Isaac Sim 5.1 (Kit 107.3) + USD Composer (kit-app-template, Kit 110.0-110.1) 두 앱**을 동시 커버. extensions.json 의 `apps` map 이 per-app metadata 를 보관.
+> Public repo 에는 curated reference 만 둔다. 로컬 Kit / Isaac Sim / USD
+> Composer 설치 메타데이터나 외부 문서 스냅샷은 생성 가능하지만 commit 하지
+> 않는다.
 
 ## 레퍼런스 파일 맵
 
 | 파일 / 하위 디렉토리 | 용도 | 재생성 방식 |
 |---------------------|------|------------|
-| `extensions-catalog.md` / `extensions.json` | **두 앱 658 unique extension 통합 카탈로그** + MCP research hint. `apps` map 으로 per-app version / path / deprecated / dependencies. `api_delta_note` 는 Kit major.minor 가 다른 공통 ext 표시 | `harvest_extension_metadata.py` (v2 multi-app) + `render_catalog_md.py` |
-| `app-specific/usd-composer-unique.md` | USD Composer 에만 있는 34 ext 카테고리별 요약 (Procedural Gen / Scene Opt / Configurator / No-Code UI / Lighting Rigs / Extended Schemas) | 수동 편집 (해당 ext 목록 변동 시 재수확 결과로 갱신) |
-| `app-specific/isaacsim-deprecated.md` | `omni.isaac.*` → `isaacsim.*` migration 매핑 테이블 (72 deprecated 중 30 직접 대체 + 40 부분 대체) | 수동 편집 |
-| `testbed-snapshot/` | Kit SDK 원본 API 패턴 스냅샷 (읽기 전용) | `sync_testbed_snapshot.py` |
 | `sensor_menu_catalog.md` | `Create > Sensors` 메뉴의 모든 센서 — vendor × model grouping + `window_menu_trigger` menu_path | Isaac Sim 기동 후 `window_menu_list(menu_path="Create")` 재호출 |
+| `extensions.json` / `extensions-catalog.md` / `harvest-progress.json` | 로컬 설치 기반 extension catalog (public repo 에서는 ignored) | `harvest_extension_metadata.py` + `render_catalog_md.py` |
+| `app-specific/` / `testbed-snapshot/` | 로컬 research 보강 자료 (public repo 에서는 ignored) | 필요 시 로컬에서 재생성 / 별도 보관 |
 
 ## MCP 기능 research 순서 (task-driven, 자율 루프 기준)
 
 사용자 자연어 task 를 MCP 로 수행하려 할 때의 research flow. 각 단계는 이전 단계 결과에 의존.
 
 0. **중복 확인**: `docs/tool-catalog.md` 에서 task 에 해당하는 기존 MCP tool 이 있는지 검색. 있으면 재사용 (이 flow 종료).
-1. **카탈로그 검색**: `extensions-catalog.md` 에서 키워드로 Ctrl+F → 후보 ext 식별. entry 의 `apps` 필드로 **작업 대상 앱** 결정 (Isaac Sim / USD Composer / both). USD Composer 고유 도메인이면 `app-specific/usd-composer-unique.md` 도 교차 참조.
-2. **MCP research hint 확인**: 후보 ext 의 `mcp_research_hint` (구 `mcp_extension_idea`) 필드. wrapping 아이디어가 미리 적혀있을 수 있음.
-3. **API 패턴**: `testbed-snapshot/03-api-patterns.md` 에서 해당 도메인 섹션 읽기.
-4. **통합 사용 예제**: Isaac Sim 의 경우 `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/standalone_examples/` (api/ · benchmarks/ · data/) 에서 실동작 호출 패턴 확인. USD Composer 는 해당 앱의 빌드 산출물 확인.
-5. **실 소스 탐색** — app 별 경로:
-   - Isaac Sim: `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/<source_dir>/<ext>/` (source_dir = `exts` / `extscache` / ~~`extsDeprecated`~~ 참조 금지 → `app-specific/isaacsim-deprecated.md` 매핑으로 modern 대체 찾기)
-   - USD Composer: `C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/<source_dir>/<ext>/` (source_dir = `exts` / `extscache` / `extsbuild`)
-   - **`api_delta_note` 있으면 양쪽 소스 diff 필수**: Kit 버전 상이로 signature 가 다를 수 있음.
+1. **기존 tool 중복 확인**: `docs/tool-catalog.md` 에서 task 에 해당하는 MCP tool 검색.
+2. **로컬 catalog 가 있으면 검색**: `extension_search(...)` 또는 ignored
+   `docs/references/extensions-catalog.md` 에서 후보 ext 식별. 없으면 다음 단계로
+   진행하고 필요한 경우 catalog 를 로컬 재생성.
+3. **실 소스 탐색** — app 별 설치 경로에서 직접 확인:
+   - Isaac Sim: `<isaac-sim-root>/exts`, `extscache`, `kit/extscore`
+   - USD Composer: `<usd-composer-root>/exts`, `extscache`, `extsbuild`, `kit/extscore`
    - **Command 패턴 search 팁**: 많은 ext 는 `omni.kit.commands.execute("<CommandName>", **kwargs)` 형태로 일회성 작업을 노출한다. 후보 탐색: MCP 의 `extension_search("<keyword>")` 로 관련 ext 조회 → `.commands` 로 끝나는 것 우선 (예: `omni.kit.commands`, `omni.physx.commands`, `omni.fabric.commands`, `omni.kit.graph.usd.commands`). 실행: MCP 의 `kit_command_execute("<CommandName>", payload)` 로 1줄 호출 (예: `isaacsim.asset.gen.conveyor` 의 `CreateConveyorBelt`).
-6. **공식 문서**: `testbed-snapshot/nvidia-docs/` 에 관련 문서 있으면 참고.
+4. **공식 문서**: NVIDIA / Omniverse 공식 문서를 직접 확인하고, durable rule 만
+   project docs 로 요약.
 
 ## 센서 요청 응답 순서
 
@@ -48,10 +45,10 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 
 ## 편집 규칙
 
-- **`extensions.json` 만 직접 편집**. `extensions-catalog.md` 는 파생물 — 재렌더로만 변경.
-- `app-specific/*.md` 는 **수동 편집 허용** — 매핑 테이블 / 기능 영역 설명은 harvest 가 자동 생성하지 못함. 단 ext 이름·버전은 `extensions.json` 과 일치해야 함 (검증: render 결과와 diff).
-- `testbed-snapshot/` 은 **읽기 전용**. 수정하면 `sync_testbed_snapshot.py` 재실행 시 손실됨.
-- `CLAUDE.md` (이 파일) 와 `testbed-snapshot/CLAUDE.md` 는 **다른 파일** — 후자는 testbed 원본 스냅샷.
+- `sensor_menu_catalog.md` 는 MCP resource source 이므로 tracked 유지.
+- 생성 catalog / snapshot 은 `.gitignore` 대상이다. public repo 에 commit 금지.
+- catalog 에서 발견한 durable rule 은 원문 덤프 대신 `docs/invariants/` 또는
+  `docs/runbooks/` 로 요약 이관한다.
 
 ## extensions.json v2 스키마 주의사항
 
@@ -82,7 +79,10 @@ mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 
 
 ## MCP tool: `extension_search` (Phase E 구현 완료)
 
-`extensions.json` 를 local 쿼리하는 `extension_search(keyword, app, category, limit)` MCP tool. 구현: `src/omniverse_kit_mcp/modules/catalog_module.py` (+ `tools/module_tools.py` 등록). Isaac Sim / REST 의존 없음 — MCP 서버 프로세스 내부에서 JSON 1회 load 후 cache. 상세 사용법은 `src/omniverse_kit_mcp/tools/CLAUDE.md` Catalog 섹션 참조.
+`extension_search(keyword, app, category, limit)` 는 local generated
+`extensions.json` 이 있을 때만 검색한다. public clone 에서 파일이 없으면
+`EXTENSION_CATALOG_UNAVAILABLE` 을 반환한다. 구현:
+`src/omniverse_kit_mcp/modules/catalog_module.py`.
 
 ## Kit / app 업데이트 후 catalog 동기화
 
@@ -91,7 +91,7 @@ Canonical 절차는 `/omniverse-kit-extension-catalog-sync` skill (`.claude/skil
 ## 관련 경계
 
 - 상위 문서 루트: `../CLAUDE.md`
-- 읽기 순서 가이드 (testbed-snapshot 전용): `testbed-snapshot/CLAUDE.md`
-- 파생 카탈로그 (편집 금지, 재생성만): `extensions-catalog.md`, `extensions.json`, `sensor_menu_catalog.md`
-- 수동 편집 허용 보강 문서: `app-specific/usd-composer-unique.md`, `app-specific/isaacsim-deprecated.md`
+- tracked MCP resource source: `sensor_menu_catalog.md`
+- ignored local generated refs: `extensions.json`, `extensions-catalog.md`,
+  `harvest-progress.json`, `app-specific/`, `testbed-snapshot/`
 - 재생성 스크립트 규약: `../../scripts/CLAUDE.md`

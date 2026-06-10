@@ -1,4 +1,4 @@
-"""Unit tests for CatalogModule — local queries over extensions.json."""
+"""Unit tests for CatalogModule — optional local queries over extensions.json."""
 
 from __future__ import annotations
 
@@ -160,3 +160,12 @@ async def test_catalog_cached_after_first_load(catalog_path: Path, meta: Operati
     result = await module.search(meta, keyword="manipulator")
     assert result.ok
     assert len(result.data) == 1
+
+
+@pytest.mark.asyncio
+async def test_missing_catalog_returns_unavailable_error(tmp_path: Path, meta: OperationMeta) -> None:
+    module = CatalogModule(tmp_path / "missing-extensions.json")
+    result = await module.search(meta, keyword="robot")
+    assert not result.ok
+    assert result.error_code == "EXTENSION_CATALOG_UNAVAILABLE"
+    assert "Generate docs/references/extensions.json locally" in (result.message or "")

@@ -238,6 +238,27 @@ def test_job_status_is_context_aware():
     assert (ModuleName.JOB, "status") in CONTEXT_AWARE_ACTIONS
 
 
+def test_omnigraph_create_script_controller_builder():
+    request = build_request(
+        ModuleName.OMNIGRAPH,
+        "create_script_controller",
+        {
+            "graph_path": "/World/ActionGraph",
+            "script_path": "C:/tmp/controller.py",
+            "node_name": "PickPlaceController",
+            "tick_node_name": "Tick",
+            "reset_state": False,
+        },
+    )
+
+    assert request is not None
+    assert request.graph_path == "/World/ActionGraph"
+    assert request.script_path == "C:/tmp/controller.py"
+    assert request.node_name == "PickPlaceController"
+    assert request.tick_node_name == "Tick"
+    assert request.reset_state is False
+
+
 @pytest.mark.asyncio
 async def test_robot_set_joint_positions_routes_through_runner():
     """robot.set_joint_positions uses **kwargs fallback — verify round-trip."""
@@ -268,6 +289,45 @@ async def test_robot_set_joint_positions_routes_through_runner():
     set_calls = [c for c in isaac_client.calls if c[0] == "robot_set_joint_positions"]
     assert len(set_calls) == 1
     assert set_calls[0][1]["positions"] == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.asyncio
+async def test_omnigraph_create_script_controller_routes_through_runner():
+    """YAML → runner → OmnigraphModule.create_script_controller."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_script_controller", "name": "script controller"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "wire_controller",
+                    "module": "omnigraph",
+                    "action": "create_script_controller",
+                    "args": {
+                        "graph_path": "/World/ActionGraph",
+                        "script_path": "C:/tmp/controller.py",
+                    },
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    calls = [
+        c for c in isaac_client.calls
+        if c[0] == "omnigraph_create_script_controller"
+    ]
+    assert len(calls) == 1
+    assert calls[0][1]["graph_path"] == "/World/ActionGraph"
+    assert calls[0][1]["script_path"] == "C:/tmp/controller.py"
 
 
 @pytest.mark.asyncio

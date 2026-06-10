@@ -72,7 +72,7 @@ loop deadlock → 모든 MCP tool 92 s timeout.
 
 ## 재발 시 진단 순서
 
-1. Kit log `C:\Users\<you>\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\5.1\kit_*.log`
+1. Kit log `%USERPROFILE%\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\5.1\kit_*.log`
    마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 후 silent =
    deadlock 확정
 2. `simulation_get_status` 가 92 s timeout → Kit main loop 차단

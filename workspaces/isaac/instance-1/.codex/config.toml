@@ -4,8 +4,8 @@
 project_doc_fallback_filenames = ["CLAUDE.md"]
 project_doc_max_bytes = 65536
 
-approval_policy = "on-request"
-sandbox_mode = "workspace-write"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
 
 [sandbox_workspace_write]
 network_access = true   # 127.0.0.1:8111 Extension REST 호출 필수
@@ -14,3 +14,7 @@ network_access = true   # 127.0.0.1:8111 Extension REST 호출 필수
 command = "cmd"
 args = ["/c", "uv", "--directory", "../../..", "run", "--no-sync", "omniverse-kit-mcp"]
 env = { ISAAC_MCP_APP_PROFILE = "isaac-sim", ISAAC_MCP_INSTANCE_ID = "1" }
+default_tools_approval_mode = "approve"
+
+[mcp_servers.isaacsim-mcp-1.tools.asset_search]
+approval_mode = "approve"

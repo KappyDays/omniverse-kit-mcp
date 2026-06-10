@@ -1,4 +1,4 @@
-"""Copy a fresh window_capture PNG into kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/captures/<step>_app.png
+"""Copy a fresh window_capture PNG into workshop/captures/<step>_app.png
 and crop the central viewport region into <step>_viewport.png.
 
 We avoid omni.replicator (USD Composer doesn't ship it) so window_capture from
@@ -19,8 +19,8 @@ import shutil
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-CAPTURE_DIR = REPO_ROOT / "usd-mouse-interact" / "captures"
+WORKSHOP_ROOT = Path(__file__).resolve().parents[1]
+CAPTURE_DIR = WORKSHOP_ROOT / "captures"
 
 # Empirically: KKR USD Composer at 2679x1626 with stock layout has the
 # viewport panel filling roughly the central 60% horizontally and 50%

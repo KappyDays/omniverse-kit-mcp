@@ -48,14 +48,14 @@ Scenario tools (`scenario_validate`, `scenario_plan`, …) are orchestrators —
 
 ```bash
 # 1. Clone and install deps
-git clone https://github.com/<your-org>/omniverse-kit-mcp.git
+git clone https://github.com/KappyDays/omniverse-kit-mcp.git
 cd omniverse-kit-mcp
 cp .env.example .env       # then edit — see "Isaac Sim Setup" below
 uv sync
 
 # 2. Verify tooling
 uv run pytest tests/                             # should be all green
-.venv/Scripts/python.exe scripts/verify_mcp_sync.py   # catalog drift check
+.venv/Scripts/python.exe scripts/verify_mcp_sync.py   # tool catalog sync check
 
 # 3. Run setup (deps + .env + cleanup of legacy global mcpServers entries)
 setup/setup-omniverse-kit-mcp.bat
@@ -143,7 +143,7 @@ Loading is one step; surfacing your extension's functionality as natural-languag
 
 ### Wiring into Claude Code — workspace folders
 
-Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder provides one Kit MCP entry** (~150 tool names for that app/instance instead of registering every app/instance globally). Open Claude Code from inside a workspace folder:
+Four `.mcp.json` files ship under `workspaces/`, one per Kit instance — each uses a relative `../../..` to the repo root for `uv --directory`, so they work on any clone without per-machine generation. **Each workspace folder provides one Kit MCP entry** for that app/instance instead of registering every app/instance globally. Open Claude Code from inside a workspace folder:
 
 ```powershell
 cd workspaces/isaac/instance-1     # Isaac Sim instance 1, port 8111
@@ -223,11 +223,11 @@ The command should include the workspace entry (`isaacsim-mcp-1`, `isaacsim-mcp-
 | `src/omniverse_kit_mcp/` | FastMCP server (Python) — tool registration, scenario engine, REST client |
 | `kkr-extensions/omni.mycompany.validation_api/` | Kit Extension (FastAPI) — 102 REST endpoints mounted at `/validation/v1` |
 | `scenarios/` | YAML scenarios (Arrange / Act / Assert / Cleanup) + JSON Schema |
-| `scripts/` | Developer utilities — catalog regen, sync verification, per-phase live tests |
+| `scripts/` | Developer utilities — tool catalog regen, sync verification, per-phase live tests, optional local reference harvest |
 | `tests/` | Mock-based pytest suite |
 | `setup/` | Windows installer + MCP-safe manual launcher templates + `~/.claude.json` wiring helpers |
-| `docs/` | `tool-catalog.md` (auto-generated), `invariants/`, `runbooks/`, live artifacts, `assets/isaac/` + `assets/composer/` (asset URL catalogs) |
-| `kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/` | Workshop material (design / verification / captures / tests) for the Composer mouse interaction demo |
+| `docs/` | `tool-catalog.md` (auto-generated), `invariants/`, `runbooks/`, `assets/isaac/` + `assets/composer/` (asset URL catalogs), public-safe references |
+| `kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/` | Workshop material (design / verification / tests) for the Composer mouse interaction demo |
 
 ---
 
@@ -299,6 +299,30 @@ Process-level control without restarting the MCP host (bypasses the MCP import c
 
 ---
 
+## Public Repo Hygiene
+
+The repository intentionally excludes local runtime state and generated research
+corpora. In particular, `.env`, `.venv`, `docs/artifacts/**`, workshop
+screenshots, generated extension catalogs, and copied reference snapshots are
+ignored. Public clones still run the MCP server and tests; `extension_search`
+returns `EXTENSION_CATALOG_UNAVAILABLE` until you generate a local
+`docs/references/extensions.json`.
+
+Generated local references:
+
+```bash
+.venv/Scripts/python.exe scripts/harvest_extension_metadata.py
+.venv/Scripts/python.exe scripts/render_catalog_md.py
+.venv/Scripts/python.exe -m pytest tests/unit/test_catalog_integrity.py -q
+```
+
+These files are for local research and should stay untracked.
+
+For a compact public project summary suitable for open-source support
+applications, see [`docs/oss-application-notes.md`](./docs/oss-application-notes.md).
+
+---
+
 ## Documentation Map
 
 Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문서 맵" table. High-signal entries:
@@ -309,6 +333,7 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 - **Module integration facts** (Kit 5.1 gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/omniverse_kit_mcp/modules/CLAUDE.md`](./src/omniverse_kit_mcp/modules/CLAUDE.md)
 - **Scenario authoring guide** → [`scenarios/CLAUDE.md`](./scenarios/CLAUDE.md)
 - **Asset URL catalogs** → [`docs/assets/isaac/asset_inventory.md`](./docs/assets/isaac/asset_inventory.md) (Isaac Sim 5.1 bundle) + `docs/assets/composer/` (Composer scope)
+- **Open-source application notes** → [`docs/oss-application-notes.md`](./docs/oss-application-notes.md)
 
 ---
 
@@ -318,4 +343,4 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 
 ## License
 
-(add project license here)
+MIT. See [`LICENSE`](./LICENSE).

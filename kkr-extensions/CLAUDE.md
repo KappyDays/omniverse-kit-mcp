@@ -17,7 +17,7 @@ Isaac Sim GUI (`kit.exe`) 내부에서 실행되는 Kit Extension 들이 모여 
 |---------|------|
 | `omni.mycompany.validation_api/` | **REST bridge Extension** — MCP 서버가 Kit SDK 를 원격 조작할 수 있게 하는 FastAPI router (`localhost:8111/validation/v1/**`). 이 프로젝트의 MCP tool 전부가 이 REST 에 의존 |
 | `omni.mycompany.navmesh_playground/` | Phase J Extension — `full_warehouse.usd` 위에 People/Robot 을 random walkable 배치 후 NavMesh path 따라 이동. People = AnimGraph Walk→Sit FSM, Robot = DifferentialController 기반 물리 바퀴. **독립 구조** (validation_api 의존 없음). deadlock-recipe 복사. |
-| `omni.mycompany.usd_mouse_interact/` | Composer Extension v0.2 — FPS fly-camera + whitelist prim picker + info overlay (timeline-driven). dev panel 의 manual inject button (yaw / WASD / Force pick) 으로 OS-level input 우회 검증. **독립 구조** — `workshop/` 에 docs / captures / tests 별도 |
+| `omni.mycompany.usd_mouse_interact/` | Composer Extension v0.2 — FPS fly-camera + whitelist prim picker + info overlay (timeline-driven). dev panel 의 manual inject button (yaw / WASD / Force pick) 으로 OS-level input 우회 검증. **독립 구조** — `workshop/` 에 docs / tests / helper scripts 별도 |
 | `omni.mycompany.usd_mouse_interact_demo/` | Composer input/streaming demo 작업본 — button overlay + multi-mode mouse interaction 실험용 |
 
 ## 핵심 정책

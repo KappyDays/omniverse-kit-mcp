@@ -348,15 +348,15 @@ class RobotService:
                 "omni.isaac.motion_generation.lula not importable. Skip IK tools."
             )
 
-        # Lula config for the selected robot description
+        # Lula config for the selected robot description. Isaac Sim 5.1 uses
+        # load_supported_motion_policy_config; older builds used the longer
+        # load_supported_robot_motion_policy_configs name.
         try:
-            cfg = interface_config_loader.load_supported_robot_motion_policy_configs(
-                robot_description, "RMPflow",
-            )
+            cfg = _resolve_lula_config(interface_config_loader, robot_description)
         except Exception as exc:
             raise ValueError(
                 f"No Lula motion policy config for robot_description={robot_description!r}. "
-                f"Supported: Franka. Original error: {exc}"
+                f"Supported: Franka, FR3. Original error: {exc}"
             ) from exc
 
         urdf_path = cfg.get("urdf_path")
@@ -911,6 +911,51 @@ def _resolve_lula_modules() -> tuple[Any, Any, str]:
         return LulaKinematicsSolver, interface_config_loader, "omni.isaac.motion_generation"
     except ImportError:
         return None, None, ""
+
+
+def _resolve_lula_config(
+    interface_config_loader: Any,
+    robot_description: str,
+) -> dict[str, Any]:
+    """Resolve a Lula/RMPflow config across Isaac Sim loader API variants."""
+    errors: list[str] = []
+    for robot_name in _lula_robot_name_candidates(robot_description):
+        for method_name in (
+            "load_supported_motion_policy_config",
+            "load_supported_robot_motion_policy_configs",
+        ):
+            method = getattr(interface_config_loader, method_name, None)
+            if method is None:
+                continue
+            try:
+                cfg = method(robot_name, "RMPflow")
+            except Exception as exc:  # noqa: BLE001 - report all attempted APIs
+                errors.append(f"{method_name}({robot_name!r}): {exc}")
+                continue
+            if cfg:
+                return dict(cfg)
+            errors.append(f"{method_name}({robot_name!r}) returned no config")
+
+    joined = "; ".join(errors) if errors else "no supported loader API found"
+    raise ValueError(joined)
+
+
+def _lula_robot_name_candidates(robot_description: str) -> tuple[str, ...]:
+    raw = str(robot_description or "").strip()
+    aliases = {
+        "franka": ("Franka",),
+        "franka_panda": ("Franka",),
+        "panda": ("Franka",),
+        "fr3": ("FR3",),
+    }
+    candidates = [raw] if raw else []
+    candidates.extend(aliases.get(raw.lower(), ()))
+
+    unique: list[str] = []
+    for candidate in candidates:
+        if candidate and candidate not in unique:
+            unique.append(candidate)
+    return tuple(unique or ["Franka"])
 
 
 def _assert_articulation(prim_path: str) -> None:

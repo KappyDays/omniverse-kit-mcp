@@ -46,6 +46,8 @@ def _harvest_index(app: str) -> dict[str, dict[str, Any]]:
 
 
 def _load_current_index(app: str) -> dict[str, dict[str, Any]]:
+    if not CATALOG_JSON.exists():
+        return {}
     data = json.loads(CATALOG_JSON.read_text(encoding="utf-8"))
     return _app_index(data.get("extensions") or [], app)
 

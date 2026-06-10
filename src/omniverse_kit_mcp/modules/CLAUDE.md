@@ -88,5 +88,5 @@ kit.exe hang / zombie / `.env` 미반영 등 운영 이슈 + stdin/stdout 규약
 - **형제 pull-doc**: `integration-facts.md` (도메인 런타임 제약), `process-ops.md` (ProcessModule 운영)
 - **상위**: root `CLAUDE.md` (pull-doc 인덱스 · 변경 파급 매트릭스 · Validation Rules · Key Decisions)
 - **Extension 내부 규칙** (Pydantic · omni.services.core · carb.log_warn): `../../../kkr-extensions/CLAUDE.md`
-- **새 MCP tool 구현 전 참조**: `../../../docs/references/CLAUDE.md` (extensions-catalog 키워드 검색 → testbed-snapshot 패턴 → 실제 소스)
+- **새 MCP tool 구현 전 참조**: `../../../docs/references/CLAUDE.md` (기존 tool 중복 확인 → optional local catalog → 실제 ext 소스 / 공식 문서)
 - **작업 전 필수 pull-doc**: `../../../docs/invariants/` (usd-load / process-lifecycle / mcp-tool-add / module-add / ui-invoke / scenario-validation / ext-reload)

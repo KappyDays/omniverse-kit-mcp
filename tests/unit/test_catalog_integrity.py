@@ -1,8 +1,9 @@
-"""Catalog integrity invariants for docs/references/extensions.json.
+"""Catalog integrity invariants for optional docs/references/extensions.json.
 
 Guards against silent drift between file-system (Isaac Sim / USD Composer
 installations) and the catalog — such as the kit/extscore omission fixed in
-6596c8f. Each Kit / app bump re-runs these invariants via pytest.
+6596c8f. Public clones do not include the generated catalog; these tests skip
+until the local sync workflow regenerates it.
 """
 
 from __future__ import annotations
@@ -30,6 +31,8 @@ REQUIRED_APP_FIELDS = frozenset({
 
 @pytest.fixture(scope="module")
 def catalog() -> dict:
+    if not CATALOG_PATH.exists():
+        pytest.skip("local generated extension catalog is absent")
     return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
 

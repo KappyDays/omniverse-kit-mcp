@@ -47,6 +47,18 @@ data store.
 - Use `scenario_plan` to preview a scenario before running
 - Use `scenario_validate` to execute a full Arrange→Act→Assert→Cleanup cycle
 
+### Robot / Controller Workflows
+- MCP tools operate between frames: create the stage, load assets, wire graphs,
+  step simulation, and observe results.
+- Continuous robot control runs within frames. For pick/place, tracking, or
+  other closed-loop behavior, create an ActionGraph ScriptNode with
+  `omnigraph_create_script_controller`; put the controller state machine in
+  the script, then use `simulation_play` and `simulation_step_observe` to debug
+  deterministic frame-by-frame progress.
+- Avoid relying on sleep plus repeated one-shot IK calls for full manipulation.
+  Use `robot_get_ee_pose`, `robot_get_joint_config`, and
+  `simulation_step_observe` to verify where the robot actually moved.
+
 ## Key Concepts
 - 1 Lakehouse table = 1 USD Prim
 - Table columns map to Prim properties

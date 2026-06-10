@@ -815,14 +815,15 @@ kit_app_restart) and unknown ext_id.
 extension_search(keyword: 'str', app: 'str | None' = None, category: 'str | None' = None, limit: 'int' = 20) -> 'str'
 ```
 
-Search docs/references/extensions.json (658 ext catalog) for candidates.  Matches `keyword`
-(case-insensitive substring) against ext name / title / summary / mcp_research_hint /
-raw_description / keywords. Empty keyword returns all entries matching optional filters.
-Filters:   - app: "isaacsim" or "usd_composer" (include entries where that app key exists)   -
-category: exact match on entry.category (case-insensitive)   - limit: max results (default 20)
-Returns list of {name, title, summary, category, apps, key_symbols, mcp_research_hint}. Use
-this when choosing a Kit Extension to wrap for a new MCP tool or to answer "which extension
-handles X?" questions.
+Search the optional local Kit extension catalog for candidates.  Matches `keyword` (case-
+insensitive substring) against ext name / title / summary / mcp_research_hint / raw_description
+/ keywords. Empty keyword returns all entries matching optional filters.  Filters:   - app:
+"isaacsim" or "usd_composer" (include entries where that app key exists)   - category: exact
+match on entry.category (case-insensitive)   - limit: max results (default 20)  Returns list of
+{name, title, summary, category, apps, key_symbols, mcp_research_hint}. Use this when choosing
+a Kit Extension to wrap for a new MCP tool or to answer "which extension handles X?" questions.
+Public clones do not ship the generated catalog; when it is absent the tool returns
+EXTENSION_CATALOG_UNAVAILABLE with regeneration guidance.
 
 **Parameters**
 
