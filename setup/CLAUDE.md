@@ -1,5 +1,5 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: 설치 스크립트 — repo clone / uv sync / .env / ~/.claude.json legacy cleanup -->
+<!-- Scope: 설치 스크립트 — repo clone / uv sync / .env / launcher install / ~/.claude.json legacy cleanup -->
 
 # setup — 설치 스크립트
 
@@ -10,7 +10,8 @@
 | 파일 | 역할 |
 |------|------|
 | `setup-omniverse-kit-mcp.bat` | Windows 진입점. 더블 클릭 또는 `setup\setup-omniverse-kit-mcp.bat` 로 실행. PowerShell 스크립트를 `ExecutionPolicy Bypass`로 호출 |
-| `setup_omniverse_kit_mcp.ps1` | 실제 설치 로직 (4 단계) |
+| `setup_omniverse_kit_mcp.ps1` | 실제 설치 로직 (5 단계) |
+| `launchers/*_mcp.bat`, `launchers/*_mcp.ps1` | Isaac Sim / USD Composer 수동 실행용 MCP-safe launcher 원본. setup 이 실제 앱 폴더로 복사 |
 
 ## 스크립트 동작
 
@@ -19,12 +20,13 @@
 1. **Prerequisites 확인** — `git`, `uv` 가 PATH에 있는지 확인. 없으면 안내 후 종료
 2. **Repo clone 또는 검증** — `$env:USERPROFILE\workspace\omniverse-kit-mcp` 에 repo 가 있으면 `uv sync`, 없으면 `git clone` 후 `uv sync`
 3. **.env 생성** — `.env.example` → `.env` 복사 (이미 있으면 skip, 기존 값 보존)
-4. **`~/.claude.json` legacy cleanup** — 과거 setup 이 등록했던 7 entry (`isaacsim-mcp-{1,2,3}`, `usdcomposer-mcp-{1,2,3}`, `omniverse-kit-mcp`) 를 global `mcpServers` 에서 제거. 신규 등록은 하지 않음 — MCP 서버는 in-repo `workspaces/<profile>/instance-<N>/.mcp.json` 4 개에서 로드
+4. **MCP-safe launcher 설치** — `setup/launchers` 원본을 Isaac Sim standalone 폴더와 USD Composer release 폴더로 복사. 대상 폴더가 없으면 WARN 후 skip
+5. **`~/.claude.json` legacy cleanup** — 과거 setup 이 등록했던 7 entry (`isaacsim-mcp-{1,2,3}`, `usdcomposer-mcp-{1,2,3}`, `omniverse-kit-mcp`) 를 global `mcpServers` 에서 제거. 신규 등록은 하지 않음 — MCP 서버는 in-repo `workspaces/<profile>/instance-<N>/.mcp.json` 4 개에서 로드
 
 ## 🚨 MCP 서버 로드 위치
 
 - **현재 SoT**: in-repo `workspaces/<profile>/instance-<N>/.mcp.json` 4 개 (committed, `uv --directory ../../..` 상대경로 — repo clone 위치 무관)
-- **NOT** `~/.claude.json` 의 global `mcpServers` — 옛 등록 방식. 본 setup 의 Step 4 가 cleanup
+- **NOT** `~/.claude.json` 의 global `mcpServers` — 옛 등록 방식. 본 setup 의 Step 5 가 cleanup
 - CC 진입은 `cd workspaces/<profile>/instance-<N>` 후 `claude` — 그 폴더에서만 해당 instance 의 MCP 1 개 로드 (tool prefix `mcp__isaacsim-mcp-1__*` 등, ~150 tool)
 - Codex 진입은 같은 폴더에서 `.\launch-codex.bat` — `CODEX_HOME=%~dp0.codex` 가 workspace-local `.codex/config.toml` 을 codex 에 로딩 (server name 동일, env 동일)
 
@@ -42,7 +44,8 @@ setup\setup-omniverse-kit-mcp.bat
 실행 후:
 1. Isaac Sim 5.1 standalone 별도 설치 — `.env` 의 `ISAAC_SIM_KIT_EXE` / `ISAAC_SIM_KIT_FILE` 로 경로 override (`../README.md` Isaac Sim Setup 섹션 참조)
 2. `cd workspaces/isaac/instance-1` (또는 다른 instance 폴더) 후 `claude` 시작 → 시스템 리마인더에 해당 instance 의 `mcp__isaacsim-mcp-N__*` / `mcp__usdcomposer-mcp-N__*` tool prefix 표시 확인
-3. Kit extension 활성화는 `kit.exe --ext-folder ... --enable omni.mycompany.validation_api` 로 자동 (Extension Manager 수동 토글 불필요) — 자세한 플래그는 `../src/omniverse_kit_mcp/modules/CLAUDE.md` 참조
+3. 수동 실행은 각 앱 폴더의 `isaac-sim_mcp.bat` 또는 `kkr_usd_composer_mcp.kit.bat` 사용 — 두 번 실행 시 instance port 를 자동 선택
+4. Kit extension 활성화는 `kit.exe --ext-folder ... --enable omni.mycompany.validation_api` 로 자동 (Extension Manager 수동 토글 불필요) — 자세한 플래그는 `../src/omniverse_kit_mcp/modules/CLAUDE.md` 참조
 
 ## 수정 시 주의
 

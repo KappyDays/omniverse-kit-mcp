@@ -17,7 +17,7 @@ instance-1 (port 8111) / instance-2 (port 8112) 까지 동시 가동 가능 — 
 
 ## Scenario commit 룰
 
-`scenarios/` 의 YAML 은 R1 (실 NVIDIA Nucleus / Hub URL asset 만) 충족 시에만 commit. 미충족이면 `scratch/` 에 보관. server 회귀로 박을 만하면 promote checklist (`../../docs/superpowers/specs/2026-05-04-workspace-split-design.md` § 8) 4 항목 통과 후 `git mv` 로 server `scenarios/` 이동.
+`scenarios/` 의 YAML 은 R1 (실 NVIDIA Nucleus / Hub URL asset 만) 충족 시에만 commit. 미충족이면 `scratch/` 에 보관. server 회귀로 박을 만하면 `../README.md` 의 promote checklist 4 항목 통과 후 `git mv` 로 server `scenarios/` 이동.
 
 ## Scratch 정리
 
@@ -28,4 +28,4 @@ instance-1 (port 8111) / instance-2 (port 8112) 까지 동시 가동 가능 — 
 - Server repo 룰: `../../CLAUDE.md` (root)
 - Multi-app / port 매트릭스: `../../docs/invariants/multi-app.md`
 - 워크스페이스 전체 시나리오 매트릭스 + 디렉토리 규약: `../README.md`
-- Promote checklist 본문: `../../docs/superpowers/specs/2026-05-04-workspace-split-design.md` § 8
+- Promote checklist 본문: `../README.md`

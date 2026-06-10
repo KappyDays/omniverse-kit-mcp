@@ -61,7 +61,8 @@ load → stop → bake → query_path → play → navigate_path
 3. **Asset 위치 조정** — bounding box 를 참조하여 asset 중심이 viewport 정면이 되게
    asset 자체 또는 camera target 재배치
 4. 조정 후 `viewport_capture` 재호출 + Read 재검증. 이 cycle 은 geometry 가 명확히
-   보일 때까지 반복 — 2-3 회 시도 후에도 실패면 `docs/implementation_issues.md` 에 기록
+   보일 때까지 반복 — 2-3 회 시도 후에도 실패면 해당 작업 artifact 또는 신규
+   runbook 후보로 기록
 
 ## Character 표준 sequence (T-pose 방지)
 
@@ -96,4 +97,5 @@ scenario cleanup 은 `simulation_play → simulation_stop` (최종 physics tick)
 - Asset URL 카탈로그 진입점: `docs/assets/isaac/asset_inventory.md`
 - Character domain constraints (실측): `src/omniverse_kit_mcp/modules/CLAUDE.md`
 - USD 로드 4 조건: `docs/invariants/usd-load.md`
-- Issue / 개선 항목 누적: `docs/implementation_issues.md`
+- 반복 실패 / 개선 항목: 해당 작업 artifact 에 기록하고, 영구 절차가 되면
+  `docs/runbooks/` 또는 `docs/invariants/` 로 승격

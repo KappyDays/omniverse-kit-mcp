@@ -77,7 +77,7 @@
 - **R1a (canonical 시퀀스)**: `load assets → simulation.stop → navigation.bake → navigation.query_path → simulation.play → robot.navigate_path`. `bake` 는 playing 중 호출 시 True 반환하지만 `get_navmesh()` = None (silent False Positive) — 호출자가 `simulation.stop` 명시
 - **non-blocking 폴링**: `navigation_service.bake` / `_bake_if_needed` 가 `start_navmesh_baking()` + `is_navmesh_baking()` + `app.next_update_async()`. `_and_wait` 변형 절대 금지 (Kit Python 단일 스레드 점유로 HTTP 라우터 starved). `timeout_s` (기본 300 s) 상한, `elapsed_ticks` 로 진행
 - **cache lock 회복**: 동일 Kit 에서 5+ 회 반복 시 `"start_navmesh_baking returned False"` 빈발. ① `stage_delete_prim("/World/NavMeshVolume")` → 재시도 ② 실패 시 Kit 재시작. 반복 bake scenario 는 fresh Kit 권장
-- **visualization backend 우선순위**: `set_visualization` 이 `carb.settings /persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh` 토글 우선. 실패 시 `NavMeshVolume` prim `visibility` 폴백. response `backend` ∈ {`carb_settings`, `prim_visibility`}. 근거: `../../../docs/assets/isaac/navmesh_viz_research.md`
+- **visualization backend 우선순위**: `set_visualization` 이 `carb.settings /persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh` 토글 우선. 실패 시 `NavMeshVolume` prim `visibility` 폴백. response `backend` ∈ {`carb_settings`, `prim_visibility`}.
 - **`add_exclude_volume(prim_path=...)`**: `stage.compute_world_bbox` 내부 호출하여 bbox 기반 Exclude 자동 배치 — chair / low prop step-up artifact 회피
 
 ## Sensor

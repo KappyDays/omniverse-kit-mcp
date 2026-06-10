@@ -21,7 +21,7 @@ USD Composer 는 robotics ext (`robot_*`, `sensor_attach_rtx_*`, `character_*`, 
 
 ## Scenario commit 룰
 
-`scenarios/` YAML 은 R1 충족 시에만 commit. promote 절차: spec § 8 4 항목 통과 후 `git mv` 로 server `scenarios/` 이동.
+`scenarios/` YAML 은 R1 충족 시에만 commit. promote 절차: `../README.md` 의 4 항목 checklist 통과 후 `git mv` 로 server `scenarios/` 이동.
 
 ## Scratch 정리
 
@@ -32,4 +32,4 @@ USD Composer 는 robotics ext (`robot_*`, `sensor_attach_rtx_*`, `character_*`, 
 - Server repo 룰: `../../CLAUDE.md` (root)
 - Multi-app / port 매트릭스 + Capability 규칙: `../../docs/invariants/multi-app.md`
 - 워크스페이스 전체 시나리오 매트릭스 + 디렉토리 규약: `../README.md`
-- Promote checklist 본문: `../../docs/superpowers/specs/2026-05-04-workspace-split-design.md` § 8
+- Promote checklist 본문: `../README.md`

@@ -69,4 +69,4 @@ AgentRecord 처럼 path 가 두 종류 (parent payload vs SkelRoot) 인 경우:
 - L13 / L15 사고 기록: `kkr-extensions/docs/lessons-learned.md`
 - Window / Extension domain 분리: `src/omniverse_kit_mcp/modules/integration-facts.md`
 - Extension reload (UI panel zombie 와 같은 layer): `docs/invariants/ext-reload.md`
-- Validation_api reuse pattern (싱글턴 in-process import): `kkr-extensions/docs/validation_api-reuse.md`
+- Extension 구현 정책: `kkr-extensions/CLAUDE.md` (validation_api service import 재사용 금지)

@@ -234,7 +234,8 @@
 **재발 방지**:
 - validation_api 재사용 시 **절대 직접 인스턴스화하지 말 것**
 - `from omni.mycompany.validation_api import rest_router as vr` 후 `vr._stage`, `vr._robot`, `vr._character`, `vr._job` 등 모듈 레벨 싱글턴 사용
-- 상세: `validation_api-reuse.md` 의 "rest_router 싱글턴 import" 절
+- 이 재사용 가이드는 폐기됨. 현재 Extension 정책은 validation_api service import
+  대신 Kit SDK 직접 호출.
 
 ### L3. Kit 107 omni.ui font atlas 는 CJK glyph 없음
 
@@ -256,7 +257,7 @@
 
 **재발 방지**:
 - `omni.ui` 를 쓰는 코드는 **actions / state / services 로직과 분리**해서, 로직 부분만 pytest 로 검증
-- UI 부분은 **live Kit + 수동 QA_CHECKLIST** 로 검증 (`isaac_tutorial/QA_CHECKLIST.md` 참고 템플릿)
+- UI 부분은 **live Kit + Extension 고유 QA_CHECKLIST** 로 검증
 - conftest.py 의 stub 은 "import 되게만 하는" 수준 — 위젯 동작 검증 용도 아님을 코멘트로 명시
 
 ### L5. 신규 Extension 은 독립 구조 (정책)
@@ -268,7 +269,8 @@
 **재발 방지 (정책)**:
 - 신규 Extension 은 **Kit SDK 직접 호출 (독립 구조)** 기본
 - S3 MDL-heavy asset 로드 필요 시 `usd-load-deadlock-recipe.md` 의 방어 코드 **복사** (import 아닌)
-- 이미 만들어진 Extension (tutorial 등) 만 validation_api 재사용 허용
+- validation_api service import 재사용 금지. 필요한 기능은 Extension 안에서 Kit SDK
+  직접 호출로 구현
 - 새 Extension 시작 시 `extension-basics.md` 의 "신규 독립 Extension 스켈레톤" 템플릿 복붙
 
 ### L6. 대형 단일 CLAUDE.md 는 유지보수 안 됨
@@ -282,7 +284,7 @@
 
 **재발 방지**:
 - `kkr-extensions/CLAUDE.md` 를 **nav hub** 로만 운영 (Extension 목록 + 정책 + docs/* 포인터)
-- 토픽별로 `kkr-extensions/docs/` 아래 분리 (extension-basics / kit-sdk-pitfalls / usd-load-deadlock-recipe / validation_api-reuse / lessons-learned)
+- 토픽별로 `kkr-extensions/docs/` 아래 분리 (extension-basics / kit-sdk-pitfalls / usd-load-deadlock-recipe / lessons-learned)
 - 새 Extension 은 **CLAUDE.md 파일 자체를 두지 말 것** — 공통 내용은 docs/, 개별 QA 는 각 Extension 폴더 내 QA_CHECKLIST.md 로 국한
 
 ---

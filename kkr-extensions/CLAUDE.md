@@ -22,12 +22,12 @@ Isaac Sim GUI (`kit.exe`) 내부에서 실행되는 Kit Extension 들이 모여 
 
 ## 핵심 정책
 
-### 🛑 신규 Extension 은 **독립 구조** (2026-04-22 확정)
+### 🛑 Extension 은 **독립 구조** (2026-04-22 확정)
 
 - Kit SDK (`omni.kit.commands` / `omni.usd` / `pxr.*` 등) **직접 호출**
 - `validation_api` 의존 **금지**
 - S3 MDL-heavy asset (office / warehouse / nova_carter / Biped_Setup 등) 로드 필요 시 `docs/usd-load-deadlock-recipe.md` 의 방어 코드를 **복사** (import 아닌)
-- 이미 만들어진 Extension (예: `isaac_tutorial`) 만 validation_api 재사용 허용 — 역사적 예외
+- `validation_api` 내부 service import 재사용 금지 — Extension 은 Kit SDK 를 직접 호출
 
 ### 공통 규칙 (상세는 docs/extension-basics.md)
 
@@ -46,14 +46,13 @@ Isaac Sim GUI (`kit.exe`) 내부에서 실행되는 Kit Extension 들이 모여 
 | [`docs/extension-basics.md`](docs/extension-basics.md) | **신규 Extension 시작할 때** — IExt / toml / hot-reload / 독립 스켈레톤 copy-paste 템플릿 |
 | [`docs/kit-sdk-pitfalls.md`](docs/kit-sdk-pitfalls.md) | 특정 Kit API (USD load / articulation / character / NavMesh / sensor / viewport / UI automation) 쓰다가 막혔을 때 도메인별 실측 함정 검색 |
 | [`docs/usd-load-deadlock-recipe.md`](docs/usd-load-deadlock-recipe.md) | S3 MDL-heavy asset 을 독립 Extension 에서 로드할 때 복사할 방어 코드 (log_capture disable + run_coroutine + CreatePayloadCommand instanceable 3-요소) |
-| [`docs/validation_api-reuse.md`](docs/validation_api-reuse.md) | **이미 만들어진 Extension 전용** — validation_api 의 rest_router 싱글턴 재사용 방법 + 서비스 호출 규약 (dict/positional/sync-async 주의). 신규 extension 은 불필요 |
 | [`docs/lessons-learned.md`](docs/lessons-learned.md) | 과거 구현 실수 + 교훈 누적 로그. 새 작업 시작 전 훑어보면 같은 실수 회피 |
 
 ## Extension 별 개별 문서
 
 공통 내용은 `docs/` 에, 각 Extension 고유한 것만 Extension 폴더 내에:
 
-- `omni.mycompany.isaac_tutorial/QA_CHECKLIST.md` — 튜토리얼 Extension 전용 수동 QA 체크리스트
+- Extension 고유 QA 문서는 해당 Extension 폴더 안에 둔다.
 
 ## 관련 경계
 

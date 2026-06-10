@@ -11,5 +11,5 @@ def test_extra_ext_folders_default_empty():
 
 
 def test_extra_ext_folders_from_value():
-    cfg = IsaacSimProcessConfig(extra_ext_folders=("C:/x/office_mcp/exts",))
-    assert cfg.extra_ext_folders == ("C:/x/office_mcp/exts",)
+    cfg = IsaacSimProcessConfig(extra_ext_folders=("C:/x/custom_exts",))
+    assert cfg.extra_ext_folders == ("C:/x/custom_exts",)

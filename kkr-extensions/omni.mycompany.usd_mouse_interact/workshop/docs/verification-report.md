@@ -96,7 +96,7 @@ _user32.SetCursorPos.argtypes = [ctypes.c_int, ctypes.c_int]
 * `carb.input.IInput.get_keyboard(0)` 는 Kit 110.1.0 에서 제거됨 → `omni.appwindow.get_default_app_window().get_keyboard()` 사용. v0.1.0 첫 활성화 시 발생한 blocking error 의 원인.
 * USD Composer Kit-app-template build 는 `omni.mycompany.*` Python namespace 만 mount — `omni.kappy.*` / 베어 `kappy_*` 는 enumerate 되지만 IExt 가 instantiate 안 됨. 모듈명은 `omni.mycompany.*` 아래 두어야 함.
 * USD Composer 는 `omni.replicator.core` 미포함 → `viewport_capture` 500. `window_capture` 사용 + crop.
-* USD Composer 는 `omni.kit.ui_test` 미포함 → `extension_get_ui_tree` widget walk 실패 → dev-panel 텍스트 자동 read 불가 (manual visual + 캡처로만 검증). 본 한계는 `docs/mcp-enhance.md #2` 에 high priority 로 기록됨.
+* USD Composer 는 `omni.kit.ui_test` 미포함 → `extension_get_ui_tree` widget walk 실패 → dev-panel 텍스트 자동 read 불가 (manual visual + 캡처로만 검증).
 * `PickHighlighter` 는 `omni.physx.scene_query` 부재 시 USD `BBoxCache` ray-AABB pass 로 fallback. 단순한 unit-cube primitive 도 정상 hit (TestCube 사례).
 
 ## 라이브 입력 검증 (Phase 15 / 16 — Win32 PowerShell)
@@ -122,7 +122,7 @@ USD Composer 가 main repo (`/c/Users/kang/workspace/isaac-sim-mcp/`) 의 `kkr-e
 
 ## Limitations / Follow-ups
 
-* **Dev-panel 텍스트 자동 read 불가**. `omni.kit.ui_test` 미포함이라 `extension_get_ui_tree` 의 widget walk 가 fail. 대안은 Option C — ext 가 `carb.settings` 의 `/exts/<id>/runtime/` 경로에 status / yaw / pitch 를 publish 하는 convention. `docs/mcp-enhance.md #2` 참조.
+* **Dev-panel 텍스트 자동 read 불가**. `omni.kit.ui_test` 미포함이라 `extension_get_ui_tree` 의 widget walk 가 fail. 대안은 ext 가 `carb.settings` 의 `/exts/<id>/runtime/` 경로에 status / yaw / pitch 를 publish 하는 convention.
 * **Crosshair 위치 1-frame lag**. floating viewport 로 드래그 시 다음 frame 까지 따라오지 못함. 영향 미미 — accept.
 * **Timeline end-time 1.6 s 루프**. USD Composer 기본값. 자동 capture sequence 시 주기적 `simulation_play` 호출 또는 end-time 연장 필요.
 * **`simulation_stop` 시 Persp 위치 reset**. USD Composer 의 viewport 가 timeline stop 시점에 Persp 의 transform 을 default `(500,500,500)+isometric` 으로 강제 reset. external `stage_set_property` 로 사전 위치 설정한 시도가 무효화됨 — Phase 14 에서 prim 위치를 옮기는 우회로 검증 진행.

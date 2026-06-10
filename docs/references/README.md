@@ -18,10 +18,5 @@
 
 - `uv run python scripts/sync_testbed_snapshot.py` — testbed 복사
 - `uv run python scripts/harvest_extension_metadata.py` — bootstrap
-- Enrichment 는 수동 (Sonnet 세션). 세부는 `docs/superpowers/specs/2026-04-17-nvidia-reference-harvesting-design.md` §5.4 참조
+- Enrichment 는 수동 (Sonnet 세션). 절차와 필드 규칙은 `CLAUDE.md` 참조
 - `uv run python scripts/render_catalog_md.py` — markdown 렌더
-
-## 설계 및 플랜
-
-- 설계 문서: `docs/superpowers/specs/2026-04-17-nvidia-reference-harvesting-design.md`
-- 실행 계획: `docs/superpowers/plans/2026-04-17-nvidia-reference-harvesting-plan.md`

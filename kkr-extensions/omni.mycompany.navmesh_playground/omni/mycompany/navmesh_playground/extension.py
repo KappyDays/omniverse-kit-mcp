@@ -1,7 +1,6 @@
 """NavMesh Playground — spawn People/Robot on baked NavMesh and drive them.
 
 Independent extension. Kit SDK direct calls only (no validation_api import).
-Spec: docs/superpowers/specs/2026-04-23-navmesh-playground-design.md
 """
 from __future__ import annotations
 
