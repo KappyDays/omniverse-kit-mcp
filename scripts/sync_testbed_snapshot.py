@@ -8,12 +8,16 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
 
 DEFAULT_SRC = Path(
-    "C:/Users/<you>/workspace/branch/isaac-sim-testbed/docs/reference"
+    os.environ.get(
+        "ISAAC_SIM_TESTBED_REFERENCE_DIR",
+        "C:/workspace/isaac-sim-testbed/docs/reference",
+    )
 )
 DEFAULT_DST = (
     Path(__file__).resolve().parents[1]

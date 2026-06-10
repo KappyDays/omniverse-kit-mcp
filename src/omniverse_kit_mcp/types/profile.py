@@ -47,8 +47,8 @@ class KitAppProfile:
 
 ISAAC_SIM_PROFILE = KitAppProfile(
     name="isaac-sim",
-    kit_exe="C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/kit/kit.exe",
-    kit_file="C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit",
+    kit_exe="C:/IsaacSim/kit/kit.exe",
+    kit_file="C:/IsaacSim/apps/isaacsim.exp.full.kit",
     default_ext_port=8111,
     ros_env_required=True,
     extra_ext_ids=(
@@ -73,8 +73,8 @@ ISAAC_SIM_PROFILE = KitAppProfile(
 
 USD_COMPOSER_PROFILE = KitAppProfile(
     name="usd-composer",
-    kit_exe="C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kit/kit.exe",
-    kit_file="C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit",
+    kit_exe="C:/USDComposer/kit/kit.exe",
+    kit_file="C:/USDComposer/apps/kkr_usd_composer.kit",
     default_ext_port=8114,
     ros_env_required=False,
     extra_ext_ids=(),

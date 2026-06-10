@@ -3,6 +3,7 @@ name = "omniverse-kit-mcp"
 version = "0.1.0"
 description = "Isaac Sim 5.1 Custom Extension Validation MCP Server"
 requires-python = ">=3.11"
+license = "MIT"
 dependencies = [
     "mcp[cli]>=1.0.0",
     "httpx>=0.27.0",

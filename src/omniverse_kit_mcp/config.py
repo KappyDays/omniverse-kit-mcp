@@ -15,6 +15,8 @@ drive port / kit.exe / ROS env derivation. See `types/profile.py`.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -71,7 +73,11 @@ class IsaacSimProcessConfig(BaseSettings):
     kit_exe: str | None = None
     kit_file: str | None = None
 
-    ext_folder: str = "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions"
+    ext_folder: str = Field(
+        default_factory=lambda: (
+            Path(__file__).resolve().parents[2] / "kkr-extensions"
+        ).as_posix()
+    )
     ext_id: str = "omni.mycompany.validation_api"
     # 120 s = "fail-fast diagnostic window" (user-confirmed 2026-04-23). Cold
     # boot can legitimately take 5-10 min for GPU shader cache rebuild — that

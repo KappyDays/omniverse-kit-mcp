@@ -92,7 +92,7 @@ extension 이 ext folder 에서 안 보이고 dependency solver 가 즉시 fail 
 
 ```bash
 # 1) 현재 트리 전체에서 .kit 파일의 ext folder 절대경로 grep
-grep -rn '"C:/Users/<you>/workspace/' --include='*.kit' C:/Users/<you>/workspace/
+grep -rn '"<workspace>/' --include='*.kit' <workspace>/
 
 # 2) 매치된 모든 경로의 실제 디렉토리 존재 + 비어있지 않은지 확인
 #    (rename 후 옛 경로는 빈 폴더만 잔존하는 케이스 흔함)
@@ -107,7 +107,7 @@ grep -rn '"C:/Users/<you>/workspace/' --include='*.kit' C:/Users/<you>/workspace
   (동일 hardlink 패턴)
 
 세 파일 모두 `[settings.app.exts.folders]` `'++'` 리스트의 마지막 항목이
-`"C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions"` 로 통일되어 있어야 함.
+`"<repo>/kkr-extensions"` 로 통일되어 있어야 함.
 
 ## 관련 경계
 

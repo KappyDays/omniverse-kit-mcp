@@ -1,8 +1,9 @@
-"""CatalogModule — local queries over docs/references/extensions.json.
+"""CatalogModule — optional local queries over generated extension metadata.
 
-No REST / Isaac Sim dependency. Lazy-loads + in-memory caches the catalog.
-Used by the `extension_search` MCP tool to surface ext candidates for
-natural-language tasks.
+No REST / Isaac Sim dependency. When a local extension catalog has been
+generated, lazy-loads + in-memory caches it. Public clones do not include the
+catalog by default; `extension_search` reports an explicit unavailable error in
+that case.
 """
 
 from __future__ import annotations
@@ -37,6 +38,16 @@ class CatalogModule:
     ) -> ModuleResult[list[dict[str, Any]]]:
         started = int(time.time() * 1000)
         try:
+            if self._entries is None and not self._catalog_path.exists():
+                return error_result(
+                    (
+                        "Extension catalog is not available in this public checkout. "
+                        "Generate docs/references/extensions.json locally with "
+                        "scripts/harvest_extension_metadata.py before using extension_search."
+                    ),
+                    started_ms=started,
+                    error_code="EXTENSION_CATALOG_UNAVAILABLE",
+                )
             entries = self._load()
             k = (keyword or "").lower()
             cat = (category or "").lower()

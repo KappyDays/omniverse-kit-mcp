@@ -11,9 +11,9 @@ spec:
     failFast: true
 
   variables:
-    # Local Isaac Sim asset — avoids Nucleus auth. Override with input_overrides
-    # to test Franka / SimReady USDs when omniverse:// is available.
-    usd_url: "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/exts/isaacsim.asset.importer.urdf/data/urdf/tests/test_usd/torus.usd"
+    # Public Isaac Sim asset — avoids machine-local install paths. Override
+    # with input_overrides to test local USDs or omniverse:// assets.
+    usd_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
     prim_path: "/World/TestAsset"
     load_position: [1.0, 2.0, 0.5]
 

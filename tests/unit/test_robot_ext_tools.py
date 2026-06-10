@@ -18,6 +18,9 @@ from omniverse_kit_mcp.types.robot import (
     RobotSetEETargetRequest,
     RobotSetEETargetResult,
 )
+from omni.mycompany.validation_api.services.robot_service import (
+    _resolve_lula_config,
+)
 
 
 def _meta() -> OperationMeta:
@@ -105,6 +108,29 @@ async def test_set_ee_target_success():
     assert isinstance(result.data, RobotSetEETargetResult)
     assert result.data.ik_success is True
     assert len(result.data.solution) == 7
+
+
+def test_resolve_lula_config_prefers_isaac_sim_51_loader_api():
+    class Loader51:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, tuple[str, ...]]] = []
+
+        def load_supported_motion_policy_config(self, robot_description, policy):
+            self.calls.append(("motion_policy", (robot_description, policy)))
+            return {
+                "robot_description_path": "/configs/fr3/rmpflow.yaml",
+                "urdf_path": "/configs/fr3/fr3.urdf",
+                "end_effector_frame_name": "fr3_hand_tcp",
+            }
+
+    loader = Loader51()
+
+    cfg = _resolve_lula_config(loader, "FR3")
+
+    assert loader.calls == [("motion_policy", ("FR3", "RMPflow"))]
+    assert cfg["robot_description_path"] == "/configs/fr3/rmpflow.yaml"
+    assert cfg["urdf_path"] == "/configs/fr3/fr3.urdf"
+    assert cfg["end_effector_frame_name"] == "fr3_hand_tcp"
 
 
 @pytest.mark.asyncio

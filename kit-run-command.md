@@ -10,7 +10,7 @@ MCP `kit_app_start` 가 `subprocess.Popen` 으로 띄우는 실제 커맨드를 
 
 | 항목 | 값 | 비고 |
 |------|-----|------|
-| `--ext-folder` | `C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions` | 모든 profile 동일 |
+| `--ext-folder` | `<repo>/kkr-extensions` | 모든 profile 동일 |
 | `--enable` (REST bridge) | `omni.mycompany.validation_api` | 항상 1 차 enable |
 | Extension REST port flag | `--/exts/omni.services.transport.server.http/port=<PORT>` | port range fallback 차단용 강제 바인딩 |
 | `stdin` | **`DEVNULL` 필수** | MCP stdio 상속 시 cold boot hang. PowerShell 직접 실행도 `< NUL` 권장 |
@@ -33,14 +33,14 @@ Health URL: `http://127.0.0.1:<PORT>/validation/v1/health`
 
 | App | Installed launcher | Ports |
 |---|---|---|
-| Isaac Sim | `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/isaac-sim_mcp.bat` | 8111 → 8112 |
-| USD Composer | `C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kkr_usd_composer_mcp.kit.bat` | 8114 → 8115 |
+| Isaac Sim | `<isaac-sim-root>/isaac-sim_mcp.bat` | 8111 → 8112 |
+| USD Composer | `<usd-composer-root>/kkr_usd_composer_mcp.kit.bat` | 8114 → 8115 |
 
 두 launcher 모두 `--dry-run`, `--instance 1|2`, `--port <PORT>` 를 지원하고, 선택한 port 를 `--/exts/omni.services.transport.server.http/port=<PORT>` 와 `allow_port_range=false` 로 Kit 에 전달한다.
 
 ```powershell
-& "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kkr_usd_composer_mcp.kit.bat" --dry-run
-& "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kkr_usd_composer_mcp.kit.bat" --instance 2
+& "<usd-composer-root>/kkr_usd_composer_mcp.kit.bat" --dry-run
+& "<usd-composer-root>/kkr_usd_composer_mcp.kit.bat" --instance 2
 ```
 
 ---
@@ -49,8 +49,8 @@ Health URL: `http://127.0.0.1:<PORT>/validation/v1/health`
 
 ### 경로
 
-- `kit.exe`: `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/kit/kit.exe`
-- `.kit`: `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit`
+- `kit.exe`: `<isaac-sim-root>/kit/kit.exe`
+- `.kit`: `<isaac-sim-root>/apps/isaacsim.exp.full.kit`
 
 ### Extension enable 리스트
 
@@ -75,7 +75,7 @@ omni.mycompany.navmesh_playground
 |------|-----|
 | `ROS_DISTRO` | `humble` |
 | `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` |
-| `PATH` | 기존 `PATH` + `;C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/exts/isaacsim.ros2.bridge/humble/lib` |
+| `PATH` | 기존 `PATH` + `;<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib` |
 
 ### 커맨드 (instance 1, port 8111)
 
@@ -84,11 +84,11 @@ PowerShell:
 ```powershell
 $env:ROS_DISTRO = "humble"
 $env:RMW_IMPLEMENTATION = "rmw_fastrtps_cpp"
-$env:PATH = "$env:PATH;C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/exts/isaacsim.ros2.bridge/humble/lib"
+$env:PATH = "$env:PATH;<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib"
 
-& "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/kit/kit.exe" `
-  "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit" `
-  --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" `
+& "<isaac-sim-root>/kit/kit.exe" `
+  "<isaac-sim-root>/apps/isaacsim.exp.full.kit" `
+  --ext-folder "<repo>/kkr-extensions" `
   --enable omni.mycompany.validation_api `
   --/exts/omni.services.transport.server.http/port=8111 `
   --enable omni.anim.graph.bundle `
@@ -108,11 +108,11 @@ bash (Git Bash):
 ```bash
 export ROS_DISTRO=humble
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-export PATH="$PATH:C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/exts/isaacsim.ros2.bridge/humble/lib"
+export PATH="$PATH:<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib"
 
-"C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/kit/kit.exe" \
-  "C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit" \
-  --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" \
+"<isaac-sim-root>/kit/kit.exe" \
+  "<isaac-sim-root>/apps/isaacsim.exp.full.kit" \
+  --ext-folder "<repo>/kkr-extensions" \
   --enable omni.mycompany.validation_api \
   --/exts/omni.services.transport.server.http/port=8111 \
   --enable omni.anim.graph.bundle \
@@ -136,8 +136,8 @@ export PATH="$PATH:C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-wi
 
 ### 경로
 
-- `kit.exe`: `C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kit/kit.exe`
-- `.kit`: `C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit`
+- `kit.exe`: `<usd-composer-root>/kit/kit.exe`
+- `.kit`: `<usd-composer-root>/apps/kkr_usd_composer.kit`
 
 ### Extension enable 리스트
 
@@ -155,9 +155,9 @@ PowerShell:
 Remove-Item Env:ROS_DISTRO -ErrorAction SilentlyContinue
 Remove-Item Env:RMW_IMPLEMENTATION -ErrorAction SilentlyContinue
 
-& "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kit/kit.exe" `
-  "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit" `
-  --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" `
+& "<usd-composer-root>/kit/kit.exe" `
+  "<usd-composer-root>/apps/kkr_usd_composer.kit" `
+  --ext-folder "<repo>/kkr-extensions" `
   --enable omni.mycompany.validation_api `
   --/exts/omni.services.transport.server.http/port=8114 `
   *> "$env:TEMP/omniverse_kit_mcp/kit_usdcomposer_$(Get-Date -UFormat %s).log" `
@@ -170,9 +170,9 @@ bash (Git Bash):
 unset ROS_DISTRO
 unset RMW_IMPLEMENTATION
 
-"C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kit/kit.exe" \
-  "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit" \
-  --ext-folder "C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions" \
+"<usd-composer-root>/kit/kit.exe" \
+  "<usd-composer-root>/apps/kkr_usd_composer.kit" \
+  --ext-folder "<repo>/kkr-extensions" \
   --enable omni.mycompany.validation_api \
   --/exts/omni.services.transport.server.http/port=8114 \
   > /tmp/kit_usdcomposer.log 2>&1 < /dev/null &
@@ -229,13 +229,13 @@ curl http://127.0.0.1:8114/validation/v1/health   # USD Composer instance 1
 - `[dependencies]` 끝에 9 개 추가 (validation_api + 8 개 character/sensor/replicator/omnigraph 의존성)
   - `omni.mycompany.validation_api`, `omni.anim.graph.bundle`, `omni.anim.navigation.bundle`, `isaacsim.replicator.agent.core`, `omni.kit.ui_test`, `isaacsim.sensors.rtx`, `omni.graph.action`, `omni.replicator.core`, `omni.mycompany.navmesh_playground`
 - `[settings]` 에 `exts."omni.services.transport.server.http".port = 8111`
-- `[settings.app.exts.folders] '++'` 배열에 `"C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions"` 추가
+- `[settings.app.exts.folders] '++'` 배열에 `"<repo>/kkr-extensions"` 추가
 
 ### USD Composer — `branch/kit-app-template/source/apps/kkr_usd_composer.kit` (build artifact 자동 동기화)
 
 - `[dependencies]` 끝에 `omni.mycompany.validation_api` 1 개만 추가 (USD Composer 는 common tool 만 지원)
 - `[settings.exts]` 에 `"omni.services.transport.server.http".port = 8114` (Isaac Sim 과 충돌 회피)
-- `[settings.app.exts.folders] '++'` 배열에 `"C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions"` 추가
+- `[settings.app.exts.folders] '++'` 배열에 `"<repo>/kkr-extensions"` 추가
 
 ### 가설 검증 — browser ext 무해성 (2026-04-25 자동 검증)
 
@@ -262,7 +262,7 @@ curl http://127.0.0.1:8114/validation/v1/health   # USD Composer
 
 ### 주의
 
-- **ext-folder 가 절대경로** (`C:/Users/<you>/workspace/omniverse-kit-mcp/kkr-extensions`) → 프로젝트를 옮기면 `.kit` 도 함께 갱신
+- **ext-folder 가 절대경로** (`<repo>/kkr-extensions`) → 프로젝트를 옮기면 `.kit` 도 함께 갱신
 - **Isaac Sim `.kit` 은 NVIDIA release 시 덮어쓸 수 있음** — major upgrade 후 위 변경 다시 적용
 - **USD Composer source `.kit` 만 수정**: `_build/.../apps/` 산출물도 자동 sync 됨 확인. `repo.bat build` 재실행이 필요 없음
 - ROS env (`ROS_DISTRO=humble` 등) 는 `.kit` 에서 set 불가 → Isaac Sim 은 항상 `isaac-sim.bat` 으로 띄울 것 (자동 set). USD Composer 는 ROS 불필요

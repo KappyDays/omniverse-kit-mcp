@@ -22,7 +22,7 @@ whitelist-picker while the timeline is playing:
   timeline. Re-engage by stopping and replaying the timeline.
 
 This folder holds the **workshop / verification material** (design notes,
-tests, captures, helper scripts) for the parent Kit Extension at
+tests, helper scripts) for the parent Kit Extension at
 `kkr-extensions/omni.mycompany.usd_mouse_interact/`.
 
 ## Folder layout
@@ -43,9 +43,8 @@ kkr-extensions/omni.mycompany.usd_mouse_interact/
     │   ├── test_input_state.py
     │   ├── test_interaction_state_machine.py
     │   └── test_metadata_store.py
-    ├── scripts/
-    │   └── save_capture_pair.py    — split window_capture into app + viewport
-    └── captures/                   — verification screenshots (4 steps x 2)
+    └── scripts/
+        └── save_capture_pair.py    — split window_capture into local app + viewport captures
 ```
 
 ## Install / enable inside USD Composer

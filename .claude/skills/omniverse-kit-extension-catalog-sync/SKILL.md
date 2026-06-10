@@ -1,6 +1,6 @@
 ---
 name: omniverse-kit-extension-catalog-sync
-description: Invoke after Kit / Isaac Sim / USD Composer install has been updated, to re-sync the project's Kit Extension catalog (docs/references/extensions.json) with the file system. Runs the canonical 6-step workflow (diff → integrity → harvest → render → enrichment → commit). Not for one-off catalog edits, and not for USD asset URLs (use omniverse-asset-inventory-sync for those).
+description: Invoke after Kit / Isaac Sim / USD Composer install has been updated, to re-sync the local ignored Kit Extension catalog (docs/references/extensions.json) with the file system. Runs the canonical workflow (diff → integrity → harvest → render → enrichment → verify). Not for one-off catalog edits, and not for USD asset URLs (use omniverse-asset-inventory-sync for those).
 user-invocable: true
 disable-model-invocation: true
 metadata:
@@ -11,7 +11,7 @@ metadata:
 
 Prefix your first line with 📚 inline.
 
-**목표**: Kit / Isaac Sim / USD Composer 설치 갱신 후 `docs/references/extensions.json` 을 install tree 와 정합시키고 신규 ext 를 enrichment. 기존 수동 enrichment 는 절대 파기하지 않는다.
+**목표**: Kit / Isaac Sim / USD Composer 설치 갱신 후 local ignored `docs/references/extensions.json` 을 install tree 와 정합시키고 신규 ext 를 enrichment. 기존 수동 enrichment 는 절대 파기하지 않는다. Public repo 에 generated catalog 는 commit 하지 않는다.
 
 ## When to Use
 
@@ -24,7 +24,7 @@ User says "Kit/Isaac Sim/USD Composer 업뎃됐어", "catalog sync", "extensions
 | I1 | Do not overwrite `summary` / `key_symbols` / `mcp_research_hint` / `testbed_refs` of `enriched` entries (Phase A–E manual curation). |
 | I2 | Always run harvest with `preserve_enrichment=True` (default). `--no-preserve-enrichment` requires explicit per-invocation user approval. |
 | I3 | Removed-from-install ext stays in JSON with `enrichment_status="skipped"` + `skipped_reason="removed_from_install_v<new>"`. Never delete the entry. |
-| I4 | Pre-commit: `pytest tests/unit/ -q` green, `verify_mcp_sync.py` OK, `git diff docs/tool-catalog.md` empty, root `CLAUDE.md` ≤ 100 lines. |
+| I4 | Pre-finish: `pytest tests/unit/ -q` green, `verify_mcp_sync.py` OK, `git diff docs/tool-catalog.md` empty, root `CLAUDE.md` ≤ 150 lines. |
 
 Breaking any → STOP and report.
 
@@ -90,22 +90,16 @@ Batch ≤ 49: 1 commit. Batch ≥ 50: split, 1 commit per 50 with message:
 chore(catalog): Kit <old>→<new> batch <N>/<M> — <K ext enriched>
 ```
 
-### Step 7 — Final verify + commit + push
+### Step 7 — Final verify
 
 ```bash
 .venv/Scripts/python.exe scripts/verify_mcp_sync.py
 .venv/Scripts/python.exe -m pytest tests/unit/ -q
 ```
 
-I4 must hold. Then:
-
-```bash
-git add docs/references/extensions.json docs/references/extensions-catalog.md \
-        docs/references/harvest-progress.json
-# Include scripts/harvest_extension_metadata.py if Step 3 edited APP_ROOTS
-git commit -m "chore(catalog): Kit <old> → <new> sync — <N added / M removed / K version_bumped>"
-git push origin main
-```
+I4 must hold. Generated files under `docs/references/` are ignored; do not stage
+or commit them. If Step 3 edited `scripts/harvest_extension_metadata.py`, stage
+and commit only that script change after summarizing it to the user.
 
 ## Stop Conditions
 
@@ -122,13 +116,13 @@ STOP and report on any:
 📚 omniverse-kit-extension-catalog-sync complete
 Kit: <old>→<new> · App: <isaacsim>/<usd_composer>
 Processed: <N added enriched / M removed→skipped / K version_bumped>
-Commit(s): <hash> [, ...] (origin/main synced)
+Generated catalog: local ignored files only
 Principle-6: pytest <N> passed, verify_mcp_sync OK, tool-catalog clean, CLAUDE.md <N> lines
 ```
 
 ## References (background only — do not read inline)
 
-- `docs/references/CLAUDE.md` — pull-doc with extensions.json v2 schema rules
+- `docs/references/CLAUDE.md` — pull-doc with local generated catalog rules
 - `scripts/diff_catalog.py` · `harvest_extension_metadata.py` · `render_catalog_md.py` — implementation
 - `tests/unit/test_catalog_integrity.py` — 13 invariants regression guard
 

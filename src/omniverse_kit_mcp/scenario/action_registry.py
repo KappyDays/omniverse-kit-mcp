@@ -65,6 +65,7 @@ from omniverse_kit_mcp.types.omnigraph import (
     OmnigraphConnectRequest,
     OmnigraphCreateNodeRequest,
     OmnigraphCreateRos2PublisherRequest,
+    OmnigraphCreateScriptControllerRequest,
     OmnigraphExecuteRequest,
 )
 from omniverse_kit_mcp.types.replicator import (
@@ -961,6 +962,24 @@ def _build_omnigraph_create_ros2_publisher(
     )
 
 
+def _build_omnigraph_create_script_controller(
+    args: dict[str, Any],
+) -> OmnigraphCreateScriptControllerRequest:
+    for field_name in ("graph_path", "script_path"):
+        if not args.get(field_name):
+            raise ValueError(
+                f"omnigraph.create_script_controller requires {field_name}"
+            )
+    return OmnigraphCreateScriptControllerRequest(
+        graph_path=str(args["graph_path"]),
+        script_path=str(args["script_path"]),
+        node_name=str(args.get("node_name", "ScriptNode")),
+        tick_node_name=str(args.get("tick_node_name", "OnPlaybackTick")),
+        evaluator=str(args.get("evaluator", "execution")),
+        reset_state=bool(args.get("reset_state", True)),
+    )
+
+
 def _build_content_browse(args: dict[str, Any]) -> ContentBrowseRequest:
     if not args.get("url"):
         raise ValueError("content.browse requires url")
@@ -1092,6 +1111,7 @@ _REGISTRY: dict[tuple[ModuleName, str], Any] = {
     (ModuleName.OMNIGRAPH, "connect"): _build_omnigraph_connect,
     (ModuleName.OMNIGRAPH, "execute"): _build_omnigraph_execute,
     (ModuleName.OMNIGRAPH, "create_ros2_publisher"): _build_omnigraph_create_ros2_publisher,
+    (ModuleName.OMNIGRAPH, "create_script_controller"): _build_omnigraph_create_script_controller,
     (ModuleName.CONTENT, "browse"): _build_content_browse,
     (ModuleName.CONTENT, "preview"): _build_content_preview,
     (ModuleName.CONTENT, "resolve"): _build_content_resolve,

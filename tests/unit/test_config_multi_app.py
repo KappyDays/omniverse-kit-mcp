@@ -79,7 +79,10 @@ def test_usd_composer_instance_3_rejected(monkeypatch):
 
 def test_isaac_profile_uses_isaac_kit_exe():
     cfg = AppConfig()
-    assert "isaac-sim-standalone" in cfg.isaac_sim_process.app_profile.kit_exe
+    assert cfg.isaac_sim_process.app_profile.kit_exe == "C:/IsaacSim/kit/kit.exe"
+    assert cfg.isaac_sim_process.app_profile.kit_file == (
+        "C:/IsaacSim/apps/isaacsim.exp.full.kit"
+    )
     assert cfg.isaac_sim_process.app_profile.kit_exe.endswith("/kit/kit.exe") or \
            cfg.isaac_sim_process.app_profile.kit_exe.endswith("\\kit\\kit.exe")
 
@@ -87,7 +90,7 @@ def test_isaac_profile_uses_isaac_kit_exe():
 def test_usd_composer_profile_uses_composer_kit_exe(monkeypatch):
     monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
     cfg = AppConfig()
-    assert "kit-app-template" in cfg.isaac_sim_process.app_profile.kit_exe
+    assert cfg.isaac_sim_process.app_profile.kit_exe == "C:/USDComposer/kit/kit.exe"
     assert "kkr_usd_composer.kit" in cfg.isaac_sim_process.app_profile.kit_file
 
 

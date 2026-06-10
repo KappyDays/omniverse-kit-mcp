@@ -98,6 +98,9 @@ rules:
 - Start Codex directly from a workspace folder with `codex`.
 - Codex reads the workspace-local `.codex/config.toml` for that folder.
 - Each `.codex/config.toml` mirrors the sibling `.mcp.json` server entry.
+- If a root-folder Codex thread receives live MCP work, keep the root thread as
+  coordinator and create/continue the actual work in the matching
+  `workspaces/<app>/instance-N` folder so the workspace-local MCP entry loads.
 - Global Codex MCP entries may appear alongside the workspace entry.
 - Codex shell sandbox settings apply to model-generated shell commands only.
   The MCP server process and its child `kit.exe` are separate process trees.

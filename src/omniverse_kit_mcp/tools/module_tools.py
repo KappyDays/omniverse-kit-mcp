@@ -2262,7 +2262,7 @@ def register_module_tools(
         category: str | None = None,
         limit: int = 20,
     ) -> str:
-        """Search docs/references/extensions.json (658 ext catalog) for candidates.
+        """Search the optional local Kit extension catalog for candidates.
 
         Matches `keyword` (case-insensitive substring) against ext name / title /
         summary / mcp_research_hint / raw_description / keywords. Empty keyword
@@ -2275,7 +2275,9 @@ def register_module_tools(
 
         Returns list of {name, title, summary, category, apps, key_symbols,
         mcp_research_hint}. Use this when choosing a Kit Extension to wrap for a
-        new MCP tool or to answer "which extension handles X?" questions.
+        new MCP tool or to answer "which extension handles X?" questions. Public
+        clones do not ship the generated catalog; when it is absent the tool
+        returns EXTENSION_CATALOG_UNAVAILABLE with regeneration guidance.
         """
         meta = make_meta(ModuleName.EXTENSION)
         result = await catalog.search(
