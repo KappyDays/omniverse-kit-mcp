@@ -2,7 +2,7 @@
 
 **Drive NVIDIA Isaac Sim 5.1 in natural language from Claude Code (or any MCP client).**
 
-An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — stage editing, robot / character animation, multi-viewport capture, physics, lighting, SDG, OmniGraph, content browsing, extension management — as 107 tools plus 3 on-demand resources. Pair it with the bundled Kit Extension and Claude Code controls Isaac Sim end-to-end through stdio.
+An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — stage editing, robot / character animation, multi-viewport capture, physics, lighting, SDG, OmniGraph, content browsing, extension management — as 133 tools plus 5 on-demand resources. Pair it with the bundled Kit Extension and Claude Code controls Isaac Sim end-to-end through stdio.
 
 ![python](https://img.shields.io/badge/python-3.11%2B-blue) ![isaac-sim](https://img.shields.io/badge/Isaac%20Sim-5.1-green) ![mcp](https://img.shields.io/badge/MCP-stdio-purple)
 
@@ -16,8 +16,8 @@ An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — 
 │  (or any     │                      │                      │
 │   MCP client)│                      │  • ProcessModule  ─▶ subprocess → kit.exe
 └──────────────┘                      │  • 17 domain modules │
-                                      │  • 4 scenario tools  │
-                                      │  • 3 MCP resources   │
+                                      │  • 3 scenario tools  │
+                                      │  • 5 MCP resources   │
                                       └──────────────────────┘
                                                  │ HTTPX  (POST /validation/v1/*)
                                                  ▼
@@ -82,6 +82,15 @@ omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Defau
 4. **Kit Extension activation is automatic** — on `kit_app_start` the MCP server spawns Kit with `--ext-folder <repo>/kkr-extensions --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.
 
 Sanity check after first startup: `curl http://127.0.0.1:8111/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
+
+### Manual MCP-Safe Launchers
+
+`setup/launchers/` stores the launcher source of truth. `setup/setup_omniverse_kit_mcp.ps1` copies them into the local app folders:
+
+- `isaac-sim_mcp.bat` / `.ps1` → Isaac Sim standalone folder
+- `kkr_usd_composer_mcp.kit.bat` / `.ps1` → USD Composer release folder
+
+Use these for manual double-click launches when MCP also needs to attach. They select the first free instance port (`8111/8112` for Isaac Sim, `8114/8115` for USD Composer) and force `allow_port_range=false`.
 
 ### Using Your Own Kit Extension
 
@@ -151,7 +160,7 @@ claude
 
 For server-code development (modifying the MCP server itself), open Claude Code (or codex) at the repo root — no workspace Kit MCP loads there by design, keeping the dev session focused on code. Validate runtime behavior via `scripts/run_*_standalone.py` or by entering a workspace folder.
 
-For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows specifics), see **`setup/`**. Workspace layout / promote-path details: [`docs/superpowers/specs/2026-05-04-workspace-split-design.md`](docs/superpowers/specs/2026-05-04-workspace-split-design.md).
+For a full setup (Extension registration, `.env` defaults, ROS2 path, Windows specifics), see **`setup/`**. Workspace layout and promote-path details live in [`workspaces/README.md`](workspaces/README.md).
 
 ### Wiring into Codex CLI — workspace folders
 
@@ -215,10 +224,10 @@ The command should include the workspace entry (`isaacsim-mcp-1`, `isaacsim-mcp-
 | `kkr-extensions/omni.mycompany.validation_api/` | Kit Extension (FastAPI) — 102 REST endpoints mounted at `/validation/v1` |
 | `scenarios/` | YAML scenarios (Arrange / Act / Assert / Cleanup) + JSON Schema |
 | `scripts/` | Developer utilities — catalog regen, sync verification, per-phase live tests |
-| `tests/` | Mock-based pytest suite (309 tests) |
-| `setup/` | Windows installer + `~/.claude.json` wiring helpers |
+| `tests/` | Mock-based pytest suite |
+| `setup/` | Windows installer + MCP-safe manual launcher templates + `~/.claude.json` wiring helpers |
 | `docs/` | `tool-catalog.md` (auto-generated), `invariants/`, `runbooks/`, live artifacts, `assets/isaac/` + `assets/composer/` (asset URL catalogs) |
-| `isaac-pick-place/` · `kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/` | Workshop material (design / verification / captures / tests) for extension demos |
+| `kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/` | Workshop material (design / verification / captures / tests) for the Composer mouse interaction demo |
 
 ---
 
@@ -226,15 +235,17 @@ The command should include the workspace entry (`isaacsim-mcp-1`, `isaacsim-mcp-
 
 Exact list in [`docs/tool-catalog.md`](./docs/tool-catalog.md) (auto-generated).
 
-**18 tool domains**: Process · Stage (read/write/file/selection) · Simulation · Viewport · Window · Extension · Navigation · Sensor · Physics · Lighting · Material · Robot · Character · Asset · Job · Replicator · OmniGraph · Content · Lakehouse · Scenario.
+**Tool domains include**: Process · Stage (read/write/file/selection) · Simulation · Viewport · Window · Extension · Navigation · Sensor · Physics · Lighting · Material · Robot · Character · Asset · Job · Replicator · OmniGraph · Content · Lakehouse · Scenario.
 
-**3 MCP resources** (on-demand; zero session-start token cost):
+**5 MCP resources** (on-demand; zero session-start token cost):
 
 | URI | Content | MIME |
 |---|---|---|
 | `isaacsim://tool-catalog` | Full tool catalog with group index | `text/markdown` |
 | `isaacsim://sensor-menu` | Isaac Sim `Create > Sensors` full menu (vendor × model) | `text/markdown` |
+| `isaacsim://asset-catalog` | Isaac Sim NVIDIA asset catalog index | `text/markdown` |
 | `isaacsim://scenario-schema` | JSON Schema for scenario YAML | `application/json` |
+| `isaacsim://scenarios` | Available scenario YAML listing | `application/json` |
 
 ---
 
@@ -276,8 +287,8 @@ Chain Replicator tools: `replicator_create_writer("BasicWriter", output_dir)` �
 uv run pytest tests/
 
 # Live REST smoke (Isaac Sim must be running)
-.venv/Scripts/python.exe scripts/live_test_phase_e.py      # Phase E artifacts -> docs/artifacts/phase-e/
-.venv/Scripts/python.exe scripts/live_test_physics.py      # -> docs/artifacts/phase-f/
+.venv/Scripts/python.exe scripts/live_test_phase_e.py
+.venv/Scripts/python.exe scripts/live_test_physics.py
 ```
 
 Process-level control without restarting the MCP host (bypasses the MCP import cache):
@@ -297,14 +308,13 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 - **Kit Extension internals** → [`kkr-extensions/CLAUDE.md`](./kkr-extensions/CLAUDE.md)
 - **Module integration facts** (Kit 5.1 gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/omniverse_kit_mcp/modules/CLAUDE.md`](./src/omniverse_kit_mcp/modules/CLAUDE.md)
 - **Scenario authoring guide** → [`scenarios/CLAUDE.md`](./scenarios/CLAUDE.md)
-- **Phase-by-phase history** → `docs/phase-{a..i}-validation-report.md`
 - **Asset URL catalogs** → [`docs/assets/isaac/asset_inventory.md`](./docs/assets/isaac/asset_inventory.md) (Isaac Sim 5.1 bundle) + `docs/assets/composer/` (Composer scope)
 
 ---
 
 ## Status
 
-107 MCP tools + 3 resources covering stage / robot / character / sensor / multi-viewport / physics / lighting / material / SDG / OmniGraph / content / extension domains. Two Kit app profiles (Isaac Sim, USD Composer) with multi-instance support. See [`docs/tool-catalog.md`](./docs/tool-catalog.md) for the full surface.
+133 MCP tools + 5 resources covering stage / robot / character / sensor / multi-viewport / physics / lighting / material / SDG / OmniGraph / content / extension domains. Two Kit app profiles (Isaac Sim, USD Composer) with multi-instance support. See [`docs/tool-catalog.md`](./docs/tool-catalog.md) for the full surface.
 
 ## License
 

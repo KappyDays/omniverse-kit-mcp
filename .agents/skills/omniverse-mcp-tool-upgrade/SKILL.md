@@ -1,6 +1,6 @@
 ---
 name: omniverse-mcp-tool-upgrade
-description: Invoke after or during a Claude Code or Codex session that performed omniverse work, to retrospectively analyze that session's work (conversation — MCP tools called, workarounds, repeated friction — plus git diff), identify where MCP tools were missing or insufficient, then add new or upgrade existing MCP tools (7-place edit), verify (registration/drift in-session; behavioral only after host restart + ext reload), and sync tool-only docs. Autonomous with 3 distributed self-reviews (necessity, adversarial-correctness, integration). Input is the session's actual performed work, not an external task spec — it automates the manual harvesting that fills docs/mcp-enhance.md. Not for executing omniverse tasks, broad AGENTS.md sync (use omniverse-docs-sweep), Kit extension catalog sync (omniverse-kit-extension-catalog-sync), or asset URL/inventory (omniverse-asset-inventory-sync).
+description: Invoke after or during a Claude Code or Codex session that performed omniverse work, to retrospectively analyze that session's work (conversation — MCP tools called, workarounds, repeated friction — plus git diff), identify where MCP tools were missing or insufficient, then add new or upgrade existing MCP tools (7-place edit), verify (registration/drift in-session; behavioral only after host restart + ext reload), and sync tool-only docs. Autonomous with 3 distributed self-reviews (necessity, adversarial-correctness, integration). Input is the session's actual performed work, not an external task spec. Not for executing omniverse tasks, broad AGENTS.md sync (use omniverse-docs-sweep), Kit extension catalog sync (omniverse-kit-extension-catalog-sync), or asset URL/inventory (omniverse-asset-inventory-sync).
 metadata:
   version: "1.0.0"
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Prefix your first line with 🔧 inline.
 
-**목표**: **이번 Claude Code / Codex 세션에서 수행된 omniverse 작업(구현 내용·호출한 MCP tool·우회/수동 단계·반복 마찰)을 상세 분석**해, MCP 표면의 gap 을 식별하고 — **신규 tool 추가 또는 기존 tool 업그레이드**가 필요하면 — 7곳 구현 + 등록/drift 검증 + tool 전용 docs sync 까지 자율 완료한다. **입력은 세션의 실제 작업(conversation + git diff)이지 외부에서 주어진 task 명세가 아니다** — `docs/mcp-enhance.md` 를 수동으로 채우던 회고형 harvest 의 자동화. 절차의 SoT 는 기존 invariant 문서이며 이 skill 은 *가리키기*만 한다 (hard-code 금지).
+**목표**: **이번 Claude Code / Codex 세션에서 수행된 omniverse 작업(구현 내용·호출한 MCP tool·우회/수동 단계·반복 마찰)을 상세 분석**해, MCP 표면의 gap 을 식별하고 — **신규 tool 추가 또는 기존 tool 업그레이드**가 필요하면 — 7곳 구현 + 등록/drift 검증 + tool 전용 docs sync 까지 자율 완료한다. **입력은 세션의 실제 작업(conversation + git diff)이지 외부에서 주어진 task 명세가 아니다**. 절차의 SoT 는 기존 invariant 문서이며 이 skill 은 *가리키기*만 한다 (hard-code 금지).
 
 ## When to Use
 
@@ -39,7 +39,6 @@ Breaking any → STOP and report.
 - `docs/invariants/mcp-tool-add.md` — 새 tool 7곳 동시 수정 + verify_mcp_sync + drift
 - `docs/invariants/module-add.md` — 새 module / scenario action
 - `docs/invariants/ext-reload.md` — extension `.py` 수정 후 reload (P4 동작 검증 전제)
-- `docs/mcp-enhance.md` — 선분석된 gap backlog (E1~E15, S1~S2) — 재사용
 - `docs/tool-diagnostic-map.md` — 진단 역색인
 - (**live stage 를 동기 편집·순회·render-query 하는 tool 구현 시 — 읽기/traverse 포함**) `docs/invariants/usd-load.md` + `kkr-extensions/docs/usd-load-deadlock-recipe.md` — deadlock-safe baseline: 동기 MDL stage 편집/순회/render-query 는 freeze(deadlock) 유발. 해당 문서의 deadlock-safe 패턴 따를 것
 
@@ -56,12 +55,12 @@ All Python invocations use `.venv/Scripts/python.exe`.
 2. gap 후보마다 `docs/tool-catalog.md` 검색 (research step 0). **기존 tool 로 충분히 커버되면** gap 아님 (마찰이 단순 사용법 문제였을 수 있음 → 제거).
 3. 남은 gap **잠정 분류** (확정은 step 4 research 후):
    - `(a)` **신규 MCP tool** (Kit command/API wrap) → `docs/invariants/mcp-tool-add.md` 7곳
-   - `(b)` **기존 tool 업그레이드** (시그니처 확장·파라미터 추가·반환 보강) → 해당 tool 의 service/client/module/tool 함수 수정 (예: mcp-enhance E5 `viewport_capture` + warmup/stats). frozenset 불변 시 catalog regen 만, 변경 시 7곳 동일
+   - `(b)` **기존 tool 업그레이드** (시그니처 확장·파라미터 추가·반환 보강) → 해당 tool 의 service/client/module/tool 함수 수정 (예: `viewport_capture` warmup/stats 보강). frozenset 불변 시 catalog regen 만, 변경 시 7곳 동일
    - `(c)` 새 module / scenario action → `docs/invariants/module-add.md`
    - `(d)` MCP resource → `src/omniverse_kit_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py`
-   - `(e)` MCP 영역 밖 = validation_api 가 in-process 로 도달 불가 (예: host app `.kit` 재빌드 필요) → blocker 보고만. **"어렵다" ≠ "영역 밖"** (carb.input wrap 가능한 OS-input 류는 (a)). 분류 기준 예시 = `docs/mcp-enhance.md` Skip 섹션(영역 밖) vs E#/S# 항목(구현 대상). **(e) 확정은 step 4 research(step 1~4) 후에만 — in-process 경로 미발견을 확인. 미research 채 (e) 분류 금지 (false blocker 방지).**
-4. gap 마다 research flow (`docs/references/AGENTS.md` step 1~6) 실행 → 감쌀 ext/API 확정. `docs/mcp-enhance.md` 에 선분석 항목(E#/S#) 있으면 그 스펙 재사용. research 로 in-process 경로 발견 시 잠정 (e) → (a)/(b) 재분류; 경로 부재 확인 시에만 (e) 확정.
-5. 출력: **우선순위 매겨진 gap 리스트** (mcp-enhance 기준 = 이번 세션에서 직접 겪은 분 단위 pain + 우회비용).
+   - `(e)` MCP 영역 밖 = validation_api 가 in-process 로 도달 불가 (예: host app `.kit` 재빌드 필요) → blocker 보고만. **"어렵다" ≠ "영역 밖"** (carb.input wrap 가능한 OS-input 류는 (a)). **(e) 확정은 step 4 research(step 1~4) 후에만 — in-process 경로 미발견을 확인. 미research 채 (e) 분류 금지 (false blocker 방지).**
+4. gap 마다 research flow (`docs/references/AGENTS.md` step 1~6) 실행 → 감쌀 ext/API 확정. research 로 in-process 경로 발견 시 잠정 (e) → (a)/(b) 재분류; 경로 부재 확인 시에만 (e) 확정.
+5. 출력: **우선순위 매겨진 gap 리스트** (이번 세션에서 직접 겪은 분 단위 pain + 우회비용 기준).
 
 > **🔍 셀프 리뷰 ① — 필요성·재사용** (코드 쓰기 *전*. 모자: 사용자/낭비 방지)
 > - 이 gap 이 **이번 세션에서 실제로 분 단위 마찰**이었나, 아니면 단순 사용법 문제 / "있으면 좋겠다"인가 (I5)?
@@ -76,7 +75,7 @@ All Python invocations use `.venv/Scripts/python.exe`.
 
   > **🔍 셀프 리뷰 ② — 적대적 정확성** (구현 직후, 검증 *전*. 모자: 공격자)
   > - 고른 Kit API 실존+시그니처 맞나 — 실소스(`standalone_examples/` · ext source)로 확인했나, 추측인가?
-  > - side-effect 는? (예: `CreateConveyorBelt({})` 가 default prim 오염 — mcp-enhance E3)
+  > - side-effect 는? (예: `CreateConveyorBelt({})` 가 default prim 을 만들거나 stage 를 오염하지 않나?)
   > - R1 false-positive 가드: mock 이 항상 성공만 반환하지 않나? mock 충실도는 세션 내 live 확인 불가 → extension REST endpoint 의 **문서화된 계약** 기준으로 판정 (live 확인은 P4-(ii)).
   > - deadlock-safe: 새 동작이 live(MDL) stage 를 동기 편집/순회/render-query 하지 않나? 하면 `docs/invariants/usd-load.md` 의 deadlock-safe baseline 따랐나 (sync write → freeze landmine)?
   > 미통과 시 STOP (I3). TodoWrite pass/fail.
@@ -84,7 +83,7 @@ All Python invocations use `.venv/Scripts/python.exe`.
 - **P4 검증 — 두 층 분리**:
   - **(i) 등록/drift (세션 내, 필수 게이트)**: `.venv/Scripts/python.exe scripts/verify_mcp_sync.py` — fresh subprocess 로 코드 재import → catalog regen + drift pytest. import-cache 무관하게 green 확인 가능.
   - **(ii) 동작 (세션 밖)**: 실 REST 왕복은 live Isaac + MCP host 재시작 + ext reload 필요. 세션 내 standalone(`scripts/run_process_module_standalone.py` / `scripts/run_scenario_standalone.py`)은 mock 경유 — 실 endpoint 동작 증명 아님. 보고에 명시.
-- **P5 docs (tool 전용)**: tool-catalog regen 은 P4-(i) `verify_mcp_sync` 에 포함됨 (그룹 caveat·frozenset 은 P3 의 7곳에서 이미 완료). P5 고유 작업 = 새로 발견한 gap 을 `docs/mcp-enhance.md` 에 append + 변경 파급 매트릭스상 추가 갱신분 확인. 광범위 AGENTS.md 계층 동기화는 `omniverse-docs-sweep` 핸드오프.
+- **P5 docs (tool 전용)**: tool-catalog regen 은 P4-(i) `verify_mcp_sync` 에 포함됨 (그룹 caveat·frozenset 은 P3 의 7곳에서 이미 완료). P5 고유 작업 = 변경 파급 매트릭스상 추가 갱신분 확인. 광범위 AGENTS.md 계층 동기화는 `omniverse-docs-sweep` 핸드오프.
 
 ### 종료
 
@@ -128,7 +127,7 @@ STOP and report on any:
 
 세션 작업 요약: <이번 세션에 수행한 omniverse 작업>
 Gaps (세션 마찰에서 도출, 우선순위 순):
-- [신규] <tool> (a) — <감쌀 ext/API> ← 마찰: <무엇이 없었나> [mcp-enhance <E#/S#>]
+- [신규] <tool> (a) — <감쌀 ext/API> ← 마찰: <무엇이 없었나>
 - [업그레이드] <기존 tool> (b) — <보강 내용> ← 마찰: <기존 한계>
 - [재사용] <기존 tool> — <마찰이 단순 사용법이었음>
 - [blocker(e)] <capability> — <도달 불가 사유>
@@ -143,7 +142,6 @@ Gaps (세션 마찰에서 도출, 우선순위 순):
 
 docs:
 - 변경 파급 매트릭스 / 그룹 caveat / EXPECTED frozenset 갱신
-- mcp-enhance.md append: <새 gap 있으면>
 
 Next:
 1. MCP host (Claude Code / Codex CLI) 재시작 → 새 tool live 등록

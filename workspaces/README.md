@@ -36,8 +36,17 @@ codex                             # Codex CLI 진입
 
 ## 확장
 
-신규 profile 추가 절차: `../docs/superpowers/specs/2026-05-04-workspace-split-design.md` § 14.3.
+신규 profile 추가 절차는 `../docs/invariants/multi-app.md` 의 "새 App Profile
+추가 절차" 를 따른다. 새 profile 을 추가하면 해당 profile 폴더, instance
+`.mcp.json`, `.codex/config.toml`, profile `CLAUDE.md`, setup 등록, config/test
+가 함께 움직여야 한다.
 
 ## Promote work scenario → server regression
 
-상세: spec § 8 (4 항목 체크리스트 + `git mv`).
+work-only scenario 를 server regression 으로 승격할 때는 아래 4 항목을 통과한
+뒤 `git mv` 로 server `scenarios/` 아래로 이동한다.
+
+1. 실 NVIDIA / Hub asset 만 사용한다. primitive 대체 검증은 승격 금지.
+2. `scenario_validate` 또는 동등한 live 검증이 통과한다.
+3. 캡처가 필요한 시나리오는 `viewport_capture` 결과를 시각 확인한다.
+4. app/profile 고유 전제는 YAML 또는 인접 README 에 명시한다.

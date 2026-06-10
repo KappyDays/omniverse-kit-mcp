@@ -85,6 +85,7 @@ Write-Host "[ 3/4 ] Checking .env configuration..." -ForegroundColor Yellow
 
 $EnvFile    = Join-Path $RepoDir ".env"
 $EnvExample = Join-Path $RepoDir ".env.example"
+$LauncherSourceDir = Join-Path $RepoDir "setup\launchers"
 
 if (Test-Path $EnvFile) {
     Write-Host "  [OK]   .env already exists." -ForegroundColor Green
@@ -101,6 +102,56 @@ SCENARIOS_DIR=scenarios
 "@ | Set-Content -Path $EnvFile -Encoding UTF8
     Write-Host "  [OK]   Created minimal .env." -ForegroundColor Green
 }
+
+# ── Launcher install helper ────────────────────────────────────────────────
+
+function Install-McpLauncher {
+    param(
+        [string]$AppName,
+        [string]$TargetDir,
+        [string[]]$FileNames
+    )
+
+    if (-not (Test-Path $LauncherSourceDir)) {
+        Write-Host "  [WARN] Launcher source folder missing: $LauncherSourceDir" -ForegroundColor Yellow
+        return
+    }
+
+    if (-not (Test-Path $TargetDir)) {
+        Write-Host "  [WARN] $AppName target folder not found. Skipping launcher install:" -ForegroundColor Yellow
+        Write-Host "         $TargetDir" -ForegroundColor DarkGray
+        return
+    }
+
+    foreach ($fileName in $FileNames) {
+        $source = Join-Path $LauncherSourceDir $fileName
+        $target = Join-Path $TargetDir $fileName
+        if (-not (Test-Path $source)) {
+            Write-Host "  [WARN] Missing launcher template: $source" -ForegroundColor Yellow
+            continue
+        }
+        Copy-Item -LiteralPath $source -Destination $target -Force
+        Write-Host "  [OK]   Installed $AppName launcher: $target" -ForegroundColor Green
+    }
+}
+
+# ── Step 4: Install MCP-friendly manual launchers ──────────────────────────
+
+Write-Host ""
+Write-Host "[ 4/5 ] Installing MCP-friendly manual launchers..." -ForegroundColor Yellow
+
+$IsaacSimDir = Join-Path $env:USERPROFILE "workspace\branch\isaac-sim-standalone-5.1.0-windows-x86_64"
+$UsdComposerDir = Join-Path $env:USERPROFILE "workspace\branch\kit-app-template\_build\windows-x86_64\release"
+
+Install-McpLauncher `
+    -AppName "Isaac Sim" `
+    -TargetDir $IsaacSimDir `
+    -FileNames @("isaac-sim_mcp.bat", "isaac-sim_mcp.ps1")
+
+Install-McpLauncher `
+    -AppName "USD Composer" `
+    -TargetDir $UsdComposerDir `
+    -FileNames @("kkr_usd_composer_mcp.kit.bat", "kkr_usd_composer_mcp.kit.ps1")
 
 # ── JSON save helper (2-space indent, UTF-8 no BOM) ─────────────────────────
 
@@ -138,13 +189,13 @@ function Save-JsonFile {
     }
 }
 
-# ── Step 4: Cleanup legacy global mcpServers entries ────────────────────────
+# ── Step 5: Cleanup legacy global mcpServers entries ────────────────────────
 # In-repo workspaces/<profile>/instance-<N>/.mcp.json (committed, relative
 # `../../..` to repo root) is now SoT. Remove 7 legacy entries that previous
 # setup runs may have left in ~/.claude.json global mcpServers.
 
 Write-Host ""
-Write-Host "[ 4/4 ] Cleaning legacy MCP entries in $ClaudeJson ..." -ForegroundColor Yellow
+Write-Host "[ 5/5 ] Cleaning legacy MCP entries in $ClaudeJson ..." -ForegroundColor Yellow
 
 if (Test-Path $ClaudeJson) {
     try {
@@ -194,10 +245,12 @@ Write-Host "  1. Ensure Isaac Sim installed at:" -ForegroundColor Cyan
 Write-Host "     C:\Users\$env:USERNAME\workspace\branch\isaac-sim-standalone-5.1.0-windows-x86_64\" -ForegroundColor DarkGray
 Write-Host "  2. Ensure USD Composer built at:" -ForegroundColor Cyan
 Write-Host "     C:\Users\$env:USERNAME\workspace\branch\kit-app-template\_build\windows-x86_64\release\" -ForegroundColor DarkGray
-Write-Host "  3. cd into a workspace folder + start Claude Code:" -ForegroundColor Cyan
+Write-Host "  3. Manual MCP-safe launchers:" -ForegroundColor Cyan
+Write-Host "     isaac-sim_mcp.bat / kkr_usd_composer_mcp.kit.bat" -ForegroundColor DarkGray
+Write-Host "  4. cd into a workspace folder + start Claude Code:" -ForegroundColor Cyan
 Write-Host "     cd workspaces\isaac\instance-1     # Isaac Sim instance 1, port 8111" -ForegroundColor DarkGray
 Write-Host "     cd workspaces\usd-composer\instance-1  # USD Composer instance 1, port 8114" -ForegroundColor DarkGray
-Write-Host "  4. Tools appear with prefix:" -ForegroundColor Cyan
+Write-Host "  5. Tools appear with prefix:" -ForegroundColor Cyan
 Write-Host "     mcp__isaacsim-mcp-{1,2}__*       (Isaac instance)" -ForegroundColor DarkGray
 Write-Host "     mcp__usdcomposer-mcp-{1,2}__*    (USD Composer instance)" -ForegroundColor DarkGray
 Write-Host ""

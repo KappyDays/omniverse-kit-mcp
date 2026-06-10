@@ -27,6 +27,24 @@ Health URL: `http://127.0.0.1:<PORT>/validation/v1/health`
 
 ---
 
+## MCP-safe manual launchers
+
+권장 수동 실행 진입점은 repo 원본 `setup/launchers/*_mcp.*` 를 각 앱 폴더에 복사한 파일이다.
+
+| App | Installed launcher | Ports |
+|---|---|---|
+| Isaac Sim | `C:/Users/<you>/workspace/branch/isaac-sim-standalone-5.1.0-windows-x86_64/isaac-sim_mcp.bat` | 8111 → 8112 |
+| USD Composer | `C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kkr_usd_composer_mcp.kit.bat` | 8114 → 8115 |
+
+두 launcher 모두 `--dry-run`, `--instance 1|2`, `--port <PORT>` 를 지원하고, 선택한 port 를 `--/exts/omni.services.transport.server.http/port=<PORT>` 와 `allow_port_range=false` 로 Kit 에 전달한다.
+
+```powershell
+& "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kkr_usd_composer_mcp.kit.bat" --dry-run
+& "C:/Users/<you>/workspace/branch/kit-app-template/_build/windows-x86_64/release/kkr_usd_composer_mcp.kit.bat" --instance 2
+```
+
+---
+
 ## Isaac Sim
 
 ### 경로

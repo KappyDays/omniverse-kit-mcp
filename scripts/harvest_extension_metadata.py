@@ -3,7 +3,7 @@
 Usage:
     uv run python scripts/harvest_extension_metadata.py [--resume]
 
-상세 동작은 docs/superpowers/specs/2026-04-17-nvidia-reference-harvesting-design.md §5.3.
+상세 동작과 재생성 규칙은 docs/references/CLAUDE.md 참조.
 """
 from __future__ import annotations
 
