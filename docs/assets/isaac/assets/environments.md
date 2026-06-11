@@ -21,6 +21,13 @@
 | | `gridroom_curved.usd` | 217 KB | 곡면 그리드 룸 |
 | **Digital_Twin_Warehouse** | (내부 구조 미확인) | — | 고품질 창고 DT |
 | **Modular_Warehouse** | (내부 구조 미확인) | — | 모듈형 창고 |
+| **Modular_Warehouse_New** | `warehouse_10m_all_new.usda` ✓ | — | 10m warehouse module set |
+| | `warehouse_h10m_center.usda` ✓ | — | center module |
+| | `warehouse_h10m_straight.usda` ✓ | — | straight module |
 | **Outdoor** | (내부 구조 미확인) | — | 실외 환경 |
 | **Jetracer** | (내부 구조 미확인) | — | Jetracer 레이스트랙 |
-| **Terrains** | (내부 구조 미확인) | — | 지형 에셋 |
+| **Terrains** | `flat_plane.usd` ✓ | — | 평지 |
+| | `rough_plane.usd` ✓ | — | 거친 평면 |
+| | `slope.usd` ✓ | — | 경사 |
+| | `stairs.usd` ✓ | — | 계단 |
+| **warehouse_20x20_envi** | `warehouse_20x20_envi.usd` ✓ | — | 20x20 warehouse environment |

@@ -2,7 +2,7 @@
 
 `$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
 
-루트: `$ISAAC/Props/` — 총 23개 서브폴더.  
+루트: `$ISAAC/Props/` — 총 24개 서브폴더.
 드릴다운: `asset_list(category="props", subpath="{FolderName}")`
 
 ---

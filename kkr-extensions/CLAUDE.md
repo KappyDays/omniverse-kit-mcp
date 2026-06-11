@@ -34,7 +34,7 @@ Isaac Sim GUI (`kit.exe`) 내부에서 실행되는 Kit Extension 들이 모여 
 - `__init__.py` 에 `IExt` 서브클래스 import 필수 (없으면 `on_startup` 호출 안 됨)
 - 로깅은 `carb.log_warn / log_info / log_error` 만 — Python `logging` / `print` 은 Kit Console 안 보임
 - 코드 수정 반영: **로컬 개발은 hot-reload** / `[dependencies]` 변경은 Kit 완전 재시작
-- **UI 문자열은 영어만 (hard rule — 예외 없음)** — Kit 107 `omni.ui` font atlas 는 CJK glyph 가 없어 한글/한자 입력 시 글자가 □ 으로 깨진다. DevPanel 라벨 / Button text / hint label / Window title / status text 모두 영어로 author
+- **UI 문자열은 영어만 (hard rule — 예외 없음)** — Isaac Sim 6.0 / Kit 110 계열에서도 `omni.ui` CJK 렌더링 제약이 실측된다. DevPanel 라벨 / Button text / hint label / Window title / status text 모두 영어로 author
 - Viewport overlay UI 는 `viewport_window.get_frame()` 아래 단일 root `ui.ZStack` 사용 — 상세: `docs/kit-sdk-pitfalls.md` "Viewport-owned overlay UI"
 - 사용자-facing 색상/투명도 설정 UI 는 항상 `omni.ui.ColorWidget(r, g, b, a)` 사용 — 상세: `docs/kit-sdk-pitfalls.md` "색상 변경 UI 는 `ColorWidget` 사용"
 - 새 viewport/UI pitfall 발견 시 `docs/kit-sdk-pitfalls.md` 본문 + `docs/extension-basics.md` 체크리스트 포인터를 함께 갱신

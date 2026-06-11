@@ -1,6 +1,6 @@
 # Isaac Sim 6.0 — Asset Catalog Index
 
-**실측 완료**: 2026-06-10 Isaac Sim 6.0 S3 HEAD 검증 (`scripts/diff_asset_inventory.py --verbose`: 112 URLs, 0 invalid).
+**실측 완료**: 2026-06-11 Isaac Sim 6.0 S3 LIST + HEAD 검증 (`scripts/diff_asset_inventory.py --verbose`: robots 228+ top-level USD/USDA 포함).
 **사용법**: 필요한 카테고리 파일만 Read — 불필요한 토큰 소비 없음.
 
 ---
@@ -23,12 +23,12 @@
 
 | 요청 종류 | 읽을 파일 | 내용 요약 |
 |---|---|---|
-| 로봇 추가 / 로봇 추천 | `docs/assets/robots.md` | 44 벤더 · 100+ 모델 · 유형별 인덱스 · USD 파일명 전수 실측 |
-| 환경 / 씬 로드 | `docs/assets/environments.md` | 10개 환경 폴더 · 주요 USD 크기 |
-| 사람 / 캐릭터 / 애니메이션 | `docs/assets/people.md` | Named Characters · DH_Characters · Animations |
-| 산업용 prop (팔레트·지게차·선반) | `docs/assets/props.md` | Isaac Core Props 23 폴더 |
-| 가구 / 박스 / 컨테이너 | `docs/assets/simready.md` | SimReady Props 1000+ 종 분류 목록 |
-| RL 학습 / 재질 / 예제 / 센서 | `docs/assets/other.md` | IsaacLab · Materials · Samples · Sensors |
+| 로봇 추가 / 로봇 추천 | `docs/assets/isaac/assets/robots.md` | 50 벤더 · 203+ 모델 폴더 · 228+ top-level USD/USDA · 유형별 인덱스 |
+| 환경 / 씬 로드 | `docs/assets/isaac/assets/environments.md` | 12개 환경 폴더 · 주요 USD/USDA |
+| 사람 / 캐릭터 / 애니메이션 | `docs/assets/isaac/assets/people.md` | Named Characters · DH_Characters · Animations |
+| 산업용 prop (팔레트·지게차·선반) | `docs/assets/isaac/assets/props.md` | Isaac Core Props 폴더 |
+| 가구 / 박스 / 컨테이너 | `docs/assets/isaac/assets/simready.md` | SimReady Props 1000+ 종 분류 목록 |
+| RL 학습 / 재질 / 예제 / 센서 | `docs/assets/isaac/assets/other.md` | IsaacLab · Materials · Samples · Sensors |
 
 ---
 

@@ -149,7 +149,7 @@ async def test_search_response_fields_exact():
     for h in result.data:
         assert set(h.keys()) == {"name", "url", "category", "source_file"}
         assert h["url"].startswith("https://")
-        assert h["url"].endswith(".usd")
+        assert h["url"].endswith((".usd", ".usda"))
 
 
 @pytest.mark.asyncio
@@ -184,7 +184,8 @@ def synthetic_catalog(tmp_path: Path) -> Path:
         "루트: `$ISAAC/Environments/`\n\n"
         "| 환경 | 주요 USD |\n|---|---|\n"
         "| **Simple_Warehouse** | `warehouse.usd` ✓ |\n"
-        "| | `full_warehouse.usd` |\n",
+        "| | `full_warehouse.usd` |\n"
+        "| | `warehouse_h10m_center.usda` |\n",
         encoding="utf-8",
     )
     (d / "assets" / "people.md").write_text(
@@ -217,6 +218,7 @@ async def test_parser_bare_filename_uses_group_folder(synthetic_catalog: Path):
     assert "https://example.com/Isaac/Environments/Simple_Warehouse/warehouse.usd" in urls
     # empty-col0 row inherits the bold group folder (rowspan idiom)
     assert "https://example.com/Isaac/Environments/Simple_Warehouse/full_warehouse.usd" in urls
+    assert "https://example.com/Isaac/Environments/Simple_Warehouse/warehouse_h10m_center.usda" in urls
 
 
 @pytest.mark.asyncio

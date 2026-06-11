@@ -285,11 +285,11 @@ def _is_separator_row(cells: list[str]) -> bool:
 
 
 def _usd_tokens(line: str) -> list[str]:
-    """Backtick tokens that reference a .usd file (relative path or filename)."""
+    """Backtick tokens that reference a .usd/.usda file."""
     out: list[str] = []
     for tok in _BACKTICK_RE.findall(line):
         t = tok.strip()
-        if ".usd" not in t:
+        if ".usd" not in t and ".usda" not in t:
             continue
         # Skip prose-rule placeholders like `$SIM/{name}/{name}.usd`.
         if "{" in t or "(" in t or t.startswith("$"):
@@ -360,7 +360,7 @@ def _score(entry: dict[str, Any], tokens: list[str], full: str) -> int:
     if not tokens:
         return 0
     name = entry["name"].lower()
-    stem = name[:-4] if name.endswith(".usd") else name
+    stem = re.sub(r"\.usda?$", "", name)
     hay = entry["_text"]
     score = 0
     for tok in tokens:
