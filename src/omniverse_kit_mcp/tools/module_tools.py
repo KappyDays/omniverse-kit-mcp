@@ -73,6 +73,7 @@ from omniverse_kit_mcp.types.lakehouse import LakehouseDatasetRef, LakehouseQuer
 from omniverse_kit_mcp.types.robot import (
     JointPositionsSetRequest,
     RobotDrivePhysicsRequest,
+    RobotFrankaPickPlaceRequest,
     RobotGripperControlRequest,
     RobotLoadRequest,
     RobotNavigatePathRequest,
@@ -709,6 +710,58 @@ def register_module_tools(
         return _serialize(result)
 
     @mcp.tool()
+    async def robot_run_franka_pick_place(
+        robot_prim_path: str,
+        object_prim_path: str,
+        target_position: list[float],
+        max_steps: int = 1800,
+        position_tolerance: float = 0.05,
+        lift_height_tolerance: float = 0.03,
+        picking_position: list[float] | None = None,
+        end_effector_initial_height: float | None = None,
+        end_effector_offset: list[float] | None = None,
+        end_effector_orientation: list[float] | None = None,
+        events_dt: list[float] | None = None,
+    ) -> str:
+        """Run Isaac Sim's official Franka PickPlaceController/RMPflow/ParallelGripper against an existing object prim. Explicit picking/orientation inputs allow official-example-style grasps; success requires physical lift plus final bbox/position validation."""
+        meta = make_meta(ModuleName.ROBOT)
+        if len(target_position) != 3:
+            raise ValueError("target_position must be [x,y,z]")
+        if picking_position is not None and len(picking_position) != 3:
+            raise ValueError("picking_position must be [x,y,z]")
+        if end_effector_offset is not None and len(end_effector_offset) != 3:
+            raise ValueError("end_effector_offset must be [x,y,z]")
+        if end_effector_orientation is not None and len(end_effector_orientation) != 4:
+            raise ValueError("end_effector_orientation must be [qw,qx,qy,qz]")
+        request = RobotFrankaPickPlaceRequest(
+            robot_prim_path=robot_prim_path,
+            object_prim_path=object_prim_path,
+            target_position=tuple(float(v) for v in target_position),  # type: ignore[arg-type]
+            picking_position=(
+                tuple(float(v) for v in picking_position)
+                if picking_position is not None
+                else None
+            ),  # type: ignore[arg-type]
+            end_effector_initial_height=end_effector_initial_height,
+            end_effector_offset=(
+                tuple(float(v) for v in end_effector_offset)
+                if end_effector_offset is not None
+                else None
+            ),  # type: ignore[arg-type]
+            end_effector_orientation=(
+                tuple(float(v) for v in end_effector_orientation)
+                if end_effector_orientation is not None
+                else None
+            ),  # type: ignore[arg-type]
+            events_dt=tuple(float(v) for v in events_dt) if events_dt else None,
+            max_steps=max_steps,
+            position_tolerance=position_tolerance,
+            lift_height_tolerance=lift_height_tolerance,
+        )
+        result = await robot.run_franka_pick_place(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
     async def robot_drive_physics(
         prim_path: str,
         waypoints: list[list[float]],
@@ -851,7 +904,7 @@ def register_module_tools(
         category: str | None = None,
         limit: int = 20,
     ) -> str:
-        """Search the curated NVIDIA / Isaac Sim 5.1 asset catalog OFFLINE — no Isaac Sim required.
+        """Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.
 
         Maps a natural-language need (e.g. "forklift", "warehouse", "franka",
         "police character", "pallet") to concrete spawnable USD URLs by ranking
@@ -888,7 +941,7 @@ def register_module_tools(
         position: list[float] | None = None,
         yaw: float = 0.0,
     ) -> str:
-        """Load character USD; auto-loads Biped_Setup rig, binds AnimationGraph. Returns prim_path + skel_root. Sanitizes UUID filenames."""
+        """Load a 6.0 character skin, apply BehaviorAgent/IRA APIs, and return prim_path + skel_root. Sanitizes filenames."""
         meta = make_meta(ModuleName.CHARACTER)
         request = CharacterLoadRequest(
             usd_url=usd_url,
@@ -923,7 +976,7 @@ def register_module_tools(
         position: list[float],
         orientation: list[float] | None = None,
     ) -> str:
-        """Write character world pose to USD (xformOp:translate + orientation, scalar-first [qw,qx,qy,qz]). AnimGraph overrides the visual pose on the next tick, so get_state.position will not reflect this — for visible motion use character_navigate_to; for initial placement use character_load(position=...)."""
+        """Write character world pose to USD (xformOp:translate + orientation, scalar-first [qw,qx,qy,qz]). The character runtime may override visual pose on the next tick, so use character_navigate_to for visible motion and character_load(position=...) for initial placement."""
         meta = make_meta(ModuleName.CHARACTER)
         request = CharacterSetPositionRequest(
             prim_path=prim_path,
@@ -971,7 +1024,7 @@ def register_module_tools(
         speed: float = 1.0,
         target_position: list[float] | None = None,
     ) -> str:
-        """Play AnimationGraph BlendSpace variant (SitIdle/SitTalk/SitReading/WalkFast/WalkSlow/RunLow/RunHigh or plain Sit/Walk/Run/Idle). response.variables_set lists applied keys."""
+        """Play a BehaviorAgent/legacy-compatible variant (SitIdle/SitTalk/SitReading/WalkFast/WalkSlow/RunLow/RunHigh or plain Sit/Walk/Run/Idle). response.variables_set lists applied keys."""
         meta = make_meta(ModuleName.CHARACTER)
         request = CharacterPlayAnimationVariantRequest(
             prim_path=prim_path,
@@ -994,7 +1047,7 @@ def register_module_tools(
         center: list[float] | None = None,
         usd_url: str | None = None,
     ) -> str:
-        """Batch-load N characters (count 1-100) in layout ∈ {grid, line, random}. Defaults to Biped_Setup.usd; override usd_url. Per-character failures in response.loaded."""
+        """Batch-load N 6.0 character skins (count 1-100) in layout ∈ {grid, line, random}. Defaults to F_Business_02; override usd_url. Per-character failures in response.loaded."""
         meta = make_meta(ModuleName.CHARACTER)
         center_tuple = (
             tuple(float(c) for c in center) if center else (0.0, 0.0, 0.0)

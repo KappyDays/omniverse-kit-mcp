@@ -85,8 +85,8 @@ Workspace mapping:
 
 | Workspace | MCP server | App | Port |
 |---|---|---|---|
-| `workspaces/isaac/instance-1` | `isaacsim-mcp-1` | Isaac Sim 5.1 | 8111 |
-| `workspaces/isaac/instance-2` | `isaacsim-mcp-2` | Isaac Sim 5.1 | 8112 |
+| `workspaces/isaac/instance-1` | `isaacsim-mcp-1` | Isaac Sim 6.0.0 | 8111 |
+| `workspaces/isaac/instance-2` | `isaacsim-mcp-2` | Isaac Sim 6.0.0 | 8112 |
 | `workspaces/usd-composer/instance-1` | `usdcomposer-mcp-1` | USD Composer | 8114 |
 | `workspaces/usd-composer/instance-2` | `usdcomposer-mcp-2` | USD Composer | 8115 |
 
@@ -98,6 +98,15 @@ rules:
 - Start Codex directly from a workspace folder with `codex`.
 - Codex reads the workspace-local `.codex/config.toml` for that folder.
 - Each `.codex/config.toml` mirrors the sibling `.mcp.json` server entry.
+- Keep optional code-navigation MCPs such as CodeGraph in user/global Codex
+  config, not in committed workspace `.codex/config.toml` files. Workspace
+  configs intentionally contain only the one Kit MCP entry mirrored from
+  `.mcp.json`.
+- For CodeGraph, initialize the repo root with `codegraph init -i`; the local
+  `.codegraph/` index is ignored and should not be committed.
+- Use CodeGraph only after reading the applicable `CLAUDE.md` and pull-docs.
+  It accelerates symbol/impact discovery; it does not replace project rules,
+  runbooks, or verification commands.
 - If a root-folder Codex thread receives live MCP work, keep the root thread as
   coordinator and create/continue the actual work in the matching
   `workspaces/<app>/instance-N` folder so the workspace-local MCP entry loads.

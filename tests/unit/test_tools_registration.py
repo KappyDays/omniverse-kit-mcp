@@ -138,6 +138,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "robot_gripper_control",
     "robot_set_ee_target",
     "robot_get_ee_pose",
+    "robot_run_franka_pick_place",
     # Phase G — Character extensions (animation variant / crowd load)
     "character_play_animation_variant",
     "character_load_crowd",

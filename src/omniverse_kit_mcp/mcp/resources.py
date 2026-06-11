@@ -73,10 +73,10 @@ def register_resources(mcp: FastMCP, config: AppConfig) -> None:
         "isaacsim://sensor-menu",
         name="Isaac Sim Create > Sensors Menu Catalog",
         description=(
-            "Full Isaac Sim 5.1 Create > Sensors menu contents (RTX Lidar / "
-            "Radar / Camera / Depth / PhysX Contact / IMU / LightBeam) by "
-            "vendor × model. Source of truth when the user asks for a "
-            "specific sensor — pair with window_menu_trigger."
+            "Last captured Isaac Sim Create > Sensors menu reference (RTX "
+            "Lidar / Radar / Camera / Depth / contact / IMU / LightBeam) by "
+            "vendor × model. Recapture against Isaac Sim 6.0 before treating "
+            "menu labels as authoritative."
         ),
         mime_type="text/markdown",
     )
@@ -98,7 +98,7 @@ def register_resources(mcp: FastMCP, config: AppConfig) -> None:
         description=(
             "READ FIRST before building a scene or adding any robot / "
             "character / environment / prop / SimReady asset — the curated "
-            "NVIDIA / Isaac Sim 5.1 asset inventory (robots 100+, "
+            "NVIDIA / Isaac Sim 6.0 asset inventory (robots 90+, "
             "environments 10, people / animations, props, SimReady 1000+). "
             "Maps a request type to the catalog file that holds concrete USD "
             "URLs so you load a real NVIDIA asset (Validation Rule R1 — never "

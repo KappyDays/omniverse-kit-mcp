@@ -6,11 +6,21 @@ per Extension API rule #7 so the module is safe to import outside Kit.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+import importlib
 import logging
+import math
 import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _OfficialFrankaPickPlaceClasses:
+    pick_place_controller: Any
+    parallel_gripper: Any
+    single_articulation: Any
 
 
 class RobotService:
@@ -94,7 +104,7 @@ class RobotService:
 
         _assert_articulation(prim_path)
         art = SingleArticulation(prim_path)
-        _ensure_initialized(art)
+        await _ensure_articulation_ready(art, prim_path)
         positions = art.get_joint_positions()
         if positions is None:
             raise ValueError(
@@ -130,7 +140,7 @@ class RobotService:
 
         _assert_articulation(prim_path)
         art = SingleArticulation(prim_path)
-        _ensure_initialized(art)
+        await _ensure_articulation_ready(art, prim_path)
 
         dof_names = list(art.dof_names or [])
         num_dof = int(art.num_dof or len(dof_names))
@@ -213,8 +223,8 @@ class RobotService:
 
         _assert_articulation(prim_path)
         art = SingleArticulation(prim_path)
-        _ensure_initialized(art)
-        art.set_joint_positions(np.array(positions, dtype=np.float32))
+        await _ensure_articulation_ready(art, prim_path)
+        _apply_joint_positions(art, np.array(positions, dtype=np.float32))
         return {
             "ok": True,
             "prim_path": prim_path,
@@ -275,7 +285,7 @@ class RobotService:
 
         _assert_articulation(prim_path)
         art = SingleArticulation(prim_path)
-        _ensure_initialized(art)
+        await _ensure_articulation_ready(art, prim_path)
 
         dof_names = list(art.dof_names or [])
         gripper_idx = [
@@ -307,7 +317,7 @@ class RobotService:
         new_positions = np.array(current, dtype=np.float32).copy()
         for i in gripper_idx:
             new_positions[i] = target_value
-        art.set_joint_positions(new_positions)
+        _apply_joint_positions(art, new_positions)
 
         return {
             "ok": True,
@@ -372,7 +382,7 @@ class RobotService:
 
         from isaacsim.core.prims import SingleArticulation  # lazy
         art = SingleArticulation(prim_path)
-        _ensure_initialized(art)
+        await _ensure_articulation_ready(art, prim_path)
         warm = art.get_joint_positions()
         if warm is None:
             raise ValueError(
@@ -408,7 +418,7 @@ class RobotService:
         sol_arr = np.asarray(sol, dtype=np.float32).reshape(-1)
         for i in range(min(len(sol_arr), len(new_positions))):
             new_positions[i] = sol_arr[i]
-        art.set_joint_positions(new_positions)
+        _apply_joint_positions(art, new_positions)
 
         return {
             "ok": True,
@@ -433,6 +443,220 @@ class RobotService:
         controller telemetry: "where is the hand now?".
         """
         return _compute_ee_pose(prim_path, end_effector_frame)
+
+    async def run_franka_pick_place(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Run Isaac Sim's official Franka PickPlaceController on an object.
+
+        This endpoint deliberately does not move the object kinematically. The
+        only object-side setup it performs is best-effort physics schema
+        preparation so an existing prim can participate in contact. Success is
+        based on controller completion plus bbox-based lift/place validation.
+        """
+        import numpy as np
+        import omni.kit.app
+        import omni.timeline
+
+        robot_prim_path = str(request["robot_prim_path"])
+        object_prim_path = str(request["object_prim_path"])
+        target_position = [float(v) for v in request["target_position"]]
+        if len(target_position) != 3:
+            raise ValueError("target_position must be [x, y, z]")
+        if str(request.get("robot_description", "Franka")).lower() != "franka":
+            raise ValueError("robot/franka_pick_place currently supports robot_description='Franka' only")
+
+        max_steps = int(request.get("max_steps", 1800))
+        position_tolerance = float(request.get("position_tolerance", 0.05))
+        lift_height_tolerance = float(request.get("lift_height_tolerance", 0.03))
+        picking_position_raw = request.get("picking_position")
+        explicit_picking_position = (
+            [float(v) for v in picking_position_raw]
+            if picking_position_raw is not None
+            else None
+        )
+        end_effector_initial_height = request.get("end_effector_initial_height")
+        end_effector_offset_raw = request.get("end_effector_offset")
+        end_effector_offset = (
+            np.array([float(v) for v in end_effector_offset_raw], dtype=np.float32)
+            if end_effector_offset_raw is not None
+            else None
+        )
+        end_effector_orientation_raw = request.get("end_effector_orientation")
+        end_effector_orientation = (
+            np.array([float(v) for v in end_effector_orientation_raw], dtype=np.float32)
+            if end_effector_orientation_raw is not None
+            else None
+        )
+        events_dt = request.get("events_dt")
+        if events_dt is not None:
+            events_dt = [float(v) for v in events_dt]
+
+        _assert_articulation(robot_prim_path)
+        _assert_prim_exists(object_prim_path)
+        _ensure_pickable_physics(object_prim_path)
+
+        classes = _resolve_official_franka_pick_place_classes()
+        robot = classes.single_articulation(robot_prim_path)
+        await _ensure_articulation_ready(robot, robot_prim_path, max_frames=180)
+
+        gripper = classes.parallel_gripper(
+            end_effector_prim_path=f"{robot_prim_path}/panda_rightfinger",
+            joint_prim_names=["panda_finger_joint1", "panda_finger_joint2"],
+            joint_opened_positions=np.array([0.05, 0.05], dtype=np.float32),
+            joint_closed_positions=np.array([0.0, 0.0], dtype=np.float32),
+            action_deltas=np.array([0.05, 0.05], dtype=np.float32),
+        )
+        gripper.initialize(
+            articulation_apply_action_func=robot.apply_action,
+            get_joint_positions_func=robot.get_joint_positions,
+            set_joint_positions_func=robot.set_joint_positions,
+            dof_names=list(robot.dof_names or []),
+        )
+        try:
+            robot.apply_action(gripper.forward(action="open"))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("initial gripper open failed: %s", exc)
+
+        initial_bbox = _compute_world_bbox(object_prim_path)
+        initial_center = initial_bbox["center"]
+        object_bbox_size = initial_bbox["size"]
+        picking_position = explicit_picking_position or list(initial_center)
+        picking_position_source = "explicit" if explicit_picking_position is not None else "bbox_center"
+        resolved_hover_height = _resolve_franka_pick_place_hover_height(
+            explicit_height=(
+                float(end_effector_initial_height)
+                if end_effector_initial_height is not None
+                else None
+            ),
+            picking_z=float(picking_position[2]),
+            target_z=float(target_position[2]),
+        )
+        hover_height_source = (
+            "explicit"
+            if end_effector_initial_height is not None
+            else (
+                "official_default"
+                if math.isclose(resolved_hover_height, 0.3, rel_tol=0.0, abs_tol=1e-9)
+                else "auto_above_pick_place"
+            )
+        )
+        diagnostics = _build_franka_pick_place_diagnostics(
+            object_bbox_size,
+            picking_position_source=picking_position_source,
+        )
+        diagnostics["end_effector_initial_height"] = resolved_hover_height
+        diagnostics["end_effector_initial_height_source"] = hover_height_source
+
+        controller = classes.pick_place_controller(
+            name="mcp_official_franka_pick_place",
+            gripper=gripper,
+            robot_articulation=robot,
+            end_effector_initial_height=resolved_hover_height,
+            events_dt=events_dt,
+        )
+
+        app = omni.kit.app.get_app()
+        timeline = omni.timeline.get_timeline_interface()
+        was_playing = bool(timeline.is_playing())
+        if not was_playing:
+            timeline.play()
+            for _ in range(5):
+                await app.next_update_async()
+
+        max_center_z = initial_center[2]
+        final_center = initial_center
+        steps = 0
+        done = False
+        last_event = 0
+        reason: str | None = None
+
+        try:
+            for steps in range(1, max_steps + 1):
+                joints = robot.get_joint_positions()
+                if joints is None:
+                    reason = "Robot joint positions unavailable during pick-place"
+                    break
+                object_bbox = _compute_world_bbox(object_prim_path)
+                object_center = object_bbox["center"]
+                max_center_z = max(max_center_z, object_center[2])
+                current_picking_position = (
+                    picking_position
+                    if explicit_picking_position is not None
+                    else object_center
+                )
+                actions = controller.forward(
+                    picking_position=np.array(current_picking_position, dtype=np.float32),
+                    placing_position=np.array(target_position, dtype=np.float32),
+                    current_joint_positions=np.asarray(joints, dtype=np.float32),
+                    end_effector_offset=end_effector_offset,
+                    end_effector_orientation=end_effector_orientation,
+                )
+                try:
+                    robot.apply_action(actions)
+                except Exception:
+                    controller_obj = robot.get_articulation_controller()
+                    controller_obj.apply_action(actions)
+                last_event = int(controller.get_current_event())
+                await app.next_update_async()
+                if controller.is_done():
+                    done = True
+                    break
+
+            final_bbox = _compute_world_bbox(object_prim_path)
+            final_center = final_bbox["center"]
+            final_distance = _distance3(final_center, target_position)
+            max_lift_delta = max_center_z - initial_center[2]
+            lifted = max_lift_delta >= lift_height_tolerance
+            placed = final_distance <= position_tolerance
+            ok = done and lifted and placed
+            if reason is None and not ok:
+                if not done:
+                    reason = f"Official PickPlaceController did not finish within {max_steps} steps (event={last_event})"
+                elif not lifted:
+                    reason = (
+                        "Object was not lifted by the gripper "
+                        f"(max_lift_delta={max_lift_delta:.4f}m < {lift_height_tolerance:.4f}m)"
+                    )
+                elif not placed:
+                    reason = (
+                        "Object final bbox center is outside target tolerance "
+                        f"(distance={final_distance:.4f}m > {position_tolerance:.4f}m)"
+                    )
+        finally:
+            if not was_playing:
+                timeline.pause()
+
+        return {
+            "ok": bool(ok),
+            "robot_prim_path": robot_prim_path,
+            "object_prim_path": object_prim_path,
+            "target_position": target_position,
+            "controller": (
+                "isaacsim.robot.manipulators.examples.franka.controllers."
+                "PickPlaceController"
+            ),
+            "gripper": "ParallelGripper",
+            "uses_kinematic_carry": False,
+            "steps": int(steps),
+            "done": bool(done),
+            "placed": bool(placed),
+            "lifted": bool(lifted),
+            "initial_object_position": [float(v) for v in initial_center],
+            "final_object_position": [float(v) for v in final_center],
+            "final_distance": float(final_distance),
+            "max_lift_delta": float(max_lift_delta),
+            "object_bbox_size": [float(v) for v in object_bbox_size],
+            "picking_position": [float(v) for v in picking_position],
+            "picking_position_source": picking_position_source,
+            "end_effector_initial_height": float(resolved_hover_height),
+            "end_effector_initial_height_source": hover_height_source,
+            "end_effector_orientation": (
+                [float(v) for v in end_effector_orientation.tolist()]
+                if end_effector_orientation is not None
+                else None
+            ),
+            "diagnostics": diagnostics,
+            "reason": reason,
+        }
 
     async def navigate_path(
         self,
@@ -702,18 +926,285 @@ def _has_articulation_api(prim: Any) -> bool:
         return False
 
 
+def _resolve_official_franka_pick_place_classes() -> _OfficialFrankaPickPlaceClasses:
+    """Resolve Isaac Sim 5.1 official Franka PickPlace classes lazily."""
+    controller_mod = importlib.import_module(
+        "isaacsim.robot.manipulators.examples.franka.controllers.pick_place_controller"
+    )
+    gripper_mod = importlib.import_module(
+        "isaacsim.robot.manipulators.grippers.parallel_gripper"
+    )
+    prims_mod = importlib.import_module("isaacsim.core.prims")
+    return _OfficialFrankaPickPlaceClasses(
+        pick_place_controller=controller_mod.PickPlaceController,
+        parallel_gripper=gripper_mod.ParallelGripper,
+        single_articulation=prims_mod.SingleArticulation,
+    )
+
+
+def _assert_prim_exists(prim_path: str) -> None:
+    import omni.usd
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim.IsValid():
+        raise ValueError(f"Prim not found at {prim_path}")
+
+
+def _ensure_pickable_physics(prim_path: str) -> None:
+    """Best-effort physical setup matching official DynamicCuboid assumptions.
+
+    The official PickPlace task creates a dynamic cuboid, so arbitrary existing
+    prims need at least RigidBodyAPI on the root and CollisionAPI on visible
+    geometry. This helper authors schema only; it never edits object transform.
+    """
+    import omni.usd
+    from pxr import Usd, UsdGeom, UsdPhysics
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+    root = stage.GetPrimAtPath(prim_path)
+    if not root.IsValid():
+        raise ValueError(f"Prim not found at {prim_path}")
+
+    if not root.HasAPI(UsdPhysics.RigidBodyAPI):
+        body = UsdPhysics.RigidBodyAPI.Apply(root)
+        enabled = body.GetRigidBodyEnabledAttr()
+        if enabled and enabled.IsValid():
+            enabled.Set(True)
+
+    applied_collision = False
+    for prim in Usd.PrimRange(root):
+        if prim.HasAPI(UsdPhysics.CollisionAPI):
+            applied_collision = True
+            continue
+        if prim.IsA(UsdGeom.Gprim):
+            UsdPhysics.CollisionAPI.Apply(prim)
+            applied_collision = True
+    if not applied_collision and root.IsA(UsdGeom.Gprim):
+        UsdPhysics.CollisionAPI.Apply(root)
+
+
+def _compute_world_bbox(prim_path: str) -> dict[str, list[float]]:
+    import omni.usd
+    from pxr import Usd, UsdGeom
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim.IsValid():
+        raise ValueError(f"Prim not found at {prim_path}")
+
+    purposes = [UsdGeom.Tokens.default_, UsdGeom.Tokens.render, UsdGeom.Tokens.proxy]
+    cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), purposes)
+    aligned = cache.ComputeWorldBound(prim).ComputeAlignedRange()
+    minimum = aligned.GetMin()
+    maximum = aligned.GetMax()
+    if aligned.IsEmpty():
+        matrix = UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(
+            Usd.TimeCode.Default()
+        )
+        translate = matrix.ExtractTranslation()
+        center = [float(translate[0]), float(translate[1]), float(translate[2])]
+        return {"min": center, "max": center, "center": center, "size": [0.0, 0.0, 0.0]}
+
+    min_list = [float(minimum[0]), float(minimum[1]), float(minimum[2])]
+    max_list = [float(maximum[0]), float(maximum[1]), float(maximum[2])]
+    center = [
+        (min_list[0] + max_list[0]) * 0.5,
+        (min_list[1] + max_list[1]) * 0.5,
+        (min_list[2] + max_list[2]) * 0.5,
+    ]
+    size = [
+        max_list[0] - min_list[0],
+        max_list[1] - min_list[1],
+        max_list[2] - min_list[2],
+    ]
+    return {"min": min_list, "max": max_list, "center": center, "size": size}
+
+
+def _build_franka_pick_place_diagnostics(
+    bbox_size: list[float],
+    *,
+    picking_position_source: str,
+) -> dict[str, Any]:
+    """Compare a candidate object with the official Franka block examples."""
+    official_block_size_m = 0.0515
+    franka_nominal_gripper_width_m = 0.10
+    low_object_height_warn_m = 0.025
+
+    size = [float(v) for v in bbox_size]
+    horizontal = size[:2]
+    largest_horizontal = max(horizontal) if horizontal else 0.0
+    height = size[2] if len(size) >= 3 else 0.0
+    warnings: list[str] = []
+    hints: list[str] = []
+
+    if largest_horizontal > franka_nominal_gripper_width_m:
+        warnings.append(
+            "Object horizontal bbox is wider than the Franka gripper nominal opening "
+            f"({largest_horizontal:.4f}m > {franka_nominal_gripper_width_m:.4f}m)."
+        )
+    if height < low_object_height_warn_m:
+        warnings.append(
+            "Object is flatter than the official block-stacking cube; "
+            f"height {height:.4f}m can make the parallel fingers collide with the table "
+            "or close without contact."
+        )
+    if picking_position_source != "explicit":
+        hints.append(
+            "Pass an explicit picking_position when the visual grasp point should differ "
+            "from the world bbox center."
+        )
+    hints.append(
+        "For official-example validation, use a DynamicCuboid-like block around "
+        f"{official_block_size_m:.4f}m on each side."
+    )
+
+    return {
+        "official_reference": "Isaac Sim Franka Cortex Block Stacking",
+        "official_block_size_m": official_block_size_m,
+        "franka_nominal_gripper_width_m": franka_nominal_gripper_width_m,
+        "bbox_size": size,
+        "picking_position_source": picking_position_source,
+        "warnings": warnings,
+        "hints": hints,
+    }
+
+
+def _resolve_franka_pick_place_hover_height(
+    *,
+    explicit_height: float | None,
+    picking_z: float,
+    target_z: float,
+) -> float:
+    """Resolve PickPlaceController's absolute-world hover height.
+
+    Isaac's official default is z=0.3m because the tutorial cube sits on the
+    ground. For table-top tasks this absolute value can be below the object,
+    so the MCP wrapper chooses a hover height above both pick and place z.
+    """
+    if explicit_height is not None:
+        return float(explicit_height)
+    return max(0.3, float(picking_z) + 0.25, float(target_z) + 0.25)
+
+
+def _distance3(a: list[float], b: list[float]) -> float:
+    return math.sqrt(
+        (float(a[0]) - float(b[0])) ** 2
+        + (float(a[1]) - float(b[1])) ** 2
+        + (float(a[2]) - float(b[2])) ** 2
+    )
+
+
+async def _ensure_articulation_ready(
+    articulation: Any,
+    prim_path: str,
+    *,
+    max_frames: int = 90,
+) -> None:
+    """Wait until Isaac's articulation wrapper exposes live joint state."""
+    import omni.kit.app  # lazy
+
+    _ensure_physics_world()
+    app = omni.kit.app.get_app()
+    last_error: str | None = None
+
+    for _frame in range(max_frames + 1):
+        try:
+            _ensure_initialized(articulation)
+            positions = articulation.get_joint_positions()
+            if positions is not None:
+                return
+            last_error = "get_joint_positions returned None"
+        except Exception as exc:  # noqa: BLE001
+            last_error = str(exc)
+        await app.next_update_async()
+
+    raise ValueError(
+        f"articulation at {prim_path} not ready after {max_frames} frames; "
+        f"last_error={last_error or 'unknown'}"
+    )
+
+
 def _ensure_initialized(articulation: Any) -> None:
     """Defensive ``SingleArticulation.initialize()`` — safe to call twice.
 
     Isaac Sim 5.1 requires initialize() before joint I/O even when the prim
     has a PhysxArticulationRoot. Re-initializing an already-initialized
-    articulation is a no-op (no exception). Any other error is logged but
-    not raised — the subsequent get/set call will surface a useful error.
+    articulation is a no-op. Initialization failures are surfaced as a
+    domain error instead of leaking Isaac internals such as ``link_names``.
     """
+    prim_path = str(getattr(articulation, "prim_path", "") or "<unknown>")
     try:
         articulation.initialize()
     except Exception as exc:
-        logger.debug("SingleArticulation.initialize() raised (non-fatal): %s", exc)
+        raise ValueError(
+            f"articulation at {prim_path} not ready: initialize failed: {exc}"
+        ) from exc
+
+    ready, reason = _articulation_runtime_ready(articulation)
+    if not ready:
+        raise ValueError(f"articulation at {prim_path} not ready: {reason}")
+
+
+def _articulation_runtime_ready(articulation: Any) -> tuple[bool, str]:
+    try:
+        dof_names = list(articulation.dof_names or [])
+    except Exception as exc:  # noqa: BLE001
+        return False, f"dof_names unavailable: {exc}"
+    try:
+        num_dof = int(articulation.num_dof or len(dof_names))
+    except Exception as exc:  # noqa: BLE001
+        return False, f"num_dof unavailable: {exc}"
+    if num_dof <= 0:
+        return False, "num_dof is 0"
+    if not dof_names:
+        return False, "dof_names is empty"
+    return True, ""
+
+
+def _ensure_physics_world() -> None:
+    """Create/initialize an Isaac World so SingleArticulation can bind PhysX."""
+    try:
+        from isaacsim.core.api import World  # type: ignore[import-not-found]
+
+        world = World.instance()
+        if world is None:
+            world = World(
+                physics_dt=1.0 / 60.0,
+                rendering_dt=1.0 / 60.0,
+                stage_units_in_meters=1.0,
+            )
+        if getattr(world, "physics_sim_view", None) is None:
+            world.initialize_physics()
+    except ImportError:
+        return
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("World physics initialization failed: %s", exc)
+
+
+def _apply_joint_positions(articulation: Any, positions: Any) -> None:
+    """Apply joint targets through the controller when available."""
+    try:
+        from isaacsim.core.utils.types import ArticulationAction  # type: ignore[import-not-found]
+    except ImportError:
+        try:
+            from omni.isaac.core.utils.types import ArticulationAction  # type: ignore[import-not-found]
+        except ImportError:
+            articulation.set_joint_positions(positions)
+            return
+
+    try:
+        controller = articulation.get_articulation_controller()
+        controller.apply_action(ArticulationAction(joint_positions=positions))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("articulation controller apply_action failed; using set_joint_positions: %s", exc)
+        articulation.set_joint_positions(positions)
 
 
 def _props_get(record: Any, key: str, default: Any) -> Any:
@@ -1245,7 +1736,9 @@ def _pure_pursuit_target(
 
 def _seg_dist(p, a, b) -> float:
     import math
-    ax, ay = a; bx, by = b; px, py = p
+    ax, ay = a
+    bx, by = b
+    px, py = p
     abx, aby = bx - ax, by - ay
     ab_sq = abx * abx + aby * aby
     if ab_sq < 1e-12:

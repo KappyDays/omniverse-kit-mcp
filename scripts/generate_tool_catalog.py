@@ -55,7 +55,7 @@ _GROUPS: list[tuple[str, tuple[str, ...]]] = [
     ("Robot — articulation + navigation (ASYNC Job)", ("robot_",)),
     ("Job — async job polling / cancel", ("job_",)),
     ("Asset — catalog browsing (GUI Asset Browser equivalent)", ("asset_",)),
-    ("Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)", ("character_",)),
+    ("Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)", ("character_",)),
     ("Navigation — NavMesh bake / path query / exclude volume", ("navigation_",)),
     ("Scenario — YAML Arrange / Act / Assert / Cleanup runner", ("scenario_",)),
 ]

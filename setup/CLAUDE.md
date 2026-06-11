@@ -42,7 +42,7 @@ setup\setup-omniverse-kit-mcp.bat
 ```
 
 실행 후:
-1. Isaac Sim 5.1 standalone 별도 설치 — `.env` 의 `ISAAC_SIM_KIT_EXE` / `ISAAC_SIM_KIT_FILE` 로 경로 override (`../README.md` Isaac Sim Setup 섹션 참조)
+1. Isaac Sim 6.0 standalone 별도 설치 — `.env` 의 `ISAAC_SIM_KIT_EXE` / `ISAAC_SIM_KIT_FILE` 로 경로 override (`../README.md` Isaac Sim Setup 섹션 참조)
 2. `cd workspaces/isaac/instance-1` (또는 다른 instance 폴더) 후 `claude` 시작 → 시스템 리마인더에 해당 instance 의 `mcp__isaacsim-mcp-N__*` / `mcp__usdcomposer-mcp-N__*` tool prefix 표시 확인
 3. 수동 실행은 각 앱 폴더의 `isaac-sim_mcp.bat` 또는 `kkr_usd_composer_mcp.kit.bat` 사용 — 두 번 실행 시 instance port 를 자동 선택
 4. Kit extension 활성화는 `kit.exe --ext-folder ... --enable omni.mycompany.validation_api` 로 자동 (Extension Manager 수동 토글 불필요) — 자세한 플래그는 `../src/omniverse_kit_mcp/modules/CLAUDE.md` 참조

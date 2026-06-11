@@ -66,6 +66,11 @@ state/
 *.sqlite3
 *.db
 
+# CodeGraph local knowledge graph indexes.
+# Keep these machine-local; initialize per clone with `codegraph init -i`.
+.codegraph/
+.codegraph-*/
+
 # Claude Code runtime state (scheduled_tasks.lock etc. — not project code)
 .claude/*
 # Exception: project-local skills should be shared across sessions/teammates

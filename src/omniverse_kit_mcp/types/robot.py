@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(slots=True, frozen=True)
@@ -139,6 +140,51 @@ class RobotEEPose:
     position: tuple[float, float, float]
     orientation: tuple[float, float, float, float]
     source: str
+
+
+@dataclass(slots=True, frozen=True)
+class RobotFrankaPickPlaceRequest:
+    """Run Isaac Sim's official Franka PickPlaceController on an existing object."""
+
+    robot_prim_path: str
+    object_prim_path: str
+    target_position: tuple[float, float, float]
+    robot_description: str = "Franka"
+    picking_position: tuple[float, float, float] | None = None
+    end_effector_initial_height: float | None = None
+    end_effector_offset: tuple[float, float, float] | None = None
+    end_effector_orientation: tuple[float, float, float, float] | None = None
+    events_dt: tuple[float, ...] | None = None
+    max_steps: int = 1800
+    position_tolerance: float = 0.05
+    lift_height_tolerance: float = 0.03
+
+
+@dataclass(slots=True, frozen=True)
+class RobotFrankaPickPlaceResult:
+    ok: bool
+    robot_prim_path: str
+    object_prim_path: str
+    target_position: tuple[float, float, float]
+    controller: str
+    gripper: str
+    uses_kinematic_carry: bool
+    steps: int
+    done: bool
+    placed: bool
+    lifted: bool
+    initial_object_position: tuple[float, float, float]
+    final_object_position: tuple[float, float, float]
+    final_distance: float
+    max_lift_delta: float
+    object_bbox_size: tuple[float, float, float]
+    picking_position: tuple[float, float, float]
+    picking_position_source: str
+    end_effector_initial_height: float
+    end_effector_initial_height_source: str
+    end_effector_orientation: tuple[float, float, float, float] | None
+    diagnostics: dict[str, Any]
+    reason: str | None = None
 
 
 # --- Phase J (NavMesh Playground) ---

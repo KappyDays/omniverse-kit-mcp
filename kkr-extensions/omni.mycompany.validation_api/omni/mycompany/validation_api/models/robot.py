@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -162,3 +162,83 @@ class RobotSetEETargetRequestModel(BaseModel):
         default=None,
         description="URDF frame name for end-effector (default per robot_description)",
     )
+
+
+class RobotFrankaPickPlaceRequestModel(BaseModel):
+    """Run the official Isaac Sim Franka PickPlaceController on an existing object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    robot_prim_path: str = Field(description="Existing Franka articulation root prim path")
+    object_prim_path: str = Field(description="Existing rigid object prim to pick/place")
+    target_position: list[float] = Field(
+        description="[x, y, z] world-space placing position for the object center",
+        min_length=3,
+        max_length=3,
+    )
+    robot_description: str = Field(
+        default="Franka",
+        description="Official motion-policy robot preset. This endpoint currently supports Franka.",
+    )
+    picking_position: list[float] | None = Field(
+        default=None,
+        min_length=3,
+        max_length=3,
+        description=(
+            "Optional [x, y, z] world-space object grasp center. Defaults to live bbox center."
+        ),
+    )
+    end_effector_initial_height: float | None = Field(
+        default=None,
+        gt=0.0,
+        description="Controller hover height; defaults to Isaac Sim official controller default.",
+    )
+    end_effector_offset: list[float] | None = Field(
+        default=None,
+        min_length=3,
+        max_length=3,
+        description="[x, y, z] offset applied to the end-effector target.",
+    )
+    end_effector_orientation: list[float] | None = Field(
+        default=None,
+        min_length=4,
+        max_length=4,
+        description=(
+            "Optional [qw, qx, qy, qz] end-effector orientation passed to the official controller."
+        ),
+    )
+    events_dt: list[float] | None = Field(
+        default=None,
+        min_length=10,
+        max_length=10,
+        description="Optional 10 phase dt values for the official PickPlaceController.",
+    )
+    max_steps: int = Field(default=1800, gt=0, le=20000)
+    position_tolerance: float = Field(default=0.05, gt=0.0)
+    lift_height_tolerance: float = Field(default=0.03, ge=0.0)
+
+
+class RobotFrankaPickPlaceResponseModel(BaseModel):
+    ok: bool
+    robot_prim_path: str
+    object_prim_path: str
+    target_position: list[float]
+    controller: str
+    gripper: str
+    uses_kinematic_carry: bool = False
+    steps: int
+    done: bool
+    placed: bool
+    lifted: bool
+    initial_object_position: list[float]
+    final_object_position: list[float]
+    final_distance: float
+    max_lift_delta: float
+    object_bbox_size: list[float]
+    picking_position: list[float]
+    picking_position_source: str
+    end_effector_initial_height: float
+    end_effector_initial_height_source: str
+    end_effector_orientation: list[float] | None = None
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
+    reason: str | None = None
