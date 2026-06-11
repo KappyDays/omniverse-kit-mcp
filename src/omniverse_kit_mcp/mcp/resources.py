@@ -10,8 +10,8 @@ Adding resources here costs ~0 tokens at session start.
 ## Source-file drift
 ``tool_catalog`` and ``sensor_menu`` read from disk on every request, so edits
 to the underlying markdown are picked up without restarting the MCP server.
-``scenario_schema`` resolves ``SCENARIO_SCHEMA`` from Python import — schema
-edits require an MCP server restart (import cache).
+``isaacsim://scenario-schema`` resolves ``SCENARIO_SCHEMA`` from Python import;
+schema edits require an MCP server restart (import cache).
 
 Resource URI → source mapping is also declared as :data:`RESOURCE_SOURCES`
 so the drift test (``tests/unit/test_resources_paths.py``) can assert each
@@ -73,10 +73,10 @@ def register_resources(mcp: FastMCP, config: AppConfig) -> None:
         "isaacsim://sensor-menu",
         name="Isaac Sim Create > Sensors Menu Catalog",
         description=(
-            "Last captured Isaac Sim Create > Sensors menu reference (RTX "
+            "Isaac Sim 6.0 Create > Sensors menu reference (RTX "
             "Lidar / Radar / Camera / Depth / contact / IMU / LightBeam) by "
-            "vendor × model. Recapture against Isaac Sim 6.0 before treating "
-            "menu labels as authoritative."
+            "vendor × model. Recapture after Kit / Isaac Sim upgrades before "
+            "treating menu labels as authoritative."
         ),
         mime_type="text/markdown",
     )

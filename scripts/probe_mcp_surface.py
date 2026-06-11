@@ -56,7 +56,7 @@ async def probe() -> None:
     tools = tools_resp.get("result", {}).get("tools", [])
     tool_names = sorted(t["name"] for t in tools)
     print(f"\n=== tools/list: {len(tool_names)} tools ===")
-    for target in ("scenario_list", "scenario_validate", "scenario_plan", "scenario_last_report",
+    for target in ("scenario_validate", "scenario_plan", "scenario_last_report",
                    "asset_list", "content_browse", "extension_list_all"):
         mark = "+" if target in tool_names else "-"
         print(f"  {mark} {target}")
@@ -68,6 +68,9 @@ async def probe() -> None:
     print(f"\n=== resources/list: {len(res_uris)} resources ===")
     for uri in res_uris:
         print(f"  - {uri}")
+    for uri in ("isaacsim://scenarios", "isaacsim://scenario-schema"):
+        mark = "+" if uri in res_uris else "-"
+        print(f"  {mark} {uri}")
 
     proc.stdin.close()
     try:

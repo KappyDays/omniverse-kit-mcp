@@ -43,7 +43,8 @@ data store.
 3. Compare Lakehouse rows with Stage property values
 
 ### Automated Scenarios
-- Use `scenario_list` to see available scenarios
+- Read the `isaacsim://scenarios` resource to see available scenarios
+- Read the `isaacsim://scenario-schema` resource when authoring or checking scenario YAML
 - Use `scenario_plan` to preview a scenario before running
 - Use `scenario_validate` to execute a full Arrange→Act→Assert→Cleanup cycle
 

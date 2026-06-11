@@ -75,7 +75,11 @@ omni.mycompany.navmesh_playground
 |------|-----|
 | `ROS_DISTRO` | `humble` |
 | `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` |
-| `PATH` | 기존 `PATH` + `;<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib` |
+| `PATH` | 기존 `PATH` + `;<isaac-sim-root>/exts/isaacsim.ros2.core/humble/lib` |
+
+Isaac Sim 6.0.0 ships ROS 2 runtime libraries under `isaacsim.ros2.core`.
+If a local build only contains the legacy bridge lib directory, use
+`<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib` as a compatibility fallback.
 
 ### 커맨드 (instance 1, port 8111)
 
@@ -84,7 +88,7 @@ PowerShell:
 ```powershell
 $env:ROS_DISTRO = "humble"
 $env:RMW_IMPLEMENTATION = "rmw_fastrtps_cpp"
-$env:PATH = "$env:PATH;<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib"
+$env:PATH = "$env:PATH;<isaac-sim-root>/exts/isaacsim.ros2.core/humble/lib"
 
 & "<isaac-sim-root>/kit/kit.exe" `
   "<isaac-sim-root>/apps/isaacsim.exp.full.kit" `
@@ -108,7 +112,7 @@ bash (Git Bash):
 ```bash
 export ROS_DISTRO=humble
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-export PATH="$PATH:<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib"
+export PATH="$PATH:<isaac-sim-root>/exts/isaacsim.ros2.core/humble/lib"
 
 "<isaac-sim-root>/kit/kit.exe" \
   "<isaac-sim-root>/apps/isaacsim.exp.full.kit" \
@@ -224,7 +228,7 @@ curl http://127.0.0.1:8114/validation/v1/health   # USD Composer instance 1
 
 `.kit` 파일에 dependency / ext-folder / port 를 영구 박아 두어, **사용자가 평소 방식 (단축키, `isaac-sim.bat`, `repo.bat launch`) 으로 띄워도 MCP 가 attach 가능**하도록 설정. 이 설정 후에는 `--enable` / `--ext-folder` / `--/exts/...port=N` CLI 인자가 불필요.
 
-### Isaac Sim — `branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit`
+### Isaac Sim — `branch/isaac-sim-standalone-6.0.0-windows-x86_64/apps/isaacsim.exp.full.kit`
 
 - `[dependencies]` 끝에 9 개 추가 (validation_api + 8 개 character/sensor/replicator/omnigraph 의존성)
   - `omni.mycompany.validation_api`, `omni.anim.graph.bundle`, `omni.anim.navigation.bundle`, `isaacsim.replicator.agent.core`, `omni.kit.ui_test`, `isaacsim.sensors.rtx`, `omni.graph.action`, `omni.replicator.core`, `omni.mycompany.navmesh_playground`

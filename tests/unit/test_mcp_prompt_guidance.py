@@ -27,3 +27,12 @@ def test_isaac_prompt_guides_robot_control_to_scriptnode_loop():
     assert "viewport images" in prompt
     assert "stage_compute_world_bbox" in prompt
     assert "simulation_step_observe" in prompt
+
+
+def test_prompt_points_to_scenario_resources_not_removed_tools():
+    prompt = build_system_prompt("isaac-sim")
+
+    assert "isaacsim://scenarios" in prompt
+    assert "isaacsim://scenario-schema" in prompt
+    assert "Use `scenario_list`" not in prompt
+    assert "Use `scenario_schema`" not in prompt
