@@ -10,7 +10,7 @@ Hard caps are injected via env so the same test file is usable from both
 the pre baseline (permissive) and the post run (strict).
 
     CLAUDE_ROOT_HARDCAP        (default 150 — root auto-loads every turn; raised from 100 convention 2026-05-26, env-overridable)
-    CLAUDE_SUB_HARDCAP         (default 260 — baseline; post=150)
+    CLAUDE_SUB_HARDCAP         (default 150 — sub-CLAUDE.md path-local rules)
     CLAUDE_INVARIANT_HARDCAP   (default 200 — docs/invariants/*.md)
     CLAUDE_RUNBOOK_HARDCAP     (default 300 — docs/runbooks/*.md)
 
@@ -29,7 +29,7 @@ PROJECT = Path(__file__).resolve().parents[2]
 ROOT_CLAUDE = PROJECT / "CLAUDE.md"
 
 ROOT_HARDCAP = int(os.environ.get("CLAUDE_ROOT_HARDCAP", "150"))
-SUB_HARDCAP = int(os.environ.get("CLAUDE_SUB_HARDCAP", "260"))
+SUB_HARDCAP = int(os.environ.get("CLAUDE_SUB_HARDCAP", "150"))
 INVARIANT_HARDCAP = int(os.environ.get("CLAUDE_INVARIANT_HARDCAP", "200"))
 RUNBOOK_HARDCAP = int(os.environ.get("CLAUDE_RUNBOOK_HARDCAP", "300"))
 
