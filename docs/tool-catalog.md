@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 134
+**Tool count**: 139
 
 ## Table of contents
 
@@ -14,7 +14,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 13 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
-- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 11 tools
+- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 16 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 2 tools
 - [Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)](#character--behavioragent--ira--navmesh-async-job) — 8 tools
@@ -991,6 +991,16 @@ Get joint positions of an articulation (via SingleArticulation).
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
 
+### `robot_get_pick_place_demo_status`
+
+```python
+robot_get_pick_place_demo_status() -> 'str'
+```
+
+Return installed Franka pick/place playback demo status:
+idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event, and
+last_error.
+
 ### `robot_gripper_control`
 
 ```python
@@ -1007,6 +1017,76 @@ names. Requires simulation playing.
 | `prim_path` | `string` | `'—'` | ✓ |
 | `action` | `string` | `'—'` | ✓ |
 | `target` | `number \| None` | `None` |  |
+
+### `robot_install_franka_pick_place_playback_demo`
+
+```python
+robot_install_franka_pick_place_playback_demo(robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+```
+
+Install a persistent Franka pick/place demo that advances from Isaac Sim GUI Play or
+simulation_play. Uses official PickPlaceController/RMPflow/ParallelGripper; no kinematic object
+carry.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `robot_prim_path` | `string` | `'/World/Franka'` |  |
+| `object_prim_path` | `string` | `'/World/PickCube'` |  |
+| `target_position` | `list[number] \| None` | `None` |  |
+| `object_initial_position` | `list[number] \| None` | `None` |  |
+| `object_size` | `number` | `0.0515` |  |
+| `max_steps` | `integer` | `1800` |  |
+| `position_tolerance` | `number` | `0.05` |  |
+| `lift_height_tolerance` | `number` | `0.03` |  |
+| `picking_position` | `list[number] \| None` | `None` |  |
+| `end_effector_initial_height` | `number \| None` | `None` |  |
+| `end_effector_offset` | `list[number] \| None` | `None` |  |
+| `end_effector_orientation` | `list[number] \| None` | `None` |  |
+| `events_dt` | `list[number] \| None` | `None` |  |
+| `create_demo_scene` | `boolean` | `True` |  |
+| `reset_on_play` | `boolean` | `True` |  |
+
+### `robot_install_pick_place_playback_demo`
+
+```python
+robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_panda', robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+```
+
+Install a profile-selected pick/place playback demo. franka_panda routes to the validated
+official Franka adapter; candidate/IK/profile-only arms return status='unsupported' until live
+proof exists.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `profile_name` | `string` | `'franka_panda'` |  |
+| `robot_prim_path` | `string` | `'/World/Franka'` |  |
+| `object_prim_path` | `string` | `'/World/PickCube'` |  |
+| `target_position` | `list[number] \| None` | `None` |  |
+| `object_initial_position` | `list[number] \| None` | `None` |  |
+| `object_size` | `number` | `0.0515` |  |
+| `max_steps` | `integer` | `1800` |  |
+| `position_tolerance` | `number` | `0.05` |  |
+| `lift_height_tolerance` | `number` | `0.03` |  |
+| `picking_position` | `list[number] \| None` | `None` |  |
+| `end_effector_initial_height` | `number \| None` | `None` |  |
+| `end_effector_offset` | `list[number] \| None` | `None` |  |
+| `end_effector_orientation` | `list[number] \| None` | `None` |  |
+| `events_dt` | `list[number] \| None` | `None` |  |
+| `create_demo_scene` | `boolean` | `True` |  |
+| `reset_on_play` | `boolean` | `True` |  |
+
+### `robot_list_arm_profiles`
+
+```python
+robot_list_arm_profiles() -> 'str'
+```
+
+List curated built-in Isaac Sim 6.0 robot arm profiles with asset URL, controller strategy,
+support status, and evidence. Use before multi-arm pick/place work.
 
 ### `robot_load`
 
@@ -1059,6 +1139,15 @@ job_status(job_id) until status='done'.
 | `prim_path` | `string` | `'—'` | ✓ |
 | `target` | `list[number]` | `'—'` | ✓ |
 | `duration_s` | `number` | `1.0` |  |
+
+### `robot_reset_pick_place_demo`
+
+```python
+robot_reset_pick_place_demo() -> 'str'
+```
+
+Reset the installed Franka pick/place playback demo object pose, robot joints/gripper,
+controller state, and status.
 
 ### `robot_run_franka_pick_place`
 

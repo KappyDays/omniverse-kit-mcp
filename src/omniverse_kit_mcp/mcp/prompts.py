@@ -50,6 +50,14 @@ data store.
 ### Robot / Controller Workflows
 - MCP tools operate between frames: create the stage, load assets, wire graphs,
   step simulation, and observe results.
+- Use `robot_list_arm_profiles` before multi-arm work. It is the curated
+  support matrix for built-in Isaac Sim 6.0 robot arms; only profiles marked
+  `validated_pick_place` have live pick/place proof. Candidate/IK/profile-only
+  profiles must not be reported as pick/place successes.
+- `robot_install_pick_place_playback_demo(profile_name=...)` is the profile
+  selector. Today `franka_panda` routes to the validated Franka playback demo;
+  other profiles return an explicit `unsupported` status until their family
+  controller/gripper path has separate live proof.
 - For Franka object manipulation, prefer `robot_run_franka_pick_place` first.
   It wraps Isaac Sim's official Franka `PickPlaceController` +
   `RMPFlowController` + `ParallelGripper`, does not kinematically carry the

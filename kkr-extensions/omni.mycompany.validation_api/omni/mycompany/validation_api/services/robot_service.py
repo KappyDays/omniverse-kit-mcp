@@ -23,6 +23,43 @@ class _OfficialFrankaPickPlaceClasses:
     single_articulation: Any
 
 
+@dataclass
+class _FrankaPickPlaceDemoState:
+    request: dict[str, Any]
+    robot: Any
+    gripper: Any
+    controller: Any
+    subscription: Any
+    robot_prim_path: str
+    object_prim_path: str
+    target_position: list[float]
+    object_initial_position: list[float]
+    initial_joint_positions: Any
+    picking_position: list[float]
+    explicit_picking_position: bool
+    end_effector_offset: Any
+    end_effector_orientation: Any
+    end_effector_initial_height: float
+    diagnostics: dict[str, Any]
+    max_steps: int
+    position_tolerance: float
+    lift_height_tolerance: float
+    reset_on_play: bool
+    status: str = "idle"
+    steps: int = 0
+    controller_event: int = 0
+    done: bool = False
+    placed: bool = False
+    lifted: bool = False
+    initial_object_position: list[float] | None = None
+    final_object_position: list[float] | None = None
+    final_distance: float = 0.0
+    max_lift_delta: float = 0.0
+    max_center_z: float = 0.0
+    last_error: str | None = None
+    last_timeline_time: float = 0.0
+
+
 class RobotService:
     """Thin wrapper over SingleArticulation + USD payload load/transform.
 
@@ -33,6 +70,7 @@ class RobotService:
 
     def __init__(self, job_service: Any) -> None:
         self._job_service = job_service
+        self._pick_place_demo: _FrankaPickPlaceDemoState | None = None
 
     async def load(self, request: dict[str, Any]) -> dict[str, Any]:
         """Load a USD robot asset into the stage at *prim_path*."""
@@ -680,6 +718,170 @@ class RobotService:
             "reason": reason,
         }
 
+    async def install_franka_pick_place_playback_demo(
+        self,
+        request: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Install a persistent playback-tick Franka pick/place demo.
+
+        Unlike ``run_franka_pick_place``, this endpoint returns immediately
+        after installing an update subscription. The controller advances only
+        while the Kit timeline is playing, so Isaac Sim's GUI Play button and
+        the MCP ``simulation_play`` tool both drive the same demo.
+        """
+        import numpy as np
+        import omni.kit.app
+
+        robot_prim_path = str(request.get("robot_prim_path", "/World/Franka"))
+        object_prim_path = str(request.get("object_prim_path", "/World/PickCube"))
+        target_position = [float(v) for v in request.get("target_position", [0.45, -0.35, 0.02575])]
+        object_initial_position = [
+            float(v) for v in request.get("object_initial_position", [0.3, 0.35, 0.02575])
+        ]
+        if len(target_position) != 3:
+            raise ValueError("target_position must be [x, y, z]")
+        if len(object_initial_position) != 3:
+            raise ValueError("object_initial_position must be [x, y, z]")
+        if str(request.get("robot_description", "Franka")).lower() != "franka":
+            raise ValueError("franka_pick_place_demo supports robot_description='Franka' only")
+
+        self._clear_pick_place_demo_subscription()
+        _assert_articulation(robot_prim_path)
+        if bool(request.get("create_demo_scene", True)):
+            _ensure_franka_pick_place_demo_scene(
+                object_prim_path=object_prim_path,
+                object_initial_position=object_initial_position,
+                object_size=float(request.get("object_size", 0.0515)),
+            )
+        _assert_prim_exists(object_prim_path)
+        _ensure_pickable_physics(object_prim_path)
+
+        classes = _resolve_official_franka_pick_place_classes()
+        robot = classes.single_articulation(robot_prim_path)
+        await _ensure_articulation_ready(robot, robot_prim_path, max_frames=180)
+
+        initial_joints = robot.get_joint_positions()
+        if initial_joints is None:
+            raise ValueError("Robot joint positions unavailable while installing demo")
+        initial_joints = np.asarray(initial_joints, dtype=np.float32).copy()
+
+        gripper = _create_franka_parallel_gripper(classes, robot, robot_prim_path)
+        _open_franka_gripper(robot, gripper)
+
+        _set_prim_world_translate(object_prim_path, object_initial_position)
+        _zero_rigid_body_velocity(object_prim_path)
+        initial_bbox = _compute_world_bbox(object_prim_path)
+        object_bbox_size = initial_bbox["size"]
+        picking_raw = request.get("picking_position")
+        explicit_picking_position = picking_raw is not None
+        picking_position = (
+            [float(v) for v in picking_raw]
+            if explicit_picking_position
+            else list(initial_bbox["center"])
+        )
+        resolved_hover_height = _resolve_franka_pick_place_hover_height(
+            explicit_height=(
+                float(request["end_effector_initial_height"])
+                if request.get("end_effector_initial_height") is not None
+                else None
+            ),
+            picking_z=float(picking_position[2]),
+            target_z=float(target_position[2]),
+        )
+        diagnostics = _build_franka_pick_place_diagnostics(
+            object_bbox_size,
+            picking_position_source="explicit" if explicit_picking_position else "bbox_center",
+        )
+        diagnostics["end_effector_initial_height"] = resolved_hover_height
+        diagnostics["playback_mode"] = "app_update_subscription"
+
+        end_effector_offset_raw = request.get("end_effector_offset")
+        end_effector_offset = (
+            np.array([float(v) for v in end_effector_offset_raw], dtype=np.float32)
+            if end_effector_offset_raw is not None
+            else None
+        )
+        orientation_raw = request.get("end_effector_orientation")
+        end_effector_orientation = (
+            np.array([float(v) for v in orientation_raw], dtype=np.float32)
+            if orientation_raw is not None
+            else None
+        )
+        events_dt = request.get("events_dt")
+        if events_dt is not None:
+            events_dt = [float(v) for v in events_dt]
+
+        controller = _create_franka_pick_place_controller(
+            classes=classes,
+            robot=robot,
+            gripper=gripper,
+            hover_height=resolved_hover_height,
+            events_dt=events_dt,
+        )
+
+        app = omni.kit.app.get_app()
+        holder: dict[str, Any] = {}
+
+        def _on_update(_event: Any) -> None:
+            state = self._pick_place_demo
+            if state is None or state.subscription is not holder.get("subscription"):
+                return
+            _tick_franka_pick_place_demo(state)
+
+        subscription = app.get_update_event_stream().create_subscription_to_pop(
+            _on_update,
+            name="mcp_franka_pick_place_playback_demo",
+        )
+        holder["subscription"] = subscription
+        self._pick_place_demo = _FrankaPickPlaceDemoState(
+            request=dict(request),
+            robot=robot,
+            gripper=gripper,
+            controller=controller,
+            subscription=subscription,
+            robot_prim_path=robot_prim_path,
+            object_prim_path=object_prim_path,
+            target_position=target_position,
+            object_initial_position=object_initial_position,
+            initial_joint_positions=initial_joints,
+            picking_position=picking_position,
+            explicit_picking_position=explicit_picking_position,
+            end_effector_offset=end_effector_offset,
+            end_effector_orientation=end_effector_orientation,
+            end_effector_initial_height=resolved_hover_height,
+            diagnostics=diagnostics,
+            max_steps=int(request.get("max_steps", 1800)),
+            position_tolerance=float(request.get("position_tolerance", 0.05)),
+            lift_height_tolerance=float(request.get("lift_height_tolerance", 0.03)),
+            reset_on_play=bool(request.get("reset_on_play", True)),
+            initial_object_position=list(initial_bbox["center"]),
+            final_object_position=list(initial_bbox["center"]),
+            max_center_z=float(initial_bbox["center"][2]),
+        )
+        return _franka_pick_place_demo_status(self._pick_place_demo)
+
+    async def reset_pick_place_demo(self) -> dict[str, Any]:
+        state = self._pick_place_demo
+        if state is None:
+            raise ValueError("No Franka pick/place playback demo is installed")
+        _reset_franka_pick_place_demo_state(state)
+        return _franka_pick_place_demo_status(state)
+
+    async def get_pick_place_demo_status(self) -> dict[str, Any]:
+        state = self._pick_place_demo
+        if state is None:
+            raise ValueError("No Franka pick/place playback demo is installed")
+        return _franka_pick_place_demo_status(state)
+
+    def _clear_pick_place_demo_subscription(self) -> None:
+        state = self._pick_place_demo
+        if state is not None:
+            try:
+                state.subscription = None
+            except Exception:  # noqa: BLE001
+                pass
+        self._pick_place_demo = None
+
     async def navigate_path(
         self,
         prim_path: str,
@@ -1178,6 +1380,325 @@ def _distance3(a: list[float], b: list[float]) -> float:
         + (float(a[1]) - float(b[1])) ** 2
         + (float(a[2]) - float(b[2])) ** 2
     )
+
+
+def _ensure_franka_pick_place_demo_scene(
+    *,
+    object_prim_path: str,
+    object_initial_position: list[float],
+    object_size: float,
+) -> None:
+    """Create the demo block, physics scene, grid reference, and light if missing."""
+    import omni.usd
+    from pxr import Gf, Sdf, UsdGeom, UsdLux, UsdPhysics
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+
+    if not stage.GetPrimAtPath("/World").IsValid():
+        UsdGeom.Xform.Define(stage, Sdf.Path("/World"))
+    if not stage.GetPrimAtPath("/World/PhysicsScene").IsValid():
+        UsdPhysics.Scene.Define(stage, Sdf.Path("/World/PhysicsScene"))
+    if not stage.GetPrimAtPath("/World/DemoLight").IsValid():
+        light = UsdLux.DistantLight.Define(stage, Sdf.Path("/World/DemoLight"))
+        light.CreateIntensityAttr().Set(3000.0)
+
+    grid_path = "/World/FlatGrid"
+    if not stage.GetPrimAtPath(grid_path).IsValid():
+        grid = UsdGeom.Xform.Define(stage, Sdf.Path(grid_path))
+        grid.GetPrim().GetReferences().AddReference(
+            "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
+            "Assets/Isaac/6.0/Isaac/Environments/Grid/default_environment.usd"
+        )
+
+    _ensure_parent_xform(stage, object_prim_path)
+    prim = stage.GetPrimAtPath(object_prim_path)
+    if not prim.IsValid():
+        cube = UsdGeom.Cube.Define(stage, Sdf.Path(object_prim_path))
+        cube.CreateSizeAttr().Set(float(object_size))
+        prim = cube.GetPrim()
+    _set_prim_world_translate(object_prim_path, object_initial_position)
+    if not prim.HasAPI(UsdPhysics.RigidBodyAPI):
+        body = UsdPhysics.RigidBodyAPI.Apply(prim)
+        body.CreateRigidBodyEnabledAttr(True)
+    if not prim.HasAPI(UsdPhysics.CollisionAPI):
+        UsdPhysics.CollisionAPI.Apply(prim)
+    mass = UsdPhysics.MassAPI.Apply(prim)
+    mass.CreateMassAttr().Set(0.05)
+    prim.GetAttribute("physics:velocity").Set(Gf.Vec3f(0.0, 0.0, 0.0)) if prim.GetAttribute("physics:velocity").IsValid() else prim.CreateAttribute("physics:velocity", Sdf.ValueTypeNames.Vector3f).Set(Gf.Vec3f(0.0, 0.0, 0.0))
+    prim.GetAttribute("physics:angularVelocity").Set(Gf.Vec3f(0.0, 0.0, 0.0)) if prim.GetAttribute("physics:angularVelocity").IsValid() else prim.CreateAttribute("physics:angularVelocity", Sdf.ValueTypeNames.Vector3f).Set(Gf.Vec3f(0.0, 0.0, 0.0))
+
+
+def _create_franka_parallel_gripper(
+    classes: _OfficialFrankaPickPlaceClasses,
+    robot: Any,
+    robot_prim_path: str,
+) -> Any:
+    import numpy as np
+
+    gripper = classes.parallel_gripper(
+        end_effector_prim_path=f"{robot_prim_path}/panda_rightfinger",
+        joint_prim_names=["panda_finger_joint1", "panda_finger_joint2"],
+        joint_opened_positions=np.array([0.05, 0.05], dtype=np.float32),
+        joint_closed_positions=np.array([0.0, 0.0], dtype=np.float32),
+        action_deltas=np.array([0.05, 0.05], dtype=np.float32),
+    )
+    gripper.initialize(
+        articulation_apply_action_func=robot.apply_action,
+        get_joint_positions_func=robot.get_joint_positions,
+        set_joint_positions_func=robot.set_joint_positions,
+        dof_names=list(robot.dof_names or []),
+    )
+    return gripper
+
+
+def _create_franka_pick_place_controller(
+    *,
+    classes: _OfficialFrankaPickPlaceClasses,
+    robot: Any,
+    gripper: Any,
+    hover_height: float,
+    events_dt: list[float] | None,
+) -> Any:
+    return classes.pick_place_controller(
+        name="mcp_gui_franka_pick_place_demo",
+        gripper=gripper,
+        robot_articulation=robot,
+        end_effector_initial_height=float(hover_height),
+        events_dt=events_dt,
+    )
+
+
+def _open_franka_gripper(robot: Any, gripper: Any) -> None:
+    try:
+        robot.apply_action(gripper.forward(action="open"))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("demo gripper open failed: %s", exc)
+
+
+def _set_prim_world_translate(prim_path: str, position: list[float]) -> None:
+    import omni.usd
+    from pxr import Gf, UsdGeom
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim.IsValid():
+        raise ValueError(f"Prim not found at {prim_path}")
+    attr = prim.GetAttribute("xformOp:translate")
+    if not attr.IsValid():
+        attr = UsdGeom.Xformable(prim).AddTranslateOp()
+    attr.Set(Gf.Vec3d(float(position[0]), float(position[1]), float(position[2])))
+
+
+def _zero_rigid_body_velocity(prim_path: str) -> None:
+    import omni.usd
+    from pxr import Gf, Sdf
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        return
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim.IsValid():
+        return
+    for attr_name in ("physics:velocity", "physics:angularVelocity"):
+        attr = prim.GetAttribute(attr_name)
+        if not attr.IsValid():
+            attr = prim.CreateAttribute(attr_name, Sdf.ValueTypeNames.Vector3f)
+        attr.Set(Gf.Vec3f(0.0, 0.0, 0.0))
+
+
+def _reset_franka_pick_place_demo_state(state: _FrankaPickPlaceDemoState) -> None:
+    events_dt = state.request.get("events_dt")
+    if events_dt is not None:
+        events_dt = [float(v) for v in events_dt]
+    classes = _resolve_official_franka_pick_place_classes()
+    state.status = "resetting"
+    state.steps = 0
+    state.controller_event = 0
+    state.done = False
+    state.placed = False
+    state.lifted = False
+    state.final_distance = _distance3(state.object_initial_position, state.target_position)
+    state.max_lift_delta = 0.0
+    state.max_center_z = float(state.object_initial_position[2])
+    state.last_error = None
+    _set_prim_world_translate(state.object_prim_path, state.object_initial_position)
+    _zero_rigid_body_velocity(state.object_prim_path)
+    try:
+        state.robot = classes.single_articulation(state.robot_prim_path)
+        _ensure_initialized(state.robot)
+        state.gripper = _create_franka_parallel_gripper(
+            classes,
+            state.robot,
+            state.robot_prim_path,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("demo reset wrapper recreation failed; reusing previous wrapper: %s", exc)
+    _apply_joint_positions(state.robot, state.initial_joint_positions)
+    _open_franka_gripper(state.robot, state.gripper)
+    state.controller = _create_franka_pick_place_controller(
+        classes=classes,
+        robot=state.robot,
+        gripper=state.gripper,
+        hover_height=state.end_effector_initial_height,
+        events_dt=events_dt,
+    )
+    bbox = _compute_world_bbox(state.object_prim_path)
+    state.initial_object_position = list(bbox["center"])
+    state.final_object_position = list(bbox["center"])
+    state.max_center_z = float(bbox["center"][2])
+    if not state.explicit_picking_position:
+        state.picking_position = list(bbox["center"])
+    state.status = "idle"
+
+
+def _tick_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
+    import numpy as np
+    import omni.timeline
+
+    timeline = omni.timeline.get_timeline_interface()
+    if not timeline.is_playing():
+        try:
+            state.last_timeline_time = float(timeline.get_current_time())
+        except Exception:  # noqa: BLE001
+            pass
+        return
+
+    try:
+        current_time = float(timeline.get_current_time())
+    except Exception:  # noqa: BLE001
+        current_time = state.last_timeline_time
+
+    if (
+        state.reset_on_play
+        and state.status in {"done", "failed"}
+        and (current_time < state.last_timeline_time or current_time <= 0.05)
+    ):
+        _reset_franka_pick_place_demo_state(state)
+        state.last_timeline_time = current_time
+        return
+
+    if state.status in {"done", "failed", "resetting"}:
+        state.last_timeline_time = current_time
+        return
+
+    try:
+        if state.steps >= state.max_steps:
+            state.status = "failed"
+            state.last_error = (
+                "Official PickPlaceController did not finish within "
+                f"{state.max_steps} playback ticks"
+            )
+            return
+
+        joints = state.robot.get_joint_positions()
+        if joints is None:
+            try:
+                _ensure_initialized(state.robot)
+                joints = state.robot.get_joint_positions()
+            except Exception as exc:  # noqa: BLE001
+                state.last_error = f"Waiting for robot articulation after playback reset: {exc}"
+                return
+            if joints is None:
+                state.last_error = "Waiting for robot articulation after playback reset"
+                return
+        state.last_error = None
+
+        bbox = _compute_world_bbox(state.object_prim_path)
+        object_center = list(bbox["center"])
+        state.max_center_z = max(state.max_center_z, float(object_center[2]))
+        current_pick = state.picking_position if state.explicit_picking_position else object_center
+        actions = state.controller.forward(
+            picking_position=np.array(current_pick, dtype=np.float32),
+            placing_position=np.array(state.target_position, dtype=np.float32),
+            current_joint_positions=np.asarray(joints, dtype=np.float32),
+            end_effector_offset=state.end_effector_offset,
+            end_effector_orientation=state.end_effector_orientation,
+        )
+        try:
+            state.robot.apply_action(actions)
+        except Exception:
+            state.robot.get_articulation_controller().apply_action(actions)
+
+        state.steps += 1
+        state.controller_event = int(state.controller.get_current_event())
+        state.status = "picking" if state.controller_event < 4 else "placing"
+
+        if state.controller.is_done():
+            _finish_franka_pick_place_demo(state)
+    except Exception as exc:  # noqa: BLE001
+        state.status = "failed"
+        state.last_error = str(exc)
+        logger.error("Franka pick/place playback tick failed: %s", exc, exc_info=True)
+    finally:
+        state.last_timeline_time = current_time
+
+
+def _finish_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
+    bbox = _compute_world_bbox(state.object_prim_path)
+    final_center = list(bbox["center"])
+    initial_center = state.initial_object_position or state.object_initial_position
+    state.done = True
+    state.final_object_position = final_center
+    state.final_distance = _distance3(final_center, state.target_position)
+    state.max_lift_delta = state.max_center_z - float(initial_center[2])
+    state.lifted = state.max_lift_delta >= state.lift_height_tolerance
+    state.placed = state.final_distance <= state.position_tolerance
+    if state.lifted and state.placed:
+        state.status = "done"
+        state.last_error = None
+    elif not state.lifted:
+        state.status = "failed"
+        state.last_error = (
+            "Object was not lifted by the gripper "
+            f"(max_lift_delta={state.max_lift_delta:.4f}m < "
+            f"{state.lift_height_tolerance:.4f}m)"
+        )
+    else:
+        state.status = "failed"
+        state.last_error = (
+            "Object final bbox center is outside target tolerance "
+            f"(distance={state.final_distance:.4f}m > "
+            f"{state.position_tolerance:.4f}m)"
+        )
+
+
+def _franka_pick_place_demo_status(state: _FrankaPickPlaceDemoState) -> dict[str, Any]:
+    bbox = _compute_world_bbox(state.object_prim_path)
+    bbox_center = list(bbox["center"])
+    final_position = state.final_object_position or bbox_center
+    initial_position = state.initial_object_position or state.object_initial_position
+    final_distance = (
+        state.final_distance
+        if state.done or state.status == "failed"
+        else _distance3(bbox_center, state.target_position)
+    )
+    return {
+        "ok": state.status != "failed",
+        "status": state.status,
+        "robot_prim_path": state.robot_prim_path,
+        "object_prim_path": state.object_prim_path,
+        "target_position": [float(v) for v in state.target_position],
+        "uses_kinematic_carry": False,
+        "steps": int(state.steps),
+        "controller_event": int(state.controller_event),
+        "done": bool(state.done),
+        "placed": bool(state.placed),
+        "lifted": bool(state.lifted),
+        "initial_object_position": [float(v) for v in initial_position],
+        "final_object_position": [float(v) for v in final_position],
+        "final_distance": float(final_distance),
+        "max_lift_delta": float(state.max_lift_delta),
+        "object_bbox_center": [float(v) for v in bbox_center],
+        "object_bbox_size": [float(v) for v in bbox["size"]],
+        "picking_position": [float(v) for v in state.picking_position],
+        "end_effector_initial_height": float(state.end_effector_initial_height),
+        "diagnostics": dict(state.diagnostics),
+        "last_error": state.last_error,
+    }
 
 
 async def _ensure_articulation_ready(

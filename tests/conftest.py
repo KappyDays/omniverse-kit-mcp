@@ -531,6 +531,93 @@ class MockIsaacRestClient:
             },
         )
 
+    async def robot_install_franka_pick_place_playback_demo(self, request: dict) -> dict:
+        self.calls.append(("robot_install_franka_pick_place_playback_demo", request))
+        return self.responses.get(
+            "robot_install_franka_pick_place_playback_demo",
+            {
+                "ok": True,
+                "status": "idle",
+                "robot_prim_path": request.get("robot_prim_path", "/World/Franka"),
+                "object_prim_path": request.get("object_prim_path", "/World/PickCube"),
+                "target_position": request.get("target_position", [0.45, -0.35, 0.02575]),
+                "uses_kinematic_carry": False,
+                "steps": 0,
+                "controller_event": 0,
+                "done": False,
+                "placed": False,
+                "lifted": False,
+                "initial_object_position": request.get("object_initial_position", [0.3, 0.35, 0.02575]),
+                "final_object_position": request.get("object_initial_position", [0.3, 0.35, 0.02575]),
+                "final_distance": 0.7,
+                "max_lift_delta": 0.0,
+                "object_bbox_center": request.get("object_initial_position", [0.3, 0.35, 0.02575]),
+                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "picking_position": request.get("picking_position") or request.get("object_initial_position", [0.3, 0.35, 0.02575]),
+                "end_effector_initial_height": request.get("end_effector_initial_height") or 0.3,
+                "diagnostics": {"warnings": [], "hints": []},
+                "last_error": None,
+            },
+        )
+
+    async def robot_reset_pick_place_demo(self) -> dict:
+        self.calls.append(("robot_reset_pick_place_demo", {}))
+        return self.responses.get(
+            "robot_reset_pick_place_demo",
+            {
+                "ok": True,
+                "status": "idle",
+                "robot_prim_path": "/World/Franka",
+                "object_prim_path": "/World/PickCube",
+                "target_position": [0.45, -0.35, 0.02575],
+                "uses_kinematic_carry": False,
+                "steps": 0,
+                "controller_event": 0,
+                "done": False,
+                "placed": False,
+                "lifted": False,
+                "initial_object_position": [0.3, 0.35, 0.02575],
+                "final_object_position": [0.3, 0.35, 0.02575],
+                "final_distance": 0.7,
+                "max_lift_delta": 0.0,
+                "object_bbox_center": [0.3, 0.35, 0.02575],
+                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "picking_position": [0.3, 0.35, 0.02575],
+                "end_effector_initial_height": 0.3,
+                "diagnostics": {},
+                "last_error": None,
+            },
+        )
+
+    async def robot_get_pick_place_demo_status(self) -> dict:
+        self.calls.append(("robot_get_pick_place_demo_status", {}))
+        return self.responses.get(
+            "robot_get_pick_place_demo_status",
+            {
+                "ok": True,
+                "status": "done",
+                "robot_prim_path": "/World/Franka",
+                "object_prim_path": "/World/PickCube",
+                "target_position": [0.45, -0.35, 0.02575],
+                "uses_kinematic_carry": False,
+                "steps": 620,
+                "controller_event": 9,
+                "done": True,
+                "placed": True,
+                "lifted": True,
+                "initial_object_position": [0.3, 0.35, 0.02575],
+                "final_object_position": [0.45, -0.35, 0.02575],
+                "final_distance": 0.01,
+                "max_lift_delta": 0.08,
+                "object_bbox_center": [0.45, -0.35, 0.02575],
+                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "picking_position": [0.3, 0.35, 0.02575],
+                "end_effector_initial_height": 0.3,
+                "diagnostics": {},
+                "last_error": None,
+            },
+        )
+
     # Jobs (Phase B)
 
     async def job_status(self, job_id: str) -> dict:

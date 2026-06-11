@@ -11,19 +11,40 @@ from omniverse_kit_mcp.types.robot import (
     JointPositions,
     JointPositionsSetRequest,
     JointPositionsSetResult,
+    RobotArmProfilesResult,
     RobotDrivePhysicsRequest,
     RobotDrivePhysicsResult,
     RobotFrankaPickPlaceRequest,
     RobotFrankaPickPlaceResult,
+    RobotFrankaPickPlaceDemoRequest,
+    RobotFrankaPickPlaceDemoStatus,
     RobotLoadRequest,
     RobotLoadResult,
     RobotNavigateRequest,
     RobotNavigateResult,
+    RobotPickPlaceDemoRequest,
 )
 
 
 def _meta() -> OperationMeta:
     return OperationMeta(request_id="test", module=ModuleName.ROBOT, started_at_epoch_ms=0)
+
+
+@pytest.mark.asyncio
+async def test_robot_list_arm_profiles_returns_curated_support_matrix():
+    from tests.conftest import MockIsaacRestClient
+
+    module = RobotModule(MockIsaacRestClient())
+
+    result = await module.list_arm_profiles(_meta())
+
+    assert result.ok
+    assert isinstance(result.data, RobotArmProfilesResult)
+    assert result.data.count == 41
+    assert "franka_panda" in result.data.validated_pick_place_profiles
+    assert "ur10" in result.data.candidate_pick_place_profiles
+    assert "kawasaki_rs080n" in result.data.candidate_pick_place_profiles
+    assert "ur20" in result.data.profile_only_profiles
 
 
 @pytest.mark.asyncio
@@ -346,3 +367,101 @@ async def test_robot_run_franka_pick_place_failed_physical_validation_is_not_suc
     assert isinstance(result.data, RobotFrankaPickPlaceResult)
     assert result.data.uses_kinematic_carry is False
     assert "not lifted" in (result.message or "")
+
+
+@pytest.mark.asyncio
+async def test_robot_install_pick_place_playback_demo_forwards_payload():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+    request = RobotFrankaPickPlaceDemoRequest(
+        robot_prim_path="/World/Franka",
+        object_prim_path="/World/PickCube",
+        target_position=(0.45, -0.35, 0.02575),
+        object_initial_position=(0.3, 0.35, 0.02575),
+        end_effector_orientation=(0.0, 0.0, 1.0, 0.0),
+    )
+
+    result = await module.install_franka_pick_place_playback_demo(_meta(), request)
+
+    assert result.ok
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
+    assert result.data.status == "idle"
+    assert result.data.uses_kinematic_carry is False
+    calls = [c for c in client.calls if c[0] == "robot_install_franka_pick_place_playback_demo"]
+    assert len(calls) == 1
+    assert calls[0][1]["object_initial_position"] == [0.3, 0.35, 0.02575]
+    assert calls[0][1]["end_effector_orientation"] == [0.0, 0.0, 1.0, 0.0]
+
+
+@pytest.mark.asyncio
+async def test_robot_install_profile_pick_place_demo_routes_franka_panda():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+
+    result = await module.install_pick_place_playback_demo(
+        _meta(),
+        RobotPickPlaceDemoRequest(profile_name="franka_panda"),
+    )
+
+    assert result.ok
+    assert result.data.profile_name == "franka_panda"
+    assert result.data.support_status == "validated_pick_place"
+    assert client.calls[-1][0] == "robot_install_franka_pick_place_playback_demo"
+
+
+@pytest.mark.asyncio
+async def test_robot_install_profile_pick_place_demo_reports_candidate_unsupported():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+
+    result = await module.install_pick_place_playback_demo(
+        _meta(),
+        RobotPickPlaceDemoRequest(profile_name="ur10"),
+    )
+
+    assert result.ok
+    assert result.data.ok is False
+    assert result.data.status == "unsupported"
+    assert result.data.profile_name == "ur10"
+    assert result.data.support_status == "candidate_pick_place"
+    assert result.data.uses_kinematic_carry is False
+    assert client.calls == []
+
+
+@pytest.mark.asyncio
+async def test_robot_get_pick_place_demo_status_reports_done_metrics():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+
+    result = await module.get_pick_place_demo_status(_meta())
+
+    assert result.ok
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
+    assert result.data.status == "done"
+    assert result.data.done is True
+    assert result.data.placed is True
+    assert result.data.lifted is True
+    assert result.data.final_distance == pytest.approx(0.01)
+
+
+@pytest.mark.asyncio
+async def test_robot_reset_pick_place_demo_resets_to_idle():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+
+    result = await module.reset_pick_place_demo(_meta())
+
+    assert result.ok
+    assert result.data.status == "idle"
+    assert result.data.steps == 0
+    assert client.calls[-1][0] == "robot_reset_pick_place_demo"
