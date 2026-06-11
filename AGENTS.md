@@ -115,12 +115,6 @@ rules:
   The MCP server process and its child `kit.exe` are separate process trees.
 - Local loopback network access is required because MCP tools call the
   Extension REST bridge at `http://127.0.0.1:811N`.
-- New Codex worktrees do not inherit ignored `.env` files. Before live
-  Isaac/MCP work, run `scripts/bootstrap_codex_worktree.ps1 -Profile isaac-sim
-  -Instance N` or `uv run python scripts/verify_local_isaac_env.py --instance N
-  --check-codex-mcp-list`. Keep machine-local install paths in
-  `%USERPROFILE%\.config\omniverse-kit-mcp\local.env` or OS environment
-  variables, never in committed files.
 
 ## Final Response Checklist
 
