@@ -7,15 +7,22 @@ import time
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
+from omniverse_kit_mcp.robot_arm_profiles import (
+    builtin_robot_arm_profiles,
+    get_robot_arm_profile,
+)
 from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
 from omniverse_kit_mcp.types.robot import (
     JointConfig,
     JointPositions,
     JointPositionsSetRequest,
     JointPositionsSetResult,
+    RobotArmProfilesResult,
     RobotDrivePhysicsRequest,
     RobotDrivePhysicsResult,
     RobotEEPose,
+    RobotFrankaPickPlaceDemoRequest,
+    RobotFrankaPickPlaceDemoStatus,
     RobotFrankaPickPlaceRequest,
     RobotFrankaPickPlaceResult,
     RobotGripperControlRequest,
@@ -26,6 +33,7 @@ from omniverse_kit_mcp.types.robot import (
     RobotNavigatePathResult,
     RobotNavigateRequest,
     RobotNavigateResult,
+    RobotPickPlaceDemoRequest,
     RobotSetEETargetRequest,
     RobotSetEETargetResult,
 )
@@ -36,6 +44,48 @@ logger = logging.getLogger(__name__)
 class RobotModule:
     def __init__(self, client: IsaacRestClient) -> None:
         self._client = client
+
+    async def list_arm_profiles(
+        self,
+        meta: OperationMeta,
+    ) -> ModuleResult[RobotArmProfilesResult]:
+        started = int(time.time() * 1000)
+        try:
+            profiles = builtin_robot_arm_profiles()
+            return ok_result(
+                RobotArmProfilesResult(
+                    count=len(profiles),
+                    validated_pick_place_profiles=tuple(
+                        profile.profile_name
+                        for profile in profiles
+                        if profile.support_status == "validated_pick_place"
+                    ),
+                    candidate_pick_place_profiles=tuple(
+                        profile.profile_name
+                        for profile in profiles
+                        if profile.support_status == "candidate_pick_place"
+                    ),
+                    motion_policy_profiles=tuple(
+                        profile.profile_name
+                        for profile in profiles
+                        if profile.robot_description is not None
+                    ),
+                    profile_only_profiles=tuple(
+                        profile.profile_name
+                        for profile in profiles
+                        if profile.support_status == "profile_only"
+                    ),
+                    profiles=profiles,
+                ),
+                started_ms=started,
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="ROBOT_LIST_ARM_PROFILES_ERROR",
+            )
 
     async def load(
         self,
@@ -419,3 +469,305 @@ class RobotModule:
                 exc=exc,
                 error_code="ROBOT_FRANKA_PICK_PLACE_ERROR",
             )
+
+    async def install_franka_pick_place_playback_demo(
+        self,
+        meta: OperationMeta,
+        request: RobotFrankaPickPlaceDemoRequest,
+    ) -> ModuleResult[RobotFrankaPickPlaceDemoStatus]:
+        """Install a playback-tick Franka pick/place demo controlled by GUI Play."""
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.robot_install_franka_pick_place_playback_demo({
+                "robot_prim_path": request.robot_prim_path,
+                "object_prim_path": request.object_prim_path,
+                "target_position": list(request.target_position),
+                "object_initial_position": list(request.object_initial_position),
+                "object_size": request.object_size,
+                "robot_description": request.robot_description,
+                "picking_position": (
+                    list(request.picking_position)
+                    if request.picking_position is not None
+                    else None
+                ),
+                "end_effector_initial_height": request.end_effector_initial_height,
+                "end_effector_offset": (
+                    list(request.end_effector_offset)
+                    if request.end_effector_offset is not None
+                    else None
+                ),
+                "end_effector_orientation": (
+                    list(request.end_effector_orientation)
+                    if request.end_effector_orientation is not None
+                    else None
+                ),
+                "events_dt": list(request.events_dt) if request.events_dt is not None else None,
+                "max_steps": request.max_steps,
+                "position_tolerance": request.position_tolerance,
+                "lift_height_tolerance": request.lift_height_tolerance,
+                "create_demo_scene": request.create_demo_scene,
+                "reset_on_play": request.reset_on_play,
+            })
+            status = _parse_pick_place_demo_status(raw, request)
+            if status.status == "failed":
+                return fail_result(
+                    status.last_error or "Franka pick-place demo failed",
+                    started_ms=started,
+                    error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_FAILED",
+                    data=status,
+                )
+            return ok_result(status, started_ms=started)
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_INSTALL_ERROR",
+            )
+
+    async def install_pick_place_playback_demo(
+        self,
+        meta: OperationMeta,
+        request: RobotPickPlaceDemoRequest,
+    ) -> ModuleResult[RobotFrankaPickPlaceDemoStatus]:
+        """Install a profile-selected pick/place playback demo.
+
+        Only profiles with live proof are routed to an executable adapter.
+        Candidate/IK/profile-only records return an explicit unsupported status
+        rather than pretending pick/place support exists.
+        """
+        started = int(time.time() * 1000)
+        profile = get_robot_arm_profile(request.profile_name)
+        if profile is None:
+            return ok_result(
+                _unsupported_pick_place_demo_status(
+                    request=request,
+                    support_reason=f"Unknown robot arm profile: {request.profile_name}",
+                ),
+                started_ms=started,
+            )
+
+        if profile.profile_name == "franka_panda":
+            franka_result = await self.install_franka_pick_place_playback_demo(
+                meta,
+                RobotFrankaPickPlaceDemoRequest(
+                    robot_prim_path=request.robot_prim_path,
+                    object_prim_path=request.object_prim_path,
+                    target_position=request.target_position,
+                    object_initial_position=request.object_initial_position,
+                    object_size=request.object_size,
+                    robot_description=profile.robot_description or "Franka",
+                    picking_position=request.picking_position,
+                    end_effector_initial_height=request.end_effector_initial_height,
+                    end_effector_offset=request.end_effector_offset,
+                    end_effector_orientation=request.end_effector_orientation,
+                    events_dt=request.events_dt,
+                    max_steps=request.max_steps,
+                    position_tolerance=request.position_tolerance,
+                    lift_height_tolerance=request.lift_height_tolerance,
+                    create_demo_scene=request.create_demo_scene,
+                    reset_on_play=request.reset_on_play,
+                ),
+            )
+            if franka_result.data is None:
+                return franka_result
+            profiled_status = _with_profile_status(franka_result.data, profile)
+            if not franka_result.ok:
+                return fail_result(
+                    franka_result.message or "Profile pick-place demo failed",
+                    started_ms=started,
+                    error_code=franka_result.error_code,
+                    data=profiled_status,
+                )
+            return ok_result(profiled_status, started_ms=started)
+
+        return ok_result(
+            _unsupported_pick_place_demo_status(
+                request=request,
+                profile_name=profile.profile_name,
+                support_status=profile.support_status,
+                support_reason=profile.support_reason,
+                controller_strategy=profile.controller_strategy,
+            ),
+            started_ms=started,
+        )
+
+    async def reset_pick_place_demo(
+        self,
+        meta: OperationMeta,
+    ) -> ModuleResult[RobotFrankaPickPlaceDemoStatus]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.robot_reset_pick_place_demo()
+            return ok_result(_parse_pick_place_demo_status(raw), started_ms=started)
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_RESET_ERROR",
+            )
+
+    async def get_pick_place_demo_status(
+        self,
+        meta: OperationMeta,
+    ) -> ModuleResult[RobotFrankaPickPlaceDemoStatus]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.robot_get_pick_place_demo_status()
+            status = _parse_pick_place_demo_status(raw)
+            if status.status == "failed":
+                return fail_result(
+                    status.last_error or "Franka pick-place demo failed",
+                    started_ms=started,
+                    error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_FAILED",
+                    data=status,
+                )
+            return ok_result(status, started_ms=started)
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_ERROR",
+            )
+
+
+def _parse_pick_place_demo_status(
+    raw: dict,
+    request: RobotFrankaPickPlaceDemoRequest | None = None,
+) -> RobotFrankaPickPlaceDemoStatus:
+    target_default = request.target_position if request else (0.0, 0.0, 0.0)
+    initial_default = request.object_initial_position if request else (0.0, 0.0, 0.0)
+    bbox = raw.get("object_bbox", {}) if isinstance(raw.get("object_bbox"), dict) else {}
+    return RobotFrankaPickPlaceDemoStatus(
+        ok=bool(raw.get("ok", raw.get("status") != "failed")),
+        status=str(raw.get("status", "idle")),
+        robot_prim_path=str(raw.get("robot_prim_path", request.robot_prim_path if request else "")),
+        object_prim_path=str(raw.get("object_prim_path", request.object_prim_path if request else "")),
+        target_position=tuple(
+            float(v) for v in raw.get("target_position", target_default)
+        ),  # type: ignore[arg-type]
+        uses_kinematic_carry=bool(raw.get("uses_kinematic_carry", True)),
+        steps=int(raw.get("steps", 0)),
+        controller_event=int(raw.get("controller_event", 0)),
+        done=bool(raw.get("done", False)),
+        placed=bool(raw.get("placed", False)),
+        lifted=bool(raw.get("lifted", False)),
+        initial_object_position=tuple(
+            float(v) for v in raw.get("initial_object_position", initial_default)
+        ),  # type: ignore[arg-type]
+        final_object_position=tuple(
+            float(v) for v in raw.get("final_object_position", raw.get("object_bbox_center", initial_default))
+        ),  # type: ignore[arg-type]
+        final_distance=float(raw.get("final_distance", 0.0)),
+        max_lift_delta=float(raw.get("max_lift_delta", 0.0)),
+        object_bbox_center=tuple(
+            float(v) for v in raw.get("object_bbox_center", bbox.get("center", initial_default))
+        ),  # type: ignore[arg-type]
+        object_bbox_size=tuple(
+            float(v) for v in raw.get("object_bbox_size", bbox.get("size", (0.0, 0.0, 0.0)))
+        ),  # type: ignore[arg-type]
+        picking_position=tuple(
+            float(v) for v in raw.get("picking_position", initial_default)
+        ),  # type: ignore[arg-type]
+        end_effector_initial_height=float(raw.get("end_effector_initial_height", 0.0)),
+        diagnostics=dict(raw.get("diagnostics", {})),
+        profile_name=(
+            str(raw.get("profile_name"))
+            if raw.get("profile_name") is not None
+            else None
+        ),
+        support_status=(
+            str(raw.get("support_status"))
+            if raw.get("support_status") is not None
+            else None
+        ),
+        support_reason=(
+            str(raw.get("support_reason"))
+            if raw.get("support_reason") is not None
+            else None
+        ),
+        controller_strategy=(
+            str(raw.get("controller_strategy"))
+            if raw.get("controller_strategy") is not None
+            else None
+        ),
+        last_error=(
+            str(raw.get("last_error"))
+            if raw.get("last_error") is not None
+            else None
+        ),
+    )
+
+
+def _with_profile_status(
+    status: RobotFrankaPickPlaceDemoStatus,
+    profile: object,
+) -> RobotFrankaPickPlaceDemoStatus:
+    return RobotFrankaPickPlaceDemoStatus(
+        ok=status.ok,
+        status=status.status,
+        robot_prim_path=status.robot_prim_path,
+        object_prim_path=status.object_prim_path,
+        target_position=status.target_position,
+        uses_kinematic_carry=status.uses_kinematic_carry,
+        steps=status.steps,
+        controller_event=status.controller_event,
+        done=status.done,
+        placed=status.placed,
+        lifted=status.lifted,
+        initial_object_position=status.initial_object_position,
+        final_object_position=status.final_object_position,
+        final_distance=status.final_distance,
+        max_lift_delta=status.max_lift_delta,
+        object_bbox_center=status.object_bbox_center,
+        object_bbox_size=status.object_bbox_size,
+        picking_position=status.picking_position,
+        end_effector_initial_height=status.end_effector_initial_height,
+        diagnostics=status.diagnostics,
+        profile_name=getattr(profile, "profile_name", None),
+        support_status=getattr(profile, "support_status", None),
+        support_reason=getattr(profile, "support_reason", None),
+        controller_strategy=getattr(profile, "controller_strategy", None),
+        last_error=status.last_error,
+    )
+
+
+def _unsupported_pick_place_demo_status(
+    request: RobotPickPlaceDemoRequest,
+    profile_name: str | None = None,
+    support_status: str = "unsupported",
+    support_reason: str = "Profile has no validated pick/place adapter.",
+    controller_strategy: str | None = None,
+) -> RobotFrankaPickPlaceDemoStatus:
+    return RobotFrankaPickPlaceDemoStatus(
+        ok=False,
+        status="unsupported",
+        robot_prim_path=request.robot_prim_path,
+        object_prim_path=request.object_prim_path,
+        target_position=request.target_position,
+        uses_kinematic_carry=False,
+        steps=0,
+        controller_event=0,
+        done=False,
+        placed=False,
+        lifted=False,
+        initial_object_position=request.object_initial_position,
+        final_object_position=request.object_initial_position,
+        final_distance=0.0,
+        max_lift_delta=0.0,
+        object_bbox_center=request.object_initial_position,
+        object_bbox_size=(0.0, 0.0, 0.0),
+        picking_position=request.picking_position or request.object_initial_position,
+        end_effector_initial_height=request.end_effector_initial_height or 0.0,
+        diagnostics={
+            "unsupported": True,
+            "requested_profile": request.profile_name,
+        },
+        profile_name=profile_name or request.profile_name,
+        support_status=support_status,
+        support_reason=support_reason,
+        controller_strategy=controller_strategy,
+        last_error=None,
+    )

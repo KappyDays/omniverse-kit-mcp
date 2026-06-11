@@ -242,3 +242,36 @@ class RobotFrankaPickPlaceResponseModel(BaseModel):
     end_effector_orientation: list[float] | None = None
     diagnostics: dict[str, Any] = Field(default_factory=dict)
     reason: str | None = None
+
+
+class RobotFrankaPickPlaceDemoInstallRequestModel(BaseModel):
+    """Install a playback-tick Franka pick/place demo for GUI Play replay."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    robot_prim_path: str = Field(default="/World/Franka")
+    object_prim_path: str = Field(default="/World/PickCube")
+    target_position: list[float] = Field(
+        default=[0.45, -0.35, 0.02575],
+        min_length=3,
+        max_length=3,
+        description="[x, y, z] object center goal position",
+    )
+    object_initial_position: list[float] = Field(
+        default=[0.3, 0.35, 0.02575],
+        min_length=3,
+        max_length=3,
+        description="[x, y, z] object center reset position",
+    )
+    object_size: float = Field(default=0.0515, gt=0.0)
+    robot_description: str = Field(default="Franka")
+    picking_position: list[float] | None = Field(default=None, min_length=3, max_length=3)
+    end_effector_initial_height: float | None = Field(default=None, gt=0.0)
+    end_effector_offset: list[float] | None = Field(default=None, min_length=3, max_length=3)
+    end_effector_orientation: list[float] | None = Field(default=None, min_length=4, max_length=4)
+    events_dt: list[float] | None = Field(default=None, min_length=10, max_length=10)
+    max_steps: int = Field(default=1800, gt=0, le=20000)
+    position_tolerance: float = Field(default=0.05, gt=0.0)
+    lift_height_tolerance: float = Field(default=0.03, ge=0.0)
+    create_demo_scene: bool = Field(default=True)
+    reset_on_play: bool = Field(default=True)

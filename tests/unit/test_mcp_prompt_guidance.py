@@ -7,6 +7,10 @@ def test_isaac_prompt_guides_robot_control_to_scriptnode_loop():
     prompt = build_system_prompt("isaac-sim")
 
     assert "MCP tools operate between frames" in prompt
+    assert "robot_list_arm_profiles" in prompt
+    assert "validated_pick_place" in prompt
+    assert "robot_install_pick_place_playback_demo" in prompt
+    assert "unsupported" in prompt
     assert "robot_run_franka_pick_place" in prompt
     assert "PickPlaceController" in prompt
     assert "RMPFlowController" in prompt

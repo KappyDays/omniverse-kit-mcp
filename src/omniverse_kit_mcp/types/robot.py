@@ -134,6 +134,33 @@ class RobotSetEETargetResult:
 
 
 @dataclass(slots=True, frozen=True)
+class RobotArmProfile:
+    profile_name: str
+    display_name: str
+    vendor: str
+    family: str
+    asset_url: str
+    robot_description: str | None
+    robot_description_aliases: tuple[str, ...]
+    gripper_kind: str
+    built_in_gripper: bool
+    controller_strategy: str
+    support_status: str
+    support_reason: str
+    evidence: tuple[str, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class RobotArmProfilesResult:
+    count: int
+    validated_pick_place_profiles: tuple[str, ...]
+    candidate_pick_place_profiles: tuple[str, ...]
+    motion_policy_profiles: tuple[str, ...]
+    profile_only_profiles: tuple[str, ...]
+    profiles: tuple[RobotArmProfile, ...]
+
+
+@dataclass(slots=True, frozen=True)
 class RobotEEPose:
     prim_path: str
     end_effector_frame: str
@@ -185,6 +212,79 @@ class RobotFrankaPickPlaceResult:
     end_effector_orientation: tuple[float, float, float, float] | None
     diagnostics: dict[str, Any]
     reason: str | None = None
+
+
+@dataclass(slots=True, frozen=True)
+class RobotFrankaPickPlaceDemoRequest:
+    """Install a GUI Play replayable Franka pick/place demo controller."""
+
+    robot_prim_path: str = "/World/Franka"
+    object_prim_path: str = "/World/PickCube"
+    target_position: tuple[float, float, float] = (0.45, -0.35, 0.02575)
+    object_initial_position: tuple[float, float, float] = (0.3, 0.35, 0.02575)
+    object_size: float = 0.0515
+    robot_description: str = "Franka"
+    picking_position: tuple[float, float, float] | None = None
+    end_effector_initial_height: float | None = None
+    end_effector_offset: tuple[float, float, float] | None = None
+    end_effector_orientation: tuple[float, float, float, float] | None = None
+    events_dt: tuple[float, ...] | None = None
+    max_steps: int = 1800
+    position_tolerance: float = 0.05
+    lift_height_tolerance: float = 0.03
+    create_demo_scene: bool = True
+    reset_on_play: bool = True
+
+
+@dataclass(slots=True, frozen=True)
+class RobotPickPlaceDemoRequest:
+    """Install a profile-selected pick/place playback demo."""
+
+    profile_name: str = "franka_panda"
+    robot_prim_path: str = "/World/Franka"
+    object_prim_path: str = "/World/PickCube"
+    target_position: tuple[float, float, float] = (0.45, -0.35, 0.02575)
+    object_initial_position: tuple[float, float, float] = (0.3, 0.35, 0.02575)
+    object_size: float = 0.0515
+    picking_position: tuple[float, float, float] | None = None
+    end_effector_initial_height: float | None = None
+    end_effector_offset: tuple[float, float, float] | None = None
+    end_effector_orientation: tuple[float, float, float, float] | None = None
+    events_dt: tuple[float, ...] | None = None
+    max_steps: int = 1800
+    position_tolerance: float = 0.05
+    lift_height_tolerance: float = 0.03
+    create_demo_scene: bool = True
+    reset_on_play: bool = True
+
+
+@dataclass(slots=True, frozen=True)
+class RobotFrankaPickPlaceDemoStatus:
+    ok: bool
+    status: str
+    robot_prim_path: str
+    object_prim_path: str
+    target_position: tuple[float, float, float]
+    uses_kinematic_carry: bool
+    steps: int
+    controller_event: int
+    done: bool
+    placed: bool
+    lifted: bool
+    initial_object_position: tuple[float, float, float]
+    final_object_position: tuple[float, float, float]
+    final_distance: float
+    max_lift_delta: float
+    object_bbox_center: tuple[float, float, float]
+    object_bbox_size: tuple[float, float, float]
+    picking_position: tuple[float, float, float]
+    end_effector_initial_height: float
+    diagnostics: dict[str, Any]
+    profile_name: str | None = None
+    support_status: str | None = None
+    support_reason: str | None = None
+    controller_strategy: str | None = None
+    last_error: str | None = None
 
 
 # --- Phase J (NavMesh Playground) ---

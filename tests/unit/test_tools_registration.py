@@ -46,6 +46,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "lakehouse_query",
     # Phase B — Robot
     "robot_load",
+    "robot_list_arm_profiles",
     "robot_get_joint_positions",
     "robot_get_joint_config",
     "robot_set_joint_positions",
@@ -139,6 +140,10 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "robot_set_ee_target",
     "robot_get_ee_pose",
     "robot_run_franka_pick_place",
+    "robot_install_franka_pick_place_playback_demo",
+    "robot_install_pick_place_playback_demo",
+    "robot_reset_pick_place_demo",
+    "robot_get_pick_place_demo_status",
     # Phase G — Character extensions (animation variant / crowd load)
     "character_play_animation_variant",
     "character_load_crowd",

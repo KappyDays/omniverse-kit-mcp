@@ -29,7 +29,10 @@ from omni.mycompany.validation_api.services.robot_service import (
     _resolve_franka_pick_place_hover_height,
     _resolve_lula_config,
 )
-from omni.mycompany.validation_api.models.robot import RobotFrankaPickPlaceRequestModel
+from omni.mycompany.validation_api.models.robot import (
+    RobotFrankaPickPlaceDemoInstallRequestModel,
+    RobotFrankaPickPlaceRequestModel,
+)
 from omni.mycompany.validation_api.services.job_service import JobService
 
 
@@ -44,11 +47,16 @@ def mcp_server():
 
 def test_robot_ext_tools_registered(mcp_server):
     names = set(mcp_server._tool_manager._tools)
+    assert "robot_list_arm_profiles" in names
     assert "robot_navigate_path" in names
     assert "robot_gripper_control" in names
     assert "robot_set_ee_target" in names
     assert "robot_get_ee_pose" in names
     assert "robot_run_franka_pick_place" in names
+    assert "robot_install_franka_pick_place_playback_demo" in names
+    assert "robot_install_pick_place_playback_demo" in names
+    assert "robot_reset_pick_place_demo" in names
+    assert "robot_get_pick_place_demo_status" in names
 
 
 def test_robot_service_load_uses_payload_command():
@@ -284,6 +292,16 @@ def test_franka_pick_place_request_model_accepts_explicit_grasp_pose():
 
     assert model.picking_position == [0.3, 0.2, 0.51]
     assert model.end_effector_orientation == [0.0, 0.0, 1.0, 0.0]
+
+
+def test_franka_pick_place_demo_install_model_defaults_are_replay_safe():
+    model = RobotFrankaPickPlaceDemoInstallRequestModel()
+
+    assert model.robot_prim_path == "/World/Franka"
+    assert model.object_prim_path == "/World/PickCube"
+    assert model.create_demo_scene is True
+    assert model.reset_on_play is True
+    assert model.object_size == pytest.approx(0.0515)
 
 
 def test_franka_pick_place_diagnostics_reference_official_block_geometry():

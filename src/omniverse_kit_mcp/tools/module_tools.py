@@ -73,11 +73,13 @@ from omniverse_kit_mcp.types.lakehouse import LakehouseDatasetRef, LakehouseQuer
 from omniverse_kit_mcp.types.robot import (
     JointPositionsSetRequest,
     RobotDrivePhysicsRequest,
+    RobotFrankaPickPlaceDemoRequest,
     RobotFrankaPickPlaceRequest,
     RobotGripperControlRequest,
     RobotLoadRequest,
     RobotNavigatePathRequest,
     RobotNavigateRequest,
+    RobotPickPlaceDemoRequest,
     RobotSetEETargetRequest,
 )
 from omniverse_kit_mcp.types.stage import (
@@ -584,6 +586,13 @@ def register_module_tools(
     # ------------------------------------------------------------------
 
     @mcp.tool()
+    async def robot_list_arm_profiles() -> str:
+        """List curated built-in Isaac Sim 6.0 robot arm profiles with asset URL, controller strategy, support status, and evidence. Use before multi-arm pick/place work."""
+        meta = make_meta(ModuleName.ROBOT)
+        result = await robot.list_arm_profiles(meta)
+        return _serialize(result)
+
+    @mcp.tool()
     async def robot_load(
         usd_url: str,
         prim_path: str,
@@ -759,6 +768,150 @@ def register_module_tools(
             lift_height_tolerance=lift_height_tolerance,
         )
         result = await robot.run_franka_pick_place(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_install_franka_pick_place_playback_demo(
+        robot_prim_path: str = "/World/Franka",
+        object_prim_path: str = "/World/PickCube",
+        target_position: list[float] | None = None,
+        object_initial_position: list[float] | None = None,
+        object_size: float = 0.0515,
+        max_steps: int = 1800,
+        position_tolerance: float = 0.05,
+        lift_height_tolerance: float = 0.03,
+        picking_position: list[float] | None = None,
+        end_effector_initial_height: float | None = None,
+        end_effector_offset: list[float] | None = None,
+        end_effector_orientation: list[float] | None = None,
+        events_dt: list[float] | None = None,
+        create_demo_scene: bool = True,
+        reset_on_play: bool = True,
+    ) -> str:
+        """Install a persistent Franka pick/place demo that advances from Isaac Sim GUI Play or simulation_play. Uses official PickPlaceController/RMPflow/ParallelGripper; no kinematic object carry."""
+        meta = make_meta(ModuleName.ROBOT)
+        target = target_position or [0.45, -0.35, 0.02575]
+        initial = object_initial_position or [0.3, 0.35, 0.02575]
+        if len(target) != 3:
+            raise ValueError("target_position must be [x,y,z]")
+        if len(initial) != 3:
+            raise ValueError("object_initial_position must be [x,y,z]")
+        if picking_position is not None and len(picking_position) != 3:
+            raise ValueError("picking_position must be [x,y,z]")
+        if end_effector_offset is not None and len(end_effector_offset) != 3:
+            raise ValueError("end_effector_offset must be [x,y,z]")
+        if end_effector_orientation is not None and len(end_effector_orientation) != 4:
+            raise ValueError("end_effector_orientation must be [qw,qx,qy,qz]")
+        request = RobotFrankaPickPlaceDemoRequest(
+            robot_prim_path=robot_prim_path,
+            object_prim_path=object_prim_path,
+            target_position=tuple(float(v) for v in target),  # type: ignore[arg-type]
+            object_initial_position=tuple(float(v) for v in initial),  # type: ignore[arg-type]
+            object_size=float(object_size),
+            picking_position=(
+                tuple(float(v) for v in picking_position)
+                if picking_position is not None
+                else None
+            ),  # type: ignore[arg-type]
+            end_effector_initial_height=end_effector_initial_height,
+            end_effector_offset=(
+                tuple(float(v) for v in end_effector_offset)
+                if end_effector_offset is not None
+                else None
+            ),  # type: ignore[arg-type]
+            end_effector_orientation=(
+                tuple(float(v) for v in end_effector_orientation)
+                if end_effector_orientation is not None
+                else None
+            ),  # type: ignore[arg-type]
+            events_dt=tuple(float(v) for v in events_dt) if events_dt else None,
+            max_steps=int(max_steps),
+            position_tolerance=float(position_tolerance),
+            lift_height_tolerance=float(lift_height_tolerance),
+            create_demo_scene=create_demo_scene,
+            reset_on_play=reset_on_play,
+        )
+        result = await robot.install_franka_pick_place_playback_demo(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_install_pick_place_playback_demo(
+        profile_name: str = "franka_panda",
+        robot_prim_path: str = "/World/Franka",
+        object_prim_path: str = "/World/PickCube",
+        target_position: list[float] | None = None,
+        object_initial_position: list[float] | None = None,
+        object_size: float = 0.0515,
+        max_steps: int = 1800,
+        position_tolerance: float = 0.05,
+        lift_height_tolerance: float = 0.03,
+        picking_position: list[float] | None = None,
+        end_effector_initial_height: float | None = None,
+        end_effector_offset: list[float] | None = None,
+        end_effector_orientation: list[float] | None = None,
+        events_dt: list[float] | None = None,
+        create_demo_scene: bool = True,
+        reset_on_play: bool = True,
+    ) -> str:
+        """Install a profile-selected pick/place playback demo. franka_panda routes to the validated official Franka adapter; candidate/IK/profile-only arms return status='unsupported' until live proof exists."""
+        meta = make_meta(ModuleName.ROBOT)
+        target = target_position or [0.45, -0.35, 0.02575]
+        initial = object_initial_position or [0.3, 0.35, 0.02575]
+        if len(target) != 3:
+            raise ValueError("target_position must be [x,y,z]")
+        if len(initial) != 3:
+            raise ValueError("object_initial_position must be [x,y,z]")
+        if picking_position is not None and len(picking_position) != 3:
+            raise ValueError("picking_position must be [x,y,z]")
+        if end_effector_offset is not None and len(end_effector_offset) != 3:
+            raise ValueError("end_effector_offset must be [x,y,z]")
+        if end_effector_orientation is not None and len(end_effector_orientation) != 4:
+            raise ValueError("end_effector_orientation must be [qw,qx,qy,qz]")
+        request = RobotPickPlaceDemoRequest(
+            profile_name=profile_name,
+            robot_prim_path=robot_prim_path,
+            object_prim_path=object_prim_path,
+            target_position=tuple(float(v) for v in target),  # type: ignore[arg-type]
+            object_initial_position=tuple(float(v) for v in initial),  # type: ignore[arg-type]
+            object_size=float(object_size),
+            picking_position=(
+                tuple(float(v) for v in picking_position)
+                if picking_position is not None
+                else None
+            ),  # type: ignore[arg-type]
+            end_effector_initial_height=end_effector_initial_height,
+            end_effector_offset=(
+                tuple(float(v) for v in end_effector_offset)
+                if end_effector_offset is not None
+                else None
+            ),  # type: ignore[arg-type]
+            end_effector_orientation=(
+                tuple(float(v) for v in end_effector_orientation)
+                if end_effector_orientation is not None
+                else None
+            ),  # type: ignore[arg-type]
+            events_dt=tuple(float(v) for v in events_dt) if events_dt else None,
+            max_steps=int(max_steps),
+            position_tolerance=float(position_tolerance),
+            lift_height_tolerance=float(lift_height_tolerance),
+            create_demo_scene=create_demo_scene,
+            reset_on_play=reset_on_play,
+        )
+        result = await robot.install_pick_place_playback_demo(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_reset_pick_place_demo() -> str:
+        """Reset the installed Franka pick/place playback demo object pose, robot joints/gripper, controller state, and status."""
+        meta = make_meta(ModuleName.ROBOT)
+        result = await robot.reset_pick_place_demo(meta)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_get_pick_place_demo_status() -> str:
+        """Return installed Franka pick/place playback demo status: idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event, and last_error."""
+        meta = make_meta(ModuleName.ROBOT)
+        result = await robot.get_pick_place_demo_status(meta)
         return _serialize(result)
 
     @mcp.tool()

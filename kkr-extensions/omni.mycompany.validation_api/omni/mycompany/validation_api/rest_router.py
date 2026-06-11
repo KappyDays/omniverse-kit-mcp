@@ -30,6 +30,7 @@ from .models.ui import UiInvokeRequestModel
 from .models.robot import (
     DrivePhysicsRequestModel,
     NavigationQueryPathRequestModel,
+    RobotFrankaPickPlaceDemoInstallRequestModel,
     RobotFrankaPickPlaceRequestModel,
     RobotGripperControlRequestModel,
     RobotLoadRequestModel,
@@ -1241,6 +1242,44 @@ async def robot_franka_pick_place(body: RobotFrankaPickPlaceRequestModel) -> Any
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("robot/franka_pick_place failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/robot/franka_pick_place_demo/install")
+async def robot_franka_pick_place_demo_install(
+    body: RobotFrankaPickPlaceDemoInstallRequestModel,
+) -> Any:
+    require_robot_stack()
+    try:
+        return await _robot.install_franka_pick_place_playback_demo(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("robot/franka_pick_place_demo/install failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/robot/franka_pick_place_demo/reset")
+async def robot_franka_pick_place_demo_reset() -> Any:
+    require_robot_stack()
+    try:
+        return await _robot.reset_pick_place_demo()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("robot/franka_pick_place_demo/reset failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/robot/franka_pick_place_demo/status")
+async def robot_franka_pick_place_demo_status() -> Any:
+    require_robot_stack()
+    try:
+        return await _robot.get_pick_place_demo_status()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("robot/franka_pick_place_demo/status failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

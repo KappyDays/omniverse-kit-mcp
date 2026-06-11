@@ -534,6 +534,21 @@ class IsaacRestClient:
     async def robot_run_franka_pick_place(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/robot/franka_pick_place", json=request)
 
+    async def robot_install_franka_pick_place_playback_demo(
+        self,
+        request: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/robot/franka_pick_place_demo/install",
+            json=request,
+        )
+
+    async def robot_reset_pick_place_demo(self) -> dict[str, Any]:
+        return await self._post_empty(f"{BASE_PATH}/robot/franka_pick_place_demo/reset")
+
+    async def robot_get_pick_place_demo_status(self) -> dict[str, Any]:
+        return await self._get(f"{BASE_PATH}/robot/franka_pick_place_demo/status")
+
     # --- Jobs (Phase B) ---
 
     async def job_status(self, job_id: str) -> dict[str, Any]:
