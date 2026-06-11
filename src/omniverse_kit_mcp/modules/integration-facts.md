@@ -15,15 +15,15 @@
 
 ## Simulation / Timeline
 - **`simulation/play` 비동기 반영**: 응답 시점 `is_playing=false` 가능. 수 초 뒤 `get_status` 재확인
-- **`simulation_step` advance mode**: Kit 버전별 `omni.timeline.forward_one_frame()` 존재 여부 다름 → `hasattr` 체크 후 사용, 없으면 play → N × `next_update_async()` → pause (was_playing 보존). response `advance_mode` ∈ {forward_one_frame, play_burst}
+- **`simulation_step` advance mode**: Isaac Sim 6.0 에서는 active Replicator/HydraTexture render product 상태에서 `omni.timeline.forward_one_frame()` 이 crash 할 수 있어 기본값은 play → 목표 시간까지 `next_update_async()` → pause (was_playing 보존). Replicator 잔여 상태에서 timeline 이 실제 시간을 전진시키지 않으면 `set_current_time` fallback 으로 목표 시간을 맞추며 response `advance_mode` 는 `play_burst` 또는 `set_time_fallback`.
 
 ## Viewport
 - **GUI 모드 필수**: `--no-window` / headless 에서 `viewport_capture` 가 빈 데이터
-- **Isaac Sim 5.1 detach 호환**: `omni.replicator.core` annotator.detach 가 HydraTexture 객체에서 `AttributeError` (`_get_node_path` 문자열 가정) → `viewport_service` 가 detach 실패를 try/except 으로 감싸고 `omni.kit.viewport.utility.capture_viewport_to_file` 폴백
-- **연속 capture 재캐시**: 5.1 viewport capture 는 동일 PNG 반복 가능. 프레임 변화 필요 시 사이에 `simulation.play` 삽입
+- **Replicator detach 호환**: 일부 Kit build 에서 `omni.replicator.core` annotator.detach 가 HydraTexture 객체에서 `AttributeError` (`_get_node_path` 문자열 가정) → `viewport_service` 가 detach 실패를 try/except 으로 감싸고 `omni.kit.viewport.utility.capture_viewport_to_file` 폴백
+- **연속 capture 재캐시**: viewport capture 는 동일 PNG 반복 가능. 프레임 변화 필요 시 사이에 `simulation.play` 삽입
 - **`ViewportModule.create` idempotent**: 같은 `viewport_name` 재호출 시 `existed=True` + 기존 window 반환. `omni.kit.viewport.window.ViewportWindow` 1차 → `create_viewport_window` 폴백. `destroy` 도 idempotent (`destroyed=false` if missing)
 - **`viewport_set_fov` camera candidate walk**: fresh stage 에서 `/OmniverseKit_Persp` 가 session layer 거주 → `GetPrimAtPath` IsValid=False. `ViewportRenderService._candidate_camera_paths` 가 `get_viewport_from_window_name` → Kit 내장 camera (Persp/Top/Front/Right) → `stage.Traverse()` 첫 `UsdGeom.Camera` 순서 폴백. `focalLength = (horizontalAperture/2) / tan(fov/2)` 역산
-- **`viewport_toggle_overlay(overlay="axis")` user.config.json 오염 방지 경로 필수** (2026-04-21 실측): `/persistent/app/viewport/displayOptions/axis = bool` 저장 시 Kit 이 부모 키를 dict 으로 `user.config.json` 에 영속 저장 → Kit 5.1 `omni.kit.viewport.window-107.2.0/legacy.py:226` 의 `_setup_viewport_options` 는 같은 키를 **int bitmask 로 읽어** `settings & 0x1` 수행 → `TypeError: dict & int` → `ViewportWindow.__init__` 중도 실패 → `_ViewportWindow__viewport_layers` 미생성 → viewport_widgets_manager / measure tool / physx.supportui 가 **이후 모든 Kit 기동에서** 연쇄 실패. 올바른 경로: `/persistent/app/viewport/<viewport_name>/Viewport0/guide/axis/visible` (현재 `viewport_render_service._axis_key_for_viewport`). 회복: `~/AppData/Local/ov/data/Kit/Isaac-Sim Full/5.1/user.config.json` 에서 `persistent.app.viewport.displayOptions` dict 키 삭제 → 재기동 시 int bitmask 로 재저장됨
+- **`viewport_toggle_overlay(overlay="axis")` user.config.json 오염 방지 경로 필수** (historical Kit 107 / Isaac Sim 5.1, 2026-04-21 실측): `/persistent/app/viewport/displayOptions/axis = bool` 저장 시 Kit 이 부모 키를 dict 으로 `user.config.json` 에 영속 저장 → `omni.kit.viewport.window-107.2.0/legacy.py:226` 의 `_setup_viewport_options` 는 같은 키를 **int bitmask 로 읽어** `settings & 0x1` 수행 → `TypeError: dict & int` → `ViewportWindow.__init__` 중도 실패 → `_ViewportWindow__viewport_layers` 미생성 → viewport_widgets_manager / measure tool / physx.supportui 가 **이후 모든 Kit 기동에서** 연쇄 실패. 올바른 경로: `/persistent/app/viewport/<viewport_name>/Viewport0/guide/axis/visible` (현재 `viewport_render_service._axis_key_for_viewport`). 회복: `~/AppData/Local/ov/data/Kit/Isaac-Sim Full/<version>/user.config.json` 에서 `persistent.app.viewport.displayOptions` dict 키 삭제 → 재기동 시 int bitmask 로 재저장됨
 
 ## Process / Health / Code reload
 - **프로세스 종료**: `taskkill /f /im kit.exe` 는 Git Bash 에서 옵션 파싱 실패 → `cmd //c "taskkill /F /IM kit.exe /T"` 또는 `powershell.exe -NoProfile -Command "Stop-Process -Name kit -Force"` 사용
@@ -34,20 +34,20 @@
 ## Stage / USD 로드 프로토콜 (변경 금지)
 > `../../../docs/invariants/usd-load.md` 가 4 줄 요약. 이 섹션이 근본 원인 + 해결 3 요소 + 재발 진단의 상세.
 
-- **근본 원인**: `LogCaptureService` 의 carb log callback 이 등록된 상태에서 Kit 5.1 MDL resolver 가 S3 asset 의 Materials.usd 를 열면 `"Disabling base URL to resolve MDL identifier 'OmniPBR.mdl'"` 반복 → Python callback 이 carb thread 에 GIL 경합 → Kit main event loop deadlock → 모든 MCP tool 92 s timeout
+- **근본 원인**: `LogCaptureService` 의 carb log callback 이 등록된 상태에서 historical Kit 107 / Isaac Sim 5.1 MDL resolver 가 S3 asset 의 Materials.usd 를 열면 `"Disabling base URL to resolve MDL identifier 'OmniPBR.mdl'"` 반복 → Python callback 이 carb thread 에 GIL 경합 → Kit main event loop deadlock → 모든 MCP tool 92 s timeout
 - **해결 3 요소** (baseline — 변경 시 hang 재발):
   1. Extension `on_startup` 에서 `self._log_capture = None` (NOT `get_log_capture_service().start()`) — `extension_capture_logs` / `clear_logs` MCP tool 은 현재 no-op
   2. `stage_service.load_usd` 는 `omni.kit.async_engine.run_coroutine(_main_loop_impl())` + `asyncio.wrap_future(future)` — FastAPI event loop ≠ Kit main event loop 이므로 Kit main loop 에 명시적 schedule
-  3. `omni.kit.commands.execute("CreatePayloadCommand", instanceable=True, ...)` — GUI drag&drop scene_drop_delegate 와 동등 경로
+  3. `omni.kit.commands.execute("CreatePayloadCommand", ...)` — GUI drag&drop scene_drop_delegate 와 동등 경로. Static payload 는 `instanceable=True`; robot/articulation outer payload 는 runtime traversal/write 때문에 `instanceable=False`
 - **URL 정책**: S3 필수 (`file:///` 금지). Prefix:
-  - `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/...`
+  - `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/...`
   - `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/...`
   - `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/{ArchVis,DigitalTwin,Vegetation}/...`
   - SoT: `../../../docs/assets/isaac/asset_inventory.md`
 - **`stage_open` vs `stage_load_usd`**: 전자는 root stage 교체 (scene 전환), 후자는 `/World/<name>` Payload 추가 (multi-asset composition)
-- **실측** (2026-04-20 hang 해결 후): Simple_Warehouse 2.4 s / NovaCarter 3.1 s / Biped_Setup 2.6 s / SimReady cold 10~57 s / multi-asset composition OK
+- **실측** (2026-04-20 hang 해결 후): Simple_Warehouse 2.4 s / NovaCarter 3.1 s / F_Business_02 2.6 s / SimReady cold 10~57 s / multi-asset composition OK
 - **재발 시 진단 순서**:
-  1. Kit log `%USERPROFILE%\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\5.1\kit_*.log` 마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 후 silent = deadlock 확정
+  1. Kit log `%USERPROFILE%\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\6.0\kit_*.log` 마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 후 silent = deadlock 확정
   2. `simulation_get_status` 가 92 s timeout → Kit main loop 차단
   3. `cmd //c "taskkill /F /IM kit.exe /T"` — PowerShell `Stop-Process` 는 Access Denied 확정
   4. `.venv/Scripts/python.exe scripts/run_process_module_standalone.py start` 로 fresh restart
@@ -59,13 +59,16 @@
 ## Robot / IK
 - **R2 (timeline playing 필수)**: `navigate_to` / `navigate_path` / `get/set_joint_positions` 는 `omni.timeline.is_playing()` 필수. Extension `robot_service.navigate_path` 는 미통과 시 HTTP 400
 - **`RobotModule.navigate_to`**: `xformOp:translate` linear interp over `duration_s` (60 fps). 베이스 이동 전용 — 관절/IK 는 `set_joint_positions` 사용
+- **`robot_load` 6.0 payload 예외**: S3 robot USD 는 `CreatePayloadCommand(instanceable=False)` 로 load. static payload 와 달리 articulation runtime 이 child prim traversal/write 를 수행하므로 instanceable payload 금지. pending/running JobService job 이 있으면 HTTP 400, playing timeline 은 load 전 stop.
 - **`robot_gripper_control` DOF 자동 감지**: `SingleArticulation.dof_names` 에서 `finger` / `gripper` substring. Franka 매치, UR10 불일치 → 400. `simulation_play → pause` warm-up 후 호출
-- **`robot_set_ee_target` Franka/FR3 Lula IK**: `_resolve_lula_modules()` 가 `isaacsim.robot_motion.motion_generation.lula` → `omni.isaac.motion_generation.lula` 순 시도. Isaac Sim 5.1 은 `load_supported_motion_policy_config(robot_description, "RMPflow")`, 구버전은 `load_supported_robot_motion_policy_configs(...)` fallback. 미지원 robot_description 은 400. scenario 에서 `continueOnFailure: true` 로 감쌀 것
+- **`robot_set_ee_target` Franka/FR3 Lula IK**: `_resolve_lula_modules()` 가 6.0 `isaacsim.robot_motion.motion_generation.lula` 경로를 사용. 미지원 robot_description 은 400. scenario 에서 `continueOnFailure: true` 로 감쌀 것
 
-## Character / AnimGraph
+## Character / BehaviorAgent
 > 세밀한 함정은 `CLAUDE.md §"Character domain constraints"` (sibling) 참조.
 
-- **`character_play_animation_variant` unwired variable tolerant**: `sit_style` / `walk_style` / `run_style` 가 Biped_Setup AnimGraph 에 없어도 base Action 은 항상 set. `response.variables_set` 이 실제 적용된 key
+- **BehaviorAgent `custom_action` Isaac Sim 6.0 signature**: `IBehaviorAgent.custom_action(action, root_animation=..., duration=...)` positional action 이 필수. Adapter 는 positional 우선, legacy `action_name=` fallback 순서. kwargs-only 호출은 500 TypeError.
+- **`character_play_animation_variant` unwired style tolerant**: `sit_style` / `walk_style` / `run_style` 가 character runtime 에 없어도 base Action 은 항상 set. `response.variables_set` 이 실제 적용된 key
+- **BehaviorAgent handle availability optional**: 일부 6.0 Replicator Agent skin 은 payload/render/prim assertion 은 통과하지만 BehaviorAgent handle 이 warm-up 뒤에도 늦게 뜨거나 없을 수 있다. Variant demo/scenario 는 `continueOnFailure: true` 로 감싸고, 필수 검증은 character load/crowd/prim state 로 분리.
 - **`character_load_crowd` random seed 고정**: `_layout_positions("random", ...)` 는 `random.Random(0)` — 테스트 재현성. Live 에서 다른 seed 필요 시 center offset shuffle 또는 loader 상위 wrap
 
 ## Asset / Content
@@ -76,18 +79,20 @@
 ## NavMesh
 - **R1a (canonical 시퀀스)**: `load assets → simulation.stop → navigation.bake → navigation.query_path → simulation.play → robot.navigate_path`. `bake` 는 playing 중 호출 시 True 반환하지만 `get_navmesh()` = None (silent False Positive) — 호출자가 `simulation.stop` 명시
 - **non-blocking 폴링**: `navigation_service.bake` / `_bake_if_needed` 가 `start_navmesh_baking()` + `is_navmesh_baking()` + `app.next_update_async()`. `_and_wait` 변형 절대 금지 (Kit Python 단일 스레드 점유로 HTTP 라우터 starved). `timeout_s` (기본 300 s) 상한, `elapsed_ticks` 로 진행
+- **Isaac Sim 6.0 `query_shortest_path` signature**: direct kwargs `agent_radius=` / `agent_height=` 는 TypeError. `NavAgentDesc(radius, height, collision_gap)` positional argument + empty `np.float32` area-cost array 사용. Validation API 와 navmesh playground 는 wrapper 를 통해 6.0 우선, old kwargs fallback 순서.
 - **cache lock 회복**: 동일 Kit 에서 5+ 회 반복 시 `"start_navmesh_baking returned False"` 빈발. ① `stage_delete_prim("/World/NavMeshVolume")` → 재시도 ② 실패 시 Kit 재시작. 반복 bake scenario 는 fresh Kit 권장
 - **visualization backend 우선순위**: `set_visualization` 이 `carb.settings /persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh` 토글 우선. 실패 시 `NavMeshVolume` prim `visibility` 폴백. response `backend` ∈ {`carb_settings`, `prim_visibility`}.
 - **`add_exclude_volume(prim_path=...)`**: `stage.compute_world_bbox` 내부 호출하여 bbox 기반 Exclude 자동 배치 — chair / low prop step-up artifact 회피
 
 ## Sensor
-- **공통 Camera prim 기반**: Lidar / Depth 도 `UsdGeom.Camera` + `customData.validation_api.sensor_type` tag. 실제 annotator attach 는 capture 시. `set_visualization(on|off)` 은 prim visibility 공통 토글
-- **Physics sensor (Contact/IMU) Xform fallback**: `isaacsim.sensors.physics.{ContactSensor, IMUSensor}` 미활성 시 `CreatePrimWithDefaultXformCommand` → Xform 생성 + `customData.validation_api.sensor_type={contact,imu}` stamp. `response.backend` 필드가 실제 경로 (`isaacsim.sensors.physics` | `fallback_xform:<ErrorType>`)
+- **Sensor prim 기반**: RTX camera / depth camera 는 `UsdGeom.Camera` + `customData.validation_api.sensor_type` tag. RTX Lidar 는 6.0 `isaacsim.sensors.experimental.rtx.Lidar.create` 가 만든 OmniLidar/schema prim + 같은 customData tag. 실제 annotator attach/readback 은 sensor type 별 dispatch. `set_visualization(on|off)` 은 prim visibility/debug draw 공통 토글
+- **RTX Lidar is not a viewport camera in 6.0**: `attach_rtx_lidar` creates an OmniLidar/schema prim, not a renderable `UsdGeom.Camera`. Passing that prim as `viewport_create.camera_path` or `viewport_capture.camera_prim_path` can crash native `rtx.sensors.lidar.core`; `ViewportService` rejects it. Use `sensor_set_visualization` + normal camera capture, or `sensor_lidar_get_point_cloud`.
+- **Physics sensor (Contact/IMU) Xform fallback**: `isaacsim.sensors.experimental.physics` 미활성 시 `CreatePrimWithDefaultXformCommand` → Xform 생성 + `customData.validation_api.sensor_type={contact,imu}` stamp. `response.backend` 필드가 실제 경로 (`isaacsim.sensors.experimental.physics` | `fallback_xform:<ErrorType>`)
 - **`sensor_set_annotator` MCP lax / Extension strict**: MCP 는 `list[str]` 통과, Extension 이 고정 집합 {rgb, depth, semantic_segmentation, instance_segmentation, normals, motion_vectors, distance_to_camera, distance_to_image_plane} membership 검증. 미지 annotator 는 400. attach 실패는 `response.skipped[name]` 수집
 
 ## Physics / Material / Lighting
 - **`UsdPhysics.CollisionAPI` 는 `rigidBodyEnabled` 의존**: `physics_apply_collider` 단독 적용 prim 은 정적 collider — 중력/힘 반응 원하면 `physics_apply_rigid_body(dynamic=True)` 추가. 첫 `physics_set_scene` 은 반드시 arrange 단계
-- **`MaterialBindingAPI.DirectBinding.GetBindingStrength` 는 Kit 5.1 Python 바인딩에서 AttributeError**: `binding.GetDirectBinding().GetBindingRel()` 로 rel 획득 후 정적 `UsdShade.MaterialBindingAPI.GetMaterialBindingStrength(rel)` 호출이 정답. `MaterialService.get_bound` 가 이 패턴 — 새 Material 연산 추가 시 동일 사용
+- **`MaterialBindingAPI.DirectBinding.GetBindingStrength` 는 legacy Kit Python 바인딩에서 AttributeError**: `binding.GetDirectBinding().GetBindingRel()` 로 rel 획득 후 정적 `UsdShade.MaterialBindingAPI.GetMaterialBindingStrength(rel)` 호출이 정답. `MaterialService.get_bound` 가 이 패턴 — 새 Material 연산 추가 시 동일 사용
 
 ## Replicator / SDG
 - **writer 는 명시적 orchestrator tick 필요**: `create_writer` 만으로는 파일 쓰지 않음. `trigger_once(num_frames=N)` 또는 `trigger_on_time(interval_s=...)` 별도 호출 필수. `simulation_play` 는 PhysX tick 만 — orchestrator 와 별개

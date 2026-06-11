@@ -51,7 +51,7 @@ command 에 `--ext-folder` / `--enable omni.mycompany.validation_api` 플래그�
 **진단**:
 ```bash
 # 방금 띄운 USD Composer 의 CommandLine 확인
-powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='kit.exe'\" | Where-Object { \$_.CommandLine -like '*port=8014*' } | Select-Object -ExpandProperty CommandLine"
+powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='kit.exe'\" | Where-Object { \$_.CommandLine -like '*port=8114*' } | Select-Object -ExpandProperty CommandLine"
 ```
 
 CommandLine 에 `--ext-folder` 와 `--enable omni.mycompany.validation_api`
@@ -61,12 +61,12 @@ CommandLine 에 `--ext-folder` 와 `--enable omni.mycompany.validation_api`
 
 ## 증상 3 — Isaac instance 2 기동 시 `Address already in use`
 
-**원인**: 이전 kit 이 port 8012 를 잡고 있는데 `_is_process_alive` 가 감지
-못 함 (CommandLine 에 `port=8012` 가 없는 kit — 예: 수동 GUI 실행 kit).
+**원인**: 이전 kit 이 port 8112 를 잡고 있는데 `_is_process_alive` 가 감지
+못 함 (CommandLine 에 `port=8112` 가 없는 kit — 예: 수동 GUI 실행 kit).
 
 **진단**:
 ```bash
-netstat -ano | findstr ":8012"
+netstat -ano | findstr ":8112"
 ```
 
 PID 확인 → 그 PID 가 무엇인지:

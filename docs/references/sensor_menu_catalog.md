@@ -1,4 +1,4 @@
-# Isaac Sim 5.1 — Sensor Menu Catalog
+# Historical Isaac Sim 5.1 — Sensor Menu Catalog
 
 **Source of Truth**: `window_menu_list(menu_path="Create")` — Isaac Sim Kit 5.1 merged menu tree.
 **Regenerate**: Isaac Sim 기동 상태에서 `mcp__isaacsim-mcp__window_menu_list(menu_path="Create")` 호출 → `Create/Sensors/*` 항목만 추출. Kit SDK / Extension 버전 변경 시 재생성.
@@ -129,6 +129,6 @@ window_menu_trigger(menu_path="Create/Robots/Nova Carter with Sensors")
 5. 사용자가 제공한 업스트림 Isaac Sim release note 확인하여 빠진/추가된 모델 추적
 
 **재생성 트리거**:
-- Isaac Sim SDK 업그레이드 (예: 5.1 → 5.2)
-- `isaacsim.sensors.rtx` / `isaacsim.sensors.physx.ui` extension 버전 변경
+- Isaac Sim SDK 업그레이드 (예: 5.1 → 6.0)
+- `isaacsim.sensors.experimental.rtx` / `isaacsim.sensors.experimental.physics` extension 버전 변경
 - 사용자가 새 제조사 센서 추가 요청 시 — 실물 확인 후 이 문서에 append

@@ -2,7 +2,7 @@
 
 Branch: `composer-work` · Target: locally-built **KKR USD Composer 0.1.1**
 (`apps/kkr_usd_composer.kit`, kit-app-template build, Kit `110.1.0+main.0.c98fc5cb.local`).
-MCP profile: `usd-composer`, instance 1, ext port 8014.
+MCP profile: `usd-composer`, instance 1, ext port 8114.
 
 ## Original User Goal
 

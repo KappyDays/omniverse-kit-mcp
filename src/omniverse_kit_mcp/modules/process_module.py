@@ -14,12 +14,12 @@ does two things before calling kit.exe:
     2. ``call setup_ros_env.bat`` which, when ``ROS_DISTRO`` is unset:
          - sets ``ROS_DISTRO=humble``
          - sets ``RMW_IMPLEMENTATION=rmw_fastrtps_cpp``
-         - appends ``<ISAAC_SIM_ROOT>/exts/isaacsim.ros2.bridge/humble/lib`` to PATH
+         - appends ``<ISAAC_SIM_ROOT>/exts/isaacsim.ros2.core/humble/lib`` to PATH
 
 If we skip step (2), a number of Kit extensions that dlopen the ROS2 bridge
 shared libraries fail silently during their ``startup`` hook and the Kit event
 loop stalls. Externally the process looks alive (kit.exe stays resident around
-60 MB) but no HTTP listener ever binds to port 8011 and the 240 s health poll
+60 MB) but no HTTP listener ever binds to port 8111 and the 240 s health poll
 times out. See ``modules/CLAUDE.md`` (``ProcessModule hang recovery``).
 
 ``_prepare_launch_env()`` re-creates the minimum env that makes kit.exe behave
@@ -572,7 +572,7 @@ def _prepare_launch_env(cfg: IsaacSimProcessConfig) -> dict[str, str]:
     """Build env dict for Kit app launch — profile-aware.
 
     Isaac Sim needs isaac-sim.bat's env setup (ROS_DISTRO, RMW_IMPLEMENTATION,
-    PATH with ros2.bridge lib) or ROS2-dependent extensions hang Kit init.
+    PATH with ros2.core lib) or ROS2-dependent extensions hang Kit init.
     USD Composer has no ROS dependency and explicit ROS env could confuse
     unrelated extensions (omni.services.*).
 
@@ -589,7 +589,7 @@ def _prepare_launch_env(cfg: IsaacSimProcessConfig) -> dict[str, str]:
     env.setdefault("RMW_IMPLEMENTATION", _DEFAULT_RMW_IMPLEMENTATION)
 
     isaac_sim_root = Path(cfg.effective_kit_exe).parent.parent
-    ros_lib = isaac_sim_root / "exts" / "isaacsim.ros2.bridge" / env["ROS_DISTRO"] / "lib"
+    ros_lib = _resolve_ros_lib_dir(isaac_sim_root, env["ROS_DISTRO"])
     if ros_lib.is_dir():
         current_path = env.get("PATH", "")
         ros_lib_str = str(ros_lib)
@@ -599,8 +599,24 @@ def _prepare_launch_env(cfg: IsaacSimProcessConfig) -> dict[str, str]:
             )
     else:
         logger.warning(
-            "ROS bridge lib dir not found under %s — Isaac extensions that dlopen"
+            "ROS lib dir not found under %s — Isaac extensions that dlopen"
             " the bridge DLLs may hang during startup",
             ros_lib,
         )
     return env
+
+
+def _resolve_ros_lib_dir(isaac_sim_root: Path, ros_distro: str) -> Path:
+    """Return the ROS library dir for this Isaac install.
+
+    Isaac Sim 6.0 moved bundled ROS libraries to ``isaacsim.ros2.core``. Keep a
+    bridge fallback so older local installs still produce a useful diagnostic.
+    """
+    candidates = (
+        isaac_sim_root / "exts" / "isaacsim.ros2.core" / ros_distro / "lib",
+        isaac_sim_root / "exts" / "isaacsim.ros2.bridge" / ros_distro / "lib",
+    )
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return candidates[0]

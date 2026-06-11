@@ -1,9 +1,9 @@
-# Robots — Isaac Sim 5.1 Asset Catalog
+# Robots — Isaac Sim 6.0 Asset Catalog
 
-`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac`
+`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
 
-Isaac Sim 5.1 기준 **44 벤더, 약 100+ 모델**.  
-경로 규칙: `$ISAAC/Robots/{Vendor}/{Model}/{model}.usd`  
+Isaac Sim 6.0 기준 **44 벤더, 약 100+ 모델**.
+경로 규칙: `$ISAAC/Robots/{Vendor}/{Model}/{model}.usd`
 드릴다운: `asset_list(category="robots", subpath="{Vendor}/{Model}")`
 
 ---
@@ -15,7 +15,7 @@ Isaac Sim 5.1 기준 **44 벤더, 약 100+ 모델**.
 | **AMR · 모바일** | NVIDIA (NovaCarter · Carter · Jetbot · Leatherback · Kaya) · Clearpath (Jackal · Dingo · Ridgeback) · Fraunhofer (O3dyn · Evobot) · AgilexRobotics (limo) · Turtlebot (Turtlebot3) · iRobot (Create3) · Idealworks (iwhub) · IsaacSim (DifferentialBase · Vehicle · ForkliftB/C) |
 | **휴머노이드** | 1X (Neo) · Agibot (A2D) · Agility (Digit · Cassie) · BoosterRobotics (BoosterT1) · FourierIntelligence (GR-1) · Ihmcrobotics (Valkyrie) · RobotEra (STAR1) · SanctuaryAI (Phoenix) · Unitree (G1 · H1) · XHumanoid (Tien Kung) · XiaoPeng (PX5) · IsaacSim (Humanoid · Humanoid28) |
 | **4족보행** | ANYbotics (anymal_b · anymal_c · anymal_d) · BostonDynamics (spot) · Unitree (Go1 · Go2 · A1 · B2 · aliengo · laikago) |
-| **매니퓰레이터 (암)** | FrankaRobotics (FrankaPanda · FrankaFR3 · FactoryFranka) · UniversalRobots (ur3~ur30 9종) · Kawasaki (5종) · Kinova (Gen3 · Jaco2) · Kuka (KR210_L150) · Denso (2종) · Fanuc (CRX10IAL) · Festo (FestoCobot) · Flexiv (Rizon4) · Techman (TM12) · Ufactory (xarm6 · xarm7 · uf850 · lite6) · OpenArm (bimanual · unimanual) · RethinkRobotics (Sawyer) · Yaskawa (Motoman Next) · Clearpath (RidgebackFranka · RidgebackUr) |
+| **매니퓰레이터 (암)** | FrankaRobotics (FrankaPanda · FrankaFR3 · FactoryFranka) · UniversalRobots (ur3~ur30 9종) · Kawasaki (5종) · Kinova (Gen3 · Jaco2) · Kuka (KR210_L150) · Denso (2종) · Fanuc (crx10ia_l) · Flexiv (Rizon4) · Techman (TM12) · Ufactory (xarm6 · xarm7 · uf850 · lite6) · OpenArm (bimanual · unimanual) · RethinkRobotics (Sawyer) · Yaskawa (Motoman Next) · Clearpath (RidgebackFranka · RidgebackUr) |
 | **그리퍼 · 핸드** | Robotiq (2F-85 · 2F-140 · Hand-E) · Schunk (egk_25 · egu_50 · ezu_35 · svh-flat-l · svh-flat-r) · ShadowRobot (ShadowHand) · WonikRobotics (AllegroHand) · Unitree (Dex3 · Dex5) |
 | **드론 · 항공** | Bitcraze (Crazyflie) · NASA (Ingenuity) · IsaacSim (Quadcopter) |
 | **교육 · 시뮬** | IsaacSim (Ant · BalanceBot · Cartpole · CartDoublePendulum · SimpleArticulation) · Turtlebot (Turtlebot3) · Yahboom (Dofbot) · NTNU (ARL-Robot-1) · RobotStudio (so100 · so101) |
@@ -45,8 +45,7 @@ Isaac Sim 5.1 기준 **44 벤더, 약 100+ 모델**.
 | | RidgebackUr | `ridgeback_ur5.usd` ✓ | 모바일+암 (UR5) |
 | **Denso** | CobottaPro900 | `cobotta_pro_900.usd` ✓ | 협동 암 |
 | | CobottaPro1300 | `cobotta_pro_1300.usd` ✓ | 협동 암 |
-| **Fanuc** | CRX10IAL | `crx10ial.usd` ✓ | 협동 암 |
-| **Festo** | FestoCobot | `festo_cobot.usd` ✓ | 협동 암 |
+| **Fanuc** | crx10ia_l | `crx10ia_l.usd` ✓ | 협동 암 |
 | **Flexiv** | Rizon4 | `flexiv_rizon4.usd` ✓ | 협동 암 |
 | **FourierIntelligence** | GR-1/GR1T1 | `GR-1/GR1T1/GR1_T1.usd` ✓ | 휴머노이드 |
 | | GR-1/GR1T2_fourier_hand_6dof | `GR-1/GR1T2_.../...usd` (추정) | 휴머노이드 |

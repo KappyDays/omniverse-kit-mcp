@@ -7,17 +7,17 @@ metadata:
 
 spec:
   defaults:
-    # First run downloads Biped_Setup.usd + AnimGraph assets from the public S3
-    # bucket and spins up NavMesh — give it headroom.
+    # First run downloads a 6.0 character skin plus BehaviorAgent/IRA assets
+    # from the public S3 bucket and spins up NavMesh — give it headroom.
     stepTimeoutSeconds: 300
     failFast: true
 
   variables:
-    biped_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/Biped_Setup.usd"
-    # Place under /World/Characters so char_name ("MyBiped") matches CharacterUtil's
-    # actual placement — the returned sanitized_prim_path will be identical to the
-    # requested prim_path and downstream steps can use the same variable.
-    char_prim_path: "/World/Characters/MyBiped"
+    character_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Business_02/F_Business_02.usd"
+    # Place under /World/Characters so the returned sanitized_prim_path will be
+    # identical to the requested prim_path and downstream steps can use the same
+    # variable.
+    char_prim_path: "/World/Characters/Visitor"
     spawn_position: [0.0, 0.0, 0.0]
     nav_target: [1.5, 0.0, 0.0]
 
@@ -33,15 +33,15 @@ spec:
       module: character
       action: load
       args:
-        usd_url: ${variables.biped_url}
+        usd_url: ${variables.character_url}
         prim_path: ${variables.char_prim_path}
         position: ${variables.spawn_position}
         yaw: 0.0
 
   act:
-    # AnimationGraph registers character only after the timeline ticks at least
-    # once (testbed caveat #13). The warm-up also lets _ensure_animation_ready
-    # succeed on the first real play_animation call.
+    # Character runtime registers only after the timeline ticks at least once.
+    # The warm-up also lets _ensure_animation_ready succeed on the first real
+    # play_animation call.
     - id: warm_up_timeline_play
       module: simulation
       action: play
@@ -101,7 +101,7 @@ spec:
         height: 720
 
   cleanup:
-    # Stop the character to park the AnimGraph in a quiescent state — even if
+    # Stop the character to park the runtime in a quiescent state — even if
     # the scenario already reverts-to-Idle on navigate completion, this is a
     # safety net for paths that exit via timeout / cancel.
     - id: stop_animation
@@ -111,8 +111,8 @@ spec:
         prim_path: ${variables.char_prim_path}
       continueOnFailure: true
 
-    # testbed caveat #14: without ≥5 sim steps after world.reset, the AnimGraph
-    # / NavMesh shutdown hook hangs simulation_app.close(). Running a short
+    # testbed caveat #14: without final sim ticks after world.reset, character
+    # / NavMesh shutdown hooks can hang simulation_app.close(). Running a short
     # play/stop pair issues physics ticks that satisfy the shutdown sequence.
     - id: final_tick_play
       module: simulation
@@ -133,5 +133,5 @@ spec:
         prim_path: ${variables.char_prim_path}
       continueOnFailure: true
 
-    # Biped_Setup is shared infrastructure (AnimationGraph source). Leave it in
-    # the stage — subsequent runs reuse it and _ensure_biped_setup is idempotent.
+    # Shared character runtime infrastructure may remain in the stage/cache;
+    # subsequent runs reuse it and the loader is idempotent.

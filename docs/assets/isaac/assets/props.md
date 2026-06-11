@@ -1,6 +1,6 @@
-# Props — Isaac Sim 5.1 Asset Catalog
+# Props — Isaac Sim 6.0 Asset Catalog
 
-`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac`
+`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
 
 루트: `$ISAAC/Props/` — 총 23개 서브폴더.  
 드릴다운: `asset_list(category="props", subpath="{FolderName}")`

@@ -17,17 +17,17 @@ from pathlib import Path
 
 import httpx
 
-BASE = "http://localhost:8011/validation/v1"
+BASE = "http://127.0.0.1:8111/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PHASE_H_DIR = PROJECT_ROOT / "docs/artifacts/phase-h"
 
 S3_ASSETS_ROOT = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac"
+    "Assets/Isaac/6.0/Isaac"
 )
 WAREHOUSE_USD = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    "Assets/Isaac/6.0/Isaac/Environments/Simple_Warehouse/warehouse.usd"
 )
 LOCAL_PROBE = str(PROJECT_ROOT / "README.md")
 

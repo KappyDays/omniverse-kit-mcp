@@ -2,26 +2,26 @@ apiVersion: isaacsim.validation/v1
 kind: Scenario
 metadata:
   id: character_animation_variant
-  name: "Phase G: load Biped → play variants (SitIdle → SitReading)"
+  name: "Phase G: load character → play variants (SitIdle → SitReading)"
   tags: [smoke, character, phase-g, animation-variant, skip-candidate]
 
 spec:
   defaults:
     stepTimeoutSeconds: 300
-    # Variant style variables may not be wired in every Biped_Setup build —
-    # base Action is set reliably even when sit_style silently no-ops.
+    # Variant styles may not be supported by every character runtime — base
+    # Action is set reliably even when a style request no-ops.
     failFast: false
 
   variables:
-    biped_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/Biped_Setup.usd"
-    prim_path: "/World/Characters/Biped"
+    character_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Business_02/F_Business_02.usd"
+    prim_path: "/World/Characters/Visitor"
 
   arrange:
     - id: load_character
       module: character
       action: load
       args:
-        usd_url: ${variables.biped_url}
+        usd_url: ${variables.character_url}
         prim_path: ${variables.prim_path}
         position: [0.0, 0.0, 0.0]
 

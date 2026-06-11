@@ -35,7 +35,7 @@ from pathlib import Path
 
 import httpx
 
-BASE = "http://localhost:8011/validation/v1"
+BASE = "http://127.0.0.1:8111/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PHASE_E_DIR = PROJECT_ROOT / "docs/artifacts/phase-e"
 
@@ -81,6 +81,102 @@ def _find_widget(widgets: list, predicate) -> dict | None:
     return None
 
 
+def _extension_available(c: httpx.Client, ext_id: str) -> bool:
+    r = c.post(f"{BASE}/extension/get_info", json={"ext_id": ext_id}, timeout=30.0)
+    return r.status_code == 200
+
+
+def _run_core_without_demo(c: httpx.Client, report: dict, status_ok: bool) -> bool:
+    report["steps"]["core_window_list"] = _get(c, "/window/list")
+    report["steps"]["core_ui_list_browsers"] = _get(
+        c, "/window/ui_list", params={"name_filter": "Browser"},
+    )
+    report["steps"]["core_menu_list_window"] = _get(
+        c, "/window/menu_list", params={"menu_path": "Window"},
+    )
+    print("[core] window list / ui_list / menu_list captured")
+
+    menu_trigger = _post(c, "/window/menu_trigger", params={
+        "menu_path": "Create/Mesh/Cube",
+    })
+    report["steps"]["core_menu_trigger_cube"] = menu_trigger
+    print(f"[core] Create/Mesh/Cube -> created_prims={menu_trigger.get('created_prims')}")
+
+    _post(c, "/simulation/stop")
+    _post(c, "/stage/create_prim", json={
+        "prim_path": "/World/PhaseE_Chair", "prim_type": "Cube",
+        "position": [1.0, 0.0, 0.5],
+    })
+
+    bake = _post(
+        c, "/navigation/bake",
+        params={"volume_scale": "8.0", "timeout_s": "300.0"},
+        timeout=360.0,
+    )
+    report["steps"]["core_nav_bake"] = bake
+    print(
+        f"[core] navmesh baked: ok={bake.get('ok')} "
+        f"area_count={bake.get('area_count')}"
+    )
+    if not bake.get("ok"):
+        print(f"  !! bake not ok: {bake.get('reason')}", file=sys.stderr)
+        status_ok = False
+
+    query = _post(
+        c, "/navigation/query_path",
+        json={
+            "start": [0.0, 0.0, 0.0],
+            "end": [3.0, 3.0, 0.0],
+            "agent_radius": 0.3,
+            "agent_height": 1.8,
+            "straighten": True,
+        },
+        timeout=120.0,
+    )
+    report["steps"]["core_nav_query"] = query
+    print(f"[core] query_path ok={query.get('ok')} points={len(query.get('points') or [])}")
+    if not query.get("ok"):
+        print(f"  !! query_path not ok: {query.get('reason')}", file=sys.stderr)
+        status_ok = False
+
+    exclude = _post(
+        c, "/navigation/add_exclude_volume",
+        params={"prim_path": "/World/PhaseE_Chair", "padding": "0.2"},
+        timeout=60.0,
+    )
+    report["steps"]["core_nav_exclude"] = exclude
+    print(
+        f"[core] exclude volume -> "
+        f"{exclude.get('volume_path') or exclude.get('volume_prim_path')}"
+    )
+    if not exclude.get("ok"):
+        print(f"  !! exclude not ok: {exclude.get('reason')}", file=sys.stderr)
+        status_ok = False
+
+    _post(c, "/stage/create_prim", json={
+        "prim_path": "/World/PhaseE_Light", "prim_type": "DistantLight",
+    })
+    _post(c, "/stage/set_property", json={
+        "prim_path": "/World/PhaseE_Light",
+        "property_name": "inputs:intensity", "value": 3000, "type_hint": "float",
+    })
+    vp = _post(c, "/viewport/capture", json={
+        "viewport_name": "Viewport", "width": 1024, "height": 576,
+    })
+    dest_vp = _copy_capture(vp["path"], "03_viewport_navmesh_scene.png")
+    report["steps"]["core_viewport_snapshot"] = {"artifact": dest_vp}
+    print(f"[core] viewport snapshot -> {dest_vp}")
+
+    _post(c, "/extension/logs/clear")
+    post_clear = _get(c, "/extension/logs", params={"level": "INFO"})
+    report["steps"]["core_post_clear_logs"] = {"count": post_clear.get("count")}
+    print(f"[core] post-clear count={post_clear.get('count')}")
+    if post_clear.get("count") != 0:
+        status_ok = False
+
+    return status_ok
+
+
 def run() -> int:
     report: dict = {"started_at": time.time(), "steps": {}}
     status_ok = True
@@ -96,6 +192,25 @@ def run() -> int:
         print(f"[1] clear_logs removed={cleared.get('removed')}")
 
         since_ms = int(time.time() * 1000)
+
+        simple_available = _extension_available(c, DEMO_SIMPLE_EXT)
+        advanced_available = _extension_available(c, DEMO_ADVANCED_EXT)
+        report["steps"]["2_demo_availability"] = {
+            DEMO_SIMPLE_EXT: simple_available,
+            DEMO_ADVANCED_EXT: advanced_available,
+        }
+        if not (simple_available and advanced_available):
+            print(
+                "[2] demo extensions unavailable; skipping demo-only UI steps "
+                f"(simple={simple_available}, advanced={advanced_available})",
+            )
+            status_ok = _run_core_without_demo(c, report, status_ok)
+            report["completed_at"] = time.time()
+            report["status_ok"] = status_ok
+            summary_path = _save_json("phase_e_live_report.json", report)
+            print(f"\nSUMMARY -> {summary_path}")
+            print(f"Phase E artifacts -> {PHASE_E_DIR}")
+            return 0 if status_ok else 1
 
         # 2. Activate both demo extensions (simple + advanced)
         report["steps"]["2a_activate_simple"] = _post(

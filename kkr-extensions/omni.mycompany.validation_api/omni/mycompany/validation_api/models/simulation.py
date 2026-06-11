@@ -18,10 +18,12 @@ class SimulationStatusModel(BaseModel):
 class SimulationStepRequestModel(BaseModel):
     """Advance the timeline by *frames* ticks (Phase G).
 
-    Uses ``omni.timeline.forward_one_frame()`` when available, else falls
-    back to short play → ``next_update_async`` bursts → pause. Scenario
-    authors use this to replace the usual ``simulation_play → sleep``
-    pattern with a deterministic frame count.
+    Uses short play → ``next_update_async`` bursts → pause. Scenario authors
+    use this to replace the usual ``simulation_play → sleep`` pattern with a
+    deterministic frame count. Isaac Sim 6.0 avoids ``forward_one_frame`` here
+    because it can crash with active Replicator/HydraTexture render products.
+    If the play burst cannot advance time, the service falls back to
+    ``set_current_time`` and reports ``advance_mode='set_time_fallback'``.
     """
 
     model_config = ConfigDict(extra="forbid")

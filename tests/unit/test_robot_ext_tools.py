@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 from omniverse_kit_mcp.config import AppConfig
@@ -20,6 +22,7 @@ from omniverse_kit_mcp.types.robot import (
     RobotSetEETargetResult,
 )
 from omni.mycompany.validation_api.services.robot_service import (
+    RobotService,
     _build_franka_pick_place_diagnostics,
     _ensure_initialized,
     _resolve_official_franka_pick_place_classes,
@@ -27,6 +30,7 @@ from omni.mycompany.validation_api.services.robot_service import (
     _resolve_lula_config,
 )
 from omni.mycompany.validation_api.models.robot import RobotFrankaPickPlaceRequestModel
+from omni.mycompany.validation_api.services.job_service import JobService
 
 
 def _meta() -> OperationMeta:
@@ -45,6 +49,29 @@ def test_robot_ext_tools_registered(mcp_server):
     assert "robot_set_ee_target" in names
     assert "robot_get_ee_pose" in names
     assert "robot_run_franka_pick_place" in names
+
+
+def test_robot_service_load_uses_payload_command():
+    source = inspect.getsource(RobotService.load)
+
+    assert "CreatePayloadCommand" in source
+    assert "CreateReferenceCommand" not in source
+    assert "instanceable=False" in source
+    assert "_active_job_ids" in source
+    assert "_stop_timeline_if_playing" in source
+
+
+def test_job_service_active_job_ids_filters_non_terminal_jobs():
+    service = JobService()
+    service._jobs = {
+        "pending-job": {"status": "pending"},
+        "running-job": {"status": "running"},
+        "done-job": {"status": "done"},
+        "error-job": {"status": "error"},
+        "canceled-job": {"status": "canceled"},
+    }
+
+    assert service.active_job_ids() == ("pending-job", "running-job")
 
 
 @pytest.mark.asyncio

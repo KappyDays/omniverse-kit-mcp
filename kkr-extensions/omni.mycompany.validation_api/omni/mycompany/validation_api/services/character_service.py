@@ -22,13 +22,9 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Stage layout — mirror of testbed characters.py constants. Characters are
-# placed under /World/Characters so the Biped_Setup sibling provides the
-# shared AnimationGraph rig.
+# Stage layout — mirror of the Isaac Sim 6.0 Replicator Agent character loader.
 _CHARS_ROOT = "/World/Characters"
-_BIPED_SUBPATH = "/Biped_Setup"
-_BIPED_PATH = _CHARS_ROOT + _BIPED_SUBPATH
-_ANIM_GRAPH_SUFFIX = "/CharacterAnimation/AnimationGraph"
+_MOTION_LIBRARY_PATH = _CHARS_ROOT + "/HumanMotionLibrary"
 
 # Navigation polling knobs (Phase C).
 _NAV_POLL_FRAMES = 6  # frames between distance checks inside _navigate_coro
@@ -37,7 +33,7 @@ _NAV_TIMEOUT_S = 30.0  # hard cap on a single navigate_to job
 
 
 class CharacterService:
-    """USD character load + AnimationGraph control + async navigate.
+    """USD character load + BehaviorAgent/IRA control + async navigate.
 
     Stateless: no per-character manager object; each REST call re-resolves the
     SkelRoot via the USD Stage. The only shared state is the injected
@@ -47,13 +43,10 @@ class CharacterService:
     def __init__(self, job_service: Any, stage_service: Any = None) -> None:
         self._job_service = job_service
         self._stage_service = stage_service  # optional; used by sit_on_prim
-        # L2 fix (2026-04-18 live-discovered): `ag.get_character(path).get_variable("Action")`
-        # returns a raw AnimGraph token-list that stringifies as "[]", so readback
-        # cannot recover the currently-playing clip. We keep a simple authoritative
-        # cache of the last Action / Walk speed per SkelRoot path — `play_animation`
-        # and `stop_animation` write it, `get_state` prefers this value and falls
-        # back to the graph variable only when no prior set is recorded (freshly
-        # loaded character before any play call).
+        # Runtime readback can return a raw token-list that stringifies as "[]",
+        # so readback cannot always recover the currently-playing clip. Keep a
+        # simple authoritative cache of the last Action / Walk speed per SkelRoot
+        # path; play/stop write it and get_state prefers it.
         self._last_action: dict[str, dict[str, Any]] = {}
 
     # ------------------------------------------------------------------
@@ -61,16 +54,14 @@ class CharacterService:
     # ------------------------------------------------------------------
 
     async def load(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Load a character USD and bind the Biped_Setup AnimationGraph.
+        """Load a character USD and bind Isaac Sim 6.0 BehaviorAgent/IRA APIs.
 
         Raises ``ValueError`` if the referenced USD fails to resolve a
         ``SkelRoot`` (S3 404 silent success mitigation — see testbed #16).
         """
         import omni.kit.commands  # lazy
         import omni.usd
-        from isaacsim.replicator.agent.core.stage_util import CharacterUtil
-        from isaacsim.storage.native import get_assets_root_path
-        from pxr import Sdf
+        from pxr import Gf, UsdGeom
 
         usd_url: str = request["usd_url"].replace("\\", "/")
         requested_prim_path: str | None = request.get("prim_path")
@@ -81,18 +72,7 @@ class CharacterService:
         if stage is None:
             raise RuntimeError("No USD stage available")
 
-        assets_root = get_assets_root_path()
-        if not assets_root:
-            raise RuntimeError(
-                "Isaac Sim assets root is not resolved — Biped_Setup.usd "
-                "reference cannot be downloaded."
-            )
-        assets_root = assets_root.rstrip("/")
-
-        # 1. Ensure the shared Biped_Setup rig is on-stage (invisible).
-        biped_prim_path = await _ensure_biped_setup(stage, assets_root)
-
-        # 2. Derive a USD-safe character name. ALWAYS run _sanitize_prim_name —
+        # 1. Derive a USD-safe character name. ALWAYS run _sanitize_prim_name —
         #    live testing (2026-04-18) showed DH_Characters_Extended UUID paths
         #    like "/World/Characters/02c80685-06e3-..." reach USD-path validation
         #    with hyphens and fail with `"... is not a valid path"`. Sanitising
@@ -109,11 +89,39 @@ class CharacterService:
 
         sanitized_prim_path = f"{_CHARS_ROOT}/{char_name}"
 
-        # 3. Delegate the actual reference + xform to CharacterUtil.
-        CharacterUtil.load_character_usd_to_stage(usd_url, position, yaw, char_name)
+        # 2. Load the skin directly. Isaac Sim 6.0 no longer ships
+        #    the IRA 0.x CharacterUtil helper or its public rig setup USD.
+        if not stage.GetPrimAtPath(_CHARS_ROOT).IsValid():
+            UsdGeom.Xform.Define(stage, _CHARS_ROOT)
+        omni.kit.commands.execute(
+            "CreatePayloadCommand",
+            usd_context=omni.usd.get_context(),
+            path_to=sanitized_prim_path,
+            asset_path=usd_url,
+            prim_path=None,
+            instanceable=False,
+            select_prim=False,
+        )
         await _wait_stage_loading()
 
-        # 4. Locate the SkelRoot. DH_Characters_Extended nests it under DHGen —
+        character_prim = stage.GetPrimAtPath(sanitized_prim_path)
+        if not character_prim.IsValid():
+            raise ValueError(
+                f"Character payload did not create {sanitized_prim_path} "
+                f"(url={usd_url})"
+            )
+
+        xf = UsdGeom.Xformable(character_prim)
+        t_attr = character_prim.GetAttribute("xformOp:translate")
+        if not t_attr.IsValid():
+            t_attr = xf.AddTranslateOp()
+        t_attr.Set(Gf.Vec3d(float(position[0]), float(position[1]), float(position[2])))
+        r_attr = character_prim.GetAttribute("xformOp:rotateXYZ")
+        if not r_attr.IsValid():
+            r_attr = xf.AddRotateXYZOp()
+        r_attr.Set(Gf.Vec3f(0.0, 0.0, yaw))
+
+        # 3. Locate the SkelRoot. DH_Characters_Extended nests it under DHGen —
         #    Usd.PrimRange recursion handles both layouts (testbed #15).
         skel_root_path = _find_skel_root(stage, sanitized_prim_path)
         if skel_root_path is None:
@@ -122,19 +130,9 @@ class CharacterService:
                 "USD may be missing or malformed (S3 404 silent success?)."
             )
 
-        # 5. Bind the shared AnimationGraph. Without this, ag.get_character()
-        #    returns None even after world.reset().
-        anim_graph_path = biped_prim_path + _ANIM_GRAPH_SUFFIX
-        if not stage.GetPrimAtPath(anim_graph_path).IsValid():
-            raise ValueError(
-                f"AnimationGraph prim missing at {anim_graph_path} — "
-                "Biped_Setup.usd loaded but graph was not imported."
-            )
-        omni.kit.commands.execute(
-            "ApplyAnimationGraphAPICommand",
-            paths=[Sdf.Path(skel_root_path)],
-            animation_graph_path=Sdf.Path(anim_graph_path),
-        )
+        # 4. Bind the 6.0 motion library + BehaviorAgent / IRA APIs.
+        motion_library_path = await _ensure_motion_library(stage)
+        await _apply_ira_character_apis(stage, skel_root_path, motion_library_path)
 
         # Preserve input-vs-actual asymmetry (review finding I6): when the
         # caller supplies a prim_path we echo it verbatim in `prim_path`
@@ -153,6 +151,7 @@ class CharacterService:
             "sanitized_prim_path": sanitized_prim_path,
             "has_skeleton": True,
             "anim_graph_bound": True,
+            "runtime_backend": "isaacsim.replicator.agent.core.behavior_agent",
         }
 
     async def play_animation(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -199,7 +198,7 @@ class CharacterService:
             graph.set_variable("Walk", 0.0)
 
         # L2 fix: persist the server-side authoritative state so get_state can
-        # return it instead of the unreadable AnimGraph variable.
+        # return it instead of relying on unreadable runtime variables.
         walk_speed = float(speed) if animation_name in ("Walk", "Run") else 0.0
         self._last_action[skel_root_path] = {
             "action": animation_name,
@@ -393,11 +392,11 @@ class CharacterService:
         character_usd_url = request.get("character_usd_url")
         sit_result: dict[str, Any] | None = None
         if play_sit:
-            # Live-discovered AnimGraph quirk: after `_navigate_coro`, the Biped
-            # locomotion blend tree stays "warm" — setting Action=Sit and even
-            # explicit stop_animation leaves the character visually standing.
-            # Unload + reload at the sit target forces a fresh AnimGraph with
-            # no residual locomotion state; Sit then plays correctly.
+            # Live-discovered legacy character-runtime quirk: after
+            # `_navigate_coro`, the locomotion blend tree can stay "warm" —
+            # setting Action=Sit and even explicit stop_animation leaves the
+            # character visually standing. Unload + reload at the sit target
+            # forces a fresh runtime with no residual locomotion state.
             #
             # The reload path requires knowing the original USD URL. Caller
             # should pass `character_usd_url` for reliable visual Sit; if
@@ -455,16 +454,16 @@ class CharacterService:
     async def play_animation_variant(
         self, request: dict[str, Any],
     ) -> dict[str, Any]:
-        """Play an AnimationGraph variant (Phase G).
+        """Play a BehaviorAgent/legacy-compatible variant (Phase G).
 
-        Maps variant strings to base Action + BlendSpace variable combos:
+        Maps variant strings to base Action + best-effort style combos:
           - Sit*   → Action=Sit,  sit_style=<tail.lower()>
           - Walk*  → Action=Walk, walk_style=<tail.lower()>, Walk=speed
           - Run*   → Action=Run,  run_style=<tail.lower()>, Walk=speed
           - Idle*  → Action=Idle, idle_style=<tail.lower()>
           - else   → Action=<variant>
 
-        If the style variable is not wired into the character's AnimGraph
+        If the style variable is not wired into the character runtime,
         the set_variable call silently no-ops in Kit — we capture the
         attempt in ``variables_set`` so the caller can assert which keys
         were actually wired.
@@ -521,8 +520,8 @@ class CharacterService:
                     style_var, exc,
                 )
 
-        # Biped_Setup AnimationGraph 의 Sit state 는 SitWeight 변수로 blend
-        # weight 를 제어. 0=stand_idle (서있음), 1=Sit_skelanim (앉음).
+        # Legacy Sit state uses SitWeight as blend weight.
+        # 0=stand_idle (서있음), 1=Sit_skelanim (앉음).
         # play_animation_variant("SitIdle") 만 호출하면 Action=Sit + sit_style
         # 만 set 되어 SitWeight 가 0 → 사용자가 본 "서있는 자세" 발생.
         # base=Sit 시 SitWeight=1.0 명시 (2026-04-23 사용자 제보 fix).
@@ -575,9 +574,12 @@ class CharacterService:
             if not assets_root:
                 raise RuntimeError(
                     "Isaac Sim assets root not resolved — cannot derive "
-                    "Biped_Setup.usd URL for crowd load."
+                    "default character USD URL for crowd load."
                 )
-            usd_url = f"{assets_root.rstrip('/')}/Isaac/People/Characters/Biped_Setup.usd"
+            usd_url = (
+                f"{assets_root.rstrip('/')}/Isaac/People/Characters/"
+                "F_Business_02/F_Business_02.usd"
+            )
 
         positions = _layout_positions(layout, count, spacing, center)
 
@@ -642,11 +644,11 @@ class CharacterService:
 
         # L2 fix: prefer the server-authoritative cache populated by
         # play_animation / stop_animation. `graph.get_variable("Action")`
-        # returns an AnimGraph token-list that stringifies to "[]" with no
+        # returns a token-list that stringifies to "[]" with no
         # reliable way to recover the name, so the cache is the actual
         # source of truth. We fall back to the graph read only when no
         # play_animation has been recorded for this character (freshly
-        # loaded; still in the AnimGraph's default Idle state).
+        # loaded; still in the runtime's default Idle state).
         cached = self._last_action.get(skel_root_path)
         if cached is not None:
             action = str(cached["action"])
@@ -680,43 +682,153 @@ class CharacterService:
     async def _ensure_animation_ready(
         self, skel_root_path: str, max_retries: int = 3
     ) -> Any:
-        """Resolve the AnimationGraph character handle, warming it if needed.
+        """Resolve an animation/control handle, warming it if needed.
 
-        ``ag.get_character`` returns ``None`` until PhysX has stepped at least
-        once after ``load`` (testbed caveat #13). We run a quick
-        ``play → pause`` once and retry up to ``max_retries`` times.
+        Isaac Sim 5.x used ``omni.anim.graph.core.get_character`` handles.
+        Isaac Sim 6.0 Replicator Agent 1.x uses BehaviorAgent handles, so the
+        fallback returns an adapter exposing the subset this service uses.
         """
-        import omni.anim.graph.core as ag
         import omni.kit.app
         import omni.timeline
 
         app = omni.kit.app.get_app()
 
-        for attempt in range(max_retries + 1):
-            graph = ag.get_character(skel_root_path)
-            if graph is not None:
-                return graph
+        try:
+            import omni.anim.graph.core as ag
 
-            if attempt >= max_retries:
-                break
+            for attempt in range(max_retries + 1):
+                graph = ag.get_character(skel_root_path)
+                if graph is not None:
+                    return graph
 
-            timeline = omni.timeline.get_timeline_interface()
+                if attempt >= max_retries:
+                    break
+
+                timeline = omni.timeline.get_timeline_interface()
+                try:
+                    timeline.play()
+                    await app.next_update_async()
+                    timeline.pause()
+                    await app.next_update_async()
+                except Exception as exc:
+                    logger.debug(
+                        "animation graph warm-up failed (attempt %d): %s",
+                        attempt,
+                        exc,
+                    )
+        except ImportError:
+            logger.debug("omni.anim.graph.core unavailable; trying BehaviorAgent")
+
+        return await _ensure_behavior_agent_ready(skel_root_path, max_retries=30)
+
+
+class _BehaviorAgentAdapter:
+    """Compatibility adapter for Isaac Sim 6.0 BehaviorAgent handles."""
+
+    def __init__(self, bh_agent: Any) -> None:
+        self._bh_agent = bh_agent
+        self._speed = 1.0
+        self._action = "Idle"
+
+    def set_variable(self, name: str, value: Any) -> None:
+        import carb  # lazy
+
+        if name == "Walk":
+            self._speed = float(value)
+            if hasattr(self._bh_agent, "set_speed"):
+                self._bh_agent.set_speed(float(value))
+            return
+
+        if name == "Action":
+            self._action = str(value)
+            if self._action == "Idle" and hasattr(self._bh_agent, "idle"):
+                self._bh_agent.idle()
+            elif self._action not in ("Walk", "Run") and hasattr(
+                self._bh_agent, "custom_action"
+            ):
+                _call_behavior_custom_action(self._bh_agent, self._action)
+            return
+
+        if name == "PathPoints":
+            points = list(value or [])
+            if not points:
+                return
+            target = points[-1]
+            if hasattr(target, "x"):
+                x, y, z = float(target.x), float(target.y), float(target.z)
+            else:
+                x, y, z = float(target[0]), float(target[1]), float(target[2])
+            if hasattr(self._bh_agent, "set_speed"):
+                self._bh_agent.set_speed(float(self._speed))
+            self._bh_agent.move_to(target=carb.Float3(x, y, z))
+
+    def get_variable(self, name: str) -> Any:
+        if name != "Action":
+            return None
+        if hasattr(self._bh_agent, "get_action_task_id") and hasattr(
+            self._bh_agent, "get_task_name"
+        ):
             try:
-                timeline.play()
-                # One update tick lets PhysX populate the AnimGraph registry.
-                await app.next_update_async()
-                timeline.pause()
-                await app.next_update_async()
+                task_id = self._bh_agent.get_action_task_id()
+                task_name = self._bh_agent.get_task_name(task_id)
+                if task_name:
+                    return task_name
             except Exception as exc:
-                logger.debug(
-                    "play/pause warm-up failed (attempt %d): %s", attempt, exc
-                )
+                logger.debug("BehaviorAgent task-name read failed: %s", exc)
+        return self._action
 
-        raise ValueError(
-            f"AnimationGraph character handle not available for {skel_root_path} "
-            f"after {max_retries} retries — run simulation_play at least once "
-            "so omni.anim.graph.core can register the character."
-        )
+    def get_world_transform(self, pos: Any, rot: Any) -> None:
+        world_pos = self._bh_agent.get_world_translation()
+        world_rot = self._bh_agent.get_world_rotation()
+        pos.x = float(world_pos.x)
+        pos.y = float(world_pos.y)
+        pos.z = float(world_pos.z)
+        rot.x = float(world_rot.x)
+        rot.y = float(world_rot.y)
+        rot.z = float(world_rot.z)
+        rot.w = float(world_rot.w)
+
+
+def _call_behavior_custom_action(bh_agent: Any, action_name: str) -> None:
+    """Call BehaviorAgent custom_action across Isaac Sim 6.0/legacy bindings."""
+    try:
+        bh_agent.custom_action(str(action_name))
+    except TypeError:
+        bh_agent.custom_action(action_name=str(action_name))
+
+
+async def _ensure_behavior_agent_ready(
+    skel_root_path: str,
+    max_retries: int = 30,
+) -> _BehaviorAgentAdapter:
+    """Resolve an Isaac Sim 6.0 BehaviorAgent for *skel_root_path*."""
+    import omni.anim.behavior.core as bh_core  # lazy
+    import omni.kit.app
+    import omni.timeline
+
+    app = omni.kit.app.get_app()
+    behavior = bh_core.acquire_interface()
+    timeline = omni.timeline.get_timeline_interface()
+
+    for attempt in range(max_retries + 1):
+        bh_agent = behavior.get_agent(skel_root_path)
+        if bh_agent is not None:
+            return _BehaviorAgentAdapter(bh_agent)
+
+        if attempt >= max_retries:
+            break
+        try:
+            timeline.play()
+            await app.next_update_async()
+        except Exception as exc:
+            logger.debug(
+                "BehaviorAgent warm-up failed (attempt %d): %s", attempt, exc
+            )
+
+    raise ValueError(
+        f"BehaviorAgent handle not available for {skel_root_path} after "
+        "warm-up; ensure character_load succeeded and timeline can play."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -839,46 +951,91 @@ def _assert_skel_root(prim_path: str) -> str:
     return found
 
 
-async def _ensure_biped_setup(stage: Any, assets_root: str) -> str:
-    """Ensure ``/World/Characters/Biped_Setup`` is on-stage and invisible.
-
-    The Biped_Setup rig carries the shared AnimationGraph every character
-    binds to. We hide it (visibility = "invisible") so it doesn't render
-    in the viewport; the Graph still functions.
-    """
-    from isaacsim.core.utils.stage import add_reference_to_stage  # lazy
+async def _ensure_motion_library(stage: Any) -> str:
+    """Create the shared Isaac Sim 6.0 human motion library payload."""
+    import omni.kit.commands  # lazy
+    import omni.usd
     from pxr import UsdGeom
 
-    if stage.GetPrimAtPath(_BIPED_PATH).IsValid():
-        return _BIPED_PATH
+    if stage.GetPrimAtPath(_MOTION_LIBRARY_PATH).IsValid():
+        return _MOTION_LIBRARY_PATH
 
-    # Guarantee the parent Xform exists so the reference has a sensible parent.
     if not stage.GetPrimAtPath(_CHARS_ROOT).IsValid():
         UsdGeom.Xform.Define(stage, _CHARS_ROOT)
 
-    biped_url = f"{assets_root}/Isaac/People/Characters/Biped_Setup.usd"
-    add_reference_to_stage(biped_url, _BIPED_PATH)
+    motion_library_url = _resolve_human_motion_library_url()
+    omni.kit.commands.execute(
+        "CreatePayloadCommand",
+        usd_context=omni.usd.get_context(),
+        path_to=_MOTION_LIBRARY_PATH,
+        asset_path=motion_library_url,
+        prim_path=None,
+        instanceable=False,
+        select_prim=False,
+    )
     await _wait_stage_loading()
 
-    biped_prim = stage.GetPrimAtPath(_BIPED_PATH)
-    if not biped_prim.IsValid():
+    if not stage.GetPrimAtPath(_MOTION_LIBRARY_PATH).IsValid():
         raise RuntimeError(
-            f"Biped_Setup reference failed to resolve at {_BIPED_PATH} "
-            f"(url={biped_url})"
+            f"Human motion library payload failed at {_MOTION_LIBRARY_PATH} "
+            f"(url={motion_library_url})"
         )
-    vis = biped_prim.GetAttribute("visibility")
-    if vis and vis.IsValid():
-        vis.Set("invisible")
-    else:
-        # Without this warning the rig silently renders in every viewport
-        # capture and the user has no clue why (review finding I2).
-        import carb  # lazy
-        carb.log_warn(
-            f"[character] Biped_Setup visibility attr unavailable at "
-            f"{_BIPED_PATH}; rig will render"
-        )
+    return _MOTION_LIBRARY_PATH
 
-    return _BIPED_PATH
+
+def _resolve_human_motion_library_url() -> str:
+    """Return the Replicator Agent 1.x default human motion library URL."""
+    try:
+        from omni.metropolis.utils.carb_util import get_value_by_key
+
+        setting_value = get_value_by_key(
+            "/exts/isaacsim.replicator.agent/default_human_motion_library_asset"
+        )
+        if setting_value:
+            return str(setting_value)
+    except Exception as exc:
+        logger.debug("motion library setting lookup failed: %s", exc)
+
+    from isaacsim.storage.native import get_assets_root_path  # lazy
+
+    assets_root = get_assets_root_path()
+    if not assets_root:
+        raise RuntimeError(
+            "Isaac Sim assets root not resolved — cannot derive "
+            "HumanMotionLibrary.usd URL."
+        )
+    return (
+        f"{assets_root.rstrip('/')}/Isaac/People/MotionLibrary/"
+        "HumanMotionLibrary.usd"
+    )
+
+
+async def _apply_ira_character_apis(
+    stage: Any,
+    skel_root_path: str,
+    motion_library_path: str,
+) -> None:
+    """Apply Isaac Sim 6.0 BehaviorAgent + IRA character APIs."""
+    import omni.kit.app
+    import omni.kit.commands
+
+    skel_prim = stage.GetPrimAtPath(skel_root_path)
+    if not skel_prim.IsValid():
+        raise ValueError(f"SkelRoot prim is invalid: {skel_root_path}")
+
+    omni.kit.commands.execute(
+        "ApplyBehaviorAgentAPICommand",
+        skelroot_prim_paths=[skel_prim.GetPath()],
+        motion_library_prim_path=motion_library_path,
+        motion_library_skeleton_rig="Human",
+    )
+    await omni.kit.app.get_app().next_update_async()
+
+    omni.kit.commands.execute(
+        "ApplyIRACharacterAPICommand",
+        skelroot_prim_paths=[skel_prim.GetPath()],
+    )
+    await omni.kit.app.get_app().next_update_async()
 
 
 async def _wait_stage_loading(max_frames: int = 300) -> None:
@@ -894,7 +1051,7 @@ async def _wait_stage_loading(max_frames: int = 300) -> None:
 
 def _is_stage_loading() -> bool:
     try:
-        from isaacsim.core.utils.stage import is_stage_loading
+        from isaacsim.core.experimental.utils.stage import is_stage_loading
         return is_stage_loading()
     except ImportError:
         try:

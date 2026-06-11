@@ -528,7 +528,7 @@ def register_module_tools(
 
     @mcp.tool()
     async def simulation_step(frames: int = 1) -> str:
-        """Advance timeline by N frames deterministically (forward_one_frame() or play-burst fallback); preserves prior play state."""
+        """Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play state."""
         meta = make_meta(ModuleName.SIMULATION)
         request = SimulationStepRequest(frames=frames)
         result = await simulation.step(meta, request)
@@ -908,7 +908,7 @@ def register_module_tools(
 
         Maps a natural-language need (e.g. "forklift", "warehouse", "franka",
         "police character", "pallet") to concrete spawnable USD URLs by ranking
-        the curated markdown catalog under docs/assets/isaac/ (robots 100+,
+        the curated markdown catalog under docs/assets/isaac/ (robots 90+,
         environments, people/animations, props, SimReady 1000+). Use this at
         planning time / before building a scene to pick a real asset (Validation
         Rule R1 — never substitute a primitive); complements the live asset_list

@@ -141,8 +141,8 @@ class CharacterSitOnPrimRequestModel(BaseModel):
         description=(
             "Character USD url used for reload-anchor. When provided, after "
             "navigate completes the character is unloaded + reloaded at the "
-            "sit target so Sit clip plays visually (navigate leaves AnimGraph "
-            "in a Walk-warm state that blocks Sit visual transition). When "
+            "sit target so Sit clip plays visually (navigate can leave the "
+            "runtime in a Walk-warm state that blocks Sit visual transition). When "
             "omitted, sit_on_prim falls back to stop+Sit which may not "
             "engage the clip visibly."
         ),

@@ -12,9 +12,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient  # noqa: E402
 from omniverse_kit_mcp.config import AppConfig  # noqa: E402
 
-BIPED = (
+CHARACTER_USD = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac/People/Characters/Biped_Setup.usd"
+    "Assets/Isaac/6.0/Isaac/People/Characters/F_Business_02/F_Business_02.usd"
 )
 
 
@@ -32,7 +32,7 @@ async def _main() -> int:
                 "spacing": 2.5,
                 "base_name": "Crowd",
                 "center": [0.0, 0.0, 0.0],
-                "usd_url": BIPED,
+                "usd_url": CHARACTER_USD,
             })
             print(f"[load_crowd] success={resp.get('success_count')}/"
                   f"{resp.get('count')} layout={resp.get('layout')}")

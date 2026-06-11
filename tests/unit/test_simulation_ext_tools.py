@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 from omniverse_kit_mcp.config import AppConfig
@@ -20,6 +22,7 @@ from omniverse_kit_mcp.types.simulation import (
     SimulationStepRequest,
     SimulationStepResult,
 )
+from omni.mycompany.validation_api.services.simulation_service import SimulationService
 
 
 def _meta() -> OperationMeta:
@@ -40,6 +43,13 @@ def test_simulation_ext_tools_registered(mcp_server):
     assert "simulation_set_time" in names
 
 
+def test_simulation_service_step_uses_play_burst_by_default():
+    source = inspect.getsource(SimulationService.step)
+
+    assert 'advance_mode = "play_burst"' in source
+    assert "timeline.forward_one_frame" not in source
+
+
 @pytest.mark.asyncio
 async def test_simulation_step_advances_time():
     from tests.conftest import MockIsaacRestClient
@@ -50,7 +60,11 @@ async def test_simulation_step_advances_time():
     assert result.status is ExecutionStatus.PASSED
     assert isinstance(result.data, SimulationStepResult)
     assert result.data.frames == 60
-    assert result.data.advance_mode in {"forward_one_frame", "play_burst"}
+    assert result.data.advance_mode in {
+        "forward_one_frame",
+        "play_burst",
+        "set_time_fallback",
+    }
     assert result.data.status.current_time == pytest.approx(1.0)
 
 

@@ -14,7 +14,7 @@ from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, Operatio
 REAL_CATALOG_DIR = Path(__file__).resolve().parents[2] / "docs" / "assets" / "isaac"
 _ISAAC = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com"
-    "/Assets/Isaac/5.1/Isaac"
+    "/Assets/Isaac/6.0/Isaac"
 )
 
 
