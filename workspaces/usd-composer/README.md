@@ -13,7 +13,7 @@ claude
 
 | CC 창 | 폴더 | Kit REST 포트 |
 |---|---|---|
-| 1 | `instance-1/` | 8014 |
+| 1 | `instance-1/` | 8114 |
 | 2 | `instance-2/` | 8015 |
 
 ## Capability 제약

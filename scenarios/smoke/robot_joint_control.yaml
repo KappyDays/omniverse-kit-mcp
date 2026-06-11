@@ -15,7 +15,7 @@ spec:
   variables:
     # Default URL matches isaacsim.asset.browser's public S3 root — no Nucleus
     # connection needed. Override via input_overrides to point elsewhere.
-    franka_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
+    franka_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
     prim_path: "/World/Franka"
     spawn_position: [0.0, 0.0, 0.0]
     # Franka Panda home-like pose: 7 arm joints + 2 gripper fingers = 9 DOF.

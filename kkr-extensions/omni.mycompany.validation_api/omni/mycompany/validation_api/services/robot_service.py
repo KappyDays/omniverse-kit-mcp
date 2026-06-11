@@ -24,7 +24,7 @@ class _OfficialFrankaPickPlaceClasses:
 
 
 class RobotService:
-    """Thin wrapper over SingleArticulation + USD reference load/transform.
+    """Thin wrapper over SingleArticulation + USD payload load/transform.
 
     Navigate is implemented as a linear interpolation of ``xformOp:translate``
     dispatched to :class:`JobService` so the REST call returns a ``job_id``
@@ -36,6 +36,8 @@ class RobotService:
 
     async def load(self, request: dict[str, Any]) -> dict[str, Any]:
         """Load a USD robot asset into the stage at *prim_path*."""
+        import asyncio
+        import omni.kit.async_engine  # lazy
         import omni.kit.commands  # lazy
         import omni.usd
         from pxr import Gf, UsdGeom
@@ -45,38 +47,57 @@ class RobotService:
         position: list[float] | None = request.get("position")
         rotation: list[float] | None = request.get("rotation")
 
-        ctx = omni.usd.get_context()
-        stage = ctx.get_stage()
-        if stage is None:
-            raise RuntimeError("No USD stage available")
+        active_jobs = _active_job_ids(self._job_service)
+        if active_jobs:
+            raise ValueError(
+                "robot/load requires all async jobs to be terminal before mutating "
+                f"the stage. Active job_ids={active_jobs}. Poll /jobs/{{id}} or "
+                "cancel the job before loading another robot."
+            )
 
-        omni.kit.commands.execute(
-            "CreateReferenceCommand",
-            usd_context=ctx,
-            path_to=prim_path,
-            asset_path=usd_url,
-            instanceable=False,
-        )
+        async def _main_loop_impl():
+            ctx = omni.usd.get_context()
+            stage = ctx.get_stage()
+            if stage is None:
+                raise RuntimeError("No USD stage available")
 
-        await _wait_stage_loading()
+            timeline_was_playing = await _stop_timeline_if_playing()
+            _ensure_parent_xform(stage, prim_path)
 
-        prim = stage.GetPrimAtPath(prim_path)
-        if not prim.IsValid():
-            raise RuntimeError(f"Prim not found at {prim_path} after loading")
+            omni.kit.commands.execute(
+                "CreatePayloadCommand",
+                usd_context=ctx,
+                path_to=prim_path,
+                asset_path=usd_url,
+                # Robot payloads need runtime traversal and articulation writes.
+                # Payload avoids the Isaac 6.0 reference crash; non-instanceable
+                # keeps articulated child prims editable and discoverable.
+                instanceable=False,
+            )
 
-        if position is not None:
-            attr = prim.GetAttribute("xformOp:translate")
-            if attr.IsValid():
-                attr.Set(Gf.Vec3d(*position))
-            else:
-                UsdGeom.Xformable(prim).AddTranslateOp().Set(Gf.Vec3d(*position))
-        if rotation is not None:
-            rot_attr = prim.GetAttribute("xformOp:rotateXYZ")
-            if rot_attr.IsValid():
-                rot_attr.Set(Gf.Vec3f(*rotation))
-            else:
-                UsdGeom.Xformable(prim).AddRotateXYZOp().Set(Gf.Vec3f(*rotation))
+            await _wait_stage_loading()
 
+            prim = stage.GetPrimAtPath(prim_path)
+            if not prim.IsValid():
+                raise RuntimeError(f"Prim not found at {prim_path} after loading")
+
+            if position is not None:
+                attr = prim.GetAttribute("xformOp:translate")
+                if attr.IsValid():
+                    attr.Set(Gf.Vec3d(*position))
+                else:
+                    UsdGeom.Xformable(prim).AddTranslateOp().Set(Gf.Vec3d(*position))
+            if rotation is not None:
+                rot_attr = prim.GetAttribute("xformOp:rotateXYZ")
+                if rot_attr.IsValid():
+                    rot_attr.Set(Gf.Vec3f(*rotation))
+                else:
+                    UsdGeom.Xformable(prim).AddRotateXYZOp().Set(Gf.Vec3f(*rotation))
+
+            return prim, timeline_was_playing
+
+        future = omni.kit.async_engine.run_coroutine(_main_loop_impl())
+        prim, timeline_was_playing = await asyncio.wrap_future(future)
         has_articulation = _has_articulation_api(prim)
 
         return {
@@ -85,6 +106,7 @@ class RobotService:
             "usd_url": usd_url,
             "type_name": str(prim.GetTypeName()),
             "has_articulation": has_articulation,
+            "timeline_was_playing": timeline_was_playing,
         }
 
     async def get_joint_positions(self, prim_path: str) -> dict[str, Any]:
@@ -95,7 +117,7 @@ class RobotService:
         return ``None`` / empty data, which hides broken scenarios — surface
         the mismatch at the REST boundary instead.
 
-        On Isaac Sim 5.1 the wrapper needs an explicit ``initialize()`` call
+        The wrapper needs an explicit ``initialize()`` call
         once PhysX has populated the articulation view (usually after one
         simulation play tick). We call it defensively here so callers don't
         have to orchestrate the init themselves.
@@ -131,7 +153,7 @@ class RobotService:
         motion (drive too soft, target outside limits, velocity capped).
 
         Tries ``SingleArticulation.dof_properties`` first (numpy structured
-        array on Isaac Sim 5.1 builds that expose it). Falls back to per-
+        array on builds that expose it). Falls back to per-
         joint ``UsdPhysics.DriveAPI`` introspection — which is always
         available because drive config is encoded directly on the joint
         prims regardless of the articulation wrapper version.
@@ -215,7 +237,7 @@ class RobotService:
         """Set joint positions — requires a prim with PhysxArticulationRoot.
 
         Auto-calls ``SingleArticulation.initialize()`` so the articulation
-        view is populated before ``set_joint_positions``; on Isaac Sim 5.1
+        view is populated before ``set_joint_positions``; on Kit builds
         this is mandatory (earlier 4.x tolerated a missing init).
         """
         import numpy as np  # lazy
@@ -350,17 +372,17 @@ class RobotService:
 
         _assert_articulation(prim_path)
 
-        # Resolve Lula imports — location varies across Isaac Sim 5.x minor releases.
+        # Resolve Lula imports from the Isaac Sim 6.0 namespace.
         LulaKinematicsSolver, interface_config_loader, import_path = _resolve_lula_modules()
         if LulaKinematicsSolver is None or interface_config_loader is None:
             raise ValueError(
-                "IK solver unavailable — isaacsim.robot_motion.motion_generation.lula / "
-                "omni.isaac.motion_generation.lula not importable. Skip IK tools."
+                "IK solver unavailable — isaacsim.robot_motion.motion_generation.lula "
+                "not importable. Skip IK tools."
             )
 
-        # Lula config for the selected robot description. Isaac Sim 5.1 uses
-        # load_supported_motion_policy_config; older builds used the longer
-        # load_supported_robot_motion_policy_configs name.
+        # Lula config for the selected robot description. Keep both loader
+        # method names because the local 6.0 bundle still exposes the shorter
+        # variant while historical fixtures cover the longer one.
         try:
             cfg = _resolve_lula_config(interface_config_loader, robot_description)
         except Exception as exc:
@@ -894,7 +916,7 @@ async def _wait_stage_loading(max_frames: int = 300) -> None:
 
 def _is_stage_loading() -> bool:
     try:
-        from isaacsim.core.utils.stage import is_stage_loading
+        from isaacsim.core.experimental.utils.stage import is_stage_loading
         return is_stage_loading()
     except ImportError:
         try:
@@ -904,6 +926,63 @@ def _is_stage_loading() -> bool:
             return total_files > 0 and files_loaded < total_files
         except Exception:
             return False
+
+
+def _ensure_parent_xform(stage: Any, prim_path: str) -> None:
+    """Define missing parent Xforms before CreatePayloadCommand.
+
+    Kit can otherwise return success while leaving nested paths such as
+    ``/World/Robot/Jetbot`` uncreated.
+    """
+    from pxr import Sdf, UsdGeom
+
+    parts = [part for part in prim_path.split("/") if part]
+    if len(parts) <= 1:
+        return
+
+    current = ""
+    for part in parts[:-1]:
+        current = f"{current}/{part}"
+        if not stage.GetPrimAtPath(current).IsValid():
+            UsdGeom.Xform.Define(stage, Sdf.Path(current))
+
+
+def _active_job_ids(job_service: Any) -> tuple[str, ...]:
+    active = getattr(job_service, "active_job_ids", None)
+    if callable(active):
+        return tuple(str(job_id) for job_id in active())
+
+    jobs = getattr(job_service, "_jobs", {})
+    if not isinstance(jobs, dict):
+        return ()
+    return tuple(
+        str(job_id)
+        for job_id, entry in jobs.items()
+        if isinstance(entry, dict) and entry.get("status") in {"pending", "running"}
+    )
+
+
+async def _stop_timeline_if_playing(max_frames: int = 10) -> bool:
+    """Stop timeline before robot payload load.
+
+    Isaac Sim 6.0 can crash in PhysX/primdata when a new articulated payload is
+    added while physics is ticking. Stop is idempotent and mirrors stage-write
+    play-guard behavior.
+    """
+    import omni.kit.app
+    import omni.timeline
+
+    timeline = omni.timeline.get_timeline_interface()
+    if not timeline.is_playing():
+        return False
+
+    timeline.stop()
+    app = omni.kit.app.get_app()
+    for _ in range(max_frames):
+        await app.next_update_async()
+        if not timeline.is_playing():
+            break
+    return True
 
 
 def _has_articulation_api(prim: Any) -> bool:
@@ -1134,7 +1213,7 @@ async def _ensure_articulation_ready(
 def _ensure_initialized(articulation: Any) -> None:
     """Defensive ``SingleArticulation.initialize()`` — safe to call twice.
 
-    Isaac Sim 5.1 requires initialize() before joint I/O even when the prim
+    Kit articulation wrappers require initialize() before joint I/O even when the prim
     has a PhysxArticulationRoot. Re-initializing an already-initialized
     articulation is a no-op. Initialization failures are surfaced as a
     domain error instead of leaking Isaac internals such as ``link_names``.
@@ -1344,7 +1423,7 @@ def _read_usd_drive_config(prim_path: str, dof_names: list[str]) -> dict[str, li
 def _read_dof_limits(art: Any, indices: list[int]) -> tuple[float | None, float | None]:
     """Return (min_lower, max_upper) across *indices* in the articulation.
 
-    Isaac Sim 5.1 exposes DOF limits inconsistently across code paths —
+    Kit exposes DOF limits inconsistently across code paths —
     ``SingleArticulation.get_dof_limits`` on some builds returns a numpy
     array shaped ``(num_dof, 2)``; on others the limits live on
     ``dof_properties``. We try both and fall back to ``(None, None)``
@@ -1377,10 +1456,10 @@ def _read_dof_limits(art: Any, indices: list[int]) -> tuple[float | None, float 
 
 
 def _resolve_lula_modules() -> tuple[Any, Any, str]:
-    """Try both Isaac Sim 5.x Lula import paths, return (Solver, config_loader, path).
+    """Resolve Isaac Sim 6.0 Lula modules.
 
-    Returns ``(None, None, "")`` if neither path imports — caller raises
-    ValueError.
+    Returns ``(None, None, "")`` when the supported ``isaacsim.*`` namespace
+    is unavailable so the caller can raise a user-facing 400.
     """
     try:
         from isaacsim.robot_motion.motion_generation.lula import (  # type: ignore[import-not-found]
@@ -1390,16 +1469,6 @@ def _resolve_lula_modules() -> tuple[Any, Any, str]:
             interface_config_loader,
         )
         return LulaKinematicsSolver, interface_config_loader, "isaacsim.robot_motion"
-    except ImportError:
-        pass
-    try:
-        from omni.isaac.motion_generation.lula import (  # type: ignore[import-not-found]
-            LulaKinematicsSolver,
-        )
-        from omni.isaac.motion_generation import (  # type: ignore[import-not-found]
-            interface_config_loader,
-        )
-        return LulaKinematicsSolver, interface_config_loader, "omni.isaac.motion_generation"
     except ImportError:
         return None, None, ""
 
@@ -1558,21 +1627,10 @@ async def _drive_physics_coro(
     import carb  # lazy
     import omni.kit.app
 
-    # DifferentialController — try new namespace first, fall back to legacy
-    try:
-        from isaacsim.robot.wheeled_robots.controllers.differential_controller import (
-            DifferentialController,
-        )
-    except ImportError:
-        from omni.isaac.wheeled_robots.controllers.differential_controller import (
-            DifferentialController,
-        )
-
-    # ArticulationAction — try new isaacsim path first
-    try:
-        from isaacsim.core.utils.types import ArticulationAction
-    except ImportError:
-        from omni.isaac.core.utils.types import ArticulationAction
+    from isaacsim.robot.wheeled_robots.controllers.differential_controller import (
+        DifferentialController,
+    )
+    from isaacsim.core.utils.types import ArticulationAction
 
     from isaacsim.core.prims import SingleArticulation
 
@@ -1647,9 +1705,9 @@ async def _drive_physics_coro(
             lin = max_linear * lin_scale
             ang = float(np.clip(2.0 * yaw_err, -max_angular, max_angular))
 
-            # Isaac Sim 5.1: ctrl.forward([lin, ang]) returns an
-            # ArticulationAction with joint_velocities populated (legacy
-            # builds returned a 2-element numpy array). Handle both.
+            # ctrl.forward([lin, ang]) returns an ArticulationAction with
+            # joint_velocities populated on current builds; historical builds
+            # returned a 2-element numpy array. Handle both shapes.
             wv = ctrl.forward([lin, ang])
             if hasattr(wv, "joint_velocities") and wv.joint_velocities is not None:
                 jv = np.asarray(wv.joint_velocities, dtype=np.float32)

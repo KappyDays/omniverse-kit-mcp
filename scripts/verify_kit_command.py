@@ -61,13 +61,13 @@ async def main() -> int:
     # {"ok": false, "error": "command_exception"}. This confirms the route
     # is live and the dispatch path works without waiting for a heavy USD
     # operation on the main thread.
-    print("\n[2] Dispatch nonexistent command on Isaac (8011)")
-    status_isaac, isaac_result = await _call(8011, "NonExistentCommand_Smoke")
+    print("\n[2] Dispatch nonexistent command on Isaac (8111)")
+    status_isaac, isaac_result = await _call(8111, "NonExistentCommand_Smoke")
     print(f"  HTTP {status_isaac}")
     print(json.dumps(isaac_result, indent=2, default=str) if isinstance(isaac_result, dict) else isaac_result)
 
-    print("\n[3] Dispatch nonexistent command on USD Composer (8014)")
-    status_composer, composer_result = await _call(8014, "NonExistentCommand_Smoke")
+    print("\n[3] Dispatch nonexistent command on USD Composer (8114)")
+    status_composer, composer_result = await _call(8114, "NonExistentCommand_Smoke")
     print(f"  HTTP {status_composer}")
     print(json.dumps(composer_result, indent=2, default=str) if isinstance(composer_result, dict) else composer_result)
 

@@ -132,7 +132,7 @@ process_list_kit_instances → instances[].is_this_mcp_instance == false 인 row
   row 없음 = 죽음, row 있으면 alive
 - **MCP `simulation_get_status`** — 응답 (duration_ms < 1000) = alive, refused = 죽음
 - **`curl http://127.0.0.1:8111/validation/v1/health`** — 200 = alive
-- `netstat -ano | grep ":8011" | grep LISTENING` 없음 = endpoint 미기동
+- `netstat -ano | grep ":8111" | grep LISTENING` 없음 = endpoint 미기동
 
 **금지** (false negative — L7): `tasklist //FI "IMAGENAME eq kit.exe"` (git bash)
 filter 처리 timing 문제로 alive Kit 도 빈 결과 반환.

@@ -9,7 +9,7 @@ for open-source support programs such as Codex for OSS.
 - **Repository**: https://github.com/KappyDays/omniverse-kit-mcp
 - **License**: MIT
 - **Primary language**: Python
-- **Runtime target**: Windows, NVIDIA Isaac Sim 5.1, USD Composer, MCP clients
+- **Runtime target**: Windows, NVIDIA Isaac Sim 6.0.0, USD Composer, MCP clients
 
 ## Short Description
 

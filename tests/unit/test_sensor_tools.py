@@ -98,6 +98,7 @@ async def test_attach_rtx_lidar_success():
     assert result.data.sensor_type == "rtx_lidar"
     assert result.data.config_preset == "Example_Rotary"
     assert result.data.annotator is not None
+    assert result.data.backend == "isaacsim.sensors.experimental.rtx.Lidar.create"
     assert result.data.sensor_prim_path.endswith("/TopLidar")
 
 

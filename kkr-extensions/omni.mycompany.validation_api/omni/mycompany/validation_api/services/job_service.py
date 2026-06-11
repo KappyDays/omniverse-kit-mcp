@@ -126,6 +126,18 @@ class JobService:
             "updated_at_epoch_ms": entry["updated_at_ms"],
         }
 
+    def active_job_ids(self) -> tuple[str, ...]:
+        """Return non-terminal job IDs.
+
+        Stage mutation while an async robot/character job is still ticking can
+        race Kit/PhysX. Load services use this as a cheap preflight guard.
+        """
+        return tuple(
+            job_id
+            for job_id, entry in self._jobs.items()
+            if entry.get("status") in {"pending", "running"}
+        )
+
     def _ensure_cleanup_task(self) -> None:
         if self._cleanup_task is not None and not self._cleanup_task.done():
             return

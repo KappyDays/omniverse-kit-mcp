@@ -3,7 +3,7 @@
 Mirrors the default folder configuration of ``isaacsim.asset.browser`` so MCP
 consumers can browse the same Robots / Environments / Props / ... tree a
 human user sees in the GUI. The root URL is resolved via
-``isaacsim.storage.native.get_assets_root_path()`` — in Isaac Sim 5.1 that
+``isaacsim.storage.native.get_assets_root_path()`` — in Isaac Sim 6.0 that
 points to a public S3 bucket by default, so no Nucleus connection is needed.
 
 All omni.*/isaacsim.* imports are lazy (inside functions) per Extension

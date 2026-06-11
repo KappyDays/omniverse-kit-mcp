@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 from omniverse_kit_mcp.config import AppConfig
@@ -15,6 +17,10 @@ from omniverse_kit_mcp.types.character import (
     CharacterPlayAnimationVariantResult,
 )
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omni.mycompany.validation_api.services.character_service import (
+    _BehaviorAgentAdapter,
+    _call_behavior_custom_action,
+)
 
 
 def _meta() -> OperationMeta:
@@ -30,6 +36,16 @@ def test_character_ext_tools_registered(mcp_server):
     names = set(mcp_server._tool_manager._tools)
     assert "character_play_animation_variant" in names
     assert "character_load_crowd" in names
+
+
+def test_behavior_agent_custom_action_uses_isaac6_positional_signature():
+    adapter_source = inspect.getsource(_BehaviorAgentAdapter.set_variable)
+    helper_source = inspect.getsource(_call_behavior_custom_action)
+
+    assert "_call_behavior_custom_action" in adapter_source
+    assert "custom_action(str(action_name))" in helper_source
+    assert "action_name=str(action_name)" in helper_source
+    assert "custom_action(action_name=self._action)" not in adapter_source
 
 
 @pytest.mark.asyncio

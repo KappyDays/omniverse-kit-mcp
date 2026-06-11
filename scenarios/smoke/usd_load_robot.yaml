@@ -13,7 +13,7 @@ spec:
   variables:
     # Public Isaac Sim asset — avoids machine-local install paths. Override
     # with input_overrides to test local USDs or omniverse:// assets.
-    usd_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    usd_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
     prim_path: "/World/TestAsset"
     load_position: [1.0, 2.0, 0.5]
 

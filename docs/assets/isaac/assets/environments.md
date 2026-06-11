@@ -1,6 +1,6 @@
-# Environments — Isaac Sim 5.1 Asset Catalog
+# Environments — Isaac Sim 6.0 Asset Catalog
 
-`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac`
+`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
 
 루트: `$ISAAC/Environments/`  
 드릴다운: `asset_list(category="environments", subpath="{FolderName}")`

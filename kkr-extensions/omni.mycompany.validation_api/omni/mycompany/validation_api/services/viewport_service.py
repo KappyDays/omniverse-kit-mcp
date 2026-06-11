@@ -39,6 +39,8 @@ class ViewportService:
         width = int(request.get("width", 1280))
         height = int(request.get("height", 720))
         docked = bool(request.get("docked", False))
+        if camera_path:
+            _ensure_renderable_camera_path(camera_path, context="viewport_create")
 
         existed = False
         created_window = None
@@ -142,6 +144,7 @@ class ViewportService:
         prim = stage.GetPrimAtPath(camera_path)
         if not prim.IsValid():
             raise ValueError(f"Camera prim not found at {camera_path}")
+        _ensure_renderable_camera_path(camera_path, context="viewport_set_active_camera")
 
         viewport = (
             get_viewport_from_window_name(viewport_name)
@@ -169,6 +172,8 @@ class ViewportService:
         output_format = request.get("output_format", "png")
         warmup_frames = int(request.get("warmup_frames", 0))
         return_stats = bool(request.get("return_stats", False))
+        if request.get("camera_prim_path"):
+            _ensure_renderable_camera_path(camera_path, context="viewport_capture")
 
         # Let renderer settle, then extra warmup ticks to force a cold-RTX frame.
         app = omni.kit.app.get_app()
@@ -280,6 +285,37 @@ class ViewportService:
 # Private helpers
 # ---------------------------------------------------------------------------
 
+def _ensure_renderable_camera_path(camera_path: str, *, context: str) -> None:
+    """Reject non-camera sensor prims before Kit/RTX native code can crash."""
+    if not camera_path or camera_path == "/OmniverseKit_Persp":
+        return
+
+    import omni.usd
+    from pxr import UsdGeom
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+
+    prim = stage.GetPrimAtPath(camera_path)
+    if not prim.IsValid():
+        raise ValueError(f"Camera prim not found at {camera_path}")
+
+    custom = prim.GetCustomData() or {}
+    sensor_type = (custom.get("validation_api") or {}).get("sensor_type")
+    if sensor_type == "rtx_lidar":
+        raise ValueError(
+            f"{context}: {camera_path} is an RTX Lidar prim, not a renderable "
+            "viewport camera. Use sensor_lidar_get_point_cloud for Lidar data, "
+            "or sensor_set_visualization plus a regular camera/viewport capture."
+        )
+    if not prim.IsA(UsdGeom.Camera):
+        raise ValueError(
+            f"{context}: camera_path must point to a UsdGeom.Camera prim "
+            f"(got {prim.GetTypeName()} at {camera_path})"
+        )
+
+
 def _save_image(data: Any, filepath: str, fmt: str) -> None:
     """Save numpy RGBA array to image file."""
     try:
@@ -363,7 +399,7 @@ async def _capture_via_replicator(camera_path: str, width: int, height: int) -> 
     where `omni.replicator.core` is absent and the failure mode silently
     falls through.
 
-    Isaac Sim 5.1 compatibility:
+    Replicator compatibility:
     - `render_product` returns a HydraTexture object; `rgb_annot.detach([rp])`
       crashes in `omni.syntheticdata._get_node_path` because it calls
       `.split()` on the HydraTexture. `get_data()` succeeds *before* detach,
@@ -382,7 +418,7 @@ async def _capture_via_replicator(camera_path: str, width: int, height: int) -> 
 
         data = rgb_annot.get_data()
 
-        # Non-fatal: detach raises AttributeError on Isaac Sim 5.1 due to
+        # Non-fatal: detach can raise AttributeError on some Kit builds due to
         # HydraTexture ↔ syntheticdata incompatibility. Annotator and render
         # product get GC'd when the function returns, so the leak is bounded.
         try:
@@ -400,7 +436,7 @@ async def _capture_via_replicator(camera_path: str, width: int, height: int) -> 
         traceback.print_exc()
         diags.append(f"replicator path raised {type(exc).__name__}: {exc}")
 
-    # Fallback: omni.kit.viewport.utility capture_viewport_to_file (Isaac Sim 5.1).
+    # Fallback: omni.kit.viewport.utility capture_viewport_to_file.
     try:
         data, util_diag = await _capture_via_viewport_utility(camera_path, width, height)
         if data is not None and hasattr(data, "shape") and getattr(data, "size", 0) > 0:
@@ -418,7 +454,7 @@ async def _capture_via_replicator(camera_path: str, width: int, height: int) -> 
 
 async def _capture_via_viewport_utility(camera_path: str, width: int, height: int) -> tuple[Any, str | None]:
     """Fallback capture using omni.kit.viewport.utility — writes to a temp PNG
-    then reads it back. Works on Isaac Sim 5.1 + USD Composer without touching
+    then reads it back. Works on Isaac Sim + USD Composer without touching
     syntheticdata.
 
     Returns (np.array or None, diag_str or None). diag explains why None when

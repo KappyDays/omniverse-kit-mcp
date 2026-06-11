@@ -44,11 +44,13 @@ class SimulationService:
     async def step(self, request: dict[str, Any]) -> dict[str, Any]:
         """Advance the timeline by ``frames`` ticks (Phase G).
 
-        Uses ``forward_one_frame()`` where Kit exposes it (per-frame advance
-        without resuming play). Otherwise falls back to a short play burst
-        gated by ``next_update_async()`` to preserve the previous play/stop
-        state.
+        Isaac Sim 6.0 can crash when ``forward_one_frame()`` drives active
+        Replicator/HydraTexture render products. Use a short play burst gated
+        by ``next_update_async()`` instead; this follows the normal timeline
+        tick path and preserves the previous play/stop state.
         """
+        import time as _time
+
         import omni.kit.app  # lazy
         import omni.timeline
 
@@ -60,21 +62,28 @@ class SimulationService:
         app = omni.kit.app.get_app()
         start_time = float(timeline.get_current_time())
         was_playing = bool(timeline.is_playing())
+        fps = float(timeline.get_time_codes_per_seconds() or 60.0)
+        target_time = start_time + (frames / fps)
+        deadline = _time.monotonic() + min(max((frames / fps) + 5.0, 5.0), 600.0)
 
-        has_forward = hasattr(timeline, "forward_one_frame")
-        advance_mode = "forward_one_frame" if has_forward else "play_burst"
+        advance_mode = "play_burst"
+        if not was_playing:
+            timeline.play()
+        ticks = 0
+        timed_out = False
+        while float(timeline.get_current_time()) < target_time:
+            if _time.monotonic() >= deadline:
+                timed_out = True
+                break
+            await app.next_update_async()
+            ticks += 1
+        if not was_playing:
+            timeline.pause()
 
-        if has_forward:
-            for _ in range(frames):
-                timeline.forward_one_frame()
-                await app.next_update_async()
-        else:
-            if not was_playing:
-                timeline.play()
-            for _ in range(frames):
-                await app.next_update_async()
-            if not was_playing:
-                timeline.pause()
+        if timed_out:
+            timeline.set_current_time(target_time)
+            await app.next_update_async()
+            advance_mode = "set_time_fallback"
 
         status = self._status_dict(timeline)
         status.update({
@@ -82,6 +91,9 @@ class SimulationService:
             "start_time": start_time,
             "advance_mode": advance_mode,
             "was_playing": was_playing,
+            "ticks_waited": ticks,
+            "target_time": target_time,
+            "timed_out": timed_out,
         })
         return status
 
@@ -150,6 +162,7 @@ class SimulationService:
 
     async def set_time(self, request: dict[str, Any]) -> dict[str, Any]:
         """Seek the timeline to ``time_seconds`` (Phase G)."""
+        import omni.kit.app  # lazy
         import omni.timeline  # lazy
 
         target = float(request["time_seconds"])
@@ -159,6 +172,7 @@ class SimulationService:
         timeline = omni.timeline.get_timeline_interface()
         previous = float(timeline.get_current_time())
         timeline.set_current_time(target)
+        await omni.kit.app.get_app().next_update_async()
 
         status = self._status_dict(timeline)
         status.update({

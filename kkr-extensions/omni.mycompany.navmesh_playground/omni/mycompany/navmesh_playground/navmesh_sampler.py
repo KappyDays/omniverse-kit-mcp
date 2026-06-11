@@ -13,6 +13,52 @@ from itertools import accumulate
 from typing import Sequence
 
 
+def query_shortest_path(
+    mesh,
+    start: Sequence[float],
+    goal: Sequence[float],
+    *,
+    agent_radius: float,
+    agent_height: float,
+    straighten: bool = True,
+):
+    """Compatibility wrapper for Kit 107/Isaac Sim 6.0 NavMesh queries."""
+    import carb  # lazy
+
+    start_pos = carb.Float3(*start)
+    goal_pos = carb.Float3(*goal)
+    agent = _make_nav_agent_desc(agent_radius, agent_height)
+    if agent is not None:
+        try:
+            import numpy as np  # lazy
+            return mesh.query_shortest_path(
+                start_pos, goal_pos, agent, np.array([], dtype=np.float32),
+                bool(straighten),
+            )
+        except TypeError:
+            pass
+
+    return mesh.query_shortest_path(
+        start_pos, goal_pos,
+        agent_radius=float(agent_radius),
+        agent_height=float(agent_height),
+        straighten=bool(straighten),
+    )
+
+
+def _make_nav_agent_desc(agent_radius: float, agent_height: float):
+    try:
+        import omni.anim.navigation.core as nav  # lazy
+        desc = nav.NavAgentDesc()
+    except Exception:  # noqa: BLE001
+        return None
+    if hasattr(desc, "radius"):
+        desc.radius = float(agent_radius)
+    if hasattr(desc, "height"):
+        desc.height = float(agent_height)
+    return desc
+
+
 def sample_walkable_points_sync(
     count: int,
     bounds_min: Sequence[float] | None = None,
@@ -120,7 +166,6 @@ def _sample_via_reachability(
     rng: random.Random,
 ) -> list[tuple[float, float, float]]:
     """Fallback sampler — random bbox point + query_shortest_path reachability."""
-    import carb  # lazy
     import omni.usd
 
     if bounds_min is None or bounds_max is None:
@@ -164,8 +209,8 @@ def _sample_via_reachability(
         x = rng.uniform(bounds_min[0], bounds_max[0])
         y = rng.uniform(bounds_min[1], bounds_max[1])
         try:
-            path = mesh.query_shortest_path(
-                carb.Float3(*seed_origin), carb.Float3(x, y, 0.0),
+            path = query_shortest_path(
+                mesh, seed_origin, (x, y, 0.0),
                 agent_radius=0.25, agent_height=1.0, straighten=True,
             )
         except Exception:  # noqa: BLE001

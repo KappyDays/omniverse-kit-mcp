@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-# Strict scope: Isaac Sim 5.1 bundle catalog (legacy invariants apply here).
+# Strict scope: Isaac Sim 6.0 bundle catalog.
 ASSETS_DIR = PROJECT_ROOT / "docs" / "assets" / "isaac" / "assets"
 INVENTORY_INDEX = PROJECT_ROOT / "docs" / "assets" / "isaac" / "asset_inventory.md"
 # Lenient scope: Composer / cross-app sample library (same bucket, looser prefix).
@@ -29,7 +29,7 @@ def _is_index_file(md: Path) -> bool:
 
 @pytest.fixture(scope="module")
 def sub_md_files() -> list[Path]:
-    """Isaac Sim 5.1 catalog only — used by strict prefix / index tests."""
+    """Isaac Sim 6.0 catalog only — used by strict prefix / index tests."""
     return sorted(ASSETS_DIR.glob("*.md"))
 
 
@@ -93,16 +93,16 @@ def test_index_lists_all_sub_md(sub_md_files):
     assert not missing, f"sub-md files not referenced in index: {missing}"
 
 
-def test_prefix_url_uses_5_1_or_simready(sub_md_files):
-    """Prefix URLs must point to Isaac/5.1 or simready_content (current version baseline)."""
+def test_prefix_url_uses_6_0_or_simready(sub_md_files):
+    """Prefix URLs must point to Isaac/6.0 or simready_content."""
     offenders = []
     for md in sub_md_files:
         text = md.read_text(encoding="utf-8")
         for var, url in PREFIX_DECL_RE.findall(text):
-            if "Isaac/5.1" not in url and "simready_content" not in url:
+            if "Isaac/6.0" not in url and "simready_content" not in url:
                 offenders.append(f"{md.name}: {var}={url}")
     assert not offenders, (
-        f"prefix URL must contain 'Isaac/5.1' or 'simready_content': {offenders}"
+        f"prefix URL must contain 'Isaac/6.0' or 'simready_content': {offenders}"
     )
 
 

@@ -15,7 +15,7 @@ from omniverse_kit_mcp.config import AppConfig  # noqa: E402
 
 NOVA_CARTER = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    "Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
 )
 
 

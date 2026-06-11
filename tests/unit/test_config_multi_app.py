@@ -155,6 +155,15 @@ def test_profile_module_exports_isaac_and_usd_composer():
     assert get_profile("usd-composer").default_ext_port == 8114
 
 
+def test_isaac_profile_enables_isaac_6_extensions():
+    cfg = AppConfig()
+    extra = cfg.isaac_sim_process.app_profile.extra_ext_ids
+    assert "isaacsim.sensors.experimental.rtx" in extra
+    assert "isaacsim.sensors.experimental.physics" in extra
+    assert "isaacsim.ros2.bridge" in extra
+    assert "isaacsim.sensors.rtx" not in extra
+
+
 def test_get_profile_raises_on_unknown():
     from omniverse_kit_mcp.types.profile import get_profile
     with pytest.raises(ValueError, match="Unknown app profile"):

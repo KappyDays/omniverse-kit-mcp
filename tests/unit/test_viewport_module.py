@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
 from omniverse_kit_mcp.modules.viewport_module import ViewportModule
@@ -11,6 +13,8 @@ from omniverse_kit_mcp.types.viewport import (
     ViewportCaptureRequest,
     ViewportFocusPrimRequest,
 )
+from omni.mycompany.validation_api.services import viewport_service
+from omni.mycompany.validation_api.services.viewport_service import ViewportService
 from tests.conftest import MockIsaacRestClient
 
 
@@ -27,6 +31,20 @@ def viewport_module(mock_client):
 @pytest.fixture
 def meta():
     return OperationMeta(request_id="test", module=ModuleName.VIEWPORT, started_at_epoch_ms=1000)
+
+
+def test_viewport_service_rejects_rtx_lidar_as_camera_source():
+    create_source = inspect.getsource(ViewportService.create)
+    capture_source = inspect.getsource(ViewportService.capture)
+    set_camera_source = inspect.getsource(ViewportService.set_active_camera)
+    helper_source = inspect.getsource(viewport_service._ensure_renderable_camera_path)
+
+    assert "_ensure_renderable_camera_path" in create_source
+    assert "_ensure_renderable_camera_path" in capture_source
+    assert "_ensure_renderable_camera_path" in set_camera_source
+    assert 'sensor_type == "rtx_lidar"' in helper_source
+    assert "not a renderable " in helper_source
+    assert "viewport camera" in helper_source
 
 
 @pytest.mark.asyncio

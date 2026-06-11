@@ -281,7 +281,7 @@ class TestBootstrap:
         data = json.loads(catalog_json.read_text(encoding="utf-8"))
         assert data["metadata"]["total_extensions"] == 6
         assert data["metadata"]["source_counts"] == {
-            "exts": 2, "extscache": 2, "extsDeprecated": 2
+            "exts": 2, "extscache": 2, "extsDeprecated": 2, "extsInternal": 0
         }
         names = sorted(e["name"] for e in data["extensions"])
         assert names == sorted([

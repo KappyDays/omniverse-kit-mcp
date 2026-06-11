@@ -11,9 +11,9 @@ spec:
     failFast: false
 
   variables:
-    nova_carter_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
-    biped_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/Biped_Setup.usd"
-    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    nova_carter_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    character_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Business_02/F_Business_02.usd"
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Environments/Simple_Warehouse/warehouse.usd"
     robot_prim: "/World/NovaCarter"
     character_prim: "/World/Characters/Visitor"
     crowd_base: "WHStaff"
@@ -71,7 +71,7 @@ spec:
       module: character
       action: load
       args:
-        usd_url: ${variables.biped_url}
+        usd_url: ${variables.character_url}
         prim_path: ${variables.character_prim}
         position: [3.0, -1.0, 0.0]
 
@@ -104,7 +104,11 @@ spec:
         poll_interval_s: 0.5
         max_polls: 30
 
-    - id: visitor_sit
+    # Optional in Isaac Sim 6.0: some Replicator Agent skins load and render
+    # correctly but do not expose a BehaviorAgent handle in time for custom
+    # action variants. The service must not 500; scenario status stays driven
+    # by robot/sensor/crowd assertions.
+    - id: visitor_sit_optional
       module: character
       action: play_animation_variant
       continueOnFailure: true

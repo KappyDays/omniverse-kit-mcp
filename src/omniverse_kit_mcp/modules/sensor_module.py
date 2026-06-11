@@ -91,6 +91,7 @@ class SensorModule:
                     sensor_type=str(raw.get("sensor_type", "rtx_lidar")),
                     config_preset=str(raw.get("config_preset", request.config_preset)),
                     annotator=raw.get("annotator"),
+                    backend=str(raw.get("backend", "")),
                 ),
                 started_ms=started,
             )

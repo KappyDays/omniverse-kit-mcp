@@ -80,20 +80,32 @@ class SensorService:
             try:
                 import omni.kit.app
                 _mgr = omni.kit.app.get_app().get_extension_manager()
-                if not _mgr.is_extension_enabled("isaacsim.sensors.rtx"):
-                    _mgr.set_extension_enabled_immediate("isaacsim.sensors.rtx", True)
+                if not _mgr.is_extension_enabled("isaacsim.sensors.experimental.rtx"):
+                    _mgr.set_extension_enabled_immediate("isaacsim.sensors.experimental.rtx", True)
             except Exception as exc:  # noqa: BLE001
                 import logging as _lg
-                _lg.getLogger(__name__).warning("enable isaacsim.sensors.rtx failed: %s", exc)
+                _lg.getLogger(__name__).warning("enable isaacsim.sensors.experimental.rtx failed: %s", exc)
             _child = sensor_path.rsplit("/", 1)[-1]
-            omni.kit.commands.execute(
-                "IsaacSensorCreateRtxLidar",
-                path="/" + _child,
-                parent=robot_prim,
-                config=preset,
-                translation=tuple(float(v) for v in mount_offset),
-                orientation=(1.0, 0.0, 0.0, 0.0),
-            )
+            lidar_backend = "isaacsim.sensors.experimental.rtx.Lidar.create"
+            try:
+                import numpy as np  # lazy
+                from isaacsim.sensors.experimental.rtx import Lidar  # type: ignore[import-not-found]
+
+                Lidar.create(
+                    path=sensor_path,
+                    config=preset,
+                    translations=np.array([mount_offset], dtype=float),
+                )
+            except Exception as exc:  # noqa: BLE001
+                lidar_backend = f"legacy_command:{type(exc).__name__}"
+                omni.kit.commands.execute(
+                    "IsaacSensorCreateRtxLidar",
+                    path="/" + _child,
+                    parent=robot_prim,
+                    config=preset,
+                    translation=tuple(float(v) for v in mount_offset),
+                    orientation=(1.0, 0.0, 0.0, 0.0),
+                )
             sensor_prim = stage.GetPrimAtPath(sensor_path)
             if not sensor_prim.IsValid():
                 raise RuntimeError(f"RTX lidar creation failed at {sensor_path}")
@@ -141,26 +153,17 @@ class SensorService:
             # IsaacSensorCreateRtxLidar). Cache a LidarRtx wrapper + attach the
             # scan-buffer annotator for the get_current_frame readback path.
             try:
-                from isaacsim.sensors.rtx import LidarRtx  # type: ignore[import-not-found]
-                lidar_rtx = LidarRtx(prim_path=sensor_path)
-                try:
-                    lidar_rtx.initialize()
-                except Exception as exc:  # noqa: BLE001
-                    import logging as _lg
-                    _lg.getLogger(__name__).warning("LidarRtx.initialize failed: %s", exc)
-                try:
-                    lidar_rtx.attach_annotator("IsaacCreateRTXLidarScanBuffer")
-                except Exception as exc:  # noqa: BLE001
-                    import logging as _lg
-                    _lg.getLogger(__name__).warning("attach_annotator failed: %s", exc)
+                from isaacsim.sensors.experimental.rtx import LidarSensor  # type: ignore[import-not-found]
+                lidar_rtx = LidarSensor(sensor_path, annotators=["generic-model-output"])
                 self._lidar_instances[sensor_path] = lidar_rtx
             except ImportError:
                 import logging as _lg
                 _lg.getLogger(__name__).warning(
-                    "isaacsim.sensors.rtx.LidarRtx unavailable — annotator-only readback"
+                    "isaacsim.sensors.experimental.rtx.LidarSensor unavailable — annotator-only readback"
                 )
             custom_block["config_preset"] = chosen_preset
             custom_block["annotator"] = "IsaacCreateRTXLidarScanBuffer"
+            custom_block["backend"] = lidar_backend
         if sensor_type == "rtx_depth_camera":
             custom_block["annotator"] = "distance_to_camera"
         custom["validation_api"] = custom_block
@@ -176,6 +179,7 @@ class SensorService:
         if sensor_type == "rtx_lidar":
             response["config_preset"] = custom_block["config_preset"]
             response["annotator"] = custom_block["annotator"]
+            response["backend"] = custom_block["backend"]
         if sensor_type == "rtx_depth_camera":
             response["annotator"] = custom_block["annotator"]
         return response
@@ -183,10 +187,10 @@ class SensorService:
     async def attach_contact(
         self, request: dict[str, Any],
     ) -> dict[str, Any]:
-        """Attach an ``isaacsim.sensors.physics.ContactSensor`` child prim (Phase G).
+        """Attach an ``isaacsim.sensors.experimental.physics.Contact`` child prim (Phase G).
 
         Falls back to a plain Xform prim carrying ``validation_api:sensor_type=contact``
-        when the ``isaacsim.sensors.physics`` module is not importable
+        when the ``isaacsim.sensors.experimental.physics`` module is not importable
         (headless test harness). Response always reports which path was
         taken via the ``backend`` field.
         """
@@ -207,17 +211,15 @@ class SensorService:
             raise ValueError(f"Parent prim {parent_prim!r} not found for contact sensor")
 
         sensor_path = _safe_child_path(parent_prim, sensor_name)
-        backend = "isaacsim.sensors.physics"
+        backend = "isaacsim.sensors.experimental.physics.Contact.create"
 
         try:
             import numpy as np  # lazy
-            from isaacsim.sensors.physics import ContactSensor  # type: ignore[import-not-found]
+            from isaacsim.sensors.experimental.physics import Contact  # type: ignore[import-not-found]
 
-            ContactSensor(
-                prim_path=sensor_path,
-                name=sensor_name,
-                frequency=frequency,
-                translation=np.array(translation, dtype=float),
+            Contact.create(
+                sensor_path,
+                translations=np.array([translation], dtype=float),
                 radius=radius,
             )
         except Exception as exc:  # noqa: BLE001
@@ -258,7 +260,7 @@ class SensorService:
     async def attach_imu(
         self, request: dict[str, Any],
     ) -> dict[str, Any]:
-        """Attach an ``isaacsim.sensors.physics.IMUSensor`` child prim (Phase G).
+        """Attach an ``isaacsim.sensors.experimental.physics.IMU`` child prim (Phase G).
 
         Same fallback pattern as :meth:`attach_contact`.
         """
@@ -279,18 +281,16 @@ class SensorService:
             raise ValueError(f"Parent prim {parent_prim!r} not found for IMU sensor")
 
         sensor_path = _safe_child_path(parent_prim, sensor_name)
-        backend = "isaacsim.sensors.physics"
+        backend = "isaacsim.sensors.experimental.physics.IMU.create"
 
         try:
             import numpy as np  # lazy
-            from isaacsim.sensors.physics import IMUSensor  # type: ignore[import-not-found]
+            from isaacsim.sensors.experimental.physics import IMU  # type: ignore[import-not-found]
 
-            IMUSensor(
-                prim_path=sensor_path,
-                name=sensor_name,
-                frequency=frequency,
-                translation=np.array(mount_offset, dtype=float),
-                orientation=np.array(mount_orientation, dtype=float),
+            IMU.create(
+                sensor_path,
+                translations=np.array([mount_offset], dtype=float),
+                orientations=np.array([mount_orientation], dtype=float),
             )
         except Exception as exc:  # noqa: BLE001
             backend = f"fallback_xform:{type(exc).__name__}"
@@ -466,9 +466,9 @@ class SensorService:
         raw_keys: list[str] = []
         truncated = False
 
-        # Preferred path: a cached live LidarRtx instance (kept alive from
+        # Preferred path: a cached live LidarSensor instance (kept alive from
         # attach) whose internal render product is bound to the GMO scan
-        # buffer. get_current_frame()["data"] is an (N,3) cartesian array.
+        # buffer. Isaac Sim 6.0 exposes readback through get_data().
         # A fresh annotator on a throwaway render product (legacy path below)
         # returns empty because the lidar runtime isn't bound to it.
         cached = self._lidar_instances.get(sensor_prim_path)
@@ -478,7 +478,10 @@ class SensorService:
                 app = omni.kit.app.get_app()
                 for _ in range(frames_to_wait):
                     await app.next_update_async()
-                frame = cached.get_current_frame()
+                frame_raw = cached.get_data("generic-model-output")
+                frame = frame_raw
+                if isinstance(frame_raw, tuple) and len(frame_raw) == 2:
+                    frame = {"data": frame_raw[0], **(frame_raw[1] or {})}
                 if isinstance(frame, dict):
                     raw_keys = sorted(str(k) for k in frame.keys())
                     arr = frame.get("data")
@@ -505,7 +508,7 @@ class SensorService:
                         "ok": True,
                         "sensor_prim": sensor_prim_path,
                         "annotator": annotator_name,
-                        "backend": "isaacsim.sensors.rtx.LidarRtx",
+                        "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
                         "num_points": len(points),
                         "points": points,
                         "intensities": intensities,
@@ -514,9 +517,9 @@ class SensorService:
                         "raw_keys": raw_keys,
                         "warning": None,
                     }
-                warning = "cached LidarRtx get_current_frame returned no points yet"
+                warning = "cached LidarSensor get_data returned no points yet"
             except Exception as exc:  # noqa: BLE001
-                warning = f"cached LidarRtx readback failed: {exc}"
+                warning = f"cached LidarSensor readback failed: {exc}"
 
         try:
             import omni.kit.app
@@ -533,7 +536,7 @@ class SensorService:
             # data stays empty (live-verified 2026-05-28: force_new=False
             # -> data_shape=[0]; force_new=True -> data_shape=[41180,3]).
             # The annotator must also be attached via [render_product.path] —
-            # a LIST containing the path string (matches isaacsim.sensors.rtx
+            # a LIST containing the path string (matches isaacsim.sensors.experimental.rtx
             # source pattern); passing the object directly does not bind.
             render_product = rep.create.render_product(
                 sensor_prim_path, (128, 128), force_new=True,

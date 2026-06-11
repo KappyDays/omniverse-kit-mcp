@@ -1,4 +1,4 @@
-"""Live verification: 2 Isaac Sim instances on ports 8011 + 8012.
+"""Live verification: 2 Isaac Sim instances on ports 8111 + 8112.
 
 Success criteria:
   1. Both kits spawn to healthy state
@@ -49,13 +49,13 @@ async def main() -> int:
     pm1 = _module_for("isaac-sim", 1)
     pm2 = _module_for("isaac-sim", 2)
 
-    print("[1/5] Start instance 1 (port 8011)")
+    print("[1/5] Start instance 1 (port 8111)")
     r1 = await pm1.start()
     print(json.dumps(r1, indent=2, default=str))
     assert r1.get("ok"), "instance 1 failed to start"
     pid1 = r1["pid"]
 
-    print("\n[2/5] Start instance 2 (port 8012)")
+    print("\n[2/5] Start instance 2 (port 8112)")
     r2 = await pm2.start()
     print(json.dumps(r2, indent=2, default=str))
     assert r2.get("ok"), "instance 2 failed to start"
@@ -65,14 +65,14 @@ async def main() -> int:
     assert pid1 != pid2
 
     print("\n[4/5] Health check both ports")
-    h1, h2 = await _health(8011), await _health(8012)
-    print(f"  8011: {'OK' if h1 else 'FAIL'}   8012: {'OK' if h2 else 'FAIL'}")
+    h1, h2 = await _health(8111), await _health(8112)
+    print(f"  8111: {'OK' if h1 else 'FAIL'}   8112: {'OK' if h2 else 'FAIL'}")
     assert h1 and h2
 
     print("\n[5a/5] Stop instance 2; instance 1 must stay alive")
     r_stop2 = await pm2.stop()
     print(json.dumps(r_stop2, indent=2, default=str))
-    assert await _health(8011), "instance 1 died when instance 2 stopped (PID scoping broken)"
+    assert await _health(8111), "instance 1 died when instance 2 stopped (PID scoping broken)"
 
     print("\n[5b/5] Stop instance 1")
     r_stop1 = await pm1.stop()

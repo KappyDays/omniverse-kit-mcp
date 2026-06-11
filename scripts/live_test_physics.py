@@ -24,7 +24,7 @@ from pathlib import Path
 
 import httpx
 
-BASE = "http://localhost:8011/validation/v1"
+BASE = "http://127.0.0.1:8111/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = PROJECT_ROOT / "docs/artifacts/phase-f"
 BOX_PRIM = "/World/PhaseF/Box"

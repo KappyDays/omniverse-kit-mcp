@@ -29,7 +29,7 @@ belt / cube / robot 위치를 한눈에 측량 못 함 (belt 와 ground 모두 �
 ```python
 GRID_USD_URL = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac/Environments/Grid/default_environment.usd"
+    "Assets/Isaac/6.0/Isaac/Environments/Grid/default_environment.usd"
 )
 ground_prim = stage.DefinePrim(GROUND_PATH, "Xform")
 ground_prim.GetReferences().AddReference(GRID_USD_URL)

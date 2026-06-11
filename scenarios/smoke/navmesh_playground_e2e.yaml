@@ -7,14 +7,14 @@ metadata:
 
 spec:
   defaults:
-    # Warehouse cold-load + Biped_Setup 등 S3 fetch 가 무거움 — 넉넉하게.
+    # Warehouse cold-load + character runtime S3 fetch 가 무거움 — 넉넉하게.
     stepTimeoutSeconds: 300
     failFast: true
 
   variables:
-    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/full_warehouse.usd"
-    char_skin_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/F_Business_02/F_Business_02.usd"
-    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Environments/Simple_Warehouse/full_warehouse.usd"
+    char_skin_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Business_02/F_Business_02.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
     char_request_path: "/World/People_01"
     char_actual_path: "/World/Characters/People_01"   # character_load sanitized output
     robot_path: "/World/Robot_01"
@@ -59,7 +59,7 @@ spec:
         count: 3
         seed: 42
 
-    # 4. Spawn People (character_load auto-binds AnimGraph)
+    # 4. Spawn People (character_load applies BehaviorAgent/IRA runtime)
     - id: load_character
       module: character
       action: load
@@ -78,7 +78,7 @@ spec:
         prim_path: ${variables.robot_path}
         position: ${variables.robot_start}
 
-    # 6. Timeline play + warm-up (AnimGraph + articulation registry populate)
+    # 6. Timeline play + warm-up (character runtime + articulation registry populate)
     - id: play_warmup
       module: simulation
       action: play
@@ -186,7 +186,7 @@ spec:
         height: 720
 
   cleanup:
-    # Stop timeline gracefully (testbed #14 — AnimGraph/NavMesh shutdown safety)
+    # Stop timeline gracefully (testbed #14 — character/NavMesh shutdown safety)
     - id: stop_anim_safe
       module: character
       action: stop_animation
@@ -220,4 +220,4 @@ spec:
         prim_path: ${variables.robot_path}
       continueOnFailure: true
 
-    # Warehouse + NavMeshVolume + Biped_Setup 는 stage 에 남김 (재사용 idempotent)
+    # Warehouse + NavMeshVolume 는 stage 에 남김 (재사용 idempotent)

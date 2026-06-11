@@ -1,4 +1,4 @@
-"""Isaac Sim 5.1 extension 전수 카탈로그 bootstrap.
+"""Isaac Sim 6.0 extension 전수 카탈로그 bootstrap.
 
 Usage:
     uv run python scripts/harvest_extension_metadata.py [--resume]
@@ -17,8 +17,23 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-ISAAC_SIM_ROOT = Path(
-    os.environ.get("ISAAC_SIM_ROOT", "C:/IsaacSim")
+_LOCAL_ISAAC_SIM_6_ROOT = Path(
+    "C:/Users/kang/workspace/branch/isaac-sim-standalone-6.0.0-windows-x86_64"
+)
+
+
+def _first_existing_root(*candidates: str | Path | None) -> Path:
+    paths = [Path(c) for c in candidates if c]
+    for path in paths:
+        if path.exists():
+            return path
+    return paths[0]
+
+
+ISAAC_SIM_ROOT = _first_existing_root(
+    os.environ.get("ISAAC_SIM_ROOT"),
+    _LOCAL_ISAAC_SIM_6_ROOT,
+    "C:/IsaacSim",
 )
 USD_COMPOSER_ROOT = Path(
     os.environ.get("USD_COMPOSER_ROOT", "C:/USDComposer")
@@ -28,8 +43,13 @@ CATALOG_JSON = PROJECT_ROOT / "docs" / "references" / "extensions.json"
 PROGRESS_JSON = PROJECT_ROOT / "docs" / "references" / "harvest-progress.json"
 
 # v1 defaults (Isaac Sim only — preserved for bootstrap() backward compat).
-SOURCE_DIRS = ("exts", "extscache", "extsDeprecated")
-EXPECTED_COUNTS = {"exts": 97, "extscache": 452, "extsDeprecated": 72}
+SOURCE_DIRS = ("exts", "extscache", "extsDeprecated", "extsInternal")
+EXPECTED_COUNTS = {
+    "exts": 114,
+    "extscache": 493,
+    "extsDeprecated": 26,
+    "extsInternal": 7,
+}
 
 # v2: multi-app config (primary path via run_multi_app_harvest).
 # `kit/extscore` 는 Kit 핵심 binary lib (omni.client.lib · omni.kit.async_engine ·
@@ -37,9 +57,9 @@ EXPECTED_COUNTS = {"exts": 97, "extscache": 452, "extsDeprecated": 72}
 APP_ROOTS: dict[str, dict[str, Any]] = {
     "isaacsim": {
         "root": ISAAC_SIM_ROOT,
-        "source_dirs": ("exts", "extscache", "extsDeprecated", "kit/extscore"),
-        "kit_version": "107.3.3",
-        "app_version": "5.1.0-rc.19",
+        "source_dirs": ("exts", "extscache", "extsDeprecated", "extsInternal", "kit/extscore"),
+        "kit_version": "110.1.1",
+        "app_version": "6.0.0-rc.59+release.41464.5f2772bc.gl",
     },
     "usd_composer": {
         "root": USD_COMPOSER_ROOT,
@@ -579,7 +599,7 @@ def run_multi_app_harvest(preserve_enrichment: bool = True) -> None:
 
 
 def _build_catalog(entries: list[dict[str, Any]]) -> dict[str, Any]:
-    source_counts = {"exts": 0, "extscache": 0, "extsDeprecated": 0}
+    source_counts = {source_dir: 0 for source_dir in SOURCE_DIRS}
     for e in entries:
         source_counts[e["source_dir"]] = source_counts.get(e["source_dir"], 0) + 1
     return {
@@ -587,8 +607,8 @@ def _build_catalog(entries: list[dict[str, Any]]) -> dict[str, Any]:
             "generated_at": dt.datetime.now(dt.UTC).isoformat(),
             "generator_version": "harvest_extension_metadata.py@1.0",
             "isaac_sim_root": ISAAC_SIM_ROOT.as_posix(),
-            "isaac_sim_version": "5.1.0-rc.19",
-            "kit_version": "107.3.3",
+            "isaac_sim_version": "6.0.0-rc.59+release.41464.5f2772bc.gl",
+            "kit_version": "110.1.1",
             "total_extensions": len(entries),
             "source_counts": source_counts,
             "last_enriched_at": max(

@@ -1180,8 +1180,8 @@ asset_search(query: 'str', category: 'str | None' = None, limit: 'int' = 20) -> 
 Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.  Maps
 a natural-language need (e.g. "forklift", "warehouse", "franka", "police character", "pallet")
 to concrete spawnable USD URLs by ranking the curated markdown catalog under docs/assets/isaac/
-(robots 100+, environments, people/animations, props, SimReady 1000+). Use this at planning
-time / before building a scene to pick a real asset (Validation Rule R1 — never substitute a
+(robots 90+, environments, people/animations, props, SimReady 1000+). Use this at planning time
+/ before building a scene to pick a real asset (Validation Rule R1 — never substitute a
 primitive); complements the live asset_list (which needs Isaac up) and content_browse.  Args:
 query: free-text terms matched against asset name / catalog text.   category: optional filter —
 one of robots / environments / people /     props / simready / other.   limit: max results
@@ -2216,8 +2216,8 @@ Seek timeline to time_seconds; preserves current play/stop state.
 simulation_step(frames: 'int' = 1) -> 'str'
 ```
 
-Advance timeline by N frames deterministically (forward_one_frame() or play-burst fallback);
-preserves prior play state.
+Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play
+state.
 
 **Parameters**
 

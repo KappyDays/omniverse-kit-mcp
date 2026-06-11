@@ -200,7 +200,7 @@ async def test_robot_load_propagates_error():
 
     class FailingClient(MockIsaacRestClient):
         async def robot_load(self, request):  # type: ignore[override]
-            raise RuntimeError("CreateReferenceCommand failed")
+            raise RuntimeError("CreatePayloadCommand failed")
 
     module = RobotModule(FailingClient())
     request = RobotLoadRequest(usd_url="bogus", prim_path="/World/X")
@@ -209,7 +209,7 @@ async def test_robot_load_propagates_error():
     assert not result.ok
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "ROBOT_LOAD_ERROR"
-    assert "CreateReferenceCommand failed" in (result.message or "")
+    assert "CreatePayloadCommand failed" in (result.message or "")
 
 
 # Phase J — drive_physics
