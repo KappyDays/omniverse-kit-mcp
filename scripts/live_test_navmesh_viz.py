@@ -22,7 +22,10 @@ from pathlib import Path
 
 import httpx
 
-BASE = "http://127.0.0.1:8111/validation/v1"
+BASE = (
+    os.environ.get("ISAAC_SIM_BASE_URL", "http://127.0.0.1:8111").rstrip("/")
+    + "/validation/v1"
+)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PHASE_E_DIR = PROJECT_ROOT / "docs/artifacts/phase-e"
 

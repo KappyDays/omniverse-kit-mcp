@@ -15,7 +15,10 @@ import tempfile
 
 import httpx
 
-BASE = "http://127.0.0.1:8111/validation/v1"
+BASE = (
+    os.environ.get("ISAAC_SIM_BASE_URL", "http://127.0.0.1:8111").rstrip("/")
+    + "/validation/v1"
+)
 
 
 def _post(c: httpx.Client, path: str, *, json=None, params=None):

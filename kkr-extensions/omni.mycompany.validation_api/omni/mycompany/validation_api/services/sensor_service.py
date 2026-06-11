@@ -50,6 +50,19 @@ class SensorService:
     async def _attach(
         self, request: dict[str, Any], *, sensor_type: str,
     ) -> dict[str, Any]:
+        """Schedule sensor USD mutation on the Kit main loop."""
+        import asyncio
+        import omni.kit.async_engine  # lazy
+
+        async def _main_loop_impl() -> dict[str, Any]:
+            return await self._attach_on_main(request, sensor_type=sensor_type)
+
+        future = omni.kit.async_engine.run_coroutine(_main_loop_impl())
+        return await asyncio.wrap_future(future)
+
+    async def _attach_on_main(
+        self, request: dict[str, Any], *, sensor_type: str,
+    ) -> dict[str, Any]:
         """Create a Camera prim child + stamp sensor_type + apply mount transform."""
         import omni.kit.commands  # lazy
         import omni.usd

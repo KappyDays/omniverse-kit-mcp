@@ -13,12 +13,16 @@ Exercises:
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
 import httpx
 
-BASE = "http://127.0.0.1:8111/validation/v1"
+BASE = (
+    os.environ.get("ISAAC_SIM_BASE_URL", "http://127.0.0.1:8111").rstrip("/")
+    + "/validation/v1"
+)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PHASE_H_DIR = PROJECT_ROOT / "docs/artifacts/phase-h"
 
@@ -58,13 +62,19 @@ def main() -> int:
             print(f"-- deactivate {DEMO_EXT} (tolerant)")
             r = c.post(f"{BASE}/extension/deactivate", json={"ext_id": DEMO_EXT})
             if r.status_code == 200:
-                responses["deactivate_demo"] = r.json()
-                print(r.json())
-                print(f"-- reactivate {DEMO_EXT} reload=True")
-                r = c.post(f"{BASE}/extension/activate", json={"ext_id": DEMO_EXT, "reload": True})
-                r.raise_for_status()
-                responses["reactivate_demo"] = r.json()
-                print(r.json())
+                demo_deactivate = r.json()
+                responses["deactivate_demo"] = demo_deactivate
+                print(demo_deactivate)
+                if demo_deactivate.get("was_enabled"):
+                    print(f"-- reactivate {DEMO_EXT} reload=True")
+                    r = c.post(f"{BASE}/extension/activate", json={"ext_id": DEMO_EXT, "reload": True})
+                    r.raise_for_status()
+                    responses["reactivate_demo"] = r.json()
+                    print(r.json())
+                else:
+                    skip = {"reason": "demo extension was not enabled before deactivate"}
+                    responses["reactivate_demo_skip"] = skip
+                    print(f"reactivate skipped — {skip['reason']}")
             else:
                 print(f"deactivate skipped — HTTP {r.status_code}: {r.text[:200]}")
                 responses["deactivate_demo_skip"] = {
