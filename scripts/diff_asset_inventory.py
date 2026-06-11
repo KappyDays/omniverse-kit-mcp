@@ -26,7 +26,7 @@ import httpx
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # Two catalog scopes — both validated by this script:
-#   docs/assets/isaac/assets/  → Isaac Sim 5.1 bundle (legacy, strict prefix)
+#   docs/assets/isaac/assets/  → Isaac Sim 6.0 bundle (strict prefix)
 #   docs/assets/composer/      → USD Composer / cross-app sample library
 # Both live in the same omniverse-content-production S3 bucket.
 ASSETS_DIRS = [

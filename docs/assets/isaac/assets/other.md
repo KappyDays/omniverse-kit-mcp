@@ -1,6 +1,6 @@
-# IsaacLab · Materials · Samples · Sensors — Isaac Sim 5.1 Asset Catalog
+# IsaacLab · Materials · Samples · Sensors — Isaac Sim 6.0 Asset Catalog
 
-`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac`
+`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
 
 ---
 

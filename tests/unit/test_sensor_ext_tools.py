@@ -55,6 +55,7 @@ async def test_attach_contact_returns_prim_path():
     assert result.data.sensor_prim_path.endswith("/FrontBumper")
     assert result.data.sensor_type == "contact"
     assert result.data.frequency == 120
+    assert result.data.backend == "isaacsim.sensors.experimental.physics.Contact.create"
 
 
 @pytest.mark.asyncio
@@ -75,6 +76,7 @@ async def test_attach_imu_returns_prim_path():
     assert isinstance(result.data, SensorAttachImuResult)
     assert result.data.sensor_type == "imu"
     assert result.data.frequency == 500
+    assert result.data.backend == "isaacsim.sensors.experimental.physics.IMU.create"
 
 
 @pytest.mark.asyncio

@@ -56,6 +56,12 @@ ISAAC_SIM_PROFILE = KitAppProfile(
         "omni.anim.navigation.bundle",
         "isaacsim.replicator.agent.core",
         "omni.kit.ui_test",
+        "isaacsim.sensors.experimental.rtx",
+        "isaacsim.sensors.experimental.physics",
+        "isaacsim.ros2.bridge",
+        "omni.graph.action",
+        "omni.replicator.core",
+        "omni.mycompany.navmesh_playground",
     ),
     supported_module_groups=frozenset({
         "common",

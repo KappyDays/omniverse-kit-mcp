@@ -1,6 +1,6 @@
 ---
 name: omniverse-asset-inventory-sync
-description: Invoke after Isaac Sim 5.x or NVIDIA SimReady asset bucket update, or when an asset path in docs/assets/isaac/assets/*.md or docs/assets/composer/*.md is reported as 404 / missing. Validates every USD URL in both inventories against NVIDIA Omniverse public S3 (HTTP HEAD) and walks the human through fixing invalid entries. Not for adding brand-new assets to the inventory, and not for Kit Extension code packages (use omniverse-kit-extension-catalog-sync for those).
+description: Invoke after Isaac Sim 6.x or NVIDIA SimReady asset bucket update, or when an asset path in docs/assets/isaac/assets/*.md or docs/assets/composer/*.md is reported as 404 / missing. Validates every USD URL in both inventories against NVIDIA Omniverse public S3 (HTTP HEAD) and walks the human through fixing invalid entries. Not for adding brand-new assets to the inventory, and not for Kit Extension code packages (use omniverse-kit-extension-catalog-sync for those).
 user-invocable: true
 disable-model-invocation: true
 metadata:
@@ -11,10 +11,10 @@ metadata:
 
 Prefix your first line with 🗂️ inline.
 
-**목표**: 두 inventory 디렉토리의 모든 USD URL 이 NVIDIA S3 에서 여전히 valid 한지 검증하고 invalid 엔트리를 수정. Isaac Sim 5.x 패치 / SimReady release 후 stale path 가 누적되는 것을 방지.
+**목표**: 두 inventory 디렉토리의 모든 USD URL 이 NVIDIA S3 에서 여전히 valid 한지 검증하고 invalid 엔트리를 수정. Isaac Sim 6.x 패치 / SimReady release 후 stale path 가 누적되는 것을 방지.
 
 **Watched scopes** (둘 다 같은 `omniverse-content-production` S3 bucket):
-- `docs/assets/isaac/assets/*.md` — Isaac Sim 5.1 번들 한정 (strict: `Isaac/5.1` 또는 `simready_content` prefix 만 허용)
+- `docs/assets/isaac/assets/*.md` — Isaac Sim 6.0 번들 한정 (strict: `Isaac/6.0` 또는 `simready_content` prefix 만 허용)
 - `docs/assets/composer/*.md` — USD Composer / 크로스앱 sample library (DigitalTwin / ArchVis / Vegetation 등 `$VAR` 자유 선언, bucket-level 검증만)
 - README.md (catalog index) 는 URL 검증 대상 아님 — sub-md 의 메타정보만 등재
 
@@ -67,7 +67,7 @@ Network HEAD requests against `omniverse-content-production.s3` and `omniverse-c
 
 If many invalid URLs share the same `Isaac/5.X/Isaac` prefix (e.g. NVIDIA released `Isaac/5.2/Isaac`), ask:
 
-> "NVIDIA 가 새 Isaac Sim asset 버킷 (예: `5.1` → `5.2`) 으로 옮긴 것 같습니다. 모든 sub-md 의 `$ISAAC` prefix 를 `Isaac/5.2/Isaac` 로 일괄 갱신할까요?"
+> "NVIDIA 가 새 Isaac Sim asset 버킷 (예: `6.0` → `6.1`) 으로 옮긴 것 같습니다. 모든 sub-md 의 `$ISAAC` prefix 를 `Isaac/6.1/Isaac` 로 일괄 갱신할까요?"
 
 Use `Edit` with `replace_all: true` for the prefix declaration line in each sub-md.
 
@@ -111,7 +111,7 @@ git push origin main
 
 Commit message examples:
 - `fix(asset_inventory): NTNU vendor 6 entries → NVIDIA + path rename`
-- `fix(asset_inventory): Isaac Sim 5.1 → 5.2 prefix bump`
+- `fix(asset_inventory): Isaac Sim 6.0 → 6.1 prefix bump`
 - `fix(asset_inventory): FrankaFR3 path → fr3.usd (NVIDIA renamed)`
 
 ## Stop Conditions

@@ -17,7 +17,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 10 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 2 tools
-- [Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)](#character--bipedsetup--animationgraph--navmesh-async-job) — 8 tools
+- [Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)](#character--behavioragent--ira--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
 - Unclassified (48)
@@ -1151,11 +1151,11 @@ is_folder=false entries have spawnable url.
 asset_search(query: 'str', category: 'str | None' = None, limit: 'int' = 20) -> 'str'
 ```
 
-Search the curated NVIDIA / Isaac Sim 5.1 asset catalog OFFLINE — no Isaac Sim required.  Maps
+Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.  Maps
 a natural-language need (e.g. "forklift", "warehouse", "franka", "police character", "pallet")
 to concrete spawnable USD URLs by ranking the curated markdown catalog under docs/assets/isaac/
-(robots 100+, environments, people/animations, props, SimReady 1000+). Use this at planning
-time / before building a scene to pick a real asset (Validation Rule R1 — never substitute a
+(robots 90+, environments, people/animations, props, SimReady 1000+). Use this at planning time
+/ before building a scene to pick a real asset (Validation Rule R1 — never substitute a
 primitive); complements the live asset_list (which needs Isaac up) and content_browse.  Args:
 query: free-text terms matched against asset name / catalog text.   category: optional filter —
 one of robots / environments / people /     props / simready / other.   limit: max results
@@ -1170,7 +1170,7 @@ with stage_load_usd / robot_load / character_load per docs/invariants/usd-load.m
 | `category` | `string \| None` | `None` |  |
 | `limit` | `integer` | `20` |  |
 
-## Character — Biped_Setup + AnimationGraph + NavMesh (ASYNC Job)
+## Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)
 
 ### `character_get_state`
 
@@ -1193,8 +1193,8 @@ is_navigating.
 character_load(usd_url: 'str', prim_path: 'str | None' = None, position: 'list[float] | None' = None, yaw: 'float' = 0.0) -> 'str'
 ```
 
-Load character USD; auto-loads Biped_Setup rig, binds AnimationGraph. Returns prim_path +
-skel_root. Sanitizes UUID filenames.
+Load a 6.0 character skin, apply BehaviorAgent/IRA APIs, and return prim_path + skel_root.
+Sanitizes filenames.
 
 **Parameters**
 
@@ -1211,8 +1211,8 @@ skel_root. Sanitizes UUID filenames.
 character_load_crowd(count: 'int', layout: 'str' = 'grid', spacing: 'float' = 2.0, base_name: 'str' = 'Crowd', center: 'list[float] | None' = None, usd_url: 'str | None' = None) -> 'str'
 ```
 
-Batch-load N characters (count 1-100) in layout ∈ {grid, line, random}. Defaults to
-Biped_Setup.usd; override usd_url. Per-character failures in response.loaded.
+Batch-load N 6.0 character skins (count 1-100) in layout ∈ {grid, line, random}. Defaults to
+F_Business_02; override usd_url. Per-character failures in response.loaded.
 
 **Parameters**
 
@@ -1266,7 +1266,7 @@ target_position [x,y,z] for path-following.
 character_play_animation_variant(prim_path: 'str', variant: 'str', speed: 'float' = 1.0, target_position: 'list[float] | None' = None) -> 'str'
 ```
 
-Play AnimationGraph BlendSpace variant
+Play a BehaviorAgent/legacy-compatible variant
 (SitIdle/SitTalk/SitReading/WalkFast/WalkSlow/RunLow/RunHigh or plain Sit/Walk/Run/Idle).
 response.variables_set lists applied keys.
 
@@ -1286,9 +1286,9 @@ character_set_position(prim_path: 'str', position: 'list[float]', orientation: '
 ```
 
 Write character world pose to USD (xformOp:translate + orientation, scalar-first
-[qw,qx,qy,qz]). AnimGraph overrides the visual pose on the next tick, so get_state.position
-will not reflect this — for visible motion use character_navigate_to; for initial placement use
-character_load(position=...).
+[qw,qx,qy,qz]). The character runtime may override visual pose on the next tick, so use
+character_navigate_to for visible motion and character_load(position=...) for initial
+placement.
 
 **Parameters**
 
@@ -2190,8 +2190,8 @@ Seek timeline to time_seconds; preserves current play/stop state.
 simulation_step(frames: 'int' = 1) -> 'str'
 ```
 
-Advance timeline by N frames deterministically (forward_one_frame() or play-burst fallback);
-preserves prior play state.
+Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play
+state.
 
 **Parameters**
 

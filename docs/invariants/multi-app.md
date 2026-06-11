@@ -48,7 +48,8 @@ Guard function 은 `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/
 ## ISAAC_SIM_EXTRA_EXT_IDS 는 Isaac-profile 전용
 
 `.env` 의 `ISAAC_SIM_EXTRA_EXT_IDS` 는 Isaac-specific extension id 만
-포함 (isaacsim.sensors.rtx / omni.anim.* / isaacsim.replicator.agent.core).
+포함 (isaacsim.sensors.experimental.rtx / isaacsim.sensors.experimental.physics /
+isaacsim.ros2.bridge / isaacsim.replicator.agent.core).
 USD Composer 에 주입하면 Kit boot 시 "Failed to resolve extension
 dependencies" 로 crash. Config validator (`src/omniverse_kit_mcp/config.py::IsaacSimProcessConfig`) 가
 profile=isaac-sim 에만 env 값 적용, 그 외는 profile 의 curated
@@ -100,7 +101,7 @@ grep -rn '"<workspace>/' --include='*.kit' <workspace>/
 
 ### 대상 파일 목록 (2026-05-04 현재)
 
-- `branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit`
+- `branch/isaac-sim-standalone-6.0.0-windows-x86_64/apps/isaacsim.exp.full.kit`
 - `branch/kit-app-template/source/apps/kkr_usd_composer.kit`
   (`_build/windows-x86_64/release/apps/kkr_usd_composer.kit` 와 hardlink — source 만 수정해도 양쪽 갱신)
 - `branch/usd-composer-webrtc-streaming/kit-app-template/source/apps/kkr_usd_composer.kit`

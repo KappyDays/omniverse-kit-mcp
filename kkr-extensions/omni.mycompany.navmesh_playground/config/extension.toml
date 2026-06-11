@@ -7,7 +7,7 @@ keywords = ["navmesh", "character", "robot", "demo", "navigation"]
 
 [dependencies]
 # Minimal toml deps. Heavy bundles (omni.anim.graph.bundle, omni.anim.navigation.bundle,
-# omni.isaac.wheeled_robots, isaacsim.core.prims, isaacsim.replicator.agent.core) are
+# isaacsim.robot.wheeled_robots, isaacsim.core.prims, isaacsim.replicator.agent.core) are
 # auto-activated via ISAAC_SIM_EXTRA_EXT_IDS in .env so the toml stays lean and
 # Kit boot doesn't fail if a dep is renamed/moved across Kit versions.
 # Independent extension — validation_api 의존 금지 (2026-04-22 정책).

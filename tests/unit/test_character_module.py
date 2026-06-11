@@ -44,7 +44,7 @@ async def test_character_load_success():
     assert isinstance(result.data, CharacterLoadResult)
     assert result.data.prim_path == "/World/Characters/c_1"
     assert result.data.sanitized_prim_path == "/World/Characters/c_1"
-    assert result.data.skel_root_path == "/World/Characters/Biped_Setup/SkelRoot"
+    assert result.data.skel_root_path == "/World/Characters/c_1/SkelRoot"
     assert result.data.has_skeleton is True
     assert result.data.anim_graph_bound is True
     load_calls = [c for c in client.calls if c[0] == "character_load"]
@@ -222,7 +222,7 @@ async def test_character_load_propagates_error():
 
     class FailingClient(MockIsaacRestClient):
         async def character_load(self, request):  # type: ignore[override]
-            raise RuntimeError("CreateReferenceCommand failed for biped.usd")
+            raise RuntimeError("CreatePayloadCommand failed for character.usd")
 
     module = CharacterModule(FailingClient())
     request = CharacterLoadRequest(usd_url="bogus", prim_path="/World/Characters/c_1")
@@ -231,4 +231,4 @@ async def test_character_load_propagates_error():
     assert not result.ok
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "CHARACTER_LOAD_ERROR"
-    assert "CreateReferenceCommand failed" in (result.message or "")
+    assert "CreatePayloadCommand failed" in (result.message or "")

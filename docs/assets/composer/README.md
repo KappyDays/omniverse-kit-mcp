@@ -3,7 +3,7 @@
 NVIDIA Omniverse 의 standard sample library (`omniverse-content-production` S3
 bucket) 중 USD Composer 의 default Content browser 에서 보이는 asset 들을 분류.
 
-`docs/assets/isaac/assets/` 가 Isaac Sim 5.1 번들 한정 catalog 인 데 비해, 이 디렉토리는
+`docs/assets/isaac/assets/` 가 Isaac Sim 6.0 번들 한정 catalog 인 데 비해, 이 디렉토리는
 **Composer 영역의 모든 asset** 을 다룬다. Isaac Sim 에서도 같은 HTTPS URL 로 load 가능.
 
 S3 root: `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/`

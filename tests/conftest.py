@@ -521,11 +521,16 @@ class MockIsaacRestClient:
             "character_load",
             {
                 "ok": True,
-                "prim_path": request.get("prim_path") or "/World/Characters/Biped_Setup",
-                "skel_root_path": "/World/Characters/Biped_Setup/SkelRoot",
-                "sanitized_prim_path": request.get("prim_path") or "/World/Characters/Biped_Setup",
+                "prim_path": request.get("prim_path") or "/World/Characters/F_Business_02",
+                "skel_root_path": (
+                    request.get("prim_path") or "/World/Characters/F_Business_02"
+                ) + "/SkelRoot",
+                "sanitized_prim_path": (
+                    request.get("prim_path") or "/World/Characters/F_Business_02"
+                ),
                 "has_skeleton": True,
                 "anim_graph_bound": True,
+                "runtime_backend": "isaacsim.replicator.agent.core.behavior_agent",
             },
         )
 
@@ -661,7 +666,7 @@ class MockIsaacRestClient:
                 "spacing": spacing,
                 "base_name": base,
                 "center": list(center),
-                "usd_url": request.get("usd_url") or "https://example/Biped_Setup.usd",
+                "usd_url": request.get("usd_url") or "https://example/F_Business_02.usd",
                 "loaded": loaded,
             },
         )
@@ -946,6 +951,7 @@ class MockIsaacRestClient:
             "sensor_type": "rtx_lidar",
             "config_preset": request.get("config_preset", "Example_Rotary"),
             "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+            "backend": "isaacsim.sensors.experimental.rtx.Lidar.create",
         })
 
     async def sensor_attach_rtx_depth_camera(self, request: dict) -> dict:
@@ -984,7 +990,7 @@ class MockIsaacRestClient:
             "frequency": int(request.get("frequency", 60)),
             "translation": request.get("translation", [0.0, 0.0, 0.0]),
             "radius": float(request.get("radius", -1.0)),
-            "backend": "isaacsim.sensors.physics",
+            "backend": "isaacsim.sensors.experimental.physics.Contact.create",
         })
 
     async def sensor_attach_imu(self, request: dict) -> dict:
@@ -999,7 +1005,7 @@ class MockIsaacRestClient:
             "frequency": int(request.get("frequency", 200)),
             "mount_offset": request.get("mount_offset", [0.0, 0.0, 0.0]),
             "mount_orientation": request.get("mount_orientation", [1.0, 0.0, 0.0, 0.0]),
-            "backend": "isaacsim.sensors.physics",
+            "backend": "isaacsim.sensors.experimental.physics.IMU.create",
         })
 
     async def sensor_set_annotator(self, request: dict) -> dict:
@@ -1409,17 +1415,17 @@ class MockIsaacRestClient:
         if category is None:
             return self.responses.get("asset_list_categories", {
                 "ok": True,
-                "assets_root": "https://example/Isaac/5.1",
+                "assets_root": "https://example/Isaac/6.0",
                 "categories": [
-                    {"name": "robots", "url": "https://example/Isaac/5.1/Isaac/Robots"},
+                    {"name": "robots", "url": "https://example/Isaac/6.0/Isaac/Robots"},
                 ],
             })
         return self.responses.get("asset_list", {
             "ok": True,
             "category": category,
             "subpath": subpath,
-            "base_url": f"https://example/Isaac/5.1/Isaac/{category.capitalize()}",
-            "target_url": f"https://example/Isaac/5.1/Isaac/{category.capitalize()}/{subpath}".rstrip("/"),
+            "base_url": f"https://example/Isaac/6.0/Isaac/{category.capitalize()}",
+            "target_url": f"https://example/Isaac/6.0/Isaac/{category.capitalize()}/{subpath}".rstrip("/"),
             "items": [
                 {"name": "Franka", "url": "https://example/.../Franka", "is_folder": True, "size": None},
                 {"name": "franka.usd", "url": "https://example/.../franka.usd", "is_folder": False, "size": 1024},

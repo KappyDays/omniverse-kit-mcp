@@ -163,14 +163,15 @@ class StageService:
         }
 
     async def load_usd(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Load a USD reference into the stage at *prim_path*.
+        """Load a USD payload into the stage at *prim_path*.
 
         2026-04-20 사용자 실증: isaac-sim.bat Kit (Extension 없음) + GUI drag&drop 은
-        `CreatePayloadCommand(instanceable=True)` 로 성공. 하지만 Extension 이 load 된 Kit
-        에서 GUI drag&drop 조차 hang — FastAPI handler 의 event loop 가 Kit main event loop
-        와 분리되어 command 가 main loop 에서 실행되지 못함. 해결: `omni.kit.async_engine.
-        run_coroutine()` 으로 coroutine 을 Kit main loop 에 명시적으로 schedule + `asyncio.
-        wrap_future` 로 async handler 가 await.
+        `CreatePayloadCommand(instanceable=True)` 로 static asset load 성공. 하지만 Extension
+        이 load 된 Kit 에서 GUI drag&drop 조차 hang — FastAPI handler 의 event loop 가 Kit
+        main event loop 와 분리되어 command 가 main loop 에서 실행되지 못함. 해결:
+        `omni.kit.async_engine.run_coroutine()` 으로 coroutine 을 Kit main loop 에 명시적으로
+        schedule + `asyncio.wrap_future` 로 async handler 가 await. Robot/articulation load 는
+        별도 service 에서 `instanceable=False` 예외를 사용.
         """
         import asyncio
         import omni.kit.async_engine  # lazy
@@ -575,7 +576,7 @@ async def _wait_stage_loading(max_frames: int = 600) -> None:
 
 def _is_stage_loading() -> bool:
     try:
-        from isaacsim.core.utils.stage import is_stage_loading
+        from isaacsim.core.experimental.utils.stage import is_stage_loading
         return is_stage_loading()
     except ImportError:
         try:

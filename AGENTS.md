@@ -85,8 +85,8 @@ Workspace mapping:
 
 | Workspace | MCP server | App | Port |
 |---|---|---|---|
-| `workspaces/isaac/instance-1` | `isaacsim-mcp-1` | Isaac Sim 5.1 | 8111 |
-| `workspaces/isaac/instance-2` | `isaacsim-mcp-2` | Isaac Sim 5.1 | 8112 |
+| `workspaces/isaac/instance-1` | `isaacsim-mcp-1` | Isaac Sim 6.0.0 | 8111 |
+| `workspaces/isaac/instance-2` | `isaacsim-mcp-2` | Isaac Sim 6.0.0 | 8112 |
 | `workspaces/usd-composer/instance-1` | `usdcomposer-mcp-1` | USD Composer | 8114 |
 | `workspaces/usd-composer/instance-2` | `usdcomposer-mcp-2` | USD Composer | 8115 |
 

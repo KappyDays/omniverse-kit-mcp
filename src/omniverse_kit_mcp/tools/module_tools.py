@@ -527,7 +527,7 @@ def register_module_tools(
 
     @mcp.tool()
     async def simulation_step(frames: int = 1) -> str:
-        """Advance timeline by N frames deterministically (forward_one_frame() or play-burst fallback); preserves prior play state."""
+        """Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play state."""
         meta = make_meta(ModuleName.SIMULATION)
         request = SimulationStepRequest(frames=frames)
         result = await simulation.step(meta, request)
@@ -851,11 +851,11 @@ def register_module_tools(
         category: str | None = None,
         limit: int = 20,
     ) -> str:
-        """Search the curated NVIDIA / Isaac Sim 5.1 asset catalog OFFLINE — no Isaac Sim required.
+        """Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.
 
         Maps a natural-language need (e.g. "forklift", "warehouse", "franka",
         "police character", "pallet") to concrete spawnable USD URLs by ranking
-        the curated markdown catalog under docs/assets/isaac/ (robots 100+,
+        the curated markdown catalog under docs/assets/isaac/ (robots 90+,
         environments, people/animations, props, SimReady 1000+). Use this at
         planning time / before building a scene to pick a real asset (Validation
         Rule R1 — never substitute a primitive); complements the live asset_list
@@ -888,7 +888,7 @@ def register_module_tools(
         position: list[float] | None = None,
         yaw: float = 0.0,
     ) -> str:
-        """Load character USD; auto-loads Biped_Setup rig, binds AnimationGraph. Returns prim_path + skel_root. Sanitizes UUID filenames."""
+        """Load a 6.0 character skin, apply BehaviorAgent/IRA APIs, and return prim_path + skel_root. Sanitizes filenames."""
         meta = make_meta(ModuleName.CHARACTER)
         request = CharacterLoadRequest(
             usd_url=usd_url,
@@ -923,7 +923,7 @@ def register_module_tools(
         position: list[float],
         orientation: list[float] | None = None,
     ) -> str:
-        """Write character world pose to USD (xformOp:translate + orientation, scalar-first [qw,qx,qy,qz]). AnimGraph overrides the visual pose on the next tick, so get_state.position will not reflect this — for visible motion use character_navigate_to; for initial placement use character_load(position=...)."""
+        """Write character world pose to USD (xformOp:translate + orientation, scalar-first [qw,qx,qy,qz]). The character runtime may override visual pose on the next tick, so use character_navigate_to for visible motion and character_load(position=...) for initial placement."""
         meta = make_meta(ModuleName.CHARACTER)
         request = CharacterSetPositionRequest(
             prim_path=prim_path,
@@ -971,7 +971,7 @@ def register_module_tools(
         speed: float = 1.0,
         target_position: list[float] | None = None,
     ) -> str:
-        """Play AnimationGraph BlendSpace variant (SitIdle/SitTalk/SitReading/WalkFast/WalkSlow/RunLow/RunHigh or plain Sit/Walk/Run/Idle). response.variables_set lists applied keys."""
+        """Play a BehaviorAgent/legacy-compatible variant (SitIdle/SitTalk/SitReading/WalkFast/WalkSlow/RunLow/RunHigh or plain Sit/Walk/Run/Idle). response.variables_set lists applied keys."""
         meta = make_meta(ModuleName.CHARACTER)
         request = CharacterPlayAnimationVariantRequest(
             prim_path=prim_path,
@@ -994,7 +994,7 @@ def register_module_tools(
         center: list[float] | None = None,
         usd_url: str | None = None,
     ) -> str:
-        """Batch-load N characters (count 1-100) in layout ∈ {grid, line, random}. Defaults to Biped_Setup.usd; override usd_url. Per-character failures in response.loaded."""
+        """Batch-load N 6.0 character skins (count 1-100) in layout ∈ {grid, line, random}. Defaults to F_Business_02; override usd_url. Per-character failures in response.loaded."""
         meta = make_meta(ModuleName.CHARACTER)
         center_tuple = (
             tuple(float(c) for c in center) if center else (0.0, 0.0, 0.0)

@@ -147,6 +147,43 @@ async def test_isaac_profile_sets_ros_env(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_isaac_profile_prefers_ros2_core_lib_for_isaac_6(monkeypatch, tmp_path):
+    root = tmp_path / "isaac-sim-6"
+    kit_exe = root / "kit" / "kit.exe"
+    kit_file = root / "apps" / "isaacsim.exp.full.kit"
+    ros_core_lib = root / "exts" / "isaacsim.ros2.core" / "humble" / "lib"
+    ros_bridge_lib = root / "exts" / "isaacsim.ros2.bridge" / "humble" / "lib"
+    kit_exe.parent.mkdir(parents=True)
+    kit_file.parent.mkdir(parents=True)
+    ros_core_lib.mkdir(parents=True)
+    ros_bridge_lib.mkdir(parents=True)
+    kit_exe.write_text("", encoding="utf-8")
+    kit_file.write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("ISAAC_SIM_KIT_EXE", kit_exe.as_posix())
+    monkeypatch.setenv("ISAAC_SIM_KIT_FILE", kit_file.as_posix())
+
+    module = _module_for("isaac-sim", 1)
+    captured_env: dict = {}
+
+    def fake_popen(cmd, env=None, **kwargs):
+        captured_env.update(env or {})
+        fake = MagicMock()
+        fake.pid = 11113
+        return fake
+
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
+    monkeypatch.setattr(ProcessModule, "_is_process_alive", lambda self: _async_false())
+    monkeypatch.setattr(ProcessModule, "_check_health", lambda self: _async_true())
+    monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
+
+    await module.start()
+    path_parts = captured_env.get("PATH", "").split(os.pathsep)
+    assert str(ros_core_lib) in path_parts
+    assert str(ros_bridge_lib) not in path_parts
+
+
+@pytest.mark.asyncio
 async def test_usd_composer_profile_skips_ros_env(monkeypatch):
     monkeypatch.delenv("ROS_DISTRO", raising=False)
     monkeypatch.delenv("RMW_IMPLEMENTATION", raising=False)

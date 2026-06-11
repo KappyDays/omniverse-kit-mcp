@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import inspect
+from pathlib import Path
+
 import pytest
 
 from omniverse_kit_mcp.modules.navigation_module import NavigationModule
 from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
 from omniverse_kit_mcp.types.navigation import NavPathQueryRequest, SampleWalkablePointsRequest
+from omni.mycompany.validation_api.services import navigation_service
+from omni.mycompany.validation_api.services.navigation_service import NavigationService
 from tests.conftest import MockIsaacRestClient
 
 
@@ -90,6 +95,35 @@ async def test_query_path_error_maps(nav_module, mock_client, meta):
     )
     assert result.ok is False
     assert result.error_code == "NAVIGATION_QUERY_PATH_ERROR"
+
+
+def test_navigation_service_uses_isaac6_nav_agent_desc_wrapper():
+    service_source = inspect.getsource(NavigationService)
+    query_source = inspect.getsource(navigation_service._query_shortest_path)
+    desc_source = inspect.getsource(navigation_service._make_nav_agent_desc)
+
+    assert "mesh.query_shortest_path(" not in service_source
+    assert "_query_shortest_path(" in service_source
+    assert "NavAgentDesc" in desc_source
+    assert "np.array([], dtype=np.float32)" in query_source
+    assert "agent_radius=float(agent_radius)" in query_source
+
+
+def test_navmesh_playground_uses_shared_query_wrapper():
+    root = Path(__file__).resolve().parents[2]
+    package_dir = (
+        root / "kkr-extensions" / "omni.mycompany.navmesh_playground"
+        / "omni" / "mycompany" / "navmesh_playground"
+    )
+    sampler_source = (package_dir / "navmesh_sampler.py").read_text()
+
+    assert "def query_shortest_path(" in sampler_source
+    assert "NavAgentDesc" in sampler_source
+
+    for filename in ("people_controller.py", "robot_controller.py", "ui_panel.py"):
+        source = (package_dir / filename).read_text()
+        assert "mesh.query_shortest_path(" not in source
+        assert "query_shortest_path(" in source
 
 
 # Phase J — sample_walkable_points
