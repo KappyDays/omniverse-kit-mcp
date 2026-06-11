@@ -3,7 +3,7 @@
 # Asset Discovery — Invariants
 
 씬을 만들거나 robot / character / environment / prop / SimReady asset 을 추가하기
-**전에** 이 파일을 Read. NVIDIA·Isaac Sim 5.1 은 풍부한 실 asset (robots 100+,
+**전에** 이 파일을 Read. NVIDIA·Isaac Sim 6.0 은 풍부한 실 asset (robots 90+,
 environments 10, people·animations, props, SimReady 1000+) 을 제공한다 — 기억된 URL
 이나 primitive (Cube/Sphere) 로 흐르지 말고 **카탈로그에서 실 asset 을 먼저 찾는다**.
 
@@ -69,6 +69,6 @@ validation 이 아닌 **진입 워크플로** 로 operationalize 한다.
 - 카탈로그 SoT 진입점 + 포맷 규약: `docs/assets/isaac/asset_inventory.md` (+ `assets/*.md`)
 - 로드 안전 조건 (deadlock 방지 baseline): `docs/invariants/usd-load.md`
 - 시각 검증 (capture 후 Read 의무, R3): `docs/invariants/visual-validation.md`
-- Character T-pose 방지 / AnimGraph 제약: `src/omniverse_kit_mcp/modules/CLAUDE.md`
+- Character T-pose 방지 / BehaviorAgent·IRA 제약: `src/omniverse_kit_mcp/modules/CLAUDE.md`
 - asset_search tool 등록 / caveat: `src/omniverse_kit_mcp/tools/CLAUDE.md` (Asset 그룹)
 - URL 404 / inventory 갱신 skill: `.claude/skills/omniverse-asset-inventory-sync/SKILL.md`

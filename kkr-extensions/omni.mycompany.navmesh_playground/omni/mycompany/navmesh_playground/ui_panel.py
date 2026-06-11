@@ -11,7 +11,7 @@ import omni.ui as ui
 
 WAREHOUSE_URL = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/full_warehouse.usd"
+    "Assets/Isaac/6.0/Isaac/Environments/Simple_Warehouse/full_warehouse.usd"
 )
 
 
@@ -368,7 +368,7 @@ class NavMeshPlaygroundPanel:
         """Sync spawn — direct Kit SDK calls only, no validation_api.
 
         People: ``safe_spawn_character_sync`` (CreatePayloadCommand for
-        Biped_Setup + skin payload + ApplyAnimationGraphAPICommand bind).
+        skin payload + BehaviorAgent/IRA API bind).
 
         Robot: ``safe_load_usd_sync`` (CreatePayloadCommand). Articulation
         initialisation happens lazily on first drive (RobotController._drive
@@ -406,9 +406,9 @@ class NavMeshPlaygroundPanel:
             spawned = 0
             if kind == "People":
                 skin_pool = [
-                    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/F_Business_02/F_Business_02.usd",
-                    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/F_Medical_01/F_Medical_01.usd",
-                    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/M_Medical_01/M_Medical_01.usd",
+                    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Business_02/F_Business_02.usd",
+                    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Medical_01/F_Medical_01.usd",
+                    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/M_Medical_01/M_Medical_01.usd",
                 ]
                 for pt in points:
                     agent_id = self._agent_manager.allocate_id("People")
@@ -444,10 +444,10 @@ class NavMeshPlaygroundPanel:
                 #   such a small chassis; 0.3 m/s → 10 rad/s is realistic.
                 robot_pool = [
                     ("NovaCarter",
-                     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd",
+                     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd",
                      0.14, 0.413, 1.0, 1.2),
                     ("Jetbot",
-                     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/Jetbot/jetbot.usd",
+                     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/Jetbot/jetbot.usd",
                      0.03, 0.1, 0.3, 1.5),
                 ]
                 for pt in points:
@@ -704,7 +704,7 @@ class NavMeshPlaygroundPanel:
 
         Falls back through:
           1. xformOp:translate on parent payload prim (Robot, People parent)
-          2. AnimGraph world transform (People — handles SkelRoot under DHGen)
+          2. character runtime world transform (People — handles SkelRoot)
           3. UsdGeom.Imageable.ComputeWorldBound center
         """
         try:
@@ -720,7 +720,7 @@ class NavMeshPlaygroundPanel:
                     t = t_attr.Get()
                     if t is not None:
                         pos = (float(t[0]), float(t[1]), float(t[2]))
-            # People: also try AnimGraph world transform via character_service
+            # People: also try legacy runtime world transform when available
             if pos is None and a.kind == "People" and a.skel_root_path:
                 try:
                     import carb
@@ -914,9 +914,11 @@ def _query_path_points(
     if mesh is None:
         return []
     try:
-        path = mesh.query_shortest_path(
-            carb.Float3(*start),
-            carb.Float3(*goal),
+        from .navmesh_sampler import query_shortest_path
+        path = query_shortest_path(
+            mesh,
+            start,
+            goal,
             agent_radius=0.25,
             agent_height=1.0,
             straighten=True,

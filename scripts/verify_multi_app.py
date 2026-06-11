@@ -1,11 +1,11 @@
 """Live verification: Isaac Sim + USD Composer concurrent on separate ports.
 
 Success criteria:
-  1. Isaac instance 1 spawns on 8011
-  2. USD Composer instance 1 spawns on 8014
+  1. Isaac instance 1 spawns on 8111
+  2. USD Composer instance 1 spawns on 8114
   3. Both healthy simultaneously
   4. Common route (/health) works on BOTH ports
-  5. Isaac-specific route (/robot/load) works on 8011, returns 503 on 8014
+  5. Isaac-specific route (/robot/load) works on 8111, returns 503 on 8114
   6. Both stop cleanly
 
 GPU budget: RTX 4070 12GB. Both apps empty-scene ~4-5GB each. Keep scene
@@ -51,12 +51,12 @@ async def main() -> int:
     pm_isaac = _module_for("isaac-sim", 1)
     pm_composer = _module_for("usd-composer", 1)
 
-    print("[1/6] Start Isaac Sim (port 8011)")
+    print("[1/6] Start Isaac Sim (port 8111)")
     r_isaac = await pm_isaac.start()
     print(json.dumps(r_isaac, indent=2, default=str))
     assert r_isaac.get("ok"), "Isaac Sim failed to start"
 
-    print("\n[2/6] Start USD Composer (port 8014)")
+    print("\n[2/6] Start USD Composer (port 8114)")
     r_composer = await pm_composer.start()
     print(json.dumps(r_composer, indent=2, default=str))
     assert r_composer.get("ok"), "USD Composer failed to start"
@@ -65,17 +65,17 @@ async def main() -> int:
     assert r_isaac["pid"] != r_composer["pid"]
 
     print("\n[4/6] Common route /health on both ports")
-    h_isaac = await _get(8011, "/validation/v1/health")
-    h_composer = await _get(8014, "/validation/v1/health")
-    print(f"  8011: {h_isaac.status_code}   8014: {h_composer.status_code}")
+    h_isaac = await _get(8111, "/validation/v1/health")
+    h_composer = await _get(8114, "/validation/v1/health")
+    print(f"  8111: {h_isaac.status_code}   8114: {h_composer.status_code}")
     assert h_isaac.status_code == 200 and h_composer.status_code == 200
 
     print("\n[5/6] Isaac-only route /robot/load")
     body = {"prim_path": "/World/Robot", "usd_url": "/nonexistent"}
-    r_isaac_robot = await _post(8011, "/validation/v1/robot/load", body)
-    r_composer_robot = await _post(8014, "/validation/v1/robot/load", body)
-    print(f"  isaac 8011: {r_isaac_robot.status_code}  "
-          f"composer 8014: {r_composer_robot.status_code}")
+    r_isaac_robot = await _post(8111, "/validation/v1/robot/load", body)
+    r_composer_robot = await _post(8114, "/validation/v1/robot/load", body)
+    print(f"  isaac 8111: {r_isaac_robot.status_code}  "
+          f"composer 8114: {r_composer_robot.status_code}")
     assert r_isaac_robot.status_code != 503, (
         "Isaac Sim should NOT return 503 for /robot/load"
     )

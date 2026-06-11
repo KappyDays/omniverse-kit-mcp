@@ -24,7 +24,7 @@ _RENDER_MODE_MAP = {
 _DENOISER_OP_MAP = {"auto": 3, "DLSS": 4, "NRD": 5, "off": 0}
 
 # Overlay → carb.settings key. ``axis`` intentionally avoids
-# ``/persistent/app/viewport/displayOptions`` — Kit 5.1 ``legacy.py:226``
+# ``/persistent/app/viewport/displayOptions`` — legacy viewport window path
 # reads that parent key as an integer bitmask; writing a child boolean
 # turns the parent into a dict and triggers
 # ``TypeError: unsupported operand type(s) for &: 'dict' and 'int'``

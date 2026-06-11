@@ -1,6 +1,6 @@
 """Phase G live test: Robot extensions — navigate_path / gripper_control / set_ee_target.
 
-Runs against a live Isaac Sim Extension (http://localhost:8011). Intended for
+Runs against a live Isaac Sim Extension (http://127.0.0.1:8111). Intended for
 post-integration smoke after ``kit_app_start``. Tolerant of asset load
 failures (logs + skip) since Phase G live validation depends on Franka /
 NovaCarter S3 assets and network availability.
@@ -26,12 +26,24 @@ from omniverse_kit_mcp.config import AppConfig  # noqa: E402
 
 NOVA_CARTER = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    "Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
 )
 FRANKA = (
     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/5.1/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
+    "Assets/Isaac/6.0/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
 )
+
+
+async def _wait_job(client: IsaacRestClient, job_id: str, timeout_s: float = 30.0) -> dict:
+    deadline = asyncio.get_running_loop().time() + timeout_s
+    last: dict = {}
+    while asyncio.get_running_loop().time() < deadline:
+        last = await client.job_status(job_id)
+        status = str(last.get("status", ""))
+        if status in {"done", "error", "canceled"}:
+            return last
+        await asyncio.sleep(0.25)
+    raise TimeoutError(f"job {job_id} did not finish within {timeout_s}s: {last}")
 
 
 async def _main() -> int:
@@ -59,8 +71,13 @@ async def _main() -> int:
                     "points": [[0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [3.0, 2.0, 0.0]],
                     "duration_s": 3.0,
                 })
+                job_id = str(resp.get("job_id"))
                 print(f"[navigate_path] job_id={resp.get('job_id')} "
                       f"num_waypoints={resp.get('num_waypoints')}")
+                job = await _wait_job(client, job_id)
+                print(f"[navigate_path] terminal={job.get('status')} "
+                      f"progress={job.get('progress')}")
+                await client.simulation_stop()
             except Exception as exc:  # noqa: BLE001
                 print(f"[navigate_path] SKIP — {type(exc).__name__}: {exc}")
         else:

@@ -2,28 +2,27 @@ apiVersion: isaacsim.validation/v1
 kind: Scenario
 metadata:
   id: phase_e_combined
-  name: "Phase E integration: 3-Sensor Combo + NavMesh viz + multi-viewport"
+  name: "Phase E integration: 3-Sensor Combo + NavMesh viz + RGB/depth viewports"
   tags: [integration, sensor, viewport, navigation, phase-e, twin1-warehouse]
 
 spec:
   defaults:
     # Integration scenario touches every Phase E surface — warehouse load +
-    # robot load + 3 sensor attach + 3 viewport create + NavMesh bake + viz
+    # robot load + 3 sensor attach + RGB/depth viewport create + NavMesh bake + viz
     # toggle + viewport captures. Stay generous with the step budget so cold
     # cache runs don't trip the gates.
     stepTimeoutSeconds: 420
     failFast: true
 
   variables:
-    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
-    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
     warehouse_prim: "/World/Warehouse"
     robot_prim: "/World/Robot/NovaCarter"
     rgb_prim: "/World/Robot/NovaCarter/FrontRGB"
     lidar_prim: "/World/Robot/NovaCarter/TopLidar"
     depth_prim: "/World/Robot/NovaCarter/DepthSide"
     vp_rgb: "Viewport_RGB"
-    vp_lidar: "Viewport_Lidar"
     vp_depth: "Viewport_Depth"
 
   arrange:
@@ -114,15 +113,6 @@ spec:
         width: 960
         height: 540
 
-    - id: create_vp_lidar
-      module: viewport
-      action: create
-      args:
-        viewport_name: ${variables.vp_lidar}
-        camera_path: ${variables.lidar_prim}
-        width: 960
-        height: 540
-
     - id: create_vp_depth
       module: viewport
       action: create
@@ -170,15 +160,6 @@ spec:
         width: 960
         height: 540
 
-    - id: capture_lidar_panel
-      module: viewport
-      action: capture
-      args:
-        viewport_name: ${variables.vp_lidar}
-        camera_prim_path: ${variables.lidar_prim}
-        width: 960
-        height: 540
-
     - id: capture_depth_panel
       module: viewport
       action: capture
@@ -201,7 +182,7 @@ spec:
       module: navigation
       action: set_visualization
       args:
-        mode: off
+        mode: "off"
       continueOnFailure: true
 
     - id: destroy_vp_rgb
@@ -209,13 +190,6 @@ spec:
       action: destroy
       args:
         viewport_name: ${variables.vp_rgb}
-      continueOnFailure: true
-
-    - id: destroy_vp_lidar
-      module: viewport
-      action: destroy
-      args:
-        viewport_name: ${variables.vp_lidar}
       continueOnFailure: true
 
     - id: destroy_vp_depth

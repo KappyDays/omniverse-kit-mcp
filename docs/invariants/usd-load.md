@@ -11,7 +11,7 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 ### 1. S3 URL 필수
 
 허용 prefix:
-- `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/...`
+- `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/...`
 - `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/...`
 - `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/{ArchVis,DigitalTwin,Vegetation}/...`
 
@@ -19,7 +19,9 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 
 카탈로그 SoT: `docs/assets/isaac/asset_inventory.md` 진입점 + `docs/assets/isaac/assets/*.md`.
 
-**Extension 개발 시 방어 레시피**: MCP 서버가 아닌 Extension 에서 S3 MDL-heavy asset (office / warehouse / nova_carter / Biped_Setup) 을 로드할 때는 log_capture disable + `run_coroutine` + `CreatePayloadCommand instanceable=True` 3-요소 패턴을 **복사**해서 사용. 상세: `kkr-extensions/docs/usd-load-deadlock-recipe.md`.
+**Extension 개발 시 방어 레시피**: MCP 서버가 아닌 Extension 에서 S3 MDL-heavy asset (office / warehouse / nova_carter / 6.0 character skins) 을 로드할 때는 log_capture disable + `run_coroutine` + `CreatePayloadCommand` 3-요소 패턴을 **복사**해서 사용. 일반 static payload 는 `instanceable=True`; robot/articulation payload 는 아래 예외를 따른다. 상세: `kkr-extensions/docs/usd-load-deadlock-recipe.md`.
+
+**Robot/articulation 예외 (Isaac Sim 6.0 live 검증)**: `robot_load` 는 `CreatePayloadCommand` 를 쓰되 `instanceable=False` 여야 한다. articulation runtime 이 child prim traversal/write 를 수행하므로 instanceable payload 는 후속 제어가 깨질 수 있다. 또한 `robot_load` 는 stage mutation 전 pending/running async job 이 없어야 하며, timeline 이 playing 이면 먼저 stop 해야 한다. NovaCarter `navigate_path` job 중 Franka load 를 시도하면 Kit/PhysX crash 가 재현된다.
 
 ### 2. `log_capture.start()` 호출 금지
 
@@ -43,8 +45,9 @@ Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback dead
 
 ## 근본 원인 (재발 진단용)
 
-`LogCaptureService` 의 carb log callback 이 등록된 상태에서 Kit 5.1 MDL resolver 가
-S3 asset 의 Materials.usd 를 열면 `"Disabling base URL to resolve MDL identifier
+`LogCaptureService` 의 carb log callback 이 등록된 상태에서 historical Kit 107
+/ Isaac Sim 5.1 MDL resolver 가 S3 asset 의 Materials.usd 를 열면
+`"Disabling base URL to resolve MDL identifier
 'OmniPBR.mdl'"` 반복 → Python callback 이 carb thread 에 GIL 경합 → Kit main event
 loop deadlock → 모든 MCP tool 92 s timeout.
 
@@ -56,8 +59,10 @@ loop deadlock → 모든 MCP tool 92 s timeout.
    는 `omni.kit.async_engine.run_coroutine(_main_loop_impl())` +
    `asyncio.wrap_future(future)` — FastAPI event loop ≠ Kit main event loop 이므로
    Kit main loop 에 명시적 schedule
-3. `omni.kit.commands.execute("CreatePayloadCommand", instanceable=True, ...)` —
-   GUI drag&drop scene_drop_delegate 와 동등 경로
+3. `omni.kit.commands.execute("CreatePayloadCommand", ...)` —
+   GUI drag&drop scene_drop_delegate 와 동등 경로. `stage_load_usd` /
+   static asset payload 는 `instanceable=True`; `robot_load` 는 runtime
+   articulation write 를 위해 `instanceable=False`.
 
 코드 레시피 (독립 Extension 에서 S3 MDL-heavy asset 로드 시 복사할 방어 코드):
 `kkr-extensions/docs/usd-load-deadlock-recipe.md`
@@ -66,13 +71,13 @@ loop deadlock → 모든 MCP tool 92 s timeout.
 
 - Simple_Warehouse 2.4 s
 - NovaCarter 3.1 s
-- Biped_Setup 2.6 s
+- F_Business_02 character skin 2.6 s
 - SimReady cold 10~57 s
 - Multi-asset composition OK
 
 ## 재발 시 진단 순서
 
-1. Kit log `%USERPROFILE%\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\5.1\kit_*.log`
+1. Kit log `%USERPROFILE%\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\6.0\kit_*.log`
    마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 후 silent =
    deadlock 확정
 2. `simulation_get_status` 가 92 s timeout → Kit main loop 차단

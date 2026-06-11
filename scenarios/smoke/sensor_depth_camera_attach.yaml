@@ -11,8 +11,8 @@ spec:
     failFast: true
 
   variables:
-    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Environments/Simple_Warehouse/warehouse.usd"
-    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    warehouse_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Environments/Simple_Warehouse/warehouse.usd"
+    robot_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
     warehouse_prim: "/World/Warehouse"
     robot_prim: "/World/Robot/NovaCarter"
     sensor_name: "DepthSide"

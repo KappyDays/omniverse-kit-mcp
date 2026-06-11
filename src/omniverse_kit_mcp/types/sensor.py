@@ -41,6 +41,7 @@ class SensorAttachRtxLidarResult:
     sensor_type: str
     config_preset: str
     annotator: str | None
+    backend: str
 
 
 @dataclass(slots=True, frozen=True)

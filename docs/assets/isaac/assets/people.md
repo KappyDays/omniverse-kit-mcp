@@ -1,6 +1,6 @@
-# People — Isaac Sim 5.1 Asset Catalog
+# People — Isaac Sim 6.0 Asset Catalog
 
-`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac`
+`$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
 
 루트: `$ISAAC/People/`  
 드릴다운: `asset_list(category="people", subpath="{SubFolder}")`
@@ -10,15 +10,13 @@
 ## Characters (Named)
 
 루트: `$ISAAC/People/Characters/`  
-**파일 규칙**: `Biped_Setup.usd` 만 루트에 직접 존재. 나머지는 `{name}/{name}.usd` 폴더 패턴.
+**파일 규칙**: named character는 `{name}/{name}.usd` 폴더 패턴.
 
 | 에셋 | USD 경로 | 설명 |
 |---|---|---|
-| Biped_Setup | `Characters/Biped_Setup.usd` ✓ | AnimationGraph 기본 rig |
 | F_Business_02 | `Characters/F_Business_02/F_Business_02.usd` ✓ | 여성 비즈니스 복장 |
 | F_Medical_01 | `Characters/F_Medical_01/F_Medical_01.usd` ✓ | 여성 의료 복장 |
 | M_Medical_01 | `Characters/M_Medical_01/M_Medical_01.usd` ✓ | 남성 의료 복장 |
-| biped_demo | `Characters/biped_demo/biped_demo_meters.usd` | 데모용 biped (파일명 suffix 주의) |
 | female_adult_police_01_new | `Characters/female_adult_police_01_new/female_adult_police_01_new.usd` ✓ | 여성 경찰 |
 | female_adult_police_02 | `Characters/female_adult_police_02/female_adult_police_02.usd` ✓ | 여성 경찰 |
 | female_adult_police_03_new | `Characters/female_adult_police_03_new/female_adult_police_03_new.usd` ✓ | 여성 경찰 |

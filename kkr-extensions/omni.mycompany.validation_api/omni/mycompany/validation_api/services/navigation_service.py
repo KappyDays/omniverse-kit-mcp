@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -460,8 +460,8 @@ class NavigationService:
             y = rng.uniform(bounds_min[1], bounds_max[1])
             z = 0.0  # floor
             try:
-                path = mesh.query_shortest_path(
-                    carb.Float3(*seed_origin), carb.Float3(x, y, z),
+                path = _query_shortest_path(
+                    mesh, seed_origin, (x, y, z),
                     agent_radius=0.25, agent_height=1.0, straighten=True,
                 )
             except Exception:  # noqa: BLE001 — defensive
@@ -493,8 +493,6 @@ class NavigationService:
     async def query_path(self, request: dict[str, Any]) -> dict[str, Any]:
         """Query shortest path between two world positions. If NavMesh isn't
         baked yet, auto-bake once (caller doesn't need to remember)."""
-        import carb  # lazy
-
         start = list(request["start"])
         end = list(request["end"])
         if len(start) != 3 or len(end) != 3:
@@ -523,8 +521,8 @@ class NavigationService:
                 return {"ok": False, "reason": "navmesh bake failed",
                         "auto_baked": auto_baked}
 
-        path = mesh.query_shortest_path(
-            carb.Float3(*start), carb.Float3(*end),
+        path = _query_shortest_path(
+            mesh, start, end,
             agent_radius=agent_radius, agent_height=agent_height,
             straighten=straighten,
         )
@@ -543,6 +541,59 @@ class NavigationService:
             "length": float(path.length()),
             "straighten": straighten,
         }
+
+
+def _make_nav_agent_desc(agent_radius: float, agent_height: float):
+    """Build Isaac Sim 6.0 NavAgentDesc, falling back to old signatures.
+
+    Isaac Sim 6.0 removed ``agent_radius`` / ``agent_height`` keyword args
+    from ``INavMesh.query_shortest_path`` and expects a ``NavAgentDesc``
+    positional argument instead.
+    """
+    try:
+        import omni.anim.navigation.core as nav  # lazy
+        desc = nav.NavAgentDesc()
+    except Exception:  # noqa: BLE001 - old Kit or unavailable binding
+        return None
+
+    if hasattr(desc, "radius"):
+        desc.radius = float(agent_radius)
+    if hasattr(desc, "height"):
+        desc.height = float(agent_height)
+    return desc
+
+
+def _query_shortest_path(
+    mesh,
+    start: Sequence[float],
+    end: Sequence[float],
+    *,
+    agent_radius: float,
+    agent_height: float,
+    straighten: bool,
+):
+    import carb  # lazy
+
+    start_pos = carb.Float3(*start)
+    end_pos = carb.Float3(*end)
+    agent = _make_nav_agent_desc(agent_radius, agent_height)
+    if agent is not None:
+        try:
+            import numpy as np  # lazy
+            return mesh.query_shortest_path(
+                start_pos, end_pos, agent, np.array([], dtype=np.float32),
+                bool(straighten),
+            )
+        except TypeError:
+            # Older Kit builds keep the radius/height keyword surface.
+            pass
+
+    return mesh.query_shortest_path(
+        start_pos, end_pos,
+        agent_radius=float(agent_radius),
+        agent_height=float(agent_height),
+        straighten=bool(straighten),
+    )
 
 
 def _normalize_triangle(tri):

@@ -65,5 +65,5 @@ def test_setup_installs_launcher_templates_to_known_kit_folders():
     assert "isaac-sim_mcp.ps1" in text
     assert "kkr_usd_composer_mcp.kit.bat" in text
     assert "kkr_usd_composer_mcp.kit.ps1" in text
-    assert "isaac-sim-standalone-5.1.0-windows-x86_64" in text
+    assert "isaac-sim-standalone-6.0.0-windows-x86_64" in text
     assert "kit-app-template\\_build\\windows-x86_64\\release" in text

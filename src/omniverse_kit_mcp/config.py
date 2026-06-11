@@ -126,7 +126,7 @@ class IsaacSimProcessConfig(BaseSettings):
         object.__setattr__(self, "app_profile", resolved)
 
         # extra_ext_ids is a legacy Isaac-specific env knob (ISAAC_SIM_EXTRA_EXT_IDS
-        # typically lists isaacsim.sensors.rtx / isaacsim.replicator.agent.core /
+        # typically lists isaacsim.sensors.experimental.* / isaacsim.ros2.bridge /
         # omni.anim.* — all Isaac-only). Leaking those into USD Composer causes
         # "Failed to resolve extension dependencies" crash during kit boot.
         # So: env override applies ONLY to isaac-sim profile. Other profiles use

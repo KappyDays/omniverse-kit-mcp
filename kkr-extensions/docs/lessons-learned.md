@@ -130,7 +130,7 @@
 - **재발 방지**: Kit alive 판단은 다음 도구로만:
   - **PowerShell** `Get-Process -Name kit -ErrorAction SilentlyContinue`
   - **MCP** `simulation_get_status` (응답 ≤ 1s = alive)
-  - **`curl http://localhost:8011/validation/v1/health`** (200 = alive)
+  - **`curl http://127.0.0.1:8111/validation/v1/health`** (200 = alive)
   - 절대 `tasklist //FI` (git bash) 사용 금지. `src/omniverse_kit_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 에 정정.
 
 ### L8. `extension_ui_invoke` callback 호출 inconsistency (hot-reload 후)

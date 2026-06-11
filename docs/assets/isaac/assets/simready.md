@@ -1,4 +1,4 @@
-# SimReady Props — Isaac Sim 5.1 Asset Catalog
+# SimReady Props — Isaac Sim 6.0 Asset Catalog
 
 `$SIM` = `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/common_assets/props`
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 _PROFILE_DISPLAY: dict[str, str] = {
-    "isaac-sim": "Isaac Sim 5.1",
+    "isaac-sim": "Isaac Sim 6.0.0",
     "usd-composer": "USD Composer",
 }
 

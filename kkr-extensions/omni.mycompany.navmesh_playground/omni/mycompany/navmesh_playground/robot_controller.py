@@ -1,6 +1,6 @@
 """Robot controller — NavMesh path query + DifferentialController drive.
 
-Fully standalone — no validation_api import. Uses Kit / Isaac Sim 5.1
+Fully standalone — no validation_api import. Uses Kit / Isaac Sim 6.0
 SDK directly:
 
   - ``omni.anim.navigation.core``                — NavMesh path query
@@ -29,15 +29,16 @@ import carb
 import omni.kit.async_engine
 
 from .agent_manager import AgentManager, AgentRecord
+from .navmesh_sampler import query_shortest_path
 
 
 ROBOT_POOL = [
     # (display name, S3 URL, wheel_radius, wheel_base) — Nova Carter spec defaults
     ("NovaCarter",
-     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd",
+     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd",
      0.14, 0.413),
     ("Jetbot",
-     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/Robots/NVIDIA/Jetbot/jetbot.usd",
+     "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/Jetbot/jetbot.usd",
      0.03, 0.1),
 ]
 
@@ -135,18 +136,10 @@ class RobotController:
                     )
 
             # 2. Init articulation + DifferentialController.
-            try:
-                from isaacsim.robot.wheeled_robots.controllers.differential_controller import (
-                    DifferentialController,
-                )
-            except ImportError:
-                from omni.isaac.wheeled_robots.controllers.differential_controller import (  # type: ignore
-                    DifferentialController,
-                )
-            try:
-                from isaacsim.core.utils.types import ArticulationAction
-            except ImportError:
-                from omni.isaac.core.utils.types import ArticulationAction  # type: ignore
+            from isaacsim.robot.wheeled_robots.controllers.differential_controller import (
+                DifferentialController,
+            )
+            from isaacsim.core.utils.types import ArticulationAction
             from isaacsim.core.prims import SingleArticulation
 
             art = SingleArticulation(agent.prim_path)
@@ -309,9 +302,10 @@ class RobotController:
         if mesh is None:
             return []
         try:
-            path = mesh.query_shortest_path(
-                carb.Float3(*agent.start),
-                carb.Float3(*agent.goal),
+            path = query_shortest_path(
+                mesh,
+                agent.start,
+                agent.goal,
                 agent_radius=0.25,
                 agent_height=1.0,
                 straighten=True,
@@ -328,10 +322,7 @@ class RobotController:
         """Zero the wheel velocities — best-effort. Used by stop()."""
         try:
             from isaacsim.core.prims import SingleArticulation
-            try:
-                from isaacsim.core.utils.types import ArticulationAction
-            except ImportError:
-                from omni.isaac.core.utils.types import ArticulationAction  # type: ignore
+            from isaacsim.core.utils.types import ArticulationAction
             import numpy as np
             art = SingleArticulation(prim_path)
             try:

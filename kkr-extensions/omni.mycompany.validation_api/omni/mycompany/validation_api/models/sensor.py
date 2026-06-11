@@ -56,7 +56,7 @@ class SensorSetVisualizationRequestModel(BaseModel):
 class SensorAttachContactRequestModel(BaseModel):
     """Physics contact sensor attachment (Phase G).
 
-    Creates an ``isaacsim.sensors.physics.ContactSensor`` child prim under
+    Creates an ``isaacsim.sensors.experimental.physics.Contact`` child prim under
     *prim_path*. Provides contact force / event readout when the parent
     rigid body collides with other colliders.
     """
@@ -79,7 +79,7 @@ class SensorAttachContactRequestModel(BaseModel):
 class SensorAttachImuRequestModel(BaseModel):
     """Physics IMU sensor attachment (Phase G).
 
-    Creates an ``isaacsim.sensors.physics.IMUSensor`` child prim. Emits
+    Creates an ``isaacsim.sensors.experimental.physics.IMU`` child prim. Emits
     linear acceleration / angular velocity / orientation readings at the
     configured frequency once simulation is playing.
     """

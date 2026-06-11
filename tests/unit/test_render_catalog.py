@@ -16,8 +16,8 @@ def sample_catalog(tmp_path: Path) -> Path:
             "generated_at": "2026-04-17T20:00:00Z",
             "generator_version": "harvest_extension_metadata.py@1.0",
             "isaac_sim_root": "C:/fake/root",
-            "isaac_sim_version": "5.1.0-rc.19",
-            "kit_version": "107.3.3",
+            "isaac_sim_version": "6.0.0-rc.59",
+            "kit_version": "110.1.1",
             "total_extensions": 3,
             "source_counts": {"exts": 2, "extscache": 0, "extsDeprecated": 1},
             "last_enriched_at": "2026-04-18T09:30:00Z",
@@ -103,7 +103,7 @@ def test_render_produces_markdown(sample_catalog: Path, tmp_path: Path) -> None:
     render.render(catalog_json=sample_catalog, output=output)
 
     content = output.read_text(encoding="utf-8")
-    assert content.startswith("# Isaac Sim 5.1.0 Extensions — Full Catalog")
+    assert content.startswith("# Isaac Sim 6.0.0 Extensions — Full Catalog")
     assert "직접 편집 금지" in content
     assert "Core Foundation" in content
     assert "Robot & Manipulation" in content

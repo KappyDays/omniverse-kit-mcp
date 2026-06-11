@@ -1,8 +1,8 @@
 """People controller — Walk→Sit FSM, fully standalone (no validation_api).
 
-Drives a Biped character via the AnimationGraph that was bound by
-`usd_loader.safe_spawn_character_sync`. Variable contract (matches
-Biped_Setup AnimGraph live-discovery):
+Drives an Isaac Sim 6.0 Replicator Agent character via the BehaviorAgent
+adapter bound by `usd_loader.safe_spawn_character_sync`. Variable contract
+keeps a legacy-compatible variable surface:
 
   - ``Action`` (token)              — "Walk" / "Sit" / "Idle" / "Run"
   - ``Walk`` (float)                — Walk/Run blend speed (0..1+)
@@ -29,14 +29,15 @@ import carb
 import omni.kit.async_engine
 
 from .agent_manager import AgentManager, AgentRecord
+from .navmesh_sampler import query_shortest_path
 
 
 SKIN_POOL = [
-    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/F_Business_02/F_Business_02.usd",
-    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/F_Medical_01/F_Medical_01.usd",
-    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/M_Medical_01/M_Medical_01.usd",
-    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/male_adult_construction_05_new/male_adult_construction_05_new.usd",
-    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1/Isaac/People/Characters/male_adult_police_04/male_adult_police_04.usd",
+    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Business_02/F_Business_02.usd",
+    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/F_Medical_01/F_Medical_01.usd",
+    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/M_Medical_01/M_Medical_01.usd",
+    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/male_adult_construction_05_new/male_adult_construction_05_new.usd",
+    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/People/Characters/male_adult_police_04/male_adult_police_04.usd",
 ]
 
 
@@ -99,7 +100,7 @@ class PeopleController:
             app = omni.kit.app.get_app()
             tl = omni.timeline.get_timeline_interface()
 
-            # Ensure timeline playing — AnimGraph only ticks while playing.
+            # Ensure timeline playing — character runtime only ticks while playing.
             # We deliberately do NOT pause-then-play (the validation_api
             # path's _ensure_animation_ready did that, leaving the timeline
             # paused and forcing the user to click Go twice).
@@ -110,10 +111,10 @@ class PeopleController:
             char = await _await_anim_character(target_skel, app, max_wait_frames=300)
             if char is None:
                 agent.state = "Error"
-                agent.state_detail = "AnimGraph character handle unavailable"
+                agent.state_detail = "Character runtime handle unavailable"
                 return
 
-            # Yield several frames so the AnimGraph world transform has
+            # Yield several frames so the runtime world transform has
             # populated with the actual character position.
             cur_p = carb.Float3(0.0, 0.0, 0.0)
             cur_r = carb.Float4(0.0, 0.0, 0.0, 0.0)
@@ -128,10 +129,10 @@ class PeopleController:
             start_z = float(cur_p.z)
 
             # Query NavMesh shortest path from current position to goal.
-            # PathPoints with only [start, goal] makes the Biped AnimGraph
-            # walk in a straight line, ignoring obstacles like rack /
+            # PathPoints with only [start, goal] can make legacy character
+            # runtimes walk in a straight line, ignoring obstacles like rack /
             # shelving. Pushing the full NavMesh waypoint list teaches the
-            # AnimGraph to route around them. Falls back to direct line
+            # runtime to route around them. Falls back to direct line
             # only if NavMesh has no path (e.g., goal in unreachable area).
             path_pts = _query_navmesh_path(
                 (start_x, start_y, start_z),
@@ -193,14 +194,14 @@ class PeopleController:
                 try:
                     char.set_variable(style_var, style_val)
                 except Exception as exc:  # noqa: BLE001
-                    # Style not wired in this character's AnimGraph — base
+                    # Style not wired in this character's runtime — base
                     # action still runs.
                     carb.log_info(
                         f"[navmesh_playground] sit style {style_var}={style_val} "
                         f"not wired (non-fatal): {exc}",
                     )
             if base == "Sit":
-                # Without SitWeight=1.0 the AnimGraph's Sit blend tree
+                # Without SitWeight=1.0 legacy Sit blend trees
                 # stays at standing pose — this is the most common
                 # "Sit doesn't visually engage" failure mode.
                 try:
@@ -224,53 +225,113 @@ class PeopleController:
 # Helpers (module-level)
 # ---------------------------------------------------------------------------
 
+class _BehaviorAgentAdapter:
+    """Legacy variable-surface adapter over Isaac Sim 6.0 BehaviorAgent."""
+
+    def __init__(self, bh_agent) -> None:
+        self._bh_agent = bh_agent
+        self._speed = 1.0
+        self._action = "Idle"
+
+    def set_variable(self, name: str, value) -> None:
+        if name == "Walk":
+            self._speed = float(value)
+            if hasattr(self._bh_agent, "set_speed"):
+                self._bh_agent.set_speed(float(value))
+            return
+
+        if name == "Action":
+            self._action = str(value)
+            if self._action == "Idle" and hasattr(self._bh_agent, "idle"):
+                self._bh_agent.idle()
+            elif self._action not in ("Walk", "Run") and hasattr(
+                self._bh_agent, "custom_action"
+            ):
+                self._bh_agent.custom_action(action_name=self._action)
+            return
+
+        if name == "PathPoints":
+            points = list(value or [])
+            if not points:
+                return
+            target = points[-1]
+            if hasattr(target, "x"):
+                x, y, z = float(target.x), float(target.y), float(target.z)
+            else:
+                x, y, z = float(target[0]), float(target[1]), float(target[2])
+            if hasattr(self._bh_agent, "set_speed"):
+                self._bh_agent.set_speed(float(self._speed))
+            self._bh_agent.move_to(target=carb.Float3(x, y, z))
+
+    def get_world_transform(self, pos, rot) -> None:
+        world_pos = self._bh_agent.get_world_translation()
+        world_rot = self._bh_agent.get_world_rotation()
+        pos.x = float(world_pos.x)
+        pos.y = float(world_pos.y)
+        pos.z = float(world_pos.z)
+        rot.x = float(world_rot.x)
+        rot.y = float(world_rot.y)
+        rot.z = float(world_rot.z)
+        rot.w = float(world_rot.w)
+
 
 def _get_anim_character(skel_root_path: str, max_wait_s: float = 0.0):
-    """Return omni.anim.graph.core character handle, or None.
+    """Return a legacy AnimGraph handle or BehaviorAgent adapter, or None.
 
     Sync version — used by stop()/remove() where blocking briefly is OK.
     Pass `max_wait_s > 0` to retry with `time.sleep` between probes (does
-    not advance Kit frames — handle only appears after AnimGraph
-    registration on a tick).
+    not advance Kit frames).
     """
     try:
         import omni.anim.graph.core as ag
     except ImportError:
-        return None
-    char = ag.get_character(skel_root_path)
+        ag = None
+    char = ag.get_character(skel_root_path) if ag is not None else None
+    if char is None:
+        char = _get_behavior_agent_adapter(skel_root_path)
     if char is not None or max_wait_s <= 0:
         return char
     deadline = time.monotonic() + max_wait_s
     while time.monotonic() < deadline:
         time.sleep(0.05)
-        char = ag.get_character(skel_root_path)
+        char = ag.get_character(skel_root_path) if ag is not None else None
+        if char is None:
+            char = _get_behavior_agent_adapter(skel_root_path)
         if char is not None:
             return char
     return None
 
 
-async def _await_anim_character(skel_root_path: str, app, max_wait_frames: int = 300):
-    """Async wait for AnimGraph character to register on a tick.
+def _get_behavior_agent_adapter(skel_root_path: str):
+    try:
+        import omni.anim.behavior.core as bh_core
+    except ImportError:
+        return None
+    bh_agent = bh_core.acquire_interface().get_agent(skel_root_path)
+    if bh_agent is None:
+        return None
+    return _BehaviorAgentAdapter(bh_agent)
 
-    The plugin's internal SkelRoot+AnimationGraphAPI scan only runs while
-    the timeline is ticking. If the spawn happened with the timeline
-    stopped (e.g., right after Bake) the plugin will keep returning None
-    forever even with the timeline now playing. We mirror
-    character_service._ensure_animation_ready's play → 1-frame → pause →
-    1-frame warm-up loop until either the handle materialises or we
-    exhaust ``max_wait_frames``.
+
+async def _await_anim_character(skel_root_path: str, app, max_wait_frames: int = 300):
+    """Async wait for a legacy AnimGraph/BehaviorAgent character to register.
+
+    The registration scan only runs while the timeline is ticking. Leave the
+    timeline playing for Walk/MoveTo to drive motion.
     """
     try:
         import omni.anim.graph.core as ag
     except ImportError:
-        return None
+        ag = None
     import omni.timeline
     tl = omni.timeline.get_timeline_interface()
     was_playing = tl.is_playing()
     warmup_attempts = 5  # play→pause cycles
     frames_per_poll = max(1, max_wait_frames // (warmup_attempts + 1))
     for attempt in range(warmup_attempts):
-        char = ag.get_character(skel_root_path)
+        char = ag.get_character(skel_root_path) if ag is not None else None
+        if char is None:
+            char = _get_behavior_agent_adapter(skel_root_path)
         if char is not None:
             # Restore playing state — caller (caller of caller) wants
             # timeline ticking for the Walk variable to drive motion.
@@ -284,7 +345,9 @@ async def _await_anim_character(skel_root_path: str, app, max_wait_frames: int =
         for _ in range(frames_per_poll):
             await app.next_update_async()
     # Final attempt — and ensure we leave timeline playing for Walk
-    char = ag.get_character(skel_root_path)
+    char = ag.get_character(skel_root_path) if ag is not None else None
+    if char is None:
+        char = _get_behavior_agent_adapter(skel_root_path)
     if not tl.is_playing():
         tl.play()
     return char
@@ -311,9 +374,10 @@ def _query_navmesh_path(
     if mesh is None:
         return []
     try:
-        path = mesh.query_shortest_path(
-            carb.Float3(*start),
-            carb.Float3(*goal),
+        path = query_shortest_path(
+            mesh,
+            start,
+            goal,
             agent_radius=agent_radius,
             agent_height=agent_height,
             straighten=True,

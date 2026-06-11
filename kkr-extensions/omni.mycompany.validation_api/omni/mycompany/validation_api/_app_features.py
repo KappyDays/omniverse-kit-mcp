@@ -17,8 +17,8 @@ from fastapi import HTTPException
 _ROBOT_EXTS = ("isaacsim.robot.manipulators", "isaacsim.core.nodes")
 _CHARACTER_EXTS = ("omni.anim.graph.core", "isaacsim.replicator.agent.core")
 _NAVIGATION_EXTS = ("omni.anim.navigation.core",)
-_SENSOR_RTX_EXTS = ("isaacsim.sensors.rtx",)
-_SENSOR_PHYSICS_EXTS = ("isaacsim.sensors.physics",)
+_SENSOR_RTX_EXTS = ("isaacsim.sensors.experimental.rtx",)
+_SENSOR_PHYSICS_EXTS = ("isaacsim.sensors.experimental.physics",)
 _REPLICATOR_EXTS = ("omni.replicator.core",)
 _OMNIGRAPH_ROS2_EXTS = ("isaacsim.ros2.bridge",)
 
@@ -102,7 +102,7 @@ def require_sensor_rtx_stack() -> None:
             status_code=503,
             detail={
                 "error": "sensor_rtx_stack_unavailable",
-                "message": "RTX sensor operations require isaacsim.sensors.rtx.",
+                "message": "RTX sensor operations require isaacsim.sensors.experimental.rtx.",
                 "required_extensions": list(_SENSOR_RTX_EXTS),
             },
         )
@@ -115,7 +115,7 @@ def require_sensor_physics_stack() -> None:
             detail={
                 "error": "sensor_physics_stack_unavailable",
                 "message": (
-                    "Contact / IMU sensors require isaacsim.sensors.physics "
+                    "Contact / IMU sensors require isaacsim.sensors.experimental.physics "
                     "(Isaac-specific)."
                 ),
                 "required_extensions": list(_SENSOR_PHYSICS_EXTS),

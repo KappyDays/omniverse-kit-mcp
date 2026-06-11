@@ -2,7 +2,7 @@
 
 Covers new tools: stage_new / stage_create_prim(Camera, DistantLight) /
 stage_set_selection / stage_get_selection / viewport_set_active_camera /
-stage_save / stage_open. Requires Isaac Sim Extension running at 8011.
+stage_save / stage_open. Requires Isaac Sim Extension running at 8111.
 
 Usage: .venv/Scripts/python.exe scripts/live_test_gui_equiv.py
 """
@@ -15,7 +15,7 @@ import tempfile
 
 import httpx
 
-BASE = "http://localhost:8011/validation/v1"
+BASE = "http://127.0.0.1:8111/validation/v1"
 
 
 def _post(c: httpx.Client, path: str, *, json=None, params=None):

@@ -140,7 +140,7 @@ function Install-McpLauncher {
 Write-Host ""
 Write-Host "[ 4/5 ] Installing MCP-friendly manual launchers..." -ForegroundColor Yellow
 
-$IsaacSimDir = Join-Path $env:USERPROFILE "workspace\branch\isaac-sim-standalone-5.1.0-windows-x86_64"
+$IsaacSimDir = Join-Path $env:USERPROFILE "workspace\branch\isaac-sim-standalone-6.0.0-windows-x86_64"
 $UsdComposerDir = Join-Path $env:USERPROFILE "workspace\branch\kit-app-template\_build\windows-x86_64\release"
 
 Install-McpLauncher `
@@ -242,7 +242,7 @@ Write-Host "======================================================" -ForegroundC
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor White
 Write-Host "  1. Ensure Isaac Sim installed at:" -ForegroundColor Cyan
-Write-Host "     C:\Users\$env:USERNAME\workspace\branch\isaac-sim-standalone-5.1.0-windows-x86_64\" -ForegroundColor DarkGray
+Write-Host "     C:\Users\$env:USERNAME\workspace\branch\isaac-sim-standalone-6.0.0-windows-x86_64\" -ForegroundColor DarkGray
 Write-Host "  2. Ensure USD Composer built at:" -ForegroundColor Cyan
 Write-Host "     C:\Users\$env:USERNAME\workspace\branch\kit-app-template\_build\windows-x86_64\release\" -ForegroundColor DarkGray
 Write-Host "  3. Manual MCP-safe launchers:" -ForegroundColor Cyan

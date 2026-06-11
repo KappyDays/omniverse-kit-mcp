@@ -12,10 +12,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# The AnimationGraph shipped with Biped_Setup.usd exposes this fixed set of
-# clips via the ``Action`` variable. Keep ``Literal`` — picking something
-# outside this set is silently ignored by the graph and produces confusing
-# green-but-frozen characters.
+# Isaac Sim 6.0 BehaviorAgent/IRA exposes the same high-level action family
+# this MCP surface has historically supported. Keep ``Literal`` so invalid
+# actions fail at the REST boundary instead of producing green-but-frozen
+# characters.
 AnimationClipName = Literal["Idle", "Walk", "Run", "Sit"]
 
 
@@ -60,7 +60,7 @@ class CharacterPlayAnimationRequestModel(BaseModel):
 
     prim_path: str
     animation_name: AnimationClipName = Field(
-        description="Clip name — bound by the Biped_Setup AnimationGraph"
+        description="Clip name — dispatched through the BehaviorAgent/IRA runtime"
     )
     speed: float = Field(
         default=1.0,
@@ -141,8 +141,8 @@ class CharacterSitOnPrimRequestModel(BaseModel):
         description=(
             "Character USD url used for reload-anchor. When provided, after "
             "navigate completes the character is unloaded + reloaded at the "
-            "sit target so Sit clip plays visually (navigate leaves AnimGraph "
-            "in a Walk-warm state that blocks Sit visual transition). When "
+            "sit target so Sit clip plays visually (navigate can leave the "
+            "runtime in a Walk-warm state that blocks Sit visual transition). When "
             "omitted, sit_on_prim falls back to stop+Sit which may not "
             "engage the clip visibly."
         ),
@@ -173,13 +173,12 @@ class CharacterStateResponseModel(BaseModel):
 
 
 class CharacterPlayAnimationVariantRequestModel(BaseModel):
-    """Play an AnimationGraph variant (Phase G).
+    """Play a BehaviorAgent/legacy-compatible variant (Phase G).
 
-    Extends ``CharacterPlayAnimationRequestModel`` with BlendSpace variable
-    access — e.g. ``SitReading`` resolves to ``Action=Sit`` + ``sit_style=reading``.
-    When the requested variable is not wired into the AnimGraph, the
-    extension logs a warning but still returns ok — only the Action base
-    token is guaranteed.
+    Extends ``CharacterPlayAnimationRequestModel`` with style-compatible
+    access — e.g. ``SitReading`` resolves to base ``Sit`` plus a best-effort
+    style request. When the requested style is unsupported, only the Action
+    base token is guaranteed.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -187,7 +186,7 @@ class CharacterPlayAnimationVariantRequestModel(BaseModel):
     prim_path: str
     variant: str = Field(
         description=(
-            "AnimGraph variant name (e.g. SitIdle, SitTalk, SitReading, WalkFast, "
+            "Character variant name (e.g. SitIdle, SitTalk, SitReading, WalkFast, "
             "RunSlow). Base Action is derived from the prefix (Sit/Walk/Run/Idle)."
         ),
     )
@@ -199,11 +198,11 @@ class CharacterPlayAnimationVariantRequestModel(BaseModel):
 
 
 class CharacterLoadCrowdRequestModel(BaseModel):
-    """Batch-load N Biped characters in a layout (Phase G).
+    """Batch-load N Isaac Sim 6.0 character skins in a layout (Phase G).
 
     The extension delegates per-character load to ``CharacterService.load``
-    using Biped_Setup.usd + derived per-index prim paths. Individual load
-    failures are captured in the response rather than aborting the batch.
+    using a 6.0 character skin URL + derived per-index prim paths. Individual
+    load failures are captured in the response rather than aborting the batch.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -221,5 +220,5 @@ class CharacterLoadCrowdRequestModel(BaseModel):
     )
     usd_url: str | None = Field(
         default=None,
-        description="Character USD to clone. Defaults to Biped_Setup.usd if omitted.",
+        description="Character USD to clone. Defaults to the 6.0 F_Business_02 skin if omitted.",
     )

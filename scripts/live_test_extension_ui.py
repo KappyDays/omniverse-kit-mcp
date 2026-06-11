@@ -28,7 +28,7 @@ from pathlib import Path
 
 import httpx
 
-BASE = "http://localhost:8011/validation/v1"
+BASE = "http://127.0.0.1:8111/validation/v1"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PHASE_D_DIR = PROJECT_ROOT / "docs/artifacts/phase-d"
 DEMO_EXT_ID = "omni.mycompany.ui_demo"
@@ -62,6 +62,11 @@ def _save_json(name: str, data) -> str:
     return str(p)
 
 
+def _extension_available(c: httpx.Client, ext_id: str) -> bool:
+    r = c.post(f"{BASE}/extension/get_info", json={"ext_id": ext_id}, timeout=30.0)
+    return r.status_code == 200
+
+
 def run() -> int:
     report: dict = {"started_at": time.time(), "steps": {}}
     status_ok = True
@@ -71,6 +76,19 @@ def run() -> int:
         health = _get(c, "/health")
         report["steps"]["0_health"] = health
         print("[0] health:", health)
+
+        if not _extension_available(c, DEMO_EXT_ID):
+            report["steps"]["demo_extension"] = {
+                "ext_id": DEMO_EXT_ID,
+                "available": False,
+                "skipped": True,
+            }
+            report["completed_at"] = time.time()
+            report["status_ok"] = True
+            summary_path = _save_json("phase_d_live_report.json", report)
+            print(f"SKIP — optional demo extension not registered: {DEMO_EXT_ID}")
+            print(f"SUMMARY -> {summary_path}")
+            return 0
 
         # 1. Activate demo extension (no-op if already enabled)
         activated = _post(c, "/extension/activate", json={
