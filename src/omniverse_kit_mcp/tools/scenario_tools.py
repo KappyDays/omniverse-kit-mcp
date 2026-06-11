@@ -1,4 +1,8 @@
-"""Layer 2: Scenario-level MCP Tools (5 tools for automated validation)."""
+"""Layer 2: Scenario-level MCP Tools (3 tools for automated validation).
+
+Scenario listing and schema are MCP resources:
+``isaacsim://scenarios`` and ``isaacsim://scenario-schema``.
+"""
 
 from __future__ import annotations
 
@@ -83,7 +87,7 @@ def register_scenario_tools(
     omnigraph: OmnigraphModule,
     content: ContentModule,
 ) -> None:
-    """Register all 5 scenario-level tools on the MCP server."""
+    """Register all 3 scenario-level tools on the MCP server."""
 
     runner = ScenarioRunner(
         stage, viewport, lakehouse, extension, simulation, robot, job, asset, character,
