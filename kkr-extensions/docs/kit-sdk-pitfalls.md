@@ -1,9 +1,9 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: Isaac Sim 5.1 / Kit 107 SDK 실측 기반 함정 모음 — 도메인별 -->
+<!-- Scope: Isaac Sim / Kit SDK 실측 기반 함정 모음 — 5.1 historical + 6.0 current deltas -->
 
 # Kit SDK 함정 모음
 
-Isaac Sim 5.1 + Kit 107.3 환경에서 실제 마주친 함정들. 새 Extension 이 해당 도메인 API 를 건드릴 때 여기부터 검색.
+Isaac Sim / Kit 환경에서 실제 마주친 함정들. 5.1 / Kit 107 historical 항목은 보존하고, 6.0 / Kit 110 기준으로 결론이 바뀐 항목은 본문에 current delta 를 명시한다. 새 Extension 이 해당 도메인 API 를 건드릴 때 여기부터 검색.
 
 ---
 
@@ -264,9 +264,11 @@ Top-view 처럼 고정 camera 가 정해진 모드에서는 fallback 을 함께 
 - Browser 류 창은 **lazy-instantiated** — 첫 `show_window` 호출 전까지 `get_windows()` 에 등록 안 됨. 전체 Browser 집합 자동 순회 시: `menu_list(Window/Browsers)` → 각 항목 `menu_trigger` → `ui_list` 재조회 순서 필수
 - Browser 썸네일 로딩은 **extension 별 상이** — `isaacsim.asset.browser` (`Isaac Sim Assets [Beta]`) 는 첫 open 시 NVIDIA 공개 S3 를 실시간 crawl. 즉시 capture 시 빈 그리드. `omni.kit.browser.asset` / `omni.simready.explorer` 는 cached catalog 포함 → 즉시 populate. S3-crawl 은 show 후 10~30 s settle 필요
 
-### `isaacsim.asset.browser` / `omni.kit.window.content_browser` 는 기본 비활성
+### Browser / content browser 는 deadlock root cause 가 아님
 
-이 2 개 browser ext 가 background S3 crawl thread 로 `OmniUsdResolver` MDL 재조회 스레드와 경합해 `/stage/load_usd` hang probability 를 급증시킴. `.env` `ISAAC_SIM_EXTRA_EXT_IDS` 에서 제거된 상태가 baseline.
+과거 `isaacsim.asset.browser` / `omni.kit.window.content_browser` 금지 가설은 2026-04-25 자동 검증으로 무효화. deadlock 인과는 **carb log hook 등록 + MDL resolver 결합**이며, 최신 baseline 은 `docs/invariants/usd-load.md` 의 결론을 따른다.
+
+Browser 계열 extension 은 첫 open 때 S3 thumbnail/catalog crawl 로 UI settle 시간이 길어질 수 있다. 따라서 capture/test 에서는 10-30 s settle 을 고려하되, USD load hang 의 root cause 로 취급하거나 `.env` 에서 금지 목록처럼 관리하지 않는다.
 
 ---
 

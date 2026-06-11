@@ -37,16 +37,16 @@ ASSETS_DIRS = [
 ASSETS_DIR = ASSETS_DIRS[0]
 
 PREFIX_DECL_RE = re.compile(r"^`(\$\w+)`\s*=\s*`(https?://[^`]+)`", re.MULTILINE)
-USD_BACKTICK_RE = re.compile(r"`([^`\s]+\.usd)`")
+USD_BACKTICK_RE = re.compile(r"`([^`\s]+\.(?:usd|usda))`")
 # Section root declaration: 루트: `$ISAAC/Path/`
 ROOT_DECL_RE = re.compile(r"^루트:\s*`(\$\w+/[^`]+?)/?`", re.MULTILINE)
-# robots.md row form: | **Vendor** | Model | `file.usd` ✓ | type |
+# robots.md row form: | **Vendor** | Model | `file.usd[a]` ✓ | type |
 # Model column allows spaces (e.g. "Carter v1") so vendor sticky stays correct.
 ROBOTS_ROW_RE = re.compile(
-    r"^\|\s*(?:\*\*([\w]+)\*\*)?\s*\|\s*([\w_./\s-]+?)\s*\|\s*`([\w_./-]+\.usd)`",
+    r"^\|\s*(?:\*\*([\w]+)\*\*)?\s*\|\s*([\w_./\s-]+?)\s*\|\s*`([\w_./-]+\.(?:usd|usda))`",
     re.MULTILINE,
 )
-# robots.md file path declaration: $ISAAC/Robots/{Vendor}/{Model}/{model}.usd
+# robots.md file path declaration: $ISAAC/Robots/{Vendor}/{Model}/{model}.usd[a]
 ROBOTS_PATTERN = "Robots/{vendor}/{model}/{file}"
 # Filter: paths containing template placeholders {var} are not real URLs
 PLACEHOLDER_RE = re.compile(r"\{[^}]+\}")
@@ -58,11 +58,11 @@ def parse_prefixes(text: str) -> dict[str, str]:
 
 
 def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
-    """Resolve every backtick-wrapped *.usd containing a `/` separator.
+    """Resolve every backtick-wrapped *.usd/*.usda containing a `/` separator.
 
     Returns [(source_line, full_url), ...].
-    - `$VAR/...usd` for any declared `$VAR = "https://..."` → expand prefix
-    - `Characters/foo.usd` (relative) → use most-recent `루트:` declaration in scope
+    - `$VAR/...usd[a]` for any declared `$VAR = "https://..."` → expand prefix
+    - `Characters/foo.usd[a]` (relative) → use most-recent `루트:` declaration in scope
     - paths with `{placeholder}` skipped
     Bare file names (e.g. robots.md) handled by extract_urls_robots.
 
@@ -82,9 +82,8 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
             return ""
         return f"{base}/{rest}".rstrip("/") if rest else base.rstrip("/")
 
-    # First `루트:` in the file is the canonical category root for all relative
-    # paths. Subsequent `루트:` are sub-section context only — table path columns
-    # are still expressed against the *first* root.
+    # First `루트:` in the file is the canonical category root for slash-relative
+    # paths. Bare filenames use the current section root while scanning.
     main_root = ""
     m_first_root = ROOT_DECL_RE.search(text)
     if m_first_root:
@@ -95,12 +94,33 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
     fallback_base = next(iter(prefixes.values()), "").rstrip("/")
 
     out: list[tuple[str, str]] = []
+    current_group = ""
+    active_root = main_root
     for line in text.splitlines():
+        stripped = line.strip()
+        root_m = ROOT_DECL_RE.match(stripped)
+        if root_m:
+            active_root = _expand_decl(root_m.group(1))
+            current_group = ""
+            continue
+        if not stripped.startswith("|"):
+            current_group = ""
+            continue
+        cells = _split_cells(line)
+        if cells and not _is_separator_row(cells):
+            col0 = re.sub(r"\*+", "", cells[0]).strip()
+            if (
+                col0
+                and "**" in cells[0]
+                and ".usd" not in cells[0]
+                and ".usda" not in cells[0]
+            ):
+                current_group = col0
         for path in USD_BACKTICK_RE.findall(line):
-            if "/" not in path:
-                continue
             if PLACEHOLDER_RE.search(path):
                 continue  # template like `{name}/{name}.usd`
+            if "/" not in path and not current_group and path not in cells[0]:
+                continue
             # Try declared prefix vars first (longest match would also work,
             # but $VAR/ + first-match is unambiguous given USD path shape).
             expanded = None
@@ -115,12 +135,31 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
                 # declared prefix if no 루트: present).
                 base = main_root or fallback_base
                 if base:
-                    out.append((line.strip(), f"{base}/{path}"))
+                    if "/" in path:
+                        out.append((line.strip(), f"{base}/{path}"))
+                    elif current_group:
+                        out.append((line.strip(), f"{base}/{current_group}/{path}"))
+                    else:
+                        section_base = active_root or base
+                        out.append((line.strip(), f"{section_base}/{path}"))
     return out
 
 
+def _split_cells(line: str) -> list[str]:
+    s = line.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|"):
+        s = s[:-1]
+    return [c.strip() for c in s.split("|")]
+
+
+def _is_separator_row(cells: list[str]) -> bool:
+    return all(re.fullmatch(r":?-{2,}:?", c) is not None for c in cells if c)
+
+
 def extract_urls_robots(md_path: Path) -> list[tuple[str, str]]:
-    """robots.md uses `{file}.usd` only, with vendor/model in adjacent columns."""
+    """robots.md uses `{file}.usd[a]`, with vendor/model in adjacent columns."""
     text = md_path.read_text(encoding="utf-8")
     prefixes = parse_prefixes(text)
     isaac = prefixes.get("$ISAAC", "")

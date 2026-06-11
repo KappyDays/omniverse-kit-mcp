@@ -76,7 +76,7 @@ omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Defau
    ```dotenv
    ISAAC_SIM_KIT_EXE=C:/IsaacSim/kit/kit.exe
    ISAAC_SIM_KIT_FILE=C:/IsaacSim/apps/isaacsim.exp.full.kit
-   # Optional: cold-boot + shader compile budget (default 240s → 600s recommended)
+   # Optional: cold-boot + shader compile budget (default 120s; use 600s for shader cache rebuilds)
    ISAAC_SIM_STARTUP_TIMEOUT=600.0
    ```
 4. **Kit Extension activation is automatic** — on `kit_app_start` the MCP server spawns Kit with `--ext-folder <repo>/kkr-extensions --enable omni.mycompany.validation_api` (plus any IDs in `ISAAC_SIM_EXTRA_EXT_IDS`). No manual Extension Manager toggling required.

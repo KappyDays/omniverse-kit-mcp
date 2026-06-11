@@ -9,7 +9,7 @@
 
 ## ⚠️ Cross-cutting Hazards (이 파일을 읽을 때 항상 유효)
 
-- **USD asset 로드**: S3 URL 필수 / `log_capture.start()` 금지 / browser ext 금지 — 상세: `../../../docs/invariants/usd-load.md`
+- **USD asset 로드**: S3 URL 필수 / `log_capture.start()` 상시 활성 금지 / payload 경로 사용 — 상세: `../../../docs/invariants/usd-load.md`
 - **NavMesh bake**: `simulation_stop` 후에만 유효 bake (R1a) — 상세: `../../../docs/invariants/scenario-validation.md`
 - **Robot 동작**: `simulation_play` 상태 필수 (R2) — 상세: `../../../docs/invariants/scenario-validation.md`
 
@@ -51,7 +51,7 @@
   2. `simulation_get_status` 가 92 s timeout → Kit main loop 차단
   3. `cmd //c "taskkill /F /IM kit.exe /T"` — PowerShell `Stop-Process` 는 Access Denied 확정
   4. `.venv/Scripts/python.exe scripts/run_process_module_standalone.py start` 로 fresh restart
-- **금지 사항**: `log_capture.start()` 재활성 / `file:///` 로컬 캐시 / `.env ISAAC_SIM_EXTRA_EXT_IDS` 에 `isaacsim.asset.browser` / `omni.kit.window.content_browser` 추가 / S3 load 실패 시 skip/fallback/placeholder — 모두 금지
+- **금지 사항**: `log_capture.start()` 상시 재활성 / `file:///` 로컬 캐시 / `stage_open` 로 MDL-heavy S3 scene 동기 load / S3 load 실패 시 skip/fallback/placeholder — 모두 금지. Browser/content-browser presence 자체는 deadlock blocker 가 아니다.
 
 ## ASYNC Job
 - **규약**: job 기반 endpoint (`/robot/navigate`, `/character/navigate`, `/robot/navigate_path`) 는 `{job_id}` 즉시 반환. 폴링: `GET /jobs/{job_id}` / 중단: `POST /jobs/{job_id}/cancel`. 상세: `../../../kkr-extensions/CLAUDE.md §"ASYNC Job pattern"`
@@ -74,7 +74,7 @@
 ## Asset / Content
 - **`AssetModule.list`**: `isaacsim.storage.native.get_assets_root_path()` 이 기본으로 공개 S3 반환 (Nucleus 없이 browse). `omni.client.list` 를 `asyncio.to_thread` 로 감쌈. 카테고리: `robots/environments/props/people/materials/isaaclab`
 - **검증 asset 규칙 (R1)**: `RobotModule.load` / `CharacterModule.load` / `stage_load_usd` 테스트는 primitive 대용 금지. `AssetModule.list` 로 탐색 가능한 실 USD 만 사용. 상세: `../../../docs/invariants/scenario-validation.md`
-- **Content 는 `omni.client` 기반**: Nucleus 외 S3 / 로컬 URL 도 동일 API. Nucleus URL 은 login token 없으면 403 → MCP 경계에서 `backend=fallback_metadata:<ErrorType>` 보고. `content_browser` / `asset.browser` Kit extension 은 **기동 시 활성화 금지** (MDL resolver hang)
+- **Content 는 `omni.client` 기반**: Nucleus 외 S3 / 로컬 URL 도 동일 API. Nucleus URL 은 login token 없으면 403 → MCP 경계에서 `backend=fallback_metadata:<ErrorType>` 보고. Content tools 는 browser UI extension 없이 direct `omni.client` 로 동작한다. Browser/content-browser 는 첫 open 시 lazy crawl 이 있어 UI settle 대기가 필요하지만, 기동 시 활성화 자체를 금지하지 않는다.
 
 ## NavMesh
 - **R1a (canonical 시퀀스)**: `load assets → simulation.stop → navigation.bake → navigation.query_path → simulation.play → robot.navigate_path`. `bake` 는 playing 중 호출 시 True 반환하지만 `get_navmesh()` = None (silent False Positive) — 호출자가 `simulation.stop` 명시

@@ -170,7 +170,7 @@ def on_load_office_clicked() -> None:
 
 - [ ] Extension `on_startup` 에서 `carb.logging.add_logger()` 호출하지 않는가?
 - [ ] USD url 은 forward slash (`/`) 인가? (backslash 는 MDL resolver 가 이상하게 해석)
-- [ ] `.env` `ISAAC_SIM_EXTRA_EXT_IDS` 에 `isaacsim.asset.browser` / `omni.kit.window.content_browser` 가 **없는가**? (S3 crawl thread 경합 방지)
+- [ ] `log_capture` 를 request-scoped 외에 상시 활성화하지 않는가? Browser/content-browser presence 자체는 blocker 가 아니며 root cause 로 보지 않는다.
 - [ ] `simulation.play` 중에 로드하려 하지 않는가? (timeline advance 가 추가 경합)
 - [ ] 런타임에 편집/순회할 prim 이 있으면 outer 로드는 `instanceable=False` 인가? (True 면 instance prototype 에 갇혀 Traverse 미도달)
 - [ ] payload 부모 prim 을 로드 전에 `UsdGeom.Xform.Define` 로 def 화했는가? (over 부모는 subtree prune)
