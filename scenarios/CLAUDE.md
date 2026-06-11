@@ -77,6 +77,8 @@ spec:
 
 **GUI 동등 tool**: File menu (`stage_save/open/new`), Stage 패널 (`stage_get/set_selection`), Viewport 툴바 (`viewport_set_active_camera`). `stage_create_prim(prim_type=...)` 은 Cube/Sphere 외 Camera / DistantLight / DomeLight / SphereLight / RectLight 도 수용.
 
+**Franka pick/place**: 기존 stage 의 Franka 와 물체 prim 을 다룰 때는 `robot.run_franka_pick_place` 를 우선 사용한다. 이 action 은 Isaac Sim 공식 PickPlaceController/RMPflow/ParallelGripper 경로이며 kinematic carry 를 쓰지 않는다. 공식 controller 기본 hover height 는 절대 world Z=0.3 이라 table-top 객체에는 낮을 수 있으므로 wrapper 의 `end_effector_initial_height_source` 를 확인한다. bbox center 가 실제 grasp point 가 아니면 `picking_position` / `end_effector_orientation` 을 명시한다. Assert 단계에서 `stage_compute_world_bbox` 와 viewport capture 를 함께 사용해 lift/final placement 를 확인한다.
+
 ## Character scenario — YAML 저작 특화
 
 AnimGraph / NavMesh / shutdown hang 상세는 `../src/omniverse_kit_mcp/modules/CLAUDE.md §"Character domain constraints"` + `../docs/invariants/scenario-validation.md §"Character 표준 sequence"`. YAML 관점 체크리스트:

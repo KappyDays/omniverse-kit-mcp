@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 _PROFILE_DISPLAY: dict[str, str] = {
-    "isaac-sim": "Isaac Sim 5.1",
+    "isaac-sim": "Isaac Sim 6.0.0",
     "usd-composer": "USD Composer",
 }
 
@@ -50,11 +50,26 @@ data store.
 ### Robot / Controller Workflows
 - MCP tools operate between frames: create the stage, load assets, wire graphs,
   step simulation, and observe results.
+- For Franka object manipulation, prefer `robot_run_franka_pick_place` first.
+  It wraps Isaac Sim's official Franka `PickPlaceController` +
+  `RMPFlowController` + `ParallelGripper`, does not kinematically carry the
+  object, and only reports success when controller completion is backed by
+  bbox-based lift and final-position validation.
+  The official controller's hover height is absolute world Z, not "above the
+  object"; the MCP wrapper auto-raises it for table-top objects and reports
+  `end_effector_initial_height_source` in diagnostics. Use explicit
+  `picking_position` / `end_effector_orientation` when the bbox center is not
+  the visual grasp point.
 - Continuous robot control runs within frames. For pick/place, tracking, or
   other closed-loop behavior, create an ActionGraph ScriptNode with
   `omnigraph_create_script_controller`; put the controller state machine in
   the script, then use `simulation_play` and `simulation_step_observe` to debug
   deterministic frame-by-frame progress.
+- For table-to-table manipulation, do not accept telemetry alone as success.
+  Create physical table prims with colliders/materials, capture before/after
+  viewport images, and use `stage_compute_world_bbox` to verify the object
+  starts on the source table and ends inside the destination table footprint
+  with the object bottom at the destination table top.
 - Avoid relying on sleep plus repeated one-shot IK calls for full manipulation.
   Use `robot_get_ee_pose`, `robot_get_joint_config`, and
   `simulation_step_observe` to verify where the robot actually moved.

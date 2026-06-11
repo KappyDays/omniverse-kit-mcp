@@ -16,6 +16,14 @@ codex                             # Codex CLI 진입
 
 `.mcp.json` 과 `.codex/config.toml` 은 4 개 instance 폴더에 commit 되어 있다 (`uv --directory ../../..` 상대경로 — host working dir = instance 폴더 → repo root). clone 직후 추가 setup 없이 바로 `cd` + `claude` 또는 `codex` 가능. uv / Isaac Sim / USD Composer 자체 설치만 별도 — `../setup/CLAUDE.md`. Codex CLI 자체 설치 (`npm install -g @openai/codex`) 는 `../README.md` Wiring 섹션.
 
+CodeGraph 같은 코드 탐색 MCP 는 user/global Codex config 에 둔다. 이
+workspace-local `.codex/config.toml` 들에는 Kit MCP entry 1 개만 유지해야
+하며, `tests/unit/test_codex_entrypoint_sync.py` 가 sibling `.mcp.json` 과의
+1:1 mirror 를 검증한다. CodeGraph 를 쓰려면 repo root 에서
+`codegraph init -i` 로 `.codegraph/` 를 만들고, workspace 폴더의
+`codex mcp list` 에서 global `codegraph` 와 workspace Kit MCP 가 함께
+보이는지만 확인한다.
+
 ## 시나리오 → 폴더 매트릭스
 
 | 시나리오 | CC 창 | 진입 폴더 |

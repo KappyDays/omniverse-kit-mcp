@@ -30,6 +30,7 @@ from .models.ui import UiInvokeRequestModel
 from .models.robot import (
     DrivePhysicsRequestModel,
     NavigationQueryPathRequestModel,
+    RobotFrankaPickPlaceRequestModel,
     RobotGripperControlRequestModel,
     RobotLoadRequestModel,
     RobotNavigatePathRequestModel,
@@ -1228,6 +1229,18 @@ async def robot_get_ee_pose(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("robot/ee_pose failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/robot/franka_pick_place")
+async def robot_franka_pick_place(body: RobotFrankaPickPlaceRequestModel) -> Any:
+    require_robot_stack()
+    try:
+        return await _robot.run_franka_pick_place(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("robot/franka_pick_place failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

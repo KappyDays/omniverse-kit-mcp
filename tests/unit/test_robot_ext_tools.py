@@ -11,6 +11,7 @@ from omniverse_kit_mcp.scenario.action_registry import build_request
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.robot import (
     RobotEEPose,
+    RobotFrankaPickPlaceRequest,
     RobotGripperControlRequest,
     RobotGripperControlResult,
     RobotNavigatePathRequest,
@@ -19,8 +20,13 @@ from omniverse_kit_mcp.types.robot import (
     RobotSetEETargetResult,
 )
 from omni.mycompany.validation_api.services.robot_service import (
+    _build_franka_pick_place_diagnostics,
+    _ensure_initialized,
+    _resolve_official_franka_pick_place_classes,
+    _resolve_franka_pick_place_hover_height,
     _resolve_lula_config,
 )
+from omni.mycompany.validation_api.models.robot import RobotFrankaPickPlaceRequestModel
 
 
 def _meta() -> OperationMeta:
@@ -38,6 +44,7 @@ def test_robot_ext_tools_registered(mcp_server):
     assert "robot_gripper_control" in names
     assert "robot_set_ee_target" in names
     assert "robot_get_ee_pose" in names
+    assert "robot_run_franka_pick_place" in names
 
 
 @pytest.mark.asyncio
@@ -133,6 +140,17 @@ def test_resolve_lula_config_prefers_isaac_sim_51_loader_api():
     assert cfg["end_effector_frame_name"] == "fr3_hand_tcp"
 
 
+def test_ensure_initialized_surfaces_not_ready_articulation():
+    class NotReadyArticulation:
+        prim_path = "/World/Franka"
+
+        def initialize(self) -> None:
+            raise AttributeError("'NoneType' object has no attribute 'link_names'")
+
+    with pytest.raises(ValueError, match="articulation.*not ready"):
+        _ensure_initialized(NotReadyArticulation())
+
+
 @pytest.mark.asyncio
 async def test_get_ee_pose_success():
     from tests.conftest import MockIsaacRestClient
@@ -176,6 +194,19 @@ def test_action_registry_phase_g_robot_builders():
     assert isinstance(req3, RobotSetEETargetRequest)
     assert req3.robot_description == "Franka"
 
+    req4 = build_request(
+        ModuleName.ROBOT,
+        "run_franka_pick_place",
+        {
+            "robot_prim_path": "/World/Franka",
+            "object_prim_path": "/World/Cube",
+            "target_position": [0.45, -0.35, 0.72],
+        },
+    )
+    assert isinstance(req4, RobotFrankaPickPlaceRequest)
+    assert req4.max_steps == 1800
+    assert req4.position_tolerance == 0.05
+
 
 def test_action_registry_robot_errors():
     with pytest.raises(ValueError, match="waypoints"):
@@ -189,3 +220,103 @@ def test_action_registry_robot_errors():
             ModuleName.ROBOT, "set_ee_target",
             {"prim_path": "/x", "target_pose": [0, 0, 0]},
         )
+    with pytest.raises(ValueError, match="target_position"):
+        build_request(
+            ModuleName.ROBOT,
+            "run_franka_pick_place",
+            {
+                "robot_prim_path": "/World/Franka",
+                "object_prim_path": "/World/Cube",
+                "target_position": [0, 0],
+            },
+        )
+
+
+def test_franka_pick_place_request_model_defaults_are_official_controller_safe():
+    model = RobotFrankaPickPlaceRequestModel(
+        robot_prim_path="/World/Franka",
+        object_prim_path="/World/Cube",
+        target_position=[0.45, -0.35, 0.72],
+    )
+
+    assert model.robot_description == "Franka"
+    assert model.max_steps == 1800
+    assert model.position_tolerance == pytest.approx(0.05)
+    assert model.lift_height_tolerance == pytest.approx(0.03)
+    assert model.events_dt is None
+
+
+def test_franka_pick_place_request_model_accepts_explicit_grasp_pose():
+    model = RobotFrankaPickPlaceRequestModel(
+        robot_prim_path="/World/Franka",
+        object_prim_path="/World/Cube",
+        target_position=[0.45, -0.35, 0.72],
+        picking_position=[0.3, 0.2, 0.51],
+        end_effector_orientation=[0.0, 0.0, 1.0, 0.0],
+    )
+
+    assert model.picking_position == [0.3, 0.2, 0.51]
+    assert model.end_effector_orientation == [0.0, 0.0, 1.0, 0.0]
+
+
+def test_franka_pick_place_diagnostics_reference_official_block_geometry():
+    diagnostics = _build_franka_pick_place_diagnostics(
+        bbox_size=[0.163, 0.029, 0.013],
+        picking_position_source="bbox_center",
+    )
+
+    assert diagnostics["official_reference"] == "Isaac Sim Franka Cortex Block Stacking"
+    assert diagnostics["official_block_size_m"] == pytest.approx(0.0515)
+    assert any("flatter" in warning for warning in diagnostics["warnings"])
+    assert any("picking_position" in hint for hint in diagnostics["hints"])
+
+
+def test_franka_pick_place_hover_height_is_absolute_world_z_for_tables():
+    assert _resolve_franka_pick_place_hover_height(
+        explicit_height=None,
+        picking_z=0.46875,
+        target_z=0.46875,
+    ) == pytest.approx(0.71875)
+    assert _resolve_franka_pick_place_hover_height(
+        explicit_height=None,
+        picking_z=0.02575,
+        target_z=0.02575,
+    ) == pytest.approx(0.3)
+    assert _resolve_franka_pick_place_hover_height(
+        explicit_height=0.8,
+        picking_z=0.46875,
+        target_z=0.46875,
+    ) == pytest.approx(0.8)
+
+
+def test_official_pick_place_classes_resolve_from_isaac_sim_namespace(monkeypatch):
+    class FakePickPlaceController:
+        pass
+
+    class FakeParallelGripper:
+        pass
+
+    class FakeSingleArticulation:
+        pass
+
+    class FakeModule:
+        PickPlaceController = FakePickPlaceController
+        ParallelGripper = FakeParallelGripper
+        SingleArticulation = FakeSingleArticulation
+
+    def fake_import(name):
+        if name == "isaacsim.robot.manipulators.examples.franka.controllers.pick_place_controller":
+            return FakeModule
+        if name == "isaacsim.robot.manipulators.grippers.parallel_gripper":
+            return FakeModule
+        if name == "isaacsim.core.prims":
+            return FakeModule
+        raise ImportError(name)
+
+    monkeypatch.setattr("importlib.import_module", fake_import)
+
+    classes = _resolve_official_franka_pick_place_classes()
+
+    assert classes.pick_place_controller is FakePickPlaceController
+    assert classes.parallel_gripper is FakeParallelGripper
+    assert classes.single_articulation is FakeSingleArticulation

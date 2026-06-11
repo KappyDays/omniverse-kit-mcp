@@ -13,6 +13,8 @@ from omniverse_kit_mcp.types.robot import (
     JointPositionsSetResult,
     RobotDrivePhysicsRequest,
     RobotDrivePhysicsResult,
+    RobotFrankaPickPlaceRequest,
+    RobotFrankaPickPlaceResult,
     RobotLoadRequest,
     RobotLoadResult,
     RobotNavigateRequest,
@@ -252,3 +254,95 @@ async def test_robot_drive_physics_server_error_maps():
     assert not result.ok
     assert result.error_code == "ROBOT_DRIVE_PHYSICS_ERROR"
     assert "DOF" in (result.message or "")
+
+
+@pytest.mark.asyncio
+async def test_robot_run_franka_pick_place_uses_official_controller_payload():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+    request = RobotFrankaPickPlaceRequest(
+        robot_prim_path="/World/Franka",
+        object_prim_path="/World/KLT",
+        target_position=(0.45, -0.35, 0.72),
+        max_steps=1200,
+        position_tolerance=0.04,
+        lift_height_tolerance=0.025,
+    )
+
+    result = await module.run_franka_pick_place(_meta(), request)
+
+    assert result.ok
+    assert isinstance(result.data, RobotFrankaPickPlaceResult)
+    assert result.data.controller == "isaacsim.robot.manipulators.examples.franka.controllers.PickPlaceController"
+    assert result.data.uses_kinematic_carry is False
+    assert result.data.placed is True
+    calls = [c for c in client.calls if c[0] == "robot_run_franka_pick_place"]
+    assert len(calls) == 1
+    assert calls[0][1]["robot_prim_path"] == "/World/Franka"
+    assert calls[0][1]["object_prim_path"] == "/World/KLT"
+    assert calls[0][1]["target_position"] == [0.45, -0.35, 0.72]
+    assert calls[0][1]["max_steps"] == 1200
+
+
+@pytest.mark.asyncio
+async def test_robot_run_franka_pick_place_forwards_explicit_grasp_pose():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+    request = RobotFrankaPickPlaceRequest(
+        robot_prim_path="/World/Franka",
+        object_prim_path="/World/Cube",
+        target_position=(0.45, -0.35, 0.72),
+        picking_position=(0.3, 0.2, 0.51),
+        end_effector_orientation=(0.0, 0.0, 1.0, 0.0),
+    )
+
+    result = await module.run_franka_pick_place(_meta(), request)
+
+    assert result.ok
+    calls = [c for c in client.calls if c[0] == "robot_run_franka_pick_place"]
+    assert calls[0][1]["picking_position"] == [0.3, 0.2, 0.51]
+    assert calls[0][1]["end_effector_orientation"] == [0.0, 0.0, 1.0, 0.0]
+
+
+@pytest.mark.asyncio
+async def test_robot_run_franka_pick_place_failed_physical_validation_is_not_success():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["robot_run_franka_pick_place"] = {
+        "ok": False,
+        "robot_prim_path": "/World/Franka",
+        "object_prim_path": "/World/KLT",
+        "target_position": [0.45, -0.35, 0.72],
+        "controller": "isaacsim.robot.manipulators.examples.franka.controllers.PickPlaceController",
+        "gripper": "ParallelGripper",
+        "uses_kinematic_carry": False,
+        "steps": 300,
+        "done": False,
+        "placed": False,
+        "lifted": False,
+        "final_object_position": [0.2, 0.35, 0.72],
+        "final_distance": 0.72,
+        "max_lift_delta": 0.0,
+        "reason": "Object was not lifted by the gripper",
+    }
+    module = RobotModule(client)
+
+    result = await module.run_franka_pick_place(
+        _meta(),
+        RobotFrankaPickPlaceRequest(
+            robot_prim_path="/World/Franka",
+            object_prim_path="/World/KLT",
+            target_position=(0.45, -0.35, 0.72),
+        ),
+    )
+
+    assert not result.ok
+    assert result.error_code == "ROBOT_FRANKA_PICK_PLACE_FAILED"
+    assert isinstance(result.data, RobotFrankaPickPlaceResult)
+    assert result.data.uses_kinematic_carry is False
+    assert "not lifted" in (result.message or "")

@@ -6,7 +6,7 @@ import logging
 import time
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
-from omniverse_kit_mcp.modules.base import error_result, ok_result
+from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
 from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
 from omniverse_kit_mcp.types.robot import (
     JointConfig,
@@ -16,6 +16,8 @@ from omniverse_kit_mcp.types.robot import (
     RobotDrivePhysicsRequest,
     RobotDrivePhysicsResult,
     RobotEEPose,
+    RobotFrankaPickPlaceRequest,
+    RobotFrankaPickPlaceResult,
     RobotGripperControlRequest,
     RobotGripperControlResult,
     RobotLoadRequest,
@@ -319,4 +321,101 @@ class RobotModule:
         except Exception as exc:
             return error_result(
                 str(exc), started_ms=started, exc=exc, error_code="ROBOT_DRIVE_PHYSICS_ERROR",
+            )
+
+    async def run_franka_pick_place(
+        self,
+        meta: OperationMeta,
+        request: RobotFrankaPickPlaceRequest,
+    ) -> ModuleResult[RobotFrankaPickPlaceResult]:
+        """Run Isaac Sim's official Franka PickPlaceController against an object."""
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.robot_run_franka_pick_place({
+                "robot_prim_path": request.robot_prim_path,
+                "object_prim_path": request.object_prim_path,
+                "target_position": list(request.target_position),
+                "robot_description": request.robot_description,
+                "picking_position": (
+                    list(request.picking_position)
+                    if request.picking_position is not None
+                    else None
+                ),
+                "end_effector_initial_height": request.end_effector_initial_height,
+                "end_effector_offset": (
+                    list(request.end_effector_offset)
+                    if request.end_effector_offset is not None
+                    else None
+                ),
+                "end_effector_orientation": (
+                    list(request.end_effector_orientation)
+                    if request.end_effector_orientation is not None
+                    else None
+                ),
+                "events_dt": list(request.events_dt) if request.events_dt is not None else None,
+                "max_steps": request.max_steps,
+                "position_tolerance": request.position_tolerance,
+                "lift_height_tolerance": request.lift_height_tolerance,
+            })
+            result = RobotFrankaPickPlaceResult(
+                ok=bool(raw.get("ok", False)),
+                robot_prim_path=str(raw.get("robot_prim_path", request.robot_prim_path)),
+                object_prim_path=str(raw.get("object_prim_path", request.object_prim_path)),
+                target_position=tuple(
+                    float(v) for v in raw.get("target_position", request.target_position)
+                ),  # type: ignore[arg-type]
+                controller=str(raw.get("controller", "")),
+                gripper=str(raw.get("gripper", "")),
+                uses_kinematic_carry=bool(raw.get("uses_kinematic_carry", True)),
+                steps=int(raw.get("steps", 0)),
+                done=bool(raw.get("done", False)),
+                placed=bool(raw.get("placed", False)),
+                lifted=bool(raw.get("lifted", False)),
+                initial_object_position=tuple(
+                    float(v) for v in raw.get("initial_object_position", (0.0, 0.0, 0.0))
+                ),  # type: ignore[arg-type]
+                final_object_position=tuple(
+                    float(v) for v in raw.get("final_object_position", (0.0, 0.0, 0.0))
+                ),  # type: ignore[arg-type]
+                final_distance=float(raw.get("final_distance", 0.0)),
+                max_lift_delta=float(raw.get("max_lift_delta", 0.0)),
+                object_bbox_size=tuple(
+                    float(v) for v in raw.get("object_bbox_size", (0.0, 0.0, 0.0))
+                ),  # type: ignore[arg-type]
+                picking_position=tuple(
+                    float(v) for v in raw.get("picking_position", request.picking_position or (0.0, 0.0, 0.0))
+                ),  # type: ignore[arg-type]
+                picking_position_source=str(raw.get("picking_position_source", "unknown")),
+                end_effector_initial_height=float(
+                    raw.get("end_effector_initial_height", request.end_effector_initial_height or 0.0)
+                ),
+                end_effector_initial_height_source=str(
+                    raw.get("end_effector_initial_height_source", "unknown")
+                ),
+                end_effector_orientation=(
+                    tuple(float(v) for v in raw["end_effector_orientation"])
+                    if raw.get("end_effector_orientation") is not None
+                    else None
+                ),  # type: ignore[arg-type]
+                diagnostics=dict(raw.get("diagnostics", {})),
+                reason=(
+                    str(raw.get("reason"))
+                    if raw.get("reason") is not None
+                    else None
+                ),
+            )
+            if not result.ok:
+                return fail_result(
+                    result.reason or "Franka pick-place physical validation failed",
+                    started_ms=started,
+                    error_code="ROBOT_FRANKA_PICK_PLACE_FAILED",
+                    data=result,
+                )
+            return ok_result(result, started_ms=started)
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="ROBOT_FRANKA_PICK_PLACE_ERROR",
             )

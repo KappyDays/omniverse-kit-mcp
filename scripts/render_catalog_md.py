@@ -122,7 +122,7 @@ def _render_header_v1(
     meta: dict[str, Any], per_category: dict[str, list[dict[str, Any]]]
 ) -> str:
     lines = []
-    lines.append("# Isaac Sim 5.1.0 Extensions — Full Catalog")
+    lines.append("# Isaac Sim 6.0.0 Extensions — Full Catalog")
     lines.append("")
     lines.append(
         f"> **권위자료**. 대상: {meta['total_extensions']} extensions "
@@ -273,7 +273,7 @@ def _render_entry(entry: dict[str, Any]) -> str:
 def _render_category_section(cat: str, entries: list[dict[str, Any]]) -> str:
     lines = [f"## {cat}", ""]
     if cat == "Deprecated (omni.isaac.*)":
-        lines.append("> ⚠️ **Deprecated Extensions** — Isaac Sim 5.x 에서 제거 예정.")
+        lines.append("> ⚠️ **Deprecated Extensions** — Isaac Sim 6.x 에서 제거 또는 호환 전용.")
         lines.append("> `extsDeprecated/` 디렉토리에 위치. 신규 코드에서 사용 금지.")
         lines.append("")
     for e in sorted(entries, key=lambda x: x["name"]):

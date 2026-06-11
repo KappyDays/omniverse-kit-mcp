@@ -1,10 +1,10 @@
 # omniverse-kit-mcp
 
-**Drive NVIDIA Isaac Sim 5.1 in natural language from Claude Code (or any MCP client).**
+**Drive NVIDIA Isaac Sim 6.0.0 in natural language from Claude Code (or any MCP client).**
 
 An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — stage editing, robot / character animation, multi-viewport capture, physics, lighting, SDG, OmniGraph, content browsing, extension management — as 133 tools plus 5 on-demand resources. Pair it with the bundled Kit Extension and Claude Code controls Isaac Sim end-to-end through stdio.
 
-![python](https://img.shields.io/badge/python-3.11%2B-blue) ![isaac-sim](https://img.shields.io/badge/Isaac%20Sim-5.1-green) ![mcp](https://img.shields.io/badge/MCP-stdio-purple)
+![python](https://img.shields.io/badge/python-3.11%2B-blue) ![isaac-sim](https://img.shields.io/badge/Isaac%20Sim-6.0.0-green) ![mcp](https://img.shields.io/badge/MCP-stdio-purple)
 
 ---
 
@@ -28,7 +28,7 @@ An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — 
                                      │                               │  omni.usd / pxr.*
                                      └──────────────────────────────┘
                                                  │
-                                          kit.exe (Isaac Sim 5.1)
+                                          kit.exe (Isaac Sim 6.0.0)
 ```
 
 Two operational paths:
@@ -44,7 +44,7 @@ Scenario tools (`scenario_validate`, `scenario_plan`, …) are orchestrators —
 
 ## Quick Start
 
-**Prerequisites**: Windows 10/11 · Python 3.11+ · [uv](https://docs.astral.sh/uv/) · [Isaac Sim 5.1 Standalone](https://developer.nvidia.com/isaac-sim) (see next section)
+**Prerequisites**: Windows 10/11 · Python 3.11+ for the MCP server · [uv](https://docs.astral.sh/uv/) · [Isaac Sim 6.0.0 Standalone](https://developer.nvidia.com/isaac-sim) with bundled Python 3.12 (see next section)
 
 ```bash
 # 1. Clone and install deps
@@ -68,7 +68,7 @@ setup/setup-omniverse-kit-mcp.bat
 
 omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Default paths in `src/omniverse_kit_mcp/config.py` point at the developer's workstation and must be overridden.
 
-1. **Install** Isaac Sim 5.1.0 Standalone anywhere (e.g. `C:/IsaacSim/`, `D:/programs/isaac-sim-5.1.0/`)
+1. **Install** Isaac Sim 6.0.0 Standalone anywhere (e.g. `C:/IsaacSim/`, `D:/programs/isaac-sim-standalone-6.0.0/`)
 2. **Note** the two files you'll reference:
    - `<install>/kit/kit.exe` — the Kit application binary
    - `<install>/apps/isaacsim.exp.full.kit` — the experience config
@@ -200,7 +200,7 @@ codex
 
 | Terminal | Workspace | App | Port |
 |---|---|---|---|
-| A | `workspaces/isaac/instance-1` | Isaac Sim 5.1 | 8111 |
+| A | `workspaces/isaac/instance-1` | Isaac Sim 6.0.0 | 8111 |
 | B | `workspaces/usd-composer/instance-1` | USD Composer | 8114 |
 
 Each codex workspace entry owns one `kit.exe` process. The two app instances are
@@ -213,6 +213,33 @@ codex mcp list
 ```
 
 The command should include the workspace entry (`isaacsim-mcp-1`, `isaacsim-mcp-2`, `usdcomposer-mcp-1`, or `usdcomposer-mcp-2` depending on the folder). Global Codex MCP entries may appear too.
+
+**Optional: CodeGraph for Codex navigation**
+
+Use CodeGraph as a user/global Codex MCP entry plus a per-clone repo index. Do
+not add it to the committed workspace `.codex/config.toml` files: those files
+mirror exactly one sibling `.mcp.json` Kit entry and are guarded by
+`tests/unit/test_codex_entrypoint_sync.py`.
+
+```cmd
+:: One-time user/global install and Codex MCP wiring
+npm install -g @colbymchenry/codegraph
+codegraph install --target=codex --location=global --yes
+
+:: Per clone, from the repo root
+cd C:\path\to\omniverse-kit-mcp
+codegraph init -i
+codegraph status
+
+:: From a workspace folder, verify both entries can coexist
+cd workspaces\isaac\instance-1
+codex mcp list
+```
+
+In this repo, CodeGraph is a navigation accelerator. Use it to find symbols,
+callers/callees, and impact radius before reading the narrowed files. It does
+not replace the root/local `CLAUDE.md` loading rule, pull-docs, runbooks, or
+the verification commands documented below.
 
 ---
 
@@ -303,9 +330,10 @@ Process-level control without restarting the MCP host (bypasses the MCP import c
 
 The repository intentionally excludes local runtime state and generated research
 corpora. In particular, `.env`, `.venv`, `docs/artifacts/**`, workshop
-screenshots, generated extension catalogs, and copied reference snapshots are
-ignored. Public clones still run the MCP server and tests; `extension_search`
-returns `EXTENSION_CATALOG_UNAVAILABLE` until you generate a local
+screenshots, CodeGraph `.codegraph/` / `.codegraph-*/` indexes, generated
+extension catalogs, and copied reference snapshots are ignored. Public clones
+still run the MCP server and tests; `extension_search` returns
+`EXTENSION_CATALOG_UNAVAILABLE` until you generate a local
 `docs/references/extensions.json`.
 
 Generated local references:
@@ -330,9 +358,9 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 - **Operational rules & escalation protocols** → root [`CLAUDE.md`](./CLAUDE.md)
 - **Tool surface contract** → [`docs/tool-catalog.md`](./docs/tool-catalog.md) + [`src/omniverse_kit_mcp/tools/CLAUDE.md`](./src/omniverse_kit_mcp/tools/CLAUDE.md)
 - **Kit Extension internals** → [`kkr-extensions/CLAUDE.md`](./kkr-extensions/CLAUDE.md)
-- **Module integration facts** (Kit 5.1 gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/omniverse_kit_mcp/modules/CLAUDE.md`](./src/omniverse_kit_mcp/modules/CLAUDE.md)
+- **Module integration facts** (Kit / Isaac runtime gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/omniverse_kit_mcp/modules/CLAUDE.md`](./src/omniverse_kit_mcp/modules/CLAUDE.md)
 - **Scenario authoring guide** → [`scenarios/CLAUDE.md`](./scenarios/CLAUDE.md)
-- **Asset URL catalogs** → [`docs/assets/isaac/asset_inventory.md`](./docs/assets/isaac/asset_inventory.md) (Isaac Sim 5.1 bundle) + `docs/assets/composer/` (Composer scope)
+- **Asset URL catalogs** → [`docs/assets/isaac/asset_inventory.md`](./docs/assets/isaac/asset_inventory.md) (Isaac Sim 6.0 bundle) + `docs/assets/composer/` (Composer scope)
 - **Open-source application notes** → [`docs/oss-application-notes.md`](./docs/oss-application-notes.md)
 
 ---

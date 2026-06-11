@@ -485,6 +485,52 @@ class MockIsaacRestClient:
             },
         )
 
+    async def robot_run_franka_pick_place(self, request: dict) -> dict:
+        self.calls.append(("robot_run_franka_pick_place", request))
+        return self.responses.get(
+            "robot_run_franka_pick_place",
+            {
+                "ok": True,
+                "robot_prim_path": request.get("robot_prim_path", ""),
+                "object_prim_path": request.get("object_prim_path", ""),
+                "target_position": request.get("target_position", [0.0, 0.0, 0.0]),
+                "controller": (
+                    "isaacsim.robot.manipulators.examples.franka.controllers."
+                    "PickPlaceController"
+                ),
+                "gripper": "ParallelGripper",
+                "uses_kinematic_carry": False,
+                "steps": 480,
+                "done": True,
+                "placed": True,
+                "lifted": True,
+                "initial_object_position": request.get("picking_position") or [0.0, 0.0, 0.0],
+                "final_object_position": request.get("target_position", [0.0, 0.0, 0.0]),
+                "final_distance": 0.01,
+                "max_lift_delta": 0.08,
+                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "picking_position": request.get("picking_position") or [0.0, 0.0, 0.0],
+                "picking_position_source": (
+                    "explicit" if request.get("picking_position") is not None else "bbox_center"
+                ),
+                "end_effector_initial_height": (
+                    request.get("end_effector_initial_height") or 0.3
+                ),
+                "end_effector_initial_height_source": (
+                    "explicit"
+                    if request.get("end_effector_initial_height") is not None
+                    else "official_default"
+                ),
+                "end_effector_orientation": request.get("end_effector_orientation"),
+                "diagnostics": {
+                    "official_reference": "Isaac Sim Franka Cortex Block Stacking",
+                    "warnings": [],
+                    "hints": [],
+                },
+                "reason": None,
+            },
+        )
+
     # Jobs (Phase B)
 
     async def job_status(self, job_id: str) -> dict:

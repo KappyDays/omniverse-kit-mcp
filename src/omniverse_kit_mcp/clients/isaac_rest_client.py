@@ -531,6 +531,9 @@ class IsaacRestClient:
             "GET", f"{BASE_PATH}/robot/ee_pose", params=params,
         )
 
+    async def robot_run_franka_pick_place(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(f"{BASE_PATH}/robot/franka_pick_place", json=request)
+
     # --- Jobs (Phase B) ---
 
     async def job_status(self, job_id: str) -> dict[str, Any]:

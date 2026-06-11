@@ -30,6 +30,7 @@ from omniverse_kit_mcp.types.lakehouse import (
 from omniverse_kit_mcp.types.robot import (
     JointPositionsSetRequest,
     RobotDrivePhysicsRequest,
+    RobotFrankaPickPlaceRequest,
     RobotGripperControlRequest,
     RobotLoadRequest,
     RobotNavigatePathRequest,
@@ -762,6 +763,56 @@ def _build_robot_set_ee_target(args: dict[str, Any]) -> RobotSetEETargetRequest:
     )
 
 
+def _build_robot_run_franka_pick_place(
+    args: dict[str, Any],
+) -> RobotFrankaPickPlaceRequest:
+    target = args.get("target_position")
+    if not target or len(target) != 3:
+        raise ValueError("robot.run_franka_pick_place target_position must be [x,y,z]")
+    offset = args.get("end_effector_offset")
+    if offset is not None and len(offset) != 3:
+        raise ValueError("robot.run_franka_pick_place end_effector_offset must be [x,y,z]")
+    picking = args.get("picking_position")
+    if picking is not None and len(picking) != 3:
+        raise ValueError("robot.run_franka_pick_place picking_position must be [x,y,z]")
+    orientation = args.get("end_effector_orientation")
+    if orientation is not None and len(orientation) != 4:
+        raise ValueError(
+            "robot.run_franka_pick_place end_effector_orientation must be [qw,qx,qy,qz]"
+        )
+    events_dt = args.get("events_dt")
+    return RobotFrankaPickPlaceRequest(
+        robot_prim_path=args["robot_prim_path"],
+        object_prim_path=args["object_prim_path"],
+        target_position=tuple(float(v) for v in target),  # type: ignore[arg-type]
+        robot_description=str(args.get("robot_description", "Franka")),
+        picking_position=(
+            tuple(float(v) for v in picking)
+            if picking is not None
+            else None
+        ),  # type: ignore[arg-type]
+        end_effector_initial_height=(
+            float(args["end_effector_initial_height"])
+            if args.get("end_effector_initial_height") is not None
+            else None
+        ),
+        end_effector_offset=(
+            tuple(float(v) for v in offset)
+            if offset is not None
+            else None
+        ),  # type: ignore[arg-type]
+        end_effector_orientation=(
+            tuple(float(v) for v in orientation)
+            if orientation is not None
+            else None
+        ),  # type: ignore[arg-type]
+        events_dt=tuple(float(v) for v in events_dt) if events_dt else None,
+        max_steps=int(args.get("max_steps", 1800)),
+        position_tolerance=float(args.get("position_tolerance", 0.05)),
+        lift_height_tolerance=float(args.get("lift_height_tolerance", 0.03)),
+    )
+
+
 def _build_character_play_animation_variant(
     args: dict[str, Any],
 ) -> CharacterPlayAnimationVariantRequest:
@@ -1094,6 +1145,7 @@ _REGISTRY: dict[tuple[ModuleName, str], Any] = {
     (ModuleName.ROBOT, "navigate_path"): _build_robot_navigate_path,
     (ModuleName.ROBOT, "gripper_control"): _build_robot_gripper_control,
     (ModuleName.ROBOT, "set_ee_target"): _build_robot_set_ee_target,
+    (ModuleName.ROBOT, "run_franka_pick_place"): _build_robot_run_franka_pick_place,
     (ModuleName.ROBOT, "drive_physics"): _build_robot_drive_physics,
     (ModuleName.CHARACTER, "play_animation_variant"): _build_character_play_animation_variant,
     (ModuleName.CHARACTER, "load_crowd"): _build_character_load_crowd,
