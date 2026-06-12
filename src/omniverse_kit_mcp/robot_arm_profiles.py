@@ -4,16 +4,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from omniverse_kit_mcp.modules.asset_module import resolve_catalog_asset_url
 from omniverse_kit_mcp.types.robot import RobotArmProfile
-
-_ISAAC_ROBOTS_ROOT = (
-    "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-    "Assets/Isaac/6.0/Isaac/Robots"
-)
 
 
 def _robot_usd(*parts: str) -> str:
-    return f"{_ISAAC_ROBOTS_ROOT}/{'/'.join(parts)}"
+    return resolve_catalog_asset_url("robots", f"Robots/{'/'.join(parts)}")
 
 
 def _profile(

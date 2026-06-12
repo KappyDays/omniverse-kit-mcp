@@ -1021,7 +1021,7 @@ names. Requires simulation playing.
 ### `robot_install_franka_pick_place_playback_demo`
 
 ```python
-robot_install_franka_pick_place_playback_demo(robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+robot_install_franka_pick_place_playback_demo(robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
 ```
 
 Install a persistent Franka pick/place demo that advances from Isaac Sim GUI Play or
@@ -1037,6 +1037,8 @@ carry.
 | `target_position` | `list[number] \| None` | `None` |  |
 | `object_initial_position` | `list[number] \| None` | `None` |  |
 | `object_size` | `number` | `0.0515` |  |
+| `object_asset_url` | `string \| None` | `None` |  |
+| `grid_asset_url` | `string \| None` | `None` |  |
 | `max_steps` | `integer` | `1800` |  |
 | `position_tolerance` | `number` | `0.05` |  |
 | `lift_height_tolerance` | `number` | `0.03` |  |
@@ -1051,7 +1053,7 @@ carry.
 ### `robot_install_pick_place_playback_demo`
 
 ```python
-robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_panda', robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_panda', robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
 ```
 
 Install a profile-selected pick/place playback demo. franka_panda routes to the validated
@@ -1068,6 +1070,8 @@ proof exists.
 | `target_position` | `list[number] \| None` | `None` |  |
 | `object_initial_position` | `list[number] \| None` | `None` |  |
 | `object_size` | `number` | `0.0515` |  |
+| `object_asset_url` | `string \| None` | `None` |  |
+| `grid_asset_url` | `string \| None` | `None` |  |
 | `max_steps` | `integer` | `1800` |  |
 | `position_tolerance` | `number` | `0.05` |  |
 | `lift_height_tolerance` | `number` | `0.03` |  |

@@ -182,6 +182,8 @@
 |  | RS025N | `rs025n_onrobot_rg2.usd` ✓ | 산업 암 |
 |  | RS080N | `rs080n_onrobot_rg2.usd` ✓ | 산업 암 |
 | **Kinova** | Gen3 | `gen3n7_instanceable.usd` ✓ | 협동 암 |
+|  | Jaco2/J2N6S300 | `Jaco2/J2N6S300/j2n6s300_instanceable.usd` ✓ | 협동 암 |
+|  | Jaco2/J2N7S300 | `Jaco2/J2N7S300/j2n7s300_instanceable.usd` ✓ | 협동 암 |
 | **Kuka** | KR210_L150 | `kr210_l150.usd` ✓ | 산업 암 |
 | **Mecademic** | meca500 | `meca500.usda` ✓ | 소형 산업 암 |
 | **NASA** | Ingenuity | `ingenuity.usd` ✓ | 드론 |

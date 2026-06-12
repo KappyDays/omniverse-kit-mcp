@@ -223,6 +223,8 @@ class RobotFrankaPickPlaceDemoRequest:
     target_position: tuple[float, float, float] = (0.45, -0.35, 0.02575)
     object_initial_position: tuple[float, float, float] = (0.3, 0.35, 0.02575)
     object_size: float = 0.0515
+    object_asset_url: str | None = None
+    grid_asset_url: str | None = None
     robot_description: str = "Franka"
     picking_position: tuple[float, float, float] | None = None
     end_effector_initial_height: float | None = None
@@ -246,6 +248,8 @@ class RobotPickPlaceDemoRequest:
     target_position: tuple[float, float, float] = (0.45, -0.35, 0.02575)
     object_initial_position: tuple[float, float, float] = (0.3, 0.35, 0.02575)
     object_size: float = 0.0515
+    object_asset_url: str | None = None
+    grid_asset_url: str | None = None
     picking_position: tuple[float, float, float] | None = None
     end_effector_initial_height: float | None = None
     end_effector_offset: tuple[float, float, float] | None = None

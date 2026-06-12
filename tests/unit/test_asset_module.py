@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from omniverse_kit_mcp.modules.asset_module import AssetModule
+from omniverse_kit_mcp.modules.asset_module import AssetModule, resolve_catalog_asset_url
 from omniverse_kit_mcp.types.asset import AssetCategory, AssetItem, AssetListResult
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 
@@ -205,6 +205,13 @@ def synthetic_catalog(tmp_path: Path) -> Path:
         "`woodpallet_a01` · `box_a01~a05`\n",
         encoding="utf-8",
     )
+    (d / "assets" / "robots.md").write_text(
+        "# Robots\n\n"
+        "`$ISAAC` = `https://example.com/Isaac`\n\n"
+        "| 벤더 | 모델 | 주요 USD |\n|---|---|---|\n"
+        "| **FrankaRobotics** | FrankaPanda | `franka.usd` |\n",
+        encoding="utf-8",
+    )
     return d
 
 
@@ -239,3 +246,14 @@ async def test_parser_simready_prose_canonical_url(synthetic_catalog: Path):
     assert result.ok
     urls = {h["url"] for h in result.data}
     assert "https://example.com/simready_content/props/woodpallet_a01/woodpallet_a01.usd" in urls
+
+
+def test_resolve_catalog_asset_url_uses_markdown_catalog(synthetic_catalog: Path):
+    assert (
+        resolve_catalog_asset_url(
+            "robots",
+            "Robots/FrankaRobotics/FrankaPanda/franka.usd",
+            catalog_dir=synthetic_catalog,
+        )
+        == "https://example.com/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
+    )

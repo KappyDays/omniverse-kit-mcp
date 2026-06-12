@@ -13,7 +13,7 @@ Isaac Sim + Extension 동작을 end-to-end 로 검증하는 YAML 시나리오들
 
 ## Source of truth
 
-- **스키마**: `schema/scenario.schema.json` — 모든 필드 정의의 원천. MCP tool `scenario_schema()` 로도 조회
+- **스키마**: `schema/scenario.schema.json` — 모든 필드 정의의 원천. MCP resource `isaacsim://scenario-schema` 로도 조회
 - YAML 경로 기준: 환경 변수 `SCENARIOS_DIR` (기본 `scenarios/`). 루트 탈출 경로는 `_resolve_safe_path()` 가 거부
 
 ## 디렉토리
@@ -131,14 +131,14 @@ ASYNC Job polling. 선행 job-생성 step (`robot_navigate_to`, `character_navig
 ```
 scenario_validate(scenario_path="smoke/trigger_sync_cube.yaml")  # 실제 실행
 scenario_plan(scenario_path="smoke/state_check_property.yaml")   # 계획 미리보기
-scenario_list()                                                   # 사용 가능 시나리오 목록
-scenario_last_report()                                            # 마지막 실행 보고서
+Read resource isaacsim://scenarios                               # 사용 가능 시나리오 목록
+scenario_last_report()                                           # 마지막 실행 보고서
 ```
 
 ## 새 시나리오 작성 절차
 
 1. `smoke/` 의 가장 유사한 예시 복사
-2. action / args 는 `scenario.schema.json` 또는 `scenario_schema()` 로 확인
+2. action / args 는 `scenario.schema.json` 또는 MCP resource `isaacsim://scenario-schema` 로 확인
 3. 새 action 이 필요하면 `../src/omniverse_kit_mcp/scenario/CLAUDE.md §"새 action 추가 flow"` + `../docs/invariants/module-add.md`
 4. `scenario_plan` 으로 컴파일 확인 → `scenario_validate` 로 실행
 
