@@ -6,6 +6,7 @@ import logging
 import time
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
+from omniverse_kit_mcp.modules.asset_module import resolve_catalog_asset_url
 from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
 from omniverse_kit_mcp.robot_arm_profiles import (
     builtin_robot_arm_profiles,
@@ -39,6 +40,9 @@ from omniverse_kit_mcp.types.robot import (
 )
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_PICK_OBJECT_CATALOG_PATH = "Props/KLT_Bin/small_KLT.usd"
+_DEFAULT_DEMO_GRID_CATALOG_PATH = "Environments/Grid/default_environment.usd"
 
 
 class RobotModule:
@@ -484,6 +488,10 @@ class RobotModule:
                 "target_position": list(request.target_position),
                 "object_initial_position": list(request.object_initial_position),
                 "object_size": request.object_size,
+                "object_asset_url": request.object_asset_url
+                or resolve_catalog_asset_url("props", _DEFAULT_PICK_OBJECT_CATALOG_PATH),
+                "grid_asset_url": request.grid_asset_url
+                or resolve_catalog_asset_url("environments", _DEFAULT_DEMO_GRID_CATALOG_PATH),
                 "robot_description": request.robot_description,
                 "picking_position": (
                     list(request.picking_position)
@@ -556,6 +564,8 @@ class RobotModule:
                     target_position=request.target_position,
                     object_initial_position=request.object_initial_position,
                     object_size=request.object_size,
+                    object_asset_url=request.object_asset_url,
+                    grid_asset_url=request.grid_asset_url,
                     robot_description=profile.robot_description or "Franka",
                     picking_position=request.picking_position,
                     end_effector_initial_height=request.end_effector_initial_height,

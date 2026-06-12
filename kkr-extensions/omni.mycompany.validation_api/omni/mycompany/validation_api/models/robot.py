@@ -264,6 +264,14 @@ class RobotFrankaPickPlaceDemoInstallRequestModel(BaseModel):
         description="[x, y, z] object center reset position",
     )
     object_size: float = Field(default=0.0515, gt=0.0)
+    object_asset_url: str | None = Field(
+        default=None,
+        description="Full USD URL for the real pick object asset; provided by the MCP catalog resolver.",
+    )
+    grid_asset_url: str | None = Field(
+        default=None,
+        description="Full USD URL for the demo grid asset; provided by the MCP catalog resolver.",
+    )
     robot_description: str = Field(default="Franka")
     picking_position: list[float] | None = Field(default=None, min_length=3, max_length=3)
     end_effector_initial_height: float | None = Field(default=None, gt=0.0)

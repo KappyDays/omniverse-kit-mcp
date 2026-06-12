@@ -752,6 +752,8 @@ class RobotService:
                 object_prim_path=object_prim_path,
                 object_initial_position=object_initial_position,
                 object_size=float(request.get("object_size", 0.0515)),
+                object_asset_url=request.get("object_asset_url"),
+                grid_asset_url=request.get("grid_asset_url"),
             )
         _assert_prim_exists(object_prim_path)
         _ensure_pickable_physics(object_prim_path)
@@ -1387,8 +1389,10 @@ def _ensure_franka_pick_place_demo_scene(
     object_prim_path: str,
     object_initial_position: list[float],
     object_size: float,
+    object_asset_url: str | None,
+    grid_asset_url: str | None,
 ) -> None:
-    """Create the demo block, physics scene, grid reference, and light if missing."""
+    """Create the demo object, physics scene, grid reference, and light if missing."""
     import omni.usd
     from pxr import Gf, Sdf, UsdGeom, UsdLux, UsdPhysics
 
@@ -1406,18 +1410,20 @@ def _ensure_franka_pick_place_demo_scene(
 
     grid_path = "/World/FlatGrid"
     if not stage.GetPrimAtPath(grid_path).IsValid():
+        if not grid_asset_url:
+            raise ValueError("grid_asset_url is required when create_demo_scene=True")
         grid = UsdGeom.Xform.Define(stage, Sdf.Path(grid_path))
-        grid.GetPrim().GetReferences().AddReference(
-            "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
-            "Assets/Isaac/6.0/Isaac/Environments/Grid/default_environment.usd"
-        )
+        grid.GetPrim().GetReferences().AddReference(str(grid_asset_url))
 
     _ensure_parent_xform(stage, object_prim_path)
     prim = stage.GetPrimAtPath(object_prim_path)
     if not prim.IsValid():
-        cube = UsdGeom.Cube.Define(stage, Sdf.Path(object_prim_path))
-        cube.CreateSizeAttr().Set(float(object_size))
-        prim = cube.GetPrim()
+        if not object_asset_url:
+            raise ValueError("object_asset_url is required when create_demo_scene=True")
+        obj = UsdGeom.Xform.Define(stage, Sdf.Path(object_prim_path))
+        prim = obj.GetPrim()
+        prim.GetReferences().AddReference(str(object_asset_url))
+        _set_prim_uniform_scale(prim, float(object_size))
     _set_prim_world_translate(object_prim_path, object_initial_position)
     if not prim.HasAPI(UsdPhysics.RigidBodyAPI):
         body = UsdPhysics.RigidBodyAPI.Apply(prim)
@@ -1491,6 +1497,15 @@ def _set_prim_world_translate(prim_path: str, position: list[float]) -> None:
     if not attr.IsValid():
         attr = UsdGeom.Xformable(prim).AddTranslateOp()
     attr.Set(Gf.Vec3d(float(position[0]), float(position[1]), float(position[2])))
+
+
+def _set_prim_uniform_scale(prim: Any, scale: float) -> None:
+    from pxr import Gf, UsdGeom
+
+    attr = prim.GetAttribute("xformOp:scale")
+    if not attr.IsValid():
+        attr = UsdGeom.Xformable(prim).AddScaleOp()
+    attr.Set(Gf.Vec3f(float(scale), float(scale), float(scale)))
 
 
 def _zero_rigid_body_velocity(prim_path: str) -> None:

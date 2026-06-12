@@ -777,6 +777,8 @@ def register_module_tools(
         target_position: list[float] | None = None,
         object_initial_position: list[float] | None = None,
         object_size: float = 0.0515,
+        object_asset_url: str | None = None,
+        grid_asset_url: str | None = None,
         max_steps: int = 1800,
         position_tolerance: float = 0.05,
         lift_height_tolerance: float = 0.03,
@@ -808,6 +810,8 @@ def register_module_tools(
             target_position=tuple(float(v) for v in target),  # type: ignore[arg-type]
             object_initial_position=tuple(float(v) for v in initial),  # type: ignore[arg-type]
             object_size=float(object_size),
+            object_asset_url=object_asset_url,
+            grid_asset_url=grid_asset_url,
             picking_position=(
                 tuple(float(v) for v in picking_position)
                 if picking_position is not None
@@ -842,6 +846,8 @@ def register_module_tools(
         target_position: list[float] | None = None,
         object_initial_position: list[float] | None = None,
         object_size: float = 0.0515,
+        object_asset_url: str | None = None,
+        grid_asset_url: str | None = None,
         max_steps: int = 1800,
         position_tolerance: float = 0.05,
         lift_height_tolerance: float = 0.03,
@@ -874,6 +880,8 @@ def register_module_tools(
             target_position=tuple(float(v) for v in target),  # type: ignore[arg-type]
             object_initial_position=tuple(float(v) for v in initial),  # type: ignore[arg-type]
             object_size=float(object_size),
+            object_asset_url=object_asset_url,
+            grid_asset_url=grid_asset_url,
             picking_position=(
                 tuple(float(v) for v in picking_position)
                 if picking_position is not None

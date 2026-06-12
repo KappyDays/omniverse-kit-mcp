@@ -45,6 +45,8 @@ async def test_robot_list_arm_profiles_returns_curated_support_matrix():
     assert "ur10" in result.data.candidate_pick_place_profiles
     assert "kawasaki_rs080n" in result.data.candidate_pick_place_profiles
     assert "ur20" in result.data.profile_only_profiles
+    franka = next(p for p in result.data.profiles if p.profile_name == "franka_panda")
+    assert franka.asset_url.endswith("/Robots/FrankaRobotics/FrankaPanda/franka.usd")
 
 
 @pytest.mark.asyncio
@@ -392,6 +394,8 @@ async def test_robot_install_pick_place_playback_demo_forwards_payload():
     calls = [c for c in client.calls if c[0] == "robot_install_franka_pick_place_playback_demo"]
     assert len(calls) == 1
     assert calls[0][1]["object_initial_position"] == [0.3, 0.35, 0.02575]
+    assert calls[0][1]["object_asset_url"].endswith("/Props/KLT_Bin/small_KLT.usd")
+    assert calls[0][1]["grid_asset_url"].endswith("/Environments/Grid/default_environment.usd")
     assert calls[0][1]["end_effector_orientation"] == [0.0, 0.0, 1.0, 0.0]
 
 

@@ -154,6 +154,23 @@ def _build_index(catalog_dir: Path) -> list[dict[str, Any]]:
     return entries
 
 
+def resolve_catalog_asset_url(
+    category: str,
+    relative_path: str,
+    catalog_dir: Path | None = None,
+) -> str:
+    """Resolve a catalog-relative asset path through the markdown SoT."""
+    normalized_category = category.strip().lower()
+    normalized_path = relative_path.strip().replace("\\", "/").strip("/")
+    suffix = f"/{normalized_path}"
+    for entry in _build_index(catalog_dir or _DEFAULT_CATALOG_DIR):
+        if entry["category"] != normalized_category:
+            continue
+        if str(entry["url"]).replace("\\", "/").endswith(suffix):
+            return str(entry["url"])
+    raise KeyError(f"Asset catalog entry not found: {category}/{relative_path}")
+
+
 def _parse_catalog_file(
     text: str, category: str, source_file: str
 ) -> list[dict[str, Any]]:
