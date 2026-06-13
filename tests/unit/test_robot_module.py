@@ -47,6 +47,11 @@ async def test_robot_list_arm_profiles_returns_curated_support_matrix():
     assert "ur20" in result.data.profile_only_profiles
     franka = next(p for p in result.data.profiles if p.profile_name == "franka_panda")
     assert franka.asset_url.endswith("/Robots/FrankaRobotics/FrankaPanda/franka.usd")
+    assert franka.max_grasp_width_m == pytest.approx(0.08)
+    assert franka.fit_clearance_m == pytest.approx(0.005)
+    fr3 = next(p for p in result.data.profiles if p.profile_name == "franka_fr3")
+    assert fr3.max_grasp_width_m == pytest.approx(0.08)
+    assert fr3.fit_clearance_m == pytest.approx(0.005)
 
 
 @pytest.mark.asyncio
@@ -391,12 +396,37 @@ async def test_robot_install_pick_place_playback_demo_forwards_payload():
     assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
     assert result.data.status == "idle"
     assert result.data.uses_kinematic_carry is False
+    assert result.data.object_fit_ok is True
+    assert result.data.object_fit_limit_m == pytest.approx(0.075)
+    assert result.data.object_fit_measured_m == pytest.approx(0.04)
     calls = [c for c in client.calls if c[0] == "robot_install_franka_pick_place_playback_demo"]
     assert len(calls) == 1
     assert calls[0][1]["object_initial_position"] == [0.3, 0.35, 0.02575]
-    assert calls[0][1]["object_asset_url"].endswith("/Props/KLT_Bin/small_KLT.usd")
+    assert calls[0][1]["object_asset_url"] is None
     assert calls[0][1]["grid_asset_url"].endswith("/Environments/Grid/default_environment.usd")
     assert calls[0][1]["end_effector_orientation"] == [0.0, 0.0, 1.0, 0.0]
+    assert calls[0][1]["max_grasp_width_m"] == pytest.approx(0.08)
+    assert calls[0][1]["fit_clearance_m"] == pytest.approx(0.005)
+
+
+@pytest.mark.asyncio
+async def test_robot_install_pick_place_playback_demo_forwards_explicit_object_asset_url():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+    request = RobotFrankaPickPlaceDemoRequest(
+        object_asset_url="https://example.invalid/object.usd",
+    )
+
+    result = await module.install_franka_pick_place_playback_demo(_meta(), request)
+
+    assert result.ok
+    calls = [c for c in client.calls if c[0] == "robot_install_franka_pick_place_playback_demo"]
+    assert len(calls) == 1
+    assert calls[0][1]["object_asset_url"] == "https://example.invalid/object.usd"
+    assert calls[0][1]["max_grasp_width_m"] == pytest.approx(0.08)
+    assert calls[0][1]["fit_clearance_m"] == pytest.approx(0.005)
 
 
 @pytest.mark.asyncio
@@ -418,6 +448,29 @@ async def test_robot_install_profile_pick_place_demo_routes_franka_panda():
 
 
 @pytest.mark.asyncio
+async def test_robot_install_profile_pick_place_demo_routes_franka_family_candidate():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+
+    result = await module.install_pick_place_playback_demo(
+        _meta(),
+        RobotPickPlaceDemoRequest(profile_name="franka_fr3", robot_prim_path="/World/FR3"),
+    )
+
+    assert result.ok
+    assert result.data.profile_name == "franka_fr3"
+    assert result.data.support_status == "candidate_pick_place"
+    assert result.data.controller_strategy == "same_family_franka_candidate"
+    assert client.calls[-1][0] == "robot_install_franka_pick_place_playback_demo"
+    assert client.calls[-1][1]["robot_prim_path"] == "/World/FR3"
+    assert client.calls[-1][1]["robot_description"] == "FR3"
+    assert client.calls[-1][1]["max_grasp_width_m"] == pytest.approx(0.08)
+    assert client.calls[-1][1]["fit_clearance_m"] == pytest.approx(0.005)
+
+
+@pytest.mark.asyncio
 async def test_robot_install_profile_pick_place_demo_reports_candidate_unsupported():
     from tests.conftest import MockIsaacRestClient
 
@@ -435,6 +488,7 @@ async def test_robot_install_profile_pick_place_demo_reports_candidate_unsupport
     assert result.data.profile_name == "ur10"
     assert result.data.support_status == "candidate_pick_place"
     assert result.data.uses_kinematic_carry is False
+    assert result.data.object_fit_ok is False
     assert client.calls == []
 
 
@@ -454,6 +508,56 @@ async def test_robot_get_pick_place_demo_status_reports_done_metrics():
     assert result.data.placed is True
     assert result.data.lifted is True
     assert result.data.final_distance == pytest.approx(0.01)
+    assert result.data.object_bbox_size == pytest.approx((0.04, 0.04, 0.04))
+    assert result.data.object_fit_ok is True
+    assert result.data.object_fit_axis == "x"
+    assert result.data.object_fit_limit_m == pytest.approx(0.075)
+    assert result.data.object_fit_measured_m == pytest.approx(0.04)
+
+
+@pytest.mark.asyncio
+async def test_robot_get_pick_place_demo_status_reports_oversized_object_fit_failure():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["robot_get_pick_place_demo_status"] = {
+        "ok": True,
+        "status": "idle",
+        "robot_prim_path": "/World/Franka",
+        "object_prim_path": "/World/KLT",
+        "target_position": [0.45, -0.35, 0.02575],
+        "controller": "isaacsim.robot.manipulators.examples.franka.controllers.PickPlaceController",
+        "gripper": "ParallelGripper",
+        "uses_kinematic_carry": False,
+        "steps": 0,
+        "max_steps": 1800,
+        "done": False,
+        "placed": False,
+        "lifted": False,
+        "final_distance": 0.0,
+        "max_lift_delta": 0.0,
+        "object_bbox_center": [0.3, 0.35, 0.073],
+        "object_bbox_size": [0.198, 0.297, 0.146],
+        "diagnostics": {
+            "object_fit": {
+                "ok": False,
+                "reason": "Object bbox exceeds gripper opening.",
+                "axis": "y",
+                "limit_m": 0.075,
+                "measured_m": 0.297,
+            }
+        },
+    }
+    module = RobotModule(client)
+
+    result = await module.get_pick_place_demo_status(_meta())
+
+    assert result.ok
+    assert result.data.object_fit_ok is False
+    assert result.data.object_fit_reason == "Object bbox exceeds gripper opening."
+    assert result.data.object_fit_axis == "y"
+    assert result.data.object_fit_limit_m == pytest.approx(0.075)
+    assert result.data.object_fit_measured_m == pytest.approx(0.297)
 
 
 @pytest.mark.asyncio

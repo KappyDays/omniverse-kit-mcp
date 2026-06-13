@@ -161,3 +161,6 @@ class LogCaptureService:
     def size(self) -> int:
         with self._lock:
             return len(self._buf)
+
+    def is_running(self) -> bool:
+        return self._handle is not None

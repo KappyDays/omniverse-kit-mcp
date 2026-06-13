@@ -23,8 +23,15 @@ from omniverse_kit_mcp.types.robot import (
 )
 from omni.mycompany.validation_api.services.robot_service import (
     RobotService,
+    _assert_franka_family_pick_place_robot,
     _build_franka_pick_place_diagnostics,
+    _create_franka_parallel_gripper,
+    _create_franka_pick_place_controller,
     _ensure_initialized,
+    _evaluate_pick_object_fit,
+    _franka_pick_place_default_events_dt,
+    _franka_parallel_gripper_spec,
+    _tick_franka_pick_place_demo,
     _resolve_official_franka_pick_place_classes,
     _resolve_franka_pick_place_hover_height,
     _resolve_lula_config,
@@ -175,6 +182,154 @@ def test_resolve_lula_config_prefers_isaac_sim_51_loader_api():
     assert cfg["end_effector_frame_name"] == "fr3_hand_tcp"
 
 
+def test_franka_family_pick_place_guard_accepts_franka_and_fr3_only():
+    _assert_franka_family_pick_place_robot("Franka", endpoint="robot/franka_pick_place")
+    _assert_franka_family_pick_place_robot("FR3", endpoint="franka_pick_place_demo")
+    _assert_franka_family_pick_place_robot("fr3", endpoint="franka_pick_place_demo")
+
+    with pytest.raises(ValueError, match=r"Franka', 'FR3"):
+        _assert_franka_family_pick_place_robot("UR10", endpoint="franka_pick_place_demo")
+
+
+def test_franka_parallel_gripper_spec_switches_for_fr3():
+    panda = _franka_parallel_gripper_spec("Franka")
+    assert panda.end_effector_prim_name == "panda_rightfinger"
+    assert panda.joint_prim_names == ("panda_finger_joint1", "panda_finger_joint2")
+
+    fr3 = _franka_parallel_gripper_spec("FR3")
+    assert fr3.end_effector_prim_name == "fr3_rightfinger"
+    assert fr3.joint_prim_names == ("fr3_finger_joint1", "fr3_finger_joint2")
+
+
+def test_fr3_parallel_gripper_uses_absolute_open_close_targets():
+    seen: list[dict[str, object]] = []
+
+    class FakeGripper:
+        def __init__(self, **kwargs):
+            seen.append(kwargs)
+
+        def initialize(self, **kwargs):
+            seen.append({"initialize": kwargs})
+
+    class FakeClasses:
+        parallel_gripper = FakeGripper
+
+    class FakeRobot:
+        dof_names = ("fr3_finger_joint1", "fr3_finger_joint2")
+
+        def apply_action(self, action):
+            return action
+
+        def get_joint_positions(self):
+            return [0.05, 0.05]
+
+        def set_joint_positions(self, *args, **kwargs):
+            return None
+
+    _create_franka_parallel_gripper(
+        FakeClasses,
+        FakeRobot(),
+        "/World/FR3",
+        robot_description="FR3",
+    )
+
+    assert seen[0]["joint_prim_names"] == ["fr3_finger_joint1", "fr3_finger_joint2"]
+    assert seen[0]["action_deltas"] is None
+
+
+def test_panda_parallel_gripper_keeps_delta_open_close_targets():
+    seen: list[dict[str, object]] = []
+
+    class FakeGripper:
+        def __init__(self, **kwargs):
+            seen.append(kwargs)
+
+        def initialize(self, **kwargs):
+            seen.append({"initialize": kwargs})
+
+    class FakeClasses:
+        parallel_gripper = FakeGripper
+
+    class FakeRobot:
+        dof_names = ("panda_finger_joint1", "panda_finger_joint2")
+
+        def apply_action(self, action):
+            return action
+
+        def get_joint_positions(self):
+            return [0.05, 0.05]
+
+        def set_joint_positions(self, *args, **kwargs):
+            return None
+
+    _create_franka_parallel_gripper(
+        FakeClasses,
+        FakeRobot(),
+        "/World/Franka",
+        robot_description="Franka",
+    )
+
+    assert seen[0]["joint_prim_names"] == ["panda_finger_joint1", "panda_finger_joint2"]
+    assert seen[0]["action_deltas"] is not None
+
+
+def test_franka_pick_place_controller_uses_official_controller_for_panda():
+    calls: list[dict[str, object]] = []
+
+    class FakeClasses:
+        @staticmethod
+        def pick_place_controller(**kwargs):
+            calls.append(kwargs)
+            return {"controller": "official", **kwargs}
+
+    result = _create_franka_pick_place_controller(
+        classes=FakeClasses,
+        robot=object(),
+        gripper=object(),
+        hover_height=0.4,
+        events_dt=[0.1],
+        robot_description="Franka",
+    )
+
+    assert result["controller"] == "official"
+    assert calls[0]["end_effector_initial_height"] == pytest.approx(0.4)
+
+
+def test_franka_pick_place_controller_routes_fr3_to_profile_aware_factory(monkeypatch):
+    seen: dict[str, object] = {}
+
+    def fake_fr3_factory(**kwargs):
+        seen.update(kwargs)
+        return {"controller": "fr3"}
+
+    monkeypatch.setattr(
+        "omni.mycompany.validation_api.services.robot_service._create_fr3_pick_place_controller",
+        fake_fr3_factory,
+    )
+
+    result = _create_franka_pick_place_controller(
+        classes=object(),
+        robot="robot",
+        gripper="gripper",
+        hover_height=0.5,
+        events_dt=None,
+        robot_description="FR3",
+    )
+
+    assert result == {"controller": "fr3"}
+    assert seen["robot"] == "robot"
+    assert seen["gripper"] == "gripper"
+    assert seen["robot_description"] == "FR3"
+
+
+def test_franka_pick_place_default_events_dt_completes_within_playback_budget():
+    events_dt = _franka_pick_place_default_events_dt()
+    expected_ticks = sum(int((1.0 + dt - 1e-9) // dt) for dt in events_dt)
+
+    assert events_dt == [0.008, 0.005, 1.0, 0.1, 0.05, 0.05, 0.0025, 1.0, 0.008, 0.08]
+    assert expected_ticks < 1800
+
+
 def test_ensure_initialized_surfaces_not_ready_articulation():
     class NotReadyArticulation:
         prim_path = "/World/Franka"
@@ -301,7 +456,55 @@ def test_franka_pick_place_demo_install_model_defaults_are_replay_safe():
     assert model.object_prim_path == "/World/PickCube"
     assert model.create_demo_scene is True
     assert model.reset_on_play is True
-    assert model.object_size == pytest.approx(0.0515)
+    assert model.object_size == pytest.approx(0.04)
+    assert model.max_grasp_width_m == pytest.approx(0.08)
+    assert model.fit_clearance_m == pytest.approx(0.005)
+
+
+def test_franka_pick_place_object_fit_accepts_default_cube():
+    fit = _evaluate_pick_object_fit(
+        [0.04, 0.04, 0.04],
+        max_grasp_width_m=0.08,
+        fit_clearance_m=0.005,
+    )
+
+    assert fit["ok"] is True
+    assert fit["axis"] == "x"
+    assert fit["limit_m"] == pytest.approx(0.075)
+    assert fit["measured_m"] == pytest.approx(0.04)
+
+
+def test_franka_pick_place_object_fit_rejects_oversized_catalog_box():
+    fit = _evaluate_pick_object_fit(
+        [0.198, 0.297, 0.146],
+        max_grasp_width_m=0.08,
+        fit_clearance_m=0.005,
+    )
+
+    assert fit["ok"] is False
+    assert "exceeds gripper opening" in fit["reason"]
+    assert fit["axis"] == "y"
+    assert fit["limit_m"] == pytest.approx(0.075)
+    assert fit["measured_m"] == pytest.approx(0.297)
+
+
+def test_franka_pick_place_demo_scene_defaults_to_native_fit_cube():
+    from omni.mycompany.validation_api.services.robot_service import (
+        _ensure_franka_pick_place_demo_scene,
+    )
+
+    source = inspect.getsource(_ensure_franka_pick_place_demo_scene)
+
+    assert "_define_pick_place_demo_cube" in source
+    assert "AddReference(str(object_asset_url))" in source
+    assert "object_asset_url is required" not in source
+
+
+def test_franka_pick_place_demo_timeout_refreshes_bbox_metrics():
+    source = inspect.getsource(_tick_franka_pick_place_demo)
+
+    assert "if state.steps >= state.max_steps" in source
+    assert "_refresh_franka_pick_place_demo_metrics(state)" in source
 
 
 def test_franka_pick_place_diagnostics_reference_official_block_geometry():

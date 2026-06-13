@@ -10,7 +10,12 @@ def test_isaac_prompt_guides_robot_control_to_scriptnode_loop():
     assert "robot_list_arm_profiles" in prompt
     assert "validated_pick_place" in prompt
     assert "robot_install_pick_place_playback_demo" in prompt
+    assert "Franka-family candidate profiles" in prompt
     assert "unsupported" in prompt
+    assert "robot_get_pick_place_demo_status" in prompt
+    assert "object_fit_ok" in prompt
+    assert "object_fit_limit_m" in prompt
+    assert "stop before Play cycles" in prompt
     assert "robot_run_franka_pick_place" in prompt
     assert "PickPlaceController" in prompt
     assert "RMPFlowController" in prompt

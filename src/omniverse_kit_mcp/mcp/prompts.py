@@ -56,9 +56,33 @@ data store.
   `validated_pick_place` have live pick/place proof. Candidate/IK/profile-only
   profiles must not be reported as pick/place successes.
 - `robot_install_pick_place_playback_demo(profile_name=...)` is the profile
-  selector. Today `franka_panda` routes to the validated Franka playback demo;
+  selector. `franka_panda` routes to the validated Franka playback demo.
+  Franka-family candidate profiles may use the same adapter only to gather
+  live proof, and remain `candidate_pick_place` until that proof is recorded;
   other profiles return an explicit `unsupported` status until their family
   controller/gripper path has separate live proof.
+- After installing a playback demo, immediately call
+  `robot_get_pick_place_demo_status` and inspect `object_fit_ok`,
+  `object_bbox_size`, `object_fit_limit_m`, and `object_fit_measured_m`.
+  If `object_fit_ok=false`, stop before Play cycles and collect bbox,
+  viewport, and Console WARN/ERROR evidence instead of claiming validation.
+- For live Isaac Sim validation, bracket risky operations with Console log
+  capture: call `extension_clear_logs` immediately before the operation, then
+  on failure call `extension_capture_logs(level="WARN", stop_after_capture=True)`
+  and include the Warning/Error entries with the tool result. Do not diagnose
+  robot/controller failures from `last_error` alone when Console logs are
+  available.
+- Live worker lifecycle is attach/start/reload-first. Start with
+  `kit_app_start` to attach to an already-running instance or spawn one if
+  needed, then confirm `simulation_get_status` before mutating the stage.
+  Do not call `kit_app_restart` as routine setup; reserve it for confirmed
+  crash/hang, `omni.mycompany.validation_api` self-code changes,
+  extension.toml/native dependency changes, failed `extension_reload` or
+  marker checks, or an explicit fresh-process request.
+- Worker progress reports should be milestone-only: worker created,
+  attach/start result, terminal validation result, Console WARN/ERROR summary,
+  artifact collection, or blocker. Avoid surfacing read-thread heartbeat
+  messages unless there is no terminal update for several minutes.
 - For Franka object manipulation, prefer `robot_run_franka_pick_place` first.
   It wraps Isaac Sim's official Franka `PickPlaceController` +
   `RMPFlowController` + `ParallelGripper`, does not kinematically carry the
@@ -88,7 +112,8 @@ data store.
 - Table columns map to Prim properties
 - Float comparisons use tolerance (default 0.001)
 - Extension sync may take up to 30 seconds
-- Kit app lifecycle: `kit_app_start` / `kit_app_stop` / `kit_app_restart`
+- Kit app lifecycle: prefer `kit_app_start` attach/start; use
+  `kit_app_restart` only for the explicit recovery/reload cases above
 """
 
 

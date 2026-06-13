@@ -30,8 +30,10 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 kit_app_restart() -> 'str'
 ```
 
-Restart the Kit application (stop → clear __pycache__ → start); use after modifying Extension
-code.
+Restart Kit (stop → clear __pycache__ → start). Use only for crash/hang recovery,
+validation_api self-code changes, extension.toml/native dependency changes, failed
+extension_reload/marker checks, or explicit fresh-process requests; otherwise prefer
+kit_app_start attach and extension_reload.
 
 ### `kit_app_start`
 
@@ -696,11 +698,13 @@ ext_id unknown.
 ### `extension_capture_logs`
 
 ```python
-extension_capture_logs(ext_id: 'str | None' = None, since_ms: 'int | None' = None, level: 'str' = 'INFO', limit: 'int' = 1000) -> 'str'
+extension_capture_logs(ext_id: 'str | None' = None, since_ms: 'int | None' = None, level: 'str' = 'INFO', limit: 'int' = 1000, stop_after_capture: 'bool' = False) -> 'str'
 ```
 
 Peek Extension carb.log ring buffer (maxlen 10000, does not drain). Filters: ext_id substring,
-since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL.
+since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL. Use extension_clear_logs before risky live
+work to start a request-scoped capture window; set stop_after_capture=True after collecting
+failure logs.
 
 **Parameters**
 
@@ -710,6 +714,7 @@ since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL.
 | `since_ms` | `integer \| None` | `None` |  |
 | `level` | `string` | `'INFO'` |  |
 | `limit` | `integer` | `1000` |  |
+| `stop_after_capture` | `boolean` | `False` |  |
 
 ### `extension_clear_logs`
 
@@ -717,8 +722,8 @@ since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL.
 extension_clear_logs() -> 'str'
 ```
 
-Empty the carb log ring buffer; returns removed count. Subsequent extension_capture_logs calls
-will only see entries logged after this point.
+Start a request-scoped carb Console log capture window and empty the ring buffer; subsequent
+extension_capture_logs calls only see entries logged after this point.
 
 ### `extension_deactivate`
 
@@ -1021,7 +1026,7 @@ names. Requires simulation playing.
 ### `robot_install_franka_pick_place_playback_demo`
 
 ```python
-robot_install_franka_pick_place_playback_demo(robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+robot_install_franka_pick_place_playback_demo(robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.04, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
 ```
 
 Install a persistent Franka pick/place demo that advances from Isaac Sim GUI Play or
@@ -1036,7 +1041,7 @@ carry.
 | `object_prim_path` | `string` | `'/World/PickCube'` |  |
 | `target_position` | `list[number] \| None` | `None` |  |
 | `object_initial_position` | `list[number] \| None` | `None` |  |
-| `object_size` | `number` | `0.0515` |  |
+| `object_size` | `number` | `0.04` |  |
 | `object_asset_url` | `string \| None` | `None` |  |
 | `grid_asset_url` | `string \| None` | `None` |  |
 | `max_steps` | `integer` | `1800` |  |
@@ -1053,12 +1058,12 @@ carry.
 ### `robot_install_pick_place_playback_demo`
 
 ```python
-robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_panda', robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.0515, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_panda', robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.04, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
 ```
 
-Install a profile-selected pick/place playback demo. franka_panda routes to the validated
-official Franka adapter; candidate/IK/profile-only arms return status='unsupported' until live
-proof exists.
+Install a profile-selected pick/place playback demo. franka_panda is validated; Franka-family
+candidates may run for live proof but remain candidate_pick_place; other unsupported arms
+return status='unsupported'.
 
 **Parameters**
 
@@ -1069,7 +1074,7 @@ proof exists.
 | `object_prim_path` | `string` | `'/World/PickCube'` |  |
 | `target_position` | `list[number] \| None` | `None` |  |
 | `object_initial_position` | `list[number] \| None` | `None` |  |
-| `object_size` | `number` | `0.0515` |  |
+| `object_size` | `number` | `0.04` |  |
 | `object_asset_url` | `string \| None` | `None` |  |
 | `grid_asset_url` | `string \| None` | `None` |  |
 | `max_steps` | `integer` | `1800` |  |

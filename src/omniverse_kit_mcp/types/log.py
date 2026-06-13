@@ -24,3 +24,4 @@ class LogCaptureResult:
     level_filter: str
     since_ms: int | None
     source_filter: str | None
+    capture_running: bool = False

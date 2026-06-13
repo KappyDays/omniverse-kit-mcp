@@ -305,7 +305,11 @@ class ExtensionModule:
         try:
             raw = await self._client.extension_clear_logs()
             return ok_result(
-                {"ok": True, "removed": int(raw.get("removed") or 0)},
+                {
+                    "ok": True,
+                    "removed": int(raw.get("removed") or 0),
+                    "capture_running": bool(raw.get("capture_running", False)),
+                },
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
@@ -396,11 +400,16 @@ class ExtensionModule:
         since_ms: int | None = None,
         level: str = "INFO",
         limit: int = 1000,
+        stop_after_capture: bool = False,
     ) -> ModuleResult[LogCaptureResult]:
         started = int(time.time() * 1000)
         try:
             raw = await self._client.extension_logs(
-                ext_id=ext_id, since_ms=since_ms, level=level, limit=limit,
+                ext_id=ext_id,
+                since_ms=since_ms,
+                level=level,
+                limit=limit,
+                stop_after_capture=stop_after_capture,
             )
             entries = tuple(
                 LogEntry(
@@ -421,6 +430,7 @@ class ExtensionModule:
                 level_filter=str(raw.get("level_filter", level)),
                 since_ms=raw.get("since_ms"),
                 source_filter=raw.get("source_filter"),
+                capture_running=bool(raw.get("capture_running", False)),
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:  # noqa: BLE001
