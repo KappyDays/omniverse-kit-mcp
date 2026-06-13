@@ -38,8 +38,8 @@ ASSETS_DIR = ASSETS_DIRS[0]
 
 PREFIX_DECL_RE = re.compile(r"^`(\$\w+)`\s*=\s*`(https?://[^`]+)`", re.MULTILINE)
 USD_BACKTICK_RE = re.compile(r"`([^`\s]+\.(?:usd|usda))`")
-# Section root declaration: 루트: `$ISAAC/Path/`
-ROOT_DECL_RE = re.compile(r"^루트:\s*`(\$\w+/[^`]+?)/?`", re.MULTILINE)
+# Section root declaration: Root: `$ISAAC/Path/`
+ROOT_DECL_RE = re.compile(r"^Root:\s*`(\$\w+/[^`]+?)/?`", re.MULTILINE)
 # robots.md row form: | **Vendor** | Model | `file.usd[a]` ✓ | type |
 # Model column allows spaces (e.g. "Carter v1") so vendor sticky stays correct.
 ROBOTS_ROW_RE = re.compile(
@@ -62,7 +62,7 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
 
     Returns [(source_line, full_url), ...].
     - `$VAR/...usd[a]` for any declared `$VAR = "https://..."` → expand prefix
-    - `Characters/foo.usd[a]` (relative) → use most-recent `루트:` declaration in scope
+    - `Characters/foo.usd[a]` (relative) → use most-recent `Root:` declaration in scope
     - paths with `{placeholder}` skipped
     Bare file names (e.g. robots.md) handled by extract_urls_robots.
 
@@ -82,14 +82,14 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
             return ""
         return f"{base}/{rest}".rstrip("/") if rest else base.rstrip("/")
 
-    # First `루트:` in the file is the canonical category root for slash-relative
+    # First `Root:` in the file is the canonical category root for slash-relative
     # paths. Bare filenames use the current section root while scanning.
     main_root = ""
     m_first_root = ROOT_DECL_RE.search(text)
     if m_first_root:
         main_root = _expand_decl(m_first_root.group(1))
 
-    # Fallback base for relative paths when no `루트:` is declared — use whichever
+    # Fallback base for relative paths when no `Root:` is declared — use whichever
     # prefix is most likely the catalog root (deterministic via dict order).
     fallback_base = next(iter(prefixes.values()), "").rstrip("/")
 
@@ -131,8 +131,8 @@ def extract_urls_generic(md_path: Path) -> list[tuple[str, str]]:
             if expanded:
                 out.append((line.strip(), expanded))
             else:
-                # relative path: anchor to the file's main `루트:` (or the first
-                # declared prefix if no 루트: present).
+                # relative path: anchor to the file's main `Root:` (or the first
+                # declared prefix if no Root: present).
                 base = main_root or fallback_base
                 if base:
                     if "/" in path:

@@ -9,11 +9,11 @@ metadata:
 
 Prefix your first line with 📚 inline.
 
-**목표**: Kit / Isaac Sim / USD Composer 설치 갱신 후 local ignored `docs/references/extensions.json` 을 install tree 와 정합시키고 신규 ext 를 enrichment. 기존 수동 enrichment 는 절대 파기하지 않는다. Public repo 에 generated catalog 는 commit 하지 않는다.
+**Goal**: After updating the Kit / Isaac Sim / USD Composer installation, match the local ignored `docs/references/extensions.json` with the install tree and enrich the new ext. Existing manual enrichment is never destroyed. Generated catalog in public repo is not committed.
 
 ## When to Use
 
-User says "Kit/Isaac Sim/USD Composer 업뎃됐어", "catalog sync", "extensions.json 동기화" 등. **Skip** for single-entry edits (typo fix 등) — direct JSON edit cheaper.
+User says "Kit/Isaac Sim/USD Composer has been updated", "catalog sync", "extensions.json sync", etc. **Skip** for single-entry edits (typo fix, etc.) — direct JSON edit cheaper.
 
 ## Invariants (Never Violate)
 
@@ -52,7 +52,7 @@ All Python invocations use `.venv/Scripts/python.exe` (Windows; bypasses `uv run
 
 Inspect `scripts/harvest_extension_metadata.py::APP_ROOTS`. If many `version_bumped` or user mentioned major bump, ask:
 
-> "새 Kit / app 버전을 알려주세요 — 예: `Kit 111.0.2 / Isaac Sim 5.2.0`. 또는 `.kit` / `VERSION` 파일 경로."
+> "Please tell me the new Kit / app version — e.g. `Kit 111.0.2 / Isaac Sim 5.2.0`. or `.kit` / `VERSION` file path."
 
 Then `Edit` `APP_ROOTS["<app>"]["kit_version"]` / `["app_version"]`. Skip if user confirms no change.
 

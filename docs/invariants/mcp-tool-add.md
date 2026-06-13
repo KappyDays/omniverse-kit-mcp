@@ -1,69 +1,69 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: 새 MCP tool 추가 작업 시작 전 필수 숙지 -->
-# MCP Tool 추가 — Invariants
+<!-- Scope: Essential knowledge before starting work on adding a new MCP tool -->
+# Add MCP Tool — Invariants
 
-> **이 문서는 "추가 절차" 전용.** 어떤 Kit API / ext 를 wrapping 할지 결정하는
-> **research 단계** 는 `docs/references/CLAUDE.md` 의 public-safe flow
-> (기존 tool 중복 확인 → optional local catalog → 실제 ext 소스 → 공식 문서)
-> 를 먼저 따르세요. research 없이 본 문서만 참조하면
-> 기존 `@mcp.tool()` 중복 / 잘못된 Kit API 선택 위험.
+> **This document is for “additional steps” only.** Determining which Kit API/ext to wrap
+> **research phase** is the public-safe flow of `docs/references/CLAUDE.md`
+> (Check for existing tool duplication → optional local catalog → actual ext source → official document)
+> Follow first. If you refer to this document without research,
+> Duplicate existing `@mcp.tool()` / Risk of selecting wrong Kit API.
 
-새 `@mcp.tool()` 추가는 **7곳 동시 수정 + auto-regen catalog + drift test 통과** 의
-3-step. 한 곳이라도 누락하면 `verify_mcp_sync.py` / drift pytest fail.
+Adding a new `@mcp.tool()` means modifying 7 places simultaneously + passing auto-regen catalog + drift test**
+3-step. If you miss even one place, `verify_mcp_sync.py` / drift pytest fails.
 
-## 7곳 동시 수정 체크리스트
+## Checklist for editing 7 places simultaneously
 
-새 MCP tool 한 개 추가 시 반드시 함께 변경:
+When adding a new MCP tool, you must also change:
 
-1. **Extension REST endpoint** — `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/` 또는 router
-2. **REST client** — `src/omniverse_kit_mcp/clients/isaac_rest_client.py` 메서드 추가
-3. **Module wrapper** — `src/omniverse_kit_mcp/modules/` 도메인 모듈의 typed async 메서드
-4. **MCP tool 등록** — `src/omniverse_kit_mcp/tools/module_tools.py` 의 `@mcp.tool()` 데코레이터 함수
-5. **Mock client** — `tests/conftest.py` 의 MockIsaacRestClient + 새 메서드
-6. **Tool name SoT** — `tests/unit/test_tools_registration.py` 의 `EXPECTED_MODULE_TOOLS`
-   또는 `EXPECTED_SCENARIO_TOOLS` frozenset 에 추가
-7. **Tool group caveat** — `src/omniverse_kit_mcp/tools/CLAUDE.md` 해당 그룹 섹션에 한 줄
+1. **Extension REST endpoint** — `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/` or router
+2. **REST client** — Add `src/omniverse_kit_mcp/clients/isaac_rest_client.py` method
+3. **Module wrapper** — typed async method in `src/omniverse_kit_mcp/modules/` domain module
+4. **MCP tool registration** — `@mcp.tool()` decorator function of `src/omniverse_kit_mcp/tools/module_tools.py`
+5. **Mock client** — MockIsaacRestClient in `tests/conftest.py` + new method
+6. **Tool name SoT** — `EXPECTED_MODULE_TOOLS` of `tests/unit/test_tools_registration.py`
+or add `EXPECTED_SCENARIO_TOOLS` to frozenset
+7. **Tool group caveat** — `src/omniverse_kit_mcp/tools/CLAUDE.md` One line in that group section
 
-## 재생성 (필수 1회 수동 실행)
+## Regeneration (required one-time manual execution)
 
 ```bash
 .venv/Scripts/python.exe scripts/verify_mcp_sync.py
 ```
 
-이 명령이 묶어서 실행:
-1. `scripts/generate_tool_catalog.py` — `docs/tool-catalog.md` 재생성
+Run these commands together:
+1. `scripts/generate_tool_catalog.py` — Recreate `docs/tool-catalog.md`
 2. `pytest tests/unit/test_tools_registration.py tests/unit/test_tool_catalog_sync.py` —
-   drift 검사
-3. `git status` — 생성 파일 unchanged 확인
+drift inspection
+3. `git status` — Check the generated file unchanged
 
-## Drift 검증 (commit 전 필수)
+## Drift verification (required before commit)
 
 ```bash
 uv run pytest tests/unit/test_tools_registration.py tests/unit/test_tool_catalog_sync.py
 ```
 
-- `tests/unit/test_tools_registration.py` — 등록된 tool set ↔ EXPECTED_*_TOOLS frozenset
-  정확히 일치 (누락/초과 모두 FAIL)
-- `tests/unit/test_tool_catalog_sync.py` — `docs/tool-catalog.md` 가 현재 등록 상태와 동기
+- `tests/unit/test_tools_registration.py` — Registered tool set ↔ EXPECTED_*_TOOLS frozenset
+Exact match (FAIL for both missing/exceeded)
+- `tests/unit/test_tool_catalog_sync.py` — `docs/tool-catalog.md` is synchronous with the current registration state.
 
-## MCP Resource 추가 / 이동 (별도 절차)
+## Add/Move MCP Resource (separate procedure)
 
-`@mcp.resource(uri=...)` 추가/이동 시:
-1. `src/omniverse_kit_mcp/mcp/resources.py` 데코레이터 함수 + `RESOURCE_SOURCES` dict 매핑
-   갱신 (file-backed = `Path`, Python-backed = `None`)
-2. `tests/unit/test_resources_paths.py` 의 `EXPECTED_RESOURCES` 에 URI 추가/제거
-3. `uv run pytest tests/unit/test_resources_paths.py` — 매핑 어긋나면 FAIL
+When adding/moving `@mcp.resource(uri=...)`:
+1. `src/omniverse_kit_mcp/mcp/resources.py` decorator function + `RESOURCE_SOURCES` dict mapping
+update (file-backed = `Path`, Python-backed = `None`)
+2. Add/remove URI to `EXPECTED_RESOURCES` in `tests/unit/test_resources_paths.py`
+3. `uv run pytest tests/unit/test_resources_paths.py` — FAIL if mapping is misaligned
 
-## 재구성 작업 중 금지
+## Prohibited during reconfiguration operation
 
-CLAUDE.md Pull-First 재구성 진행 중에는 새 tool 추가 금지 (Operating Invariant —
-MCP surface 불변).
+Do not add new tools while CLAUDE.md Pull-First reconfiguration is in progress (Operating Invariant —
+MCP surface invariant).
 
-## 관련 경계
+## Related Boundaries
 
-- Tool 등록 규약 + 그룹별 caveat: `src/omniverse_kit_mcp/tools/CLAUDE.md`
-- 모듈 책임 매트릭스: `src/omniverse_kit_mcp/modules/CLAUDE.md`
-- Test 전략: `tests/CLAUDE.md`
-- Catalog regen 스크립트 상세: `scripts/CLAUDE.md`
+- Tool registration contract + caveat by group: `src/omniverse_kit_mcp/tools/CLAUDE.md`
+- Module Responsibility Matrix: `src/omniverse_kit_mcp/modules/CLAUDE.md`
+- Test strategy: `tests/CLAUDE.md`
+- Catalog regen script details: `scripts/CLAUDE.md`
 - Type boundary (dataclass vs Pydantic): `src/omniverse_kit_mcp/CLAUDE.md`
-- 새 module / scenario action 추가는 별개: `docs/invariants/module-add.md`
+- Apart from adding a new module / scenario action: `docs/invariants/module-add.md`

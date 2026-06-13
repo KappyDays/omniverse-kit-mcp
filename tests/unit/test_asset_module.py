@@ -181,7 +181,7 @@ def synthetic_catalog(tmp_path: Path) -> Path:
     (d / "assets" / "environments.md").write_text(
         "# Environments\n\n"
         "`$ISAAC` = `https://example.com/Isaac`\n\n"
-        "루트: `$ISAAC/Environments/`\n\n"
+        "Root: `$ISAAC/Environments/`\n\n"
         "| 환경 | 주요 USD |\n|---|---|\n"
         "| **Simple_Warehouse** | `warehouse.usd` ✓ |\n"
         "| | `full_warehouse.usd` |\n"
@@ -191,9 +191,9 @@ def synthetic_catalog(tmp_path: Path) -> Path:
     (d / "assets" / "people.md").write_text(
         "# People\n\n"
         "`$ISAAC` = `https://example.com/Isaac`\n\n"
-        "루트: `$ISAAC/People/`\n\n"
+        "Root: `$ISAAC/People/`\n\n"
         "## Characters\n\n"
-        "루트: `$ISAAC/People/Characters/`\n\n"
+        "Root: `$ISAAC/People/Characters/`\n\n"
         "| 에셋 | USD 경로 |\n|---|---|\n"
         "| F_Business_02 | `Characters/F_Business_02/F_Business_02.usd` ✓ |\n",
         encoding="utf-8",

@@ -1,27 +1,27 @@
 <!-- Parent: ../../CLAUDE.md -->
 <!-- Scope: FastMCP server package root — entry flow, type boundary, HTTP clients -->
 
-# omniverse_kit_mcp — FastMCP 서버 패키지 루트
+# omniverse_kit_mcp — FastMCP server package root
 
-`uv run omniverse-kit-mcp`의 진입 패키지. Extension REST + Lakehouse REST + OS 프로세스 호출을 MCP tool 로 묶는다.
+Entry package for `uv run omniverse-kit-mcp`. Extension REST + Lakehouse REST + OS process calls are bundled with the MCP tool.
 
 ## Package Layout
 
 ```
 src/omniverse_kit_mcp/
-├── main.py                # CLI 진입점 (`uv run omniverse-kit-mcp` 에 연결)
-├── config.py              # AppConfig — 환경 변수 → typed config
-├── exceptions.py          # 커스텀 예외
+├── main.py                # CLI entrypoint (`uv run omniverse-kit-mcp` wired to)
+├── config.py              # AppConfig — environment variables → typed config
+├── exceptions.py          # custom exceptions
 ├── mcp/
-│   ├── server.py          # FastMCP 서버 조립 (AppConfig + SYSTEM_PROMPT + tool 등록)
-│   └── prompts.py         # SYSTEM_PROMPT 정의
+│   ├── server.py          # FastMCP server assembly (AppConfig + SYSTEM_PROMPT + tool registration)
+│   └── prompts.py         # SYSTEM_PROMPT definition
 ├── clients/
 │   ├── isaac_rest_client.py   # → Extension REST (ISAAC_SIM_BASE_URL)
 │   └── lakehouse_client.py    # → Lakehouse REST (LAKEHOUSE_BASE_URL)
-├── modules/               # 도메인 모듈 → modules/CLAUDE.md
-├── scenario/              # 시나리오 엔진 → scenario/CLAUDE.md
-├── tools/                 # MCP tool 등록 → tools/CLAUDE.md
-└── types/                 # 내부 dataclass 타입
+├── modules/               # domain modules → modules/CLAUDE.md
+├── scenario/              # scenario engine → scenario/CLAUDE.md
+├── tools/                 # MCP tool registration → tools/CLAUDE.md
+└── types/                 # internal dataclass types
     └── common / extension / lakehouse / scenario / simulation / stage / viewport / robot / job / character.py
 ```
 
@@ -33,41 +33,39 @@ uv run omniverse-kit-mcp
   → mcp/server.py
       ├─ AppConfig.load_from_env() (config.py)
       ├─ SYSTEM_PROMPT inject      (mcp/prompts.py)
-      ├─ clients 초기화             (clients/*)
-      ├─ modules 초기화             (modules/*)
-      └─ tools 등록                  (tools/module_tools.py + tools/scenario_tools.py)
+      ├─ clients initialization             (clients/*)
+      ├─ modules initialization             (modules/*)
+      └─ tool registration                  (tools/module_tools.py + tools/scenario_tools.py)
   → FastMCP stdio server start
 ```
 
-## Type Boundary Convention (중요)
+## Type Boundary Convention (Important)
 
-- **내부 타입**: `@dataclass(slots=True, frozen=True)` — `types/` 전부
-- **Pydantic은 REST 경계에만**: Extension 내부 `kkr-extensions/.../models/` 만 사용
-- MCP 서버 코드(`omniverse_kit_mcp` 패키지 전체)에서는 Pydantic 모델을 만들지 않는다 — REST 응답은 client 레이어에서 dict → dataclass 로 변환
+- **Internal Type**: `@dataclass(slots=True, frozen=True)` — `types/` all
+- **Pydantic only at REST boundaries**: Use only `kkr-extensions/.../models/` inside extension
+- The MCP server code (the entire `omniverse_kit_mcp` package) does not create a Pydantic model — the REST response is converted to dict → dataclass in the client layer.
 
-## Clients 외부 통신 규약
+## Clients External Communication Protocol
 
-| Client | Target | 환경 변수 |
+| Client | Target | environment variables |
 |--------|--------|-----------|
-| `isaac_rest_client.py` | Extension REST `/validation/v1` | `ISAAC_SIM_BASE_URL` (기본 `http://127.0.0.1:8111`) |
-| `lakehouse_client.py` | Lakehouse REST | `LAKEHOUSE_BASE_URL` (기본 `http://localhost:9000`) |
+| `isaac_rest_client.py` | Extension REST `/validation/v1` | `ISAAC_SIM_BASE_URL` (default `http://127.0.0.1:8111`) |
+| `lakehouse_client.py` | Lakehouse REST | `LAKEHOUSE_BASE_URL` (default `http://localhost:9000`) |
 
-- 모두 async (httpx 기반)
-- Client는 네트워크 오류 시 예외 raise만 담당 — ModuleResult로 감싸는 일은 `modules/base.py`의 `error_result()` 가 담당
-- Health 폴링은 `process_module.py`가 직접 수행 (MCP 서버 기동 자체는 Isaac Sim 상태와 무관)
+- All async (httpx based)
+- The client is only responsible for raising exceptions in case of a network error — `error_result()` of `modules/base.py` is responsible for wrapping it in ModuleResult.
+- Health polling is performed directly by `process_module.py` (MCP server startup itself is independent of Isaac Sim status)
 
-## MCP server import cache (개발 시 필독)
+## MCP server import cache (must read during development)
 
-MCP host (Claude Code / Codex CLI) 는 세션 시작 시 stdio 로 `omniverse-kit-mcp` 서버를 1회 spawn 하고 Python import 를 캐시한다. 이 패키지 (`src/omniverse_kit_mcp/`) 내부 수정은 **host 재시작 전까지 MCP tool 호출에 반영되지 않음**. 세션 중 검증 시 standalone 스크립트 사용:
+MCP host (Claude Code / Codex CLI) spawns the `omniverse-kit-mcp` server once in stdio when the session starts and caches the Python import. Modifications inside this package (`src/omniverse_kit_mcp/`) **will not be reflected in MCP tool calls until host restart**. Use standalone script for in-session verification:- `scripts/run_scenario_standalone.py <scenario_path>` — Run compiler/runner/modules with the latest code. Relative paths are resolved in the following order: `config.scenario.scenarios_dir` → project root.
+- `scripts/run_process_module_standalone.py <start|stop|restart>` — Only ProcessModule runs separately
 
-- `scripts/run_scenario_standalone.py <scenario_path>` — compiler/runner/modules 을 최신 코드로 실행. 상대경로는 `config.scenario.scenarios_dir` → 프로젝트 루트 순으로 해소
-- `scripts/run_process_module_standalone.py <start|stop|restart>` — ProcessModule 만 별도 실행
+Since the extension code (`kkr-extensions/`) is a separate process from the MCP server, it is immediately reflected by deleting `kit_app_restart` / `__pycache__`.
 
-Extension 코드 (`kkr-extensions/`) 는 MCP 서버와 별개 프로세스이므로 `kit_app_restart` / `__pycache__` 삭제로 즉시 반영.
+## Related Boundaries
 
-## 관련 경계
-
-- 모듈 책임/REST 응답 특성: `modules/CLAUDE.md`
-- 시나리오 엔진: `scenario/CLAUDE.md`
-- MCP tool 등록 규약: `tools/CLAUDE.md`
-- Extension 내부(Pydantic models, REST 라우터): `../../kkr-extensions/CLAUDE.md`
+- Module responsibility/REST response characteristics: `modules/CLAUDE.md`
+- Scenario Engine: `scenario/CLAUDE.md`
+- MCP tool registration contract: `tools/CLAUDE.md`
+- Inside extension (Pydantic models, REST router): `../../kkr-extensions/CLAUDE.md`

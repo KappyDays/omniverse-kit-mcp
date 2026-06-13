@@ -6,17 +6,17 @@ Kit Extension verified against the locally-built **KKR USD Composer 0.1.1**
 whitelist-picker while the timeline is playing:
 
 - **Mouse-look** — moving the mouse rotates the active camera (yaw + pitch).
-  Win32 `user32.GetCursorPos` / `SetCursorPos` 를 ctypes 로 직접 호출 → Isaac Sim
-  과 USD Composer 양쪽에서 동작 (Kit appwindow 의 cursor API 노출 여부와 무관).
-  Linux / macOS 빌드는 carb.windowing → appwindow API → 0-delta guard 순으로
+  Direct call of Win32 `user32.GetCursorPos` / `SetCursorPos` to ctypes → Isaac Sim
+  Works with both USD Composer and USD Composer (regardless of whether the cursor API is exposed in Kit appwindow or not).
+  Linux/macOS builds are in the following order: carb.windowing → appwindow API → 0-delta guard
   fallback.
-- **WASD + Q/E** — translates the camera (forward / strafe / vertical).
+- **WASD + Q/E** — translates the camera (forward / straight / vertical).
 - **Circular crosshair** — a small white `omni.ui.Circle` (10 px) pinned to the
-  viewport centre.
-- **Whitelist pick highlight** — `customLayerData["usdMouseInteract"]
-  .allowed_prims` 안의 prim 만 hover 시 USD selection 으로 표시.
+  viewport center.
+- **Whitelist pick highlight** — Only the prim in `customLayerData["usdMouseInteract"]
+  .allowed_prims` is displayed as USD selection when hovered.
 - **Top-left info panel** — `customLayerData["usdMouseInteract"].descriptions`
-  의 사용자 텍스트가 우선, 없으면 prim metadata fallback (kind / displayName).
+  If the user text takes precedence, prim metadata falls back (kind/displayName).
 - **Timeline play / stop** — toggles the whole feature on and off.
 - **ESC** — soft-disengage (mouse + key capture stop) without stopping the
   timeline. Re-engage by stopping and replaying the timeline.
@@ -64,104 +64,102 @@ omni.mycompany.usd_mouse_interact** → toggle on.
 
 ## Quickstart
 
-1. **Dev panel 띄우기** — Extension 활성화 후 `Window → USD Mouse Interact`
-   (없으면 `Window → Extensions` 에서 토글). 패널 한 번 뜨면 dock 가능.
-2. **Whitelist 작성** — Stage panel 에서 prim 선택 → dev panel **Add** →
-   **Save** (3장 *Whitelist 편집* 참조).
-3. **Play** — 타임라인 ▶ 누르면 viewport 중앙에 흰 crosshair 출력 + 카메라 캡처
-   시작. 이때부터 마우스 이동 → yaw/pitch, **W/A/S/D** → forward/strafe,
+1. **Launch Dev panel** — `Window → USD Mouse Interact` after activating extension
+   (If not present, toggle on `Window → Extensions`). Once the panel pops up, you can dock it.
+2. **Create Whitelist** — Select prim from Stage panel → dev panel **Add** →
+   **Save** (see Chapter 3 *Whitelist Editing*).
+3. **Play** — Timeline ▶ When pressed, a white crosshair is output in the center of the viewport + camera capture
+   Start. From this point, mouse movement → yaw/pitch, **W/A/S/D** → forward/strafe,
    **E/Q** → up/down.
-4. **Hover** — whitelist 등록된 prim 위에 crosshair 가 닿으면 (a) USD selection
-   에 표시 + (b) viewport 좌상단에 InfoOverlay (제목 + 설명) 출력.
-5. **해제** — **Stop** (▪) 또는 **Esc**. ▪ 누르면 카메라가 Play 직전 위치로
-   자동 복원되고, **Esc** 만 누르면 입력 캡처만 풀리고 카메라는 현재 위치
-   유지 (다시 잠그려면 ▪ → ▶).
+4. **Hover** — When the crosshair touches the whitelisted prim (a) USD selection
+   Displayed in + (b) InfoOverlay (title + description) output at the top left of the viewport.
+5. **Off** — **Stop** (▪) or **Esc**. ▪ When pressed, the camera moves to the position just before Play.
+   It is automatically restored, and if you just press **Esc**, only the input capture is released and the camera moves to the current position.
+   Hold (to re-lock ▪ → ▶).
 
-## Camera controls (Play 중에만 활성)
+## Camera controls (only active during Play)
 
-| 입력 | 동작 |
+| input | Action |
 |------|------|
-| Mouse 이동 | yaw + pitch (Win32 `SetCursorPos` 로 매 프레임 화면 중앙 복귀) |
+| Mouse Move | yaw + pitch (return to screen center every frame with Win32 `SetCursorPos`) |
 | `W` / `S` | forward / backward |
-| `A` / `D` | strafe left / right |
-| `E` / `Q` | up / down (월드 up-axis 기준) |
-| `Esc` | 입력 캡처만 해제 (카메라 위치 유지) |
-| Stop (▪) | 캡처 해제 + 카메라 위치 복원 + crosshair / InfoOverlay 제거 |
+| `A` / `D` | straight left / right |
+| `E` / `Q` | up / down (based on world up-axis) |
+| `Esc` | Turn off input capture only (maintain camera position) |
+| Stop (▪) | Uncapture + restore camera position + remove crosshair/InfoOverlay |
 
-이동 속도와 마우스 민감도는 dev panel **Tuning** 섹션에서 실시간 조절.
+Movement speed and mouse sensitivity can be adjusted in real time in the **Tuning** section of the dev panel.
 
-> **알려진 한계 — fly mode 중 텍스트 입력**
-> Fly mode active 중에는 `W A S D Q E R` 키가 viewport gizmo 단축키 토글
-> (W=Translate, E=Rotate, R=Scale, Q=Select) 을 막기 위해 *consume* 됩니다.
-> 부작용으로 dev panel 의 Edit description modal / Stage panel 검색창 /
-> Property field 등 다른 widget 에 focus 가 있어도 이 키들은 typing 으로
-> 전달되지 않습니다. 텍스트 입력이 필요하면 **Stop** (▪) 또는 **Esc** 로
-> fly mode 를 먼저 해제하세요. ESC 자체는 host modal dialog (Save confirm
-> 등) 와의 충돌을 피하려 propagate 됩니다.
+> **Known limitations — text input during fly mode**
+> During Fly mode active, the `W A S D Q E R` key toggles the viewport gizmo shortcut key.
+> *consume* to prevent (W=Translate, E=Rotate, R=Scale, Q=Select).
+> As a side effect, the Edit description modal of the dev panel / Stage panel search box /
+> Even if the focus is on another widget such as a property field, these keys are used by typing.
+> Not delivered. If text input is required, press **Stop** (▪) or **Esc**.
+> Turn off fly mode first. ESC itself is host modal dialog (Save confirm
+> etc.) is propagated to avoid conflict with .
 
-## Whitelist 편집 (Add / Remove / Clear / Save)
+## Edit Whitelist (Add / Remove / Clear / Save)
 
-Whitelist 는 *어떤 prim 이 hover 시 highlight + InfoOverlay 대상이 되는지* 를
-결정하는 prim path 집합. dev panel 상단 4 버튼으로 관리:
-
-| 버튼 | 동작 | 영향 |
+Whitelist determines *which prim is the target of highlight + InfoOverlay when hovered*
+A set of prim paths to determine. Manage with the 4 buttons at the top of the dev panel:| button | Action | Impact |
 |------|------|------|
-| **Add** | Stage 에서 *현재 선택된* prim 들을 whitelist 에 합침 | in-memory 즉시 + Stage 즉시 반영 (controller `reload_metadata` 호출) |
-| **Remove** | 선택된 prim 들을 whitelist 에서 제외 + 그 prim 의 description 도 삭제 | 동일 |
-| **Clear** | whitelist 와 description 전부 비움 | 동일 |
-| **Save** | 현재 in-memory 상태를 다시 한 번 layer customLayerData 에 쓰기 | (보통 Add/Remove 가 자동 저장하므로 명시적 동기화용) |
+| **Add** | Merge *currently selected* prims in Stage to whitelist | in-memory immediately + Stage immediately reflected (call controller `reload_metadata`) |
+| **Remove** | Exclude selected prims from the whitelist + also delete the prim's description | Same |
+| **Clear** | Empty all whitelist and description | Same |
+| **Save** | Write the current in-memory state to layer customLayerData again | (Usually for explicit synchronization since Add/Remove automatically saves) |
 
-### 새 prim 을 target 으로 등록하는 표준 흐름
+### Standard flow for registering a new prim as target
 
-1. **Stage panel** (왼쪽) 에서 target prim 을 클릭. 다중 선택 (Ctrl/Shift) 지원.
-2. **dev panel** 의 **Add** 클릭. 패널 중간 status 라벨이
-   `1 prim(s) -- 0 described` 식으로 갱신되고, 아래 스크롤 영역에 prim path
-   행이 추가됨.
-3. *(선택)* 그 행의 **Edit** 버튼으로 description 작성 (다음 절).
-4. USD 파일 자체에 영구 저장하려면 USD Composer 의 **File → Save** (Ctrl+S).
-   whitelist 는 layer 의 `customLayerData` 안에 같이 직렬화되므로 별도 export
-   불필요. (dev panel 의 **Save** 버튼은 layer in-memory 동기화일 뿐 — 디스크
-   저장은 Kit 의 File Save 가 맡음.)
+1. Click target prim on the **Stage panel** (left). Multiple selection (Ctrl/Shift) support.
+2. Click **Add** in **dev panel**. The status label in the middle of the panel is
+   It is updated as `1 prim(s) -- 0 described`, and the prim path is displayed in the scroll area below.
+   Row added.
+3. *(Optional)* Write a description using the **Edit** button in that row (next section).
+4. To permanently save to the USD file itself, select **File → Save** (Ctrl+S) in USD Composer.
+   The whitelist is serialized together within `customLayerData` of the layer, so it is exported separately.
+   Not necessary. (**Save** button on dev panel is only layer in-memory synchronization — disk
+   Saving is handled by Kit’s File Save.)
 
-### 자손 prim 자동 매칭
+### Automatic matching of descendant prim
 
-화이트리스트 엔트리는 *조상 매칭* 룰을 따른다. 예를 들어
-`/World/Robot` 만 등록해도 그 하위의 `/World/Robot/Joint1/Mesh` 에 hover
-하면 `/World/Robot` 으로 hit 처리됨 (longest-ancestor 우선). 따라서 큰 그룹은
-group prim 하나만 등록하는 것이 효율적.
+Whitelist entries follow the *ancestor matching* rule. For example
+Even if you only register `/World/Robot`, hover over `/World/Robot/Joint1/Mesh` below it.
+If you do this, it will be treated as a hit as `/World/Robot` (longest-ancestor priority). Therefore, large groups
+It is efficient to register only one group prim.
 
-## Description 편집 (좌상단 InfoOverlay 텍스트)
+## Edit Description (InfoOverlay text at top left)
 
-InfoOverlay 의 `desc` 영역은 다음 우선순위로 결정됨:
+The `desc` area of InfoOverlay is determined by the following priorities:
 
-1. **사용자 description** — `customLayerData["usdMouseInteract"]
-   .descriptions[<hit_path>]` (정확/가장 긴 조상 매칭).
-2. **prim metadata fallback** — 위 항목이 비어있으면
-   `f"{typeName} — under {parent_path}"` (예: `Cube — under /World`).
+1. **User description** — `customLayerData["usdMouseInteract"]
+   .descriptions[<hit_path>]` (exact/longest ancestor matching).
+2. **prim metadata fallback** — If the above field is empty
+   `f"{typeName} — under {parent_path}"` (e.g. `Cube — under /World`).
 3. **invalid prim** — `(unknown prim)`.
 
-### dev panel 에서 description 수정하기
+### Editing description in dev panel
 
-1. dev panel 의 **Whitelist + Descriptions** 섹션에 prim 한 줄당 행이 있음
-   (`/World/TestCube`  `Test cu...efault...`  `Edit`).
-2. **Edit** 버튼 클릭 → 별도 modal Window (`Edit description -- /<path>`)
-   가 뜸.
-3. 가운데 multiline `StringField` 에 텍스트 입력. Latin (ASCII) + ASCII
-   punctuation 만 정상 렌더링됨 (Kit 110 omni.ui 의 알려진 제약 — 한글/CJK
-   는 `?` 박스로 표시되니 영어로 작성 권장).
-4. **OK** 누르면 in-memory 와 layer customLayerData 에 즉시 반영. **Cancel**
-   은 변경 폐기.
-5. 다시 hover → InfoOverlay 의 `desc` 가 즉시 새 텍스트로 갱신됨.
+1. There is one line per prim in the **Whitelist + Descriptions** section of the dev panel.
+   (`/World/TestCube` `Test cu...efault...` `Edit`).
+2. Click the **Edit** button → Separate modal window (`Edit description -- /<path>`)
+   Stopping.
+3. Enter text in the center multiline `StringField`. Latin (ASCII) + ASCII
+   Only punctuation is rendered normally (known limitation of Kit 110 omni.ui — Korean/CJK
+   is displayed in the `?` box, so it is recommended to write in English).
+4. When you press **OK**, it is immediately reflected in in-memory and layer customLayerData. **Cancel**
+   Change is obsolete.
+5. Hover again → `desc` in InfoOverlay is immediately updated with new text.
 
-### prim 자체 metadata 만 보여주고 싶을 때
+### When you want to show only prim’s own metadata
 
-description 을 비워둔 채 (또는 입력 후 빈 문자열로 OK) 두면 fallback 룰이
-발동. 이 경우 `Cube — under /World` 같은 자동 라벨이 출력. 빈 문자열을
-저장하면 `descriptions` dict 에서 해당 키가 제거됨 (스토리지 절약).
+If you leave description empty (or OK with an empty string after entering it), the fallback rule will run.
+Activated. In this case, an automatic label such as `Cube — under /World` is output. an empty string
+Saving will remove that key from the `descriptions` dict (saving storage).
 
-### 직접 USD 편집
+### Edit USD directly
 
-에디터에서 customLayerData 를 손으로 쓰는 것도 가능. layer root 에:
+It is also possible to write customLayerData by hand in the editor. layer root to:
 
 ```usda
 customLayerData = {
@@ -175,47 +173,47 @@ customLayerData = {
 }
 ```
 
-저장 후 dev panel 에서 **extension 재활성화** (deactivate → activate) 또는
-USD Composer 재시작하면 패널이 새 데이터로 다시 로드됨.
+After saving, reactivate **extension** (deactivate → activate) in the dev panel or
+Restarting USD Composer reloads the panel with new data.
 
 ## Tuning (Speed / Sensitivity)
 
-dev panel 하단 **Tuning** 섹션의 슬라이더 두 개로 카메라 응답을 즉시 조정:
+Instantly adjust camera response with two sliders in the **Tuning** section at the bottom of the dev panel:
 
-| 슬라이더 | 범위 | 단위 / 의미 | 기본값 |
+| Slider | range | Unit/Meaning | default |
 |----------|-----|-------------|-------|
-| **Speed** | 50 ~ 5000 | translation 속도 (units/sec, USD up-axis 기준) | 500 |
-| **Sensitivity** | 1 ~ 100 | 마우스 회전 배율 (내부적으로 `× 0.0001` → 라디안/픽셀) | 25 |
+| **Speed** | 50 ~ 5000 | Translation speed (units/sec, based on USD up-axis) | 500 |
+| **Sensitivity** | 1 to 100 | Mouse rotation scale (internally `× 0.0001` → radians/pixel) | 25 |
 
-값 변경은 다음 frame 부터 적용 — Stop / Play 사이클 불필요. 메타 룰: USD
-Composer / Isaac Sim 양쪽 viewport 가 1 단위 = 1 cm (`metersPerUnit = 0.01`)
-씬에서는 Speed 500 ≈ 5 m/s 로 체감되며, 멀리 있는 환경 시연용으로는 1500 ~
-3000, 가까운 디테일 검사용으로는 200 ~ 500 정도가 무난.
+Value changes are applied starting from the next frame — No Stop/Play cycle required. Meta Rule: USD
+Composer / Isaac Sim Both viewports are 1 unit = 1 cm (`metersPerUnit = 0.01`)
+In the scene, the speed is felt as 500 ≈ 5 m/s, and for demonstration of a distant environment, it is 1500 ~
+3000, for close detailed inspection, 200 to 500 is acceptable.
 
-> 슬라이더는 *세션 내* 값. USD 파일에 저장되지 않으므로 다음 세션에서는
-> 기본값 (500 / 25) 으로 다시 시작.
+> Sliders are *in-session* values. Since it is not stored in the USD file, the next session will
+> Restart with defaults (500 / 25).
 
-## 데이터 저장 위치
+## Data storage location
 
-모든 whitelist + description 은 **현재 active stage 의 root layer** 의
-`customLayerData["usdMouseInteract"]` 에 저장됨:
+All whitelist + descriptions are in the **root layer** of the current active stage.
+Saved in `customLayerData["usdMouseInteract"]`:
 
 ```
 customLayerData
 └── usdMouseInteract
-    ├── allowed_prims  : Vt.StringArray  (정렬된 path 리스트)
-    └── descriptions   : dict[str, str]  (path → 사용자 텍스트)
+    ├── allowed_prims  : Vt.StringArray  (sorted path list)
+    └── descriptions   : dict[str, str]  (path → user text)
 ```
 
-핵심 규칙:
+Core rules:
 
-- **Stage 별 종속** — 다른 USD 파일을 열면 그 파일의 customLayerData 만
-  읽음. extension global 저장소가 따로 있는 게 아님.
-- **Sublayer / reference 무시** — root layer 만 본다. Sublayer 에 있는
-  customLayerData 는 무시되니 sublayer 작업 시 주의.
-- **저장 == File Save** — dev panel 의 **Save** 는 in-memory layer 갱신용.
-  실제 디스크 저장은 USD Composer 의 **File → Save** (Ctrl+S) 또는
-  **Save As** 가 맡음. 저장 안 한 채 종료하면 잃는다.
+- **Stage-specific dependency** — When you open another USD file, only the customLayerData of that file is
+  Read. There is no separate extension global repository.
+- **Ignore Sublayer / reference** — Only the root layer is seen. in the sublayer
+  customLayerData is ignored, so be careful when working with sublayers.
+- **Save == File Save** — **Save** in dev panel is for updating in-memory layer.
+  Actual disk saving can be done using USD Composer's **File → Save** (Ctrl+S) or
+  Taken by **Save As**. If you quit without saving, you lose.
 
 ## Development
 
@@ -231,8 +229,6 @@ customLayerData
 reload doesn't take effect (Python sys.modules cache), call
 `extension_activate(ext_id="omni.mycompany.usd_mouse_interact", reload=True)`.
 
-### Why `omni.mycompany.*`?
-
-USD Composer (Kit-app-template build) only mounts already-registered top-level
+### Why `omni.mycompany.*`?USD Composer (Kit-app-template build) only mounts already-registered top-level
 namespaces; `omni.kappy.*` and bare `kappy_*` were silently ignored even when
 the manifest was found. This is documented in the verification report.

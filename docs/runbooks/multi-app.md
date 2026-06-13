@@ -1,33 +1,33 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: Multi-app / multi-instance 장애 대응 — port 충돌 / USD Composer 기동 실패 / 교차 감염 -->
-# Multi-App 장애 대응
+<!-- Scope: Multi-app / multi-instance failure response — port conflict / USD Composer startup failure / cross infection -->
+# Multi-App failure response
 
-## 증상 1 — USD Composer instance start 시 `crashed` 즉시 반환
+## Symptom 1 — `crashed` returns immediately when USD Composer instance starts
 
-**진단**:
+**Diagnosis**:
 ```bash
 ls "/c/path/to/usd-composer-root/kit/kit.exe"
 ls "/c/path/to/usd-composer-root/apps/kkr_usd_composer.kit"
 ```
 
-둘 중 하나 없으면: USD Composer 빌드 손상.
+Without either: broken USD Composer build.
 
-**복구**:
+**Recovery**:
 ```bash
 cd /c/path/to/kit-app-template-root
 ./repo.bat build --release
 ```
-빌드 완료 후 재시도.
+Retry after build completion.
 
-## 증상 1b — USD Composer crashed + `Failed to resolve extension dependencies`
+## Symptom 1b — USD Composer crashed + `Failed to resolve extension dependencies`
 
-**증상**: `log_tail` 에 `No versions of isaacsim.replicator.agent.core that
-satisfies` 또는 유사한 Isaac-specific extension 이름.
+**Symptom**: `log_tail` to `No versions of isaacsim.replicator.agent.core that
+satisfies` or similar Isaac-specific extension name.
 
-**원인**: `ISAAC_SIM_EXTRA_EXT_IDS` 가 USD Composer profile 에 leak. Config
-validator 에서 profile=isaac-sim 검사가 누락되면 발생.
+**Cause**: `ISAAC_SIM_EXTRA_EXT_IDS` leaks in USD Composer profile. Config
+Occurs when profile=isaac-sim check is missing in validator.
 
-**진단**:
+**Diagnosis**:
 ```bash
 .venv/Scripts/python.exe -c "
 from omniverse_kit_mcp.config import AppConfig
@@ -39,92 +39,90 @@ print('extra_ext_ids:', ac.isaac_sim_process.extra_ext_ids)
 ```
 
 Expected for usd-composer: `()` (empty). If Isaac-specific IDs appear →
-`docs/invariants/multi-app.md` 의 "ISAAC_SIM_EXTRA_EXT_IDS 는 Isaac-profile 전용"
-section 의 validator 회귀 확인.
+"ISAAC_SIM_EXTRA_EXT_IDS is for Isaac-profile only" in `docs/invariants/multi-app.md`
+Check the validator regression of section.
 
-## 증상 2 — USD Composer 에서 `/robot/load` 가 503 이 아니라 404
+## Symptom 2 — `/robot/load` is 404 instead of 503 in USD Composer
 
-**원인**: validation_api extension 이 USD Composer 에 로드 안 됨. kit 런치
-command 에 `--ext-folder` / `--enable omni.mycompany.validation_api` 플래그가
-빠졌거나, extension path 가 잘못됨.
+**Cause**: validation_api extension is not loaded in USD Composer. kit lunch
+The `--ext-folder` / `--enable omni.mycompany.validation_api` flag is in the command.
+It is missing or the extension path is incorrect.
 
-**진단**:
+**Diagnosis**:
 ```bash
-# 방금 띄운 USD Composer 의 CommandLine 확인
+# check the CommandLine of the USD Composer instance just started
 powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='kit.exe'\" | Where-Object { \$_.CommandLine -like '*port=8114*' } | Select-Object -ExpandProperty CommandLine"
 ```
 
-CommandLine 에 `--ext-folder` 와 `--enable omni.mycompany.validation_api`
-둘 다 있어야 함. 없으면 `src/omniverse_kit_mcp/modules/process_module.py::ProcessModule` start cmd 배열 빌드 회귀.
+CommandLine: `--ext-folder` and `--enable omni.mycompany.validation_api`
+Must have both. If not, `src/omniverse_kit_mcp/modules/process_module.py::ProcessModule` start cmd array build regression.
 
-**복구**: stop + start 사이클 후 재진단. 여전히 문제면 Level C.
+**Recovery**: Re-diagnosis after stop + start cycle. If the problem is still level C.
 
-## 증상 3 — Isaac instance 2 기동 시 `Address already in use`
+## Symptom 3 — `Address already in use` when starting Isaac instance 2
 
-**원인**: 이전 kit 이 port 8112 를 잡고 있는데 `_is_process_alive` 가 감지
-못 함 (CommandLine 에 `port=8112` 가 없는 kit — 예: 수동 GUI 실행 kit).
+**Cause**: The previous kit is using port 8112, but `_is_process_alive` is detected.
+Not possible (kit without `port=8112` in CommandLine — e.g. manual GUI launch kit).
 
-**진단**:
+**Diagnosis**:
 ```bash
 netstat -ano | findstr ":8112"
 ```
 
-PID 확인 → 그 PID 가 무엇인지:
+Check PID → What is that PID:
 ```bash
 powershell.exe -NoProfile -Command "Get-Process -Id <PID> | Select-Object Id, ProcessName, StartTime, Path"
 ```
 
-**복구**:
-- 우리 MCP 가 띄운 게 아닌 외부 kit 이면 → 수동으로 Stop 또는 포기
-- 우리 게 맞는데 식별 실패면 → `taskkill /F /PID <PID>` 수동 실행 후 재시도
+**Recovery**:
+- If it is an external kit that is not launched by our MCP → Manually stop or give up
+- If ours is correct but identification fails → Manually run `taskkill /F /PID <PID>` and retry
 
-## 증상 4 — Isaac + USD Composer 동시 기동 시 GPU OOM
-
-**증상**: 두 번째 start 가 `still_loading` 반복 + log_tail 에
+## Symptom 4 — GPU OOM when Isaac + USD Composer are started simultaneously**Symptom**: Second start repeats `still_loading` + log_tail
 `CUDA out of memory` / `Failed to allocate` / `Vulkan device lost`.
 
-**복구**:
-- Scene content 를 empty 로 유지 (asset load 금지)
-- 한 번에 하나씩만 사용 (Isaac 끝나면 stop, 그 다음 USD Composer)
-- Long-term: GPU upgrade 또는 streaming mode 사용
+**Recovery**:
+- Keep scene content empty (asset load prohibited)
+- Only use one at a time (stop when Isaac is finished, then USD Composer)
+- Long-term: Use GPU upgrade or streaming mode
 
-## 증상 5 — hub.exe cleanup 이 다른 instance 를 깨뜨림
+## Symptom 5 — hub.exe cleanup breaks another instance
 
-**증상**: Instance 2 stop 후 instance 1 의 asset listing (`/content/browse`)
-이 `ClientLibraryError` / connection refused.
+**Symptom**: Asset listing of instance 1 after stopping instance 2 (`/content/browse`)
+This `ClientLibraryError` / connection refused.
 
-**원인**: `_cleanup_orphan_hub` 의 "다른 kit alive 면 skip" 가드 회귀.
+**Cause**: “Skip if other kit alive” guard regression in `_cleanup_orphan_hub`.
 
-**진단**:
+**Diagnosis**:
 ```bash
 Get-Process -Name hub -ErrorAction SilentlyContinue
 netstat -ano | findstr :14090
 ```
 
-hub.exe 가 없어졌으면 회귀 확정.
+If hub.exe disappears, regression is confirmed.
 
-**복구**: Instance 1 도 restart — hub 가 자동 재생성됨. 코드 레벨 fix 는
+**Recovery**: Also restart Instance 1 — the hub is automatically regenerated. Code level fix is
 `tests/unit/test_process_module_multi_app.py::test_hub_cleanup_skipped_when_other_kit_alive`
-가 검증.
+Verification.
 
-## 증상 6 — `~/.claude.json` 에 `omniverse-kit-mcp-*` entry 가 하나만 있음
+## Symptom 6 — There is only one `omniverse-kit-mcp-*` entry in `~/.claude.json`
 
-**원인**: setup script 가 구 버전 (multi-app 이전) 로 실행됨.
+**Cause**: The setup script was run with an old version (before multi-app).
 
-**복구**: feature branch 에서:
+**Recovery**: From feature branch:
 ```bash
 cmd //c "setup\\setup-omniverse-kit-mcp.bat"
 ```
-이후 `~/.claude.json` 검증 (Phase 5.2 Step 2 참조).
+Afterwards, verify `~/.claude.json` (refer to Phase 5.2 Step 2).
 
-## 관련 경계
+## Related Boundaries
 
 - Invariants: `docs/invariants/multi-app.md`
-- Code SoT:
-  - `src/omniverse_kit_mcp/modules/process_module.py`
-  - `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/_app_features.py`
-- Live smoke:
-  - `scripts/verify_multi_instance.py`
-  - `scripts/verify_multi_app.py`
-- 기존 장애: `docs/runbooks/kit-stdin-deadlock.md`, `cold-boot-timeout.md`,
+-Code SoT:
+  -`src/omniverse_kit_mcp/modules/process_module.py`
+  -`kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/_app_features.py`
+-Live smoke:
+  -`scripts/verify_multi_instance.py`
+  -`scripts/verify_multi_app.py`
+- Existing faults: `docs/runbooks/kit-stdin-deadlock.md`, `cold-boot-timeout.md`,
   `hub-orphan.md`, `env-sub-config.md`

@@ -11,30 +11,30 @@ metadata:
 
 Prefix your first line with 🗂️ inline.
 
-**목표**: 두 inventory 디렉토리의 모든 USD URL 이 NVIDIA S3 에서 여전히 valid 한지 검증하고 invalid 엔트리를 수정. Isaac Sim 6.x 패치 / SimReady release 후 stale path 가 누적되는 것을 방지.
+**Goal**: Verify that all USD URLs in both inventory directories are still valid in NVIDIA S3 and fix invalid entries. Prevents stale paths from accumulating after Isaac Sim 6.x patch/SimReady release.
 
-**Watched scopes** (둘 다 같은 `omniverse-content-production` S3 bucket):
-- `docs/assets/isaac/assets/*.md` — Isaac Sim 6.0 번들 한정 (strict: `Isaac/6.0` 또는 `simready_content` prefix 만 허용)
-- `docs/assets/composer/*.md` — USD Composer / 크로스앱 sample library (DigitalTwin / ArchVis / Vegetation 등 `$VAR` 자유 선언, bucket-level 검증만)
-- README.md (catalog index) 는 URL 검증 대상 아님 — sub-md 의 메타정보만 등재
+**Watched scopes** (both same `omniverse-content-production` S3 bucket):
+- `docs/assets/isaac/assets/*.md` — Isaac Sim 6.0 bundle only (strict: only accepts `Isaac/6.0` or `simready_content` prefix)
+- `docs/assets/composer/*.md` — USD Composer / cross-app sample library (DigitalTwin / ArchVis / Vegetation, etc. `$VAR` free declaration, bucket-level verification only)
+- README.md (catalog index) is not subject to URL verification — only sub-md meta information is listed.
 
 ## When to Use
 
 User says one of:
-- "asset 경로가 안 맞아" / "asset 404 떠"
-- "asset_inventory 업데이트" / "inventory sync"
-- "Isaac Sim 5.2 깔았어" (asset 버킷 prefix 변경 가능성)
-- "stage_load_usd 가 자꾸 fail"
+- “asset path is incorrect” / “asset 404”
+- "asset_inventory update" / "inventory sync"
+- “I installed Isaac Sim 5.2” (possibility of changing asset bucket prefix)
+- "stage_load_usd keeps failing"
 
-**Skip** for adding a brand-new asset (직접 markdown 편집이 cheaper) or for non-NVIDIA assets (R4 — 3rd-party USD 금지).
+**Skip** for adding a brand-new asset (direct markdown editing is cheaper) or for non-NVIDIA assets (R4 — 3rd-party USD is prohibited).
 
 ## Invariants (Never Violate)
 
 | ID | Rule |
 |----|------|
-| I1 | Use full HTTPS S3 URLs only — `file://` prohibited (스테이지 로드 실패). |
+| I1 | Use full HTTPS S3 URLs only — `file://` prohibited (stage load failure). |
 | I2 | All sub-md must declare at least one `$VAR` prefix at the top (e.g. `$ISAAC` / `$SIM` for `docs/assets/isaac/`, `$DT` / `$ARCHVIS` for `docs/assets/composer/`). Every prefix URL must point to `omniverse-content-production` or `omniverse-content-staging` bucket. Do not hard-code full URLs in tables. |
-| I3 | `루트:` 선언은 그 파일의 메인 카테고리 root. 표의 path 컬럼은 메인 root 기준 (e.g. `루트: $ISAAC/People/` + `Characters/Foo.usd` → `$ISAAC/People/Characters/Foo.usd`). 동일하게 composer 의 `루트: $DT/Datacenter/` + `Liquid_Cooling/...usd` 도 적용. |
+| I3 | The `Root:` declaration is the main category root of the file. The path column in the table is based on the main root (e.g. `Root: $ISAAC/People/` + `Characters/Foo.usd` → `$ISAAC/People/Characters/Foo.usd`). The same applies to composer's `Root: $DT/Datacenter/` + `Liquid_Cooling/...usd`. |
 | I4 | Pre-commit: `pytest tests/unit/test_asset_inventory_integrity.py -q` green, `verify_mcp_sync.py` OK, root `CLAUDE.md` ≤ 100 lines. |
 
 Breaking any → STOP and report.
@@ -47,9 +47,7 @@ All Python invocations use `.venv/Scripts/python.exe` (Windows; bypasses uv lock
 
 ```bash
 .venv/Scripts/python.exe -m pytest tests/unit/test_asset_inventory_integrity.py -q
-```
-
-- 7 passed → continue.
+```- 7 passed → continue.
 - any fail → **STOP**. Fix format violation first; HEAD validation on broken format is meaningless.
 
 ### Step 2 — URL validity diff (network)
@@ -67,7 +65,7 @@ Network HEAD requests against `omniverse-content-production.s3` and `omniverse-c
 
 If many invalid URLs share the same `Isaac/5.X/Isaac` prefix (e.g. NVIDIA released `Isaac/5.2/Isaac`), ask:
 
-> "NVIDIA 가 새 Isaac Sim asset 버킷 (예: `6.0` → `6.1`) 으로 옮긴 것 같습니다. 모든 sub-md 의 `$ISAAC` prefix 를 `Isaac/6.1/Isaac` 로 일괄 갱신할까요?"
+> "It appears that NVIDIA has moved to a new Isaac Sim asset bucket (e.g. `6.0` → `6.1`). Shall we update the `$ISAAC` prefix of all sub-mds to `Isaac/6.1/Isaac` at once?"
 
 Use `Edit` with `replace_all: true` for the prefix declaration line in each sub-md.
 
@@ -82,7 +80,7 @@ For each invalid URL group:
 | NET / timeout | Network — re-run Step 2; do not edit inventory. |
 | 5xx | NVIDIA-side transient — re-run Step 2 in 5 min; do not edit inventory. |
 | Mis-categorized (file exists at different vendor) | Move the row under the correct vendor section. |
-| Asset folder confirmed missing on S3 | **Delete the row from markdown** + remove the model name from the corresponding category index table (e.g. AMR / 휴머노이드 row at the top of robots.md). Keeps the doc concise. |
+| Asset folder confirmed missing on S3 | **Delete the row from markdown** + remove the model name from the corresponding category index table (e.g. AMR / humanoid row at the top of robots.md). Keeps the doc consistent. |
 
 When a row's `model` column abbreviates two SKUs (e.g. `Humanoid/28` for both `Humanoid` and `Humanoid28`), split into two rows so each maps to one S3 folder.
 
@@ -125,7 +123,7 @@ STOP and report on any:
 ## Never Do
 
 - ❌ Keep a row whose asset folder no longer exists on S3 (delete it instead — doc must stay concise; no `(removed)` marker)
-- ❌ Forget to update the category index table (e.g. AMR · 휴머노이드 abbreviations at the top of robots.md) when deleting / renaming a row
+- ❌ Forget to update the category index table (e.g. AMR · Humanoid abbreviations at the top of robots.md) when deleting / renaming a row
 - ❌ Hard-code full HTTPS URLs in tables (use prefix variable)
 - ❌ Use `file://` URLs (asset load fails)
 - ❌ Add 3rd-party USD outside NVIDIA buckets (only `omniverse-content-production` / `omniverse-content-staging`)

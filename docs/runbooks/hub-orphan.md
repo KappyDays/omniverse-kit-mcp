@@ -1,59 +1,59 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: OmniHub orphan port 14090 잔존 진단 / 복구 -->
-# OmniHub orphan port 14090 (수동 복구)
+<!-- Scope: OmniHub orphan port 14090 residual diagnosis / recovery -->
+# OmniHub orphan port 14090 (manual recovery)
 
-`omni.client` 가 spawn 한 `hub.exe` daemon 이 orphan 잔존하여 다음 kit 기동 시
-`"Hub failed to launch: child exited with exit code: 1"` 발생 시 진입.
+When the next kit is started, the `hub.exe` daemon spawned by `omni.client` remains orphaned.
+Enter when `"Hub failed to launch: child exited with exit code: 1"` occurs.
 
-## 증상
+## Symptoms
 
-- `kit_app_start` 의 startup_log 에 `"Hub failed to launch: child exited with exit
-  code: 1"` 반복
-- `netstat -ano | findstr :14090` 결과 LISTENING 이지만 새 connection 은 `10061
+- Repeat `"Hub failed to launch: child exited with exit
+  code: 1"` in startup_log of `kit_app_start`
+- The result is `netstat -ano | findstr :14090` LISTENING, but the new connection is `10061
   refused`
-- kit.exe 종료 후에도 `Get-Process -Name hub -ErrorAction SilentlyContinue` 가 row 반환
-- `%TEMP%/hub-*.lock` / `hub-*.config.json` 파일 잔존
+- `Get-Process -Name hub -ErrorAction SilentlyContinue` returns row even after kit.exe is terminated
+- `%TEMP%/hub-*.lock` / `hub-*.config.json` files remain
 
-## 근본 원인
+## Root cause
 
-`omni.client` 가 `hub.exe` 를 `--mode=shared` 로 spawn — kit process tree 와 분리된
-daemon. kit 종료해도 port 14090 orphan 잔존. 시간 경과 시 accept loop broken →
-새 connection refuse → 다음 kit 의 OmniHub init 실패.
+`omni.client` spawns `hub.exe` as `--mode=shared` — separated from the kit process tree
+daemon. Even if the kit is terminated, port 14090 orphan remains. When time passes, accept loop broken →
+New connection refuse → OmniHub init of the next kit fails.
 
-## 자동 복구 (현재 적용됨)
+## Automatic recovery (currently applied)
 
-`src/omniverse_kit_mcp/modules/process_module.py::_cleanup_orphan_hub` 가
-`stop` / `start` 양쪽에서 자동 수행:
-- `taskkill /F /IM hub.exe /T`
-- `%TEMP%/hub-*.lock` / `hub-*.config.json` 파일 제거
+`src/omniverse_kit_mcp/modules/process_module.py::_cleanup_orphan_hub`
+Automatically performs on both `stop` / `start`:
+-`taskkill /F /IM hub.exe /T`
+- Remove `%TEMP%/hub-*.lock` / `hub-*.config.json` files
 
-## 수동 복구 (자동 fail 시)
+## Manual recovery (in case of automatic fail)
 
-1. **Hub process 강제 종료**:
+1. **Force termination of Hub process**:
    ```bash
    cmd //c "taskkill /F /IM hub.exe /T"
    ```
-   (PowerShell `Stop-Process` 는 Access Denied 가능)
+   (PowerShell `Stop-Process` is Access Denied)
 
-2. **Lock / config 파일 정리**:
+2. **Clean up Lock / config file**:
    ```bash
    rm -f /c/Users/$USER/AppData/Local/Temp/hub-*.lock /c/Users/$USER/AppData/Local/Temp/hub-*.config.json
    ```
 
-3. **kit 재기동**:
+3. **Restart the kit**:
    ```bash
    .venv/Scripts/python.exe scripts/run_process_module_standalone.py start
    ```
 
-## 진단 도구
+## Diagnostic tools
 
-- `Get-Process -Name hub -ErrorAction SilentlyContinue` (PowerShell) — alive 확인
-- `netstat -ano | findstr :14090` — LISTENING 확인
-- `ls /c/Users/$USER/AppData/Local/Temp/hub-*` — lock/config 파일 확인
+- `Get-Process -Name hub -ErrorAction SilentlyContinue` (PowerShell) — confirmed alive
+- `netstat -ano | findstr :14090` — LISTENING OK
+- `ls /c/Users/$USER/AppData/Local/Temp/hub-*` — Check lock/config file
 
-## 관련 경계
+## Related Boundaries
 
-- 자동 복구 코드: `src/omniverse_kit_mcp/modules/process_module.py::_cleanup_orphan_hub`
-- ProcessModule hang recovery 4종 함정 중 #4: `src/omniverse_kit_mcp/modules/process-ops.md`
-- Process 생애주기 invariants: `docs/invariants/process-lifecycle.md`
-- Cold boot timeout 분기: `docs/runbooks/cold-boot-timeout.md`
+- Auto-recovery code: `src/omniverse_kit_mcp/modules/process_module.py::_cleanup_orphan_hub`
+- ProcessModule hang recovery 4 types of pitfalls #4: `src/omniverse_kit_mcp/modules/process-ops.md`
+- Process life cycle invariants: `docs/invariants/process-lifecycle.md`
+- Cold boot timeout branch: `docs/runbooks/cold-boot-timeout.md`

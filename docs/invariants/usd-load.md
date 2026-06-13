@@ -1,101 +1,101 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: stage_load_usd / stage_open / robot_load / character_load 작업 시작 전 필수 숙지 -->
+<!-- Scope: stage_load_usd / stage_open / robot_load / character_load Required knowledge before starting work -->
 # USD Load — Invariants
 
-`stage_load_usd` / `stage_open` / `robot_load` / `character_load` 호출 전 이 파일을
-Read. 어느 한 조건이라도 깨지면 MDL resolver + carb log callback deadlock 으로 Kit
-이벤트 루프 정지 → 모든 MCP tool 92 s timeout (실측 2026-04-20 hang 해결 후 baseline).
+This file before calling `stage_load_usd` / `stage_open` / `robot_load` / `character_load`
+Read. If any condition is broken, Kit to MDL resolver + carb log callback deadlock
+Event loop stop → 92 s timeout for all MCP tools (actual baseline after resolution of hang on 2026-04-20).
 
-## 4 조건 (변경 금지 — 깨지면 hang 재발)
+## 4 Condition (no changes — if broken, hang recurs)
 
-### 1. S3 URL 필수
+### 1. S3 URL required
 
-허용 prefix:
-- `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/...`
-- `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/...`
-- `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/{ArchVis,DigitalTwin,Vegetation}/...`
+Allowed prefix:
+-`https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/...`
+-`https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/...`
+-`https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/{ArchVis,DigitalTwin,Vegetation}/...`
 
-`file:///` 로컬 캐시 **금지** (S3 재조회 시 stale cache 가 silent miss 유발).
+`file:///` Local cache **prohibited** (stale cache causes silent miss when re-querying S3).
 
-카탈로그 SoT: `docs/assets/isaac/asset_inventory.md` 진입점 + `docs/assets/isaac/assets/*.md`.
+Catalog SoT: `docs/assets/isaac/asset_inventory.md` entry point + `docs/assets/isaac/assets/*.md`.
 
-**Extension 개발 시 방어 레시피**: MCP 서버가 아닌 Extension 에서 S3 MDL-heavy asset (office / warehouse / nova_carter / 6.0 character skins) 을 로드할 때는 log_capture disable + `run_coroutine` + `CreatePayloadCommand` 3-요소 패턴을 **복사**해서 사용. 일반 static payload 는 `instanceable=True`; robot/articulation payload 는 아래 예외를 따른다. 상세: `kkr-extensions/docs/usd-load-deadlock-recipe.md`.
+**Defense recipe when developing extension**: When loading S3 MDL-heavy asset (office / warehouse / nova_carter / 6.0 character skins) from extension, not MCP server, **copy** and use the log_capture disable + `run_coroutine` + `CreatePayloadCommand` 3-element pattern. The general static payload is `instanceable=True`; The robot/articulation payload follows the exceptions below. Details: `kkr-extensions/docs/usd-load-deadlock-recipe.md`.
 
-**Robot/articulation 예외 (Isaac Sim 6.0 live 검증)**: `robot_load` 는 `CreatePayloadCommand` 를 쓰되 `instanceable=False` 여야 한다. articulation runtime 이 child prim traversal/write 를 수행하므로 instanceable payload 는 후속 제어가 깨질 수 있다. 또한 `robot_load` 는 stage mutation 전 pending/running async job 이 없어야 하며, timeline 이 playing 이면 먼저 stop 해야 한다. NovaCarter `navigate_path` job 중 Franka load 를 시도하면 Kit/PhysX crash 가 재현된다.
+**Robot/articulation exception (Isaac Sim 6.0 live verification)**: For `robot_load`, use `CreatePayloadCommand`, but it must be `instanceable=False`. Since the articulation runtime performs child prim traversal/write, instanceable payload may break subsequent control. Additionally, `robot_load` must have no pending/running async jobs before stage mutation, and if the timeline is playing, it must be stopped first. When Franka load is attempted during NovaCarter `navigate_path` job, Kit/PhysX crash occurs.
 
-### 2. `log_capture.start()` 호출 금지
+### 2. `log_capture.start()` Always prohibited from calling
 
-- Extension `on_startup` 에서 `self._log_capture = None` 유지 (request-scoped refactor 전까지)
-- MDL 로더 loop 가 carb thread 와 GIL 경합을 일으켰던 검증된 증상
-- `extension_capture_logs` / `extension_clear_logs` MCP tool 은 현재 no-op
+- Maintain `self._log_capture = None` in Extension `on_startup`
+- Verified symptom that MDL loader loop caused carb thread and GIL contention
+- Right before live verification, open the request-scoped capture window with `extension_clear_logs`,
+  Only patterns that close immediately after failure with `extension_capture_logs(..., stop_after_capture=True)` are allowed.
 
-### 3. 좀비 복구는 `cmd //c "taskkill /F /IM kit.exe /T"` 만 작동
+### 3. Zombie recovery only works with `cmd //c "taskkill /F /IM kit.exe /T"`
 
-- `powershell Stop-Process` 는 Access Denied 확정
-- 편의 스크립트: `scripts/kill_kit_zombie.sh`
+- `powershell Stop-Process` is confirmed to be Access Denied
+- Convenience script: `scripts/kill_kit_zombie.sh`
 
 ## `stage_open` vs `stage_load_usd`
 
-- `stage_open(url)` — root stage 전체 교체 (scene 전환)
-- `stage_load_usd(url, prim_path)` — 기존 stage 에 `/World/<name>` Payload 추가
+- `stage_open(url)` — Entire root stage replacement (scene conversion)
+- `stage_load_usd(url, prim_path)` — `/World/<name>` Payload added to existing stage
   (multi-asset composition)
-- **play-guard (2026-05-26)**: `stage_new`/`stage_open`/`stage_load_usd` 는 MCP
-  `SimulationModule` 진입부에서 `is_playing` 이면 자동 `simulation_stop` 선행 (play 중 stage
-  교체 → 92s hang 방지). 호출자는 stop 을 따로 호출할 필요 없음.
+- **play-guard (2026-05-26)**: `stage_new`/`stage_open`/`stage_load_usd` is MCP
+  If `is_playing` is entered at the `SimulationModule` entry, it automatically precedes `simulation_stop` (stage during play)
+  Replacement → prevent 92s hang). The caller does not need to call stop separately.
 
-## 근본 원인 (재발 진단용)
+## Root cause (for relapse diagnosis)
 
-`LogCaptureService` 의 carb log callback 이 등록된 상태에서 historical Kit 107
-/ Isaac Sim 5.1 MDL resolver 가 S3 asset 의 Materials.usd 를 열면
+With the carb log callback of `LogCaptureService` registered, historical Kit 107
+/ Isaac Sim 5.1 MDL resolver opens Materials.usd of S3 asset
 `"Disabling base URL to resolve MDL identifier
-'OmniPBR.mdl'"` 반복 → Python callback 이 carb thread 에 GIL 경합 → Kit main event
-loop deadlock → 모든 MCP tool 92 s timeout.
+'OmniPBR.mdl'"` repetition → Python callback GIL contention in carb thread → Kit main event
+loop deadlock → all MCP tools 92 s timeout.
 
-## 해결 3 요소 (baseline — 변경 시 hang 재발)
+## Solved 3 elements (baseline — hang recurrence when changed)
 
-1. Extension `on_startup` 에서 `self._log_capture = None`
-   (NOT `get_log_capture_service().start()`)
-2. `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/stage_service.py::load_usd`
-   는 `omni.kit.async_engine.run_coroutine(_main_loop_impl())` +
-   `asyncio.wrap_future(future)` — FastAPI event loop ≠ Kit main event loop 이므로
-   Kit main loop 에 명시적 schedule
+1. Extension `on_startup` to `self._log_capture = None`
+   (NOT `get_log_capture_service().start()`). If you need console log evidence
+   Capture briefly only with the request-scoped MCP tool.
+2.`kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/stage_service.py::load_usd`
+   is `omni.kit.async_engine.run_coroutine(_main_loop_impl())`+
+   `asyncio.wrap_future(future)` — Since FastAPI event loop ≠ Kit main event loop
+   Explicit schedule in kit main loop
 3. `omni.kit.commands.execute("CreatePayloadCommand", ...)` —
-   GUI drag&drop scene_drop_delegate 와 동등 경로. `stage_load_usd` /
-   static asset payload 는 `instanceable=True`; `robot_load` 는 runtime
-   articulation write 를 위해 `instanceable=False`.
+   Equivalent path to GUI drag&drop scene_drop_delegate. `stage_load_usd` /
+   static asset payload is `instanceable=True`; `robot_load` is runtime
+   `instanceable=False` for articulation write.
 
-코드 레시피 (독립 Extension 에서 S3 MDL-heavy asset 로드 시 복사할 방어 코드):
+Code recipe (defense code to copy when loading S3 MDL-heavy asset from independent extension):
 `kkr-extensions/docs/usd-load-deadlock-recipe.md`
 
-## 실측 (2026-04-20 hang 해결 후)
+## Actual measurement (after hang resolution on 2026-04-20)
 
 - Simple_Warehouse 2.4 s
-- NovaCarter 3.1 s
+-NovaCarter 3.1s
 - F_Business_02 character skin 2.6 s
-- SimReady cold 10~57 s
+-SimReady cold 10~57 s
 - Multi-asset composition OK
 
-## 재발 시 진단 순서
+## Diagnosis order in case of recurrence
 
 1. Kit log `%USERPROFILE%\.nvidia-omniverse\logs\Kit\Isaac-Sim Full\6.0\kit_*.log`
-   마지막 entry 가 `"Disabling base URL to resolve MDL identifier"` 반복 후 silent =
-   deadlock 확정
-2. `simulation_get_status` 가 92 s timeout → Kit main loop 차단
-3. `cmd //c "taskkill /F /IM kit.exe /T"` (PowerShell `Stop-Process` 는 Access Denied)
-4. `.venv/Scripts/python.exe scripts/run_process_module_standalone.py start` 로
+   After the last entry repeats `"Disabling base URL to resolve MDL identifier"`, silent =
+   deadlock confirmed
+2. `simulation_get_status` blocks 92 s timeout → Kit main loop
+3. `cmd //c "taskkill /F /IM kit.exe /T"` (PowerShell `Stop-Process` is Access Denied)
+4. To `.venv/Scripts/python.exe scripts/run_process_module_standalone.py start`
    fresh restart
 
-## 금지 사항 (재발 트리거)
+## Do not (trigger relapse)
 
-- `log_capture.start()` 재활성
-- `file:///` 로컬 캐시
-- **S3 load 실패 시 skip/fallback/placeholder** — 모두 금지. 근본 원인 분석 후 반드시 성공시킬 것
+- `log_capture.start()` always reactivated
+- `file:///` local cache
+- **skip/fallback/placeholder** when S3 load fails — all prohibited. Be sure to succeed after analyzing the root cause
 
-> 과거 "browser ext 금지" 항목 (2026-04-20 진단) 은 2026-04-25 자동 검증으로 무효화. USD Composer `.kit` default 로 `omni.kit.window.content_browser` 활성 상태에서 warehouse MDL-heavy load 17.5s 성공. deadlock 의 인과는 carb log hook 등록 (현재 `extension.py:36` 에서 disable) 이며 browser ext 자체는 무해. lessons-learned 보존.
+> The past “browser ext prohibited” item (diagnosed on 2026-04-20) is invalidated by automatic verification on 2026-04-25. With USD Composer `.kit` default, warehouse MDL-heavy load succeeded in 17.5s with `omni.kit.window.content_browser` active. The cause of deadlock is carb log hook registration (currently disabled in `extension.py:36`), and the browser ext itself is harmless. Preserve lessons-learned.
 
-## 관련 경계
-
-- 저수준 코드 위치 (Stage / USD 로드 프로토콜): `src/omniverse_kit_mcp/modules/integration-facts.md`
-- Asset URL 카탈로그 진입점: `docs/assets/isaac/asset_inventory.md`
-- 독립 Extension 방어 레시피: `kkr-extensions/docs/usd-load-deadlock-recipe.md`
-- LogCapture 비활성 결정 사고: `kkr-extensions/docs/lessons-learned.md`
+## Related Boundaries- Low-level code location (Stage / USD load protocol): `src/omniverse_kit_mcp/modules/integration-facts.md`
+- Asset URL catalog entry point: `docs/assets/isaac/asset_inventory.md`
+- Independent Extension Defense Recipe: `kkr-extensions/docs/usd-load-deadlock-recipe.md`
+- LogCapture Inactive Decision Incident: `kkr-extensions/docs/lessons-learned.md`

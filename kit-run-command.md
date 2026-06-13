@@ -1,22 +1,22 @@
 <!-- SoT: src/omniverse_kit_mcp/modules/process_module.py::ProcessModule.start + types/profile.py + .env -->
-<!-- 이 문서는 MCP `kit_app_start` tool 이 spawn 하는 실제 커맨드의 사람이 재현 가능한 형태이다. -->
-<!-- profile / .env 가 변경되면 이 문서도 함께 갱신할 것. -->
+<!-- This document is a human-reproducible form of the actual commands spawned by the MCP `kit_app_start` tool. -->
+<!-- If profile / .env changes, update this document as well. -->
 
 # Kit Run Command — Isaac Sim & USD Composer
 
-MCP `kit_app_start` 가 `subprocess.Popen` 으로 띄우는 실제 커맨드를 사람이 그대로 재현할 수 있는 형태로 정리한다. ProcessModule 우회 디버깅(MCP server 미경유 직접 기동) 시 사용.
+The actual commands issued by MCP `kit_app_start` to `subprocess.Popen` are organized in a form that can be reproduced by humans. Used for ProcessModule bypass debugging (direct startup without MCP server).
 
-## 공통 규약
+## Common conventions
 
-| 항목 | 값 | 비고 |
+| Item | value | Remarks |
 |------|-----|------|
-| `--ext-folder` | `<repo>/kkr-extensions` | 모든 profile 동일 |
-| `--enable` (REST bridge) | `omni.mycompany.validation_api` | 항상 1 차 enable |
-| Extension REST port flag | `--/exts/omni.services.transport.server.http/port=<PORT>` | port range fallback 차단용 강제 바인딩 |
-| `stdin` | **`DEVNULL` 필수** | MCP stdio 상속 시 cold boot hang. PowerShell 직접 실행도 `< NUL` 권장 |
-| `stdout` / `stderr` | `%TEMP%/omniverse_kit_mcp/kit_<epoch>.log` | OS pipe 버퍼 포화 → kit hang 방지 |
+| `--ext-folder` | `<repo>/kkr-extensions` | All profiles are the same |
+| `--enable` (REST bridge) | `omni.mycompany.validation_api` | Always primary enable |
+| Extension REST port flag | `--/exts/omni.services.transport.server.http/port=<PORT>` | Forced binding for port range fallback blocking |
+| `stdin` | **`DEVNULL` required** | Cold boot hang when inheriting MCP stdio. Direct PowerShell execution is also recommended by `< NUL` |
+| `stdout` / `stderr` | `%TEMP%/omniverse_kit_mcp/kit_<epoch>.log` | OS pipe buffer saturation → prevent kit hang |
 
-## Port 매트릭스 (instance_id → ext_port)
+## Port matrix (instance_id → ext_port)
 
 | Profile | Instance 1 | Instance 2 |
 |---------|-----------|-----------|
@@ -29,14 +29,14 @@ Health URL: `http://127.0.0.1:<PORT>/validation/v1/health`
 
 ## MCP-safe manual launchers
 
-권장 수동 실행 진입점은 repo 원본 `setup/launchers/*_mcp.*` 를 각 앱 폴더에 복사한 파일이다.
+The recommended manual execution entry point is the file copied from the original repo `setup/launchers/*_mcp.*` to each app folder.
 
 | App | Installed launcher | Ports |
 |---|---|---|
 | Isaac Sim | `<isaac-sim-root>/isaac-sim_mcp.bat` | 8111 → 8112 |
 | USD Composer | `<usd-composer-root>/kkr_usd_composer_mcp.kit.bat` | 8114 → 8115 |
 
-두 launcher 모두 `--dry-run`, `--instance 1|2`, `--port <PORT>` 를 지원하고, 선택한 port 를 `--/exts/omni.services.transport.server.http/port=<PORT>` 와 `allow_port_range=false` 로 Kit 에 전달한다.
+Both launchers support `--dry-run`, `--instance 1|2`, and `--port <PORT>`, and deliver the selected port to the kit as `--/exts/omni.services.transport.server.http/port=<PORT>` and `allow_port_range=false`.
 
 ```powershell
 & "<usd-composer-root>/kkr_usd_composer_mcp.kit.bat" --dry-run
@@ -47,14 +47,14 @@ Health URL: `http://127.0.0.1:<PORT>/validation/v1/health`
 
 ## Isaac Sim
 
-### 경로
+### path
 
-- `kit.exe`: `<isaac-sim-root>/kit/kit.exe`
-- `.kit`: `<isaac-sim-root>/apps/isaacsim.exp.full.kit`
+-`kit.exe`:`<isaac-sim-root>/kit/kit.exe`
+-`.kit`:`<isaac-sim-root>/apps/isaacsim.exp.full.kit`
 
-### Extension enable 리스트
+### Extension enable list
 
-`.env` 의 `ISAAC_SIM_EXTRA_EXT_IDS` 가 적용 (profile default 를 override). 현재 `.env` 값:
+`ISAAC_SIM_EXTRA_EXT_IDS` of `.env` is applied (override profile default). Current `.env` values:
 
 ```
 omni.anim.graph.bundle
@@ -67,21 +67,21 @@ omni.replicator.core
 omni.mycompany.navmesh_playground
 ```
 
-### ROS 환경 변수 (필수 — silent fail 방지)
+### ROS environment variables (required — prevent silent fail)
 
-`isaac-sim.bat` + `setup_ros_env.bat` 동등 — 누락 시 ROS2 bridge dlopen 의존 ext 가 silent fail → kit 이벤트 루프 정지 → /health 미응답.
+`isaac-sim.bat` + `setup_ros_env.bat` equivalent — If missing, ROS2 bridge dlopen dependent ext silently fails → kit event loop stops → /health does not respond.
 
-| 변수 | 값 |
+| variable | value |
 |------|-----|
 | `ROS_DISTRO` | `humble` |
 | `RMW_IMPLEMENTATION` | `rmw_fastrtps_cpp` |
-| `PATH` | 기존 `PATH` + `;<isaac-sim-root>/exts/isaacsim.ros2.core/humble/lib` |
+| `PATH` | Original `PATH` + `;<isaac-sim-root>/exts/isaacsim.ros2.core/humble/lib` |
 
 Isaac Sim 6.0.0 ships ROS 2 runtime libraries under `isaacsim.ros2.core`.
 If a local build only contains the legacy bridge lib directory, use
 `<isaac-sim-root>/exts/isaacsim.ros2.bridge/humble/lib` as a compatibility fallback.
 
-### 커맨드 (instance 1, port 8111)
+### command (instance 1, port 8111)
 
 PowerShell:
 
@@ -130,28 +130,28 @@ export PATH="$PATH:<isaac-sim-root>/exts/isaacsim.ros2.core/humble/lib"
   > /tmp/kit_isaac.log 2>&1 < /dev/null &
 ```
 
-### 다른 instance
+### Different instances
 
-`port=8111` 부분만 `8112` (instance 2) 로 교체.
+Only replace `port=8111` with `8112` (instance 2).
 
 ---
 
 ## USD Composer
 
-### 경로
+### path
 
-- `kit.exe`: `<usd-composer-root>/kit/kit.exe`
-- `.kit`: `<usd-composer-root>/apps/kkr_usd_composer.kit`
+-`kit.exe`:`<usd-composer-root>/kit/kit.exe`
+-`.kit`:`<usd-composer-root>/apps/kkr_usd_composer.kit`
 
-### Extension enable 리스트
+### Extension enable list
 
-profile 기본값이 비어있다 (`extra_ext_ids=()`). `validation_api` 만 enable. `ISAAC_SIM_EXTRA_EXT_IDS` 는 USD Composer 에 적용되지 않음 (`config.py::_resolve_profile_and_derived_fields` 가 isaac-sim profile 에만 env override 허용 — Isaac-only ext 주입 시 dependency resolve 실패로 crash).
+The profile default value is empty (`extra_ext_ids=()`). Enable only `validation_api`. `ISAAC_SIM_EXTRA_EXT_IDS` does not apply to USD Composer (`config.py::_resolve_profile_and_derived_fields` allows env override only for isaac-sim profile — crashes due to dependency resolution failure when injecting Isaac-only ext).
 
-### ROS 환경 변수
+### ROS environment variables
 
-**불필요**. `_prepare_launch_env` 가 `ROS_DISTRO` / `RMW_IMPLEMENTATION` 을 명시적으로 env 에서 제거. 부모 셸에 ROS env 가 설정돼 있으면 unset 후 실행할 것.
+**Unnecessary**. `_prepare_launch_env` explicitly removes `ROS_DISTRO` / `RMW_IMPLEMENTATION` from env. If ROS env is set in the parent shell, unset and run it.
 
-### 커맨드 (instance 1, port 8114)
+### command (instance 1, port 8114)
 
 PowerShell:
 
@@ -182,38 +182,38 @@ unset RMW_IMPLEMENTATION
   > /tmp/kit_usdcomposer.log 2>&1 < /dev/null &
 ```
 
-### 다른 instance
+### Different instances
 
-`port=8114` 부분만 `8115` (instance 2) 로 교체.
+Replace only `port=8114` with `8115` (instance 2).
 
 ---
 
-## 종료 / 정리
+## End / Cleanup
 
 ```powershell
-# 특정 instance 만 (port 로 식별 — 다른 instance 영향 없음)
+# Only specific instances (identified by port — no effect on other instances)
 $pid = Get-CimInstance Win32_Process -Filter "Name='kit.exe'" |
        Where-Object { $_.CommandLine -like "*port=8111*" } |
        Select-Object -First 1 -ExpandProperty ProcessId
 taskkill /F /PID $pid /T
 
-# 전체 종료 후 hub orphan 까지 정리 (host 의 모든 kit.exe 가 죽었을 때만 실행)
+# After complete shutdown, clean up even the hub orphan (executes only when all kit.exe on the host is dead)
 taskkill /F /IM hub.exe /T
 Remove-Item "$env:TEMP/hub-*.lock", "$env:TEMP/hub-*.config.json" -ErrorAction SilentlyContinue
 ```
 
-## 검증
+## Verification
 
-기동 후 health 확인:
+Check health after startup:
 
 ```powershell
-curl http://127.0.0.1:8111/validation/v1/health   # Isaac Sim instance 1
-curl http://127.0.0.1:8114/validation/v1/health   # USD Composer instance 1
+curl http://127.0.0.1:8111/validation/v1/health # Isaac Sim instance 1
+curl http://127.0.0.1:8114/validation/v1/health # USD Composer instance 1
 ```
 
-200 응답 = ready. cold boot 는 stdin DEVNULL fix 후 13–30s, GPU 셰이더 캐시 재빌드 시 5–10 분.
+200 response = ready. Cold boot takes 13–30 seconds after stdin DEVNULL fix, 5–10 minutes after GPU shader cache rebuild.
 
-## 관련 문서
+## Related documents
 
 - ProcessModule SoT: `src/omniverse_kit_mcp/modules/process_module.py`
 - Profile SoT: `src/omniverse_kit_mcp/types/profile.py`
@@ -224,49 +224,45 @@ curl http://127.0.0.1:8114/validation/v1/health   # USD Composer instance 1
 
 ---
 
-## Auto-attach 설정 (사용자 직접 기동 시 MCP attach 가능)
+## Auto-attach setting (MCP attach possible when the user starts it directly)
 
-`.kit` 파일에 dependency / ext-folder / port 를 영구 박아 두어, **사용자가 평소 방식 (단축키, `isaac-sim.bat`, `repo.bat launch`) 으로 띄워도 MCP 가 attach 가능**하도록 설정. 이 설정 후에는 `--enable` / `--ext-folder` / `--/exts/...port=N` CLI 인자가 불필요.
+By permanently placing dependency / ext-folder / port in the `.kit` file, **MCP can attach** even if the user launches it in the usual way (shortcut key, `isaac-sim.bat`, `repo.bat launch`). After this setting, `--enable` / `--ext-folder` / `--/exts/...port=N` CLI arguments are not required.
 
-### Isaac Sim — `branch/isaac-sim-standalone-6.0.0-windows-x86_64/apps/isaacsim.exp.full.kit`
+### Isaac Sim — `branch/isaac-sim-standalone-6.0.0-windows-x86_64/apps/isa acsim.exp.full.kit`- Add 9 to the end of `[dependencies]` (validation_api + 8 character/sensor/replicator/omnigraph dependencies)
+  - `omni.mycompany.validation_api`, `omni.anim.graph.bundle`, `omni.anim.navigati on.bundle`, `isaacsim.replicator.agent.core`, `omni.kit.ui_test`, `isaacsim.sensors.rtx`, `omni.graph.action`, `omni.replicator.core`, `omni.mycompany.navmesh_playground`
+- `[settings]` to `exts."omni.services.transport.server.http".port = 8111`
+- Add `"<repo>/kkr-extensions"` to `[settings.app.exts.folders] '++'` array### USD Composer — `branch/kit-app-template/source/apps/kkr_usd_composer.kit` (automatic synchronization of build artifacts)
 
-- `[dependencies]` 끝에 9 개 추가 (validation_api + 8 개 character/sensor/replicator/omnigraph 의존성)
-  - `omni.mycompany.validation_api`, `omni.anim.graph.bundle`, `omni.anim.navigation.bundle`, `isaacsim.replicator.agent.core`, `omni.kit.ui_test`, `isaacsim.sensors.rtx`, `omni.graph.action`, `omni.replicator.core`, `omni.mycompany.navmesh_playground`
-- `[settings]` 에 `exts."omni.services.transport.server.http".port = 8111`
-- `[settings.app.exts.folders] '++'` 배열에 `"<repo>/kkr-extensions"` 추가
+- Add only 1 `omni.mycompany.validation_api` to the end of `[dependencies]` (USD Composer supports only common tools)
+- `[settings.exts]` to `"omni.services.transport.server.http".port = 8114` (collision avoidance with Isaac Sim)
+- Add `"<repo>/kkr-extensions"` to `[settings.app.exts.folders] '++'` array
 
-### USD Composer — `branch/kit-app-template/source/apps/kkr_usd_composer.kit` (build artifact 자동 동기화)
+### Hypothesis verification — browser ext harmless (2026-04-25 automatic verification)
 
-- `[dependencies]` 끝에 `omni.mycompany.validation_api` 1 개만 추가 (USD Composer 는 common tool 만 지원)
-- `[settings.exts]` 에 `"omni.services.transport.server.http".port = 8114` (Isaac Sim 과 충돌 회피)
-- `[settings.app.exts.folders] '++'` 배열에 `"<repo>/kkr-extensions"` 추가
+The “browser ext prohibited” item in the past `docs/invariants/usd-load.md` is a hypothesis as of 2026-04-20. Check for invalidity with automatic validation and remove it from invariants:
 
-### 가설 검증 — browser ext 무해성 (2026-04-25 자동 검증)
-
-과거 `docs/invariants/usd-load.md` 의 "browser ext 금지" 항목은 2026-04-20 시점 가설. 자동 검증으로 무효화 확인 후 invariants 에서 제거:
-
-| 검증 항목 | 결과 |
+| Verification items | Results |
 |---|---|
-| `extension.py:36` 의 `self._log_capture = None` (carb log hook 미등록) | 코드 확인 OK — deadlock 핵심 조건 미충족 |
-| USD Composer (`content_browser` default 활성) 에서 warehouse MDL-heavy load | **PASS** — 17.5s, hang 없음 |
-| Isaac Sim 동일 load (회귀 검증) | **PASS** — 54.8s (동시 instance + cold cache 환경) |
+| `self._log_capture = None` of `extension.py:36` (carb log hook not registered) | Code verification OK — deadlock key condition not met |
+| In USD Composer (`content_browser` default active) warehouse MDL-heavy load | **PASS** — 17.5s, no hang |
+| Isaac Sim equal load (regression verification) | **PASS** — 54.8s (simultaneous instance + cold cache environment) |
 
-→ deadlock 의 진짜 인과는 **carb log hook 등록 + MDL resolver 결합**. log hook 이 disable 된 현재는 browser ext 활성 여부 무관. lessons-learned 에 사고 기록 보존.
+→ The real cause of deadlock is **carb log hook registration + MDL resolver combination**. Now that the log hook is disabled, it doesn't matter whether browser ext is active or not. Lessons-learned: Preserve incident records.
 
-### 검증
+### Verification
 
-수정 후 사용자가 직접 두 앱을 다시 띄우고:
+After modification, the user manually relaunches the two apps:
 
 ```powershell
 curl http://127.0.0.1:8111/validation/v1/health   # Isaac Sim
 curl http://127.0.0.1:8114/validation/v1/health   # USD Composer
 ```
 
-두 응답 모두 200 → MCP `kit_app_start` (instance_id=1, profile=isaac-sim / usd-composer) 호출 시 `status=ready` (idempotent attach).
+Both responses are 200 → `status=ready` (idempotent attach) when calling MCP `kit_app_start` (instance_id=1, profile=isaac-sim / usd-composer).
 
-### 주의
+### Caution
 
-- **ext-folder 가 절대경로** (`<repo>/kkr-extensions`) → 프로젝트를 옮기면 `.kit` 도 함께 갱신
-- **Isaac Sim `.kit` 은 NVIDIA release 시 덮어쓸 수 있음** — major upgrade 후 위 변경 다시 적용
-- **USD Composer source `.kit` 만 수정**: `_build/.../apps/` 산출물도 자동 sync 됨 확인. `repo.bat build` 재실행이 필요 없음
-- ROS env (`ROS_DISTRO=humble` 등) 는 `.kit` 에서 set 불가 → Isaac Sim 은 항상 `isaac-sim.bat` 으로 띄울 것 (자동 set). USD Composer 는 ROS 불필요
+- **ext-folder is an absolute path** (`<repo>/kkr-extensions`) → If you move the project, `.kit` is also updated.
+- **Isaac Sim `.kit` can be overwritten during NVIDIA release** — Reapply the above changes after major upgrade
+- **Modified only for USD Composer source `.kit`**: Confirmed that `_build/.../apps/` output is also automatically synced. `repo.bat build` No need to rerun
+- ROS env (`ROS_DISTRO=humble`, etc.) cannot be set in `.kit` → Isaac Sim will always be launched as `isaac-sim.bat` (automatically set). USD Composer does not require ROS

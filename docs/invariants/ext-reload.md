@@ -1,93 +1,91 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: Extension .py 수정 후 코드 반영 작업 시작 전 필수 숙지 -->
-# Extension Reload — Invariants
+<!-- Scope: Required knowledge before starting code reflection work after modifying Extension .py -->
+#ExtensionReload—Invariants
 
-Extension `.py` 수정 후 어떤 reload 경로를 쓰든 `sys.modules` cleanup 은 보장 안 됨.
-`kkr-extensions/` 코드 수정 시 이 파일 Read.
+No matter what reload path is used after modifying Extension `.py`, `sys.modules` cleanup is not guaranteed.
+When modifying the `kkr-extensions/` code, read this file.
 
-## 핵심 결론 (2026-05-26 갱신 — `extension_reload` 신설)
+## Key conclusions (updated 2026-05-26 — `extension_reload` newly created)
 
-- **데모/사용자 Extension `.py` 수정 반영**: `extension_reload(ext_id)` MCP tool 사용
-  (Kit 재시작 불필요). 이 tool 은 disable → **`sys.modules` 에서 ext_id 트리 purge** →
-  `importlib.invalidate_caches()` → enable 을 수행해 stale 모듈/싱글턴을 확실히 제거한다.
-- **여전히 Kit 재시작이 필요한 경우** (둘뿐):
-  1. `omni.mycompany.validation_api` **자기 자신** 의 코드 변경 — REST 서버를 disable 하면
-     `extension_reload` 응답이 불가하므로 self-reload 금지(HTTP 400). `kit_app_restart` 사용.
-  2. extension.toml `[dependencies]` 변경 — 의존성 그래프 재해소는 hot path 가 아님.
-- 과거 결론("모든 `.py` 수정에 restart 필수")은 `sys.modules` purge 가 없던 시절 기준이며,
-  `extension_reload` 로 해소됨. fswatcher 자동 reload 는 여전히 `_reload_enabled=False` 라
-  신뢰 불가 — `extension_reload` 를 명시 호출할 것. MCP `extension_activate(reload=True)` 도
-  토글만 하고 sys.modules 정리 안 함 (purge 는 `extension_reload` 전용).
-- **module-level singleton 주의**: `_window = WindowService()` / `_router = APIRouter()` 같은
-  import-time 싱글턴은 purge 후 모듈 재import 시 재생성되어 reload-safe 하지만, `on_shutdown`
-  정리가 없으면 zombie 가 남는다 (아래 zombie cleanup 패턴 참조).
+- **Reflect modifications to Demo/User Extension `.py`**: Use `extension_reload(ext_id)` MCP tool
+(No need to restart Kit). This tool disable → **Purge ext_id tree in `sys.modules`** →
+Perform `importlib.invalidate_caches()` → enable to make sure to remove the stale module/singleton.
+- **If you still need to restart the Kit** (only two):
+  1. `omni.mycompany.validation_api` Changing **your own** code — disabling the REST server
+Self-reload is prohibited because `extension_reload` response is not possible (HTTP 400). Use `kit_app_restart`.
+  2. Change extension.toml `[dependencies]` — Dependency graph resolving is not a hot path.
+- The past conclusion ("restart is required for all `.py` modifications") was based on the time when there was no `sys.modules` purge.
+Resolved with `extension_reload`. fswatcher auto reload still says `_reload_enabled=False`
+Untrustworthy — call `extension_reload` explicitly. MCP `extension_activate(reload=True)` degrees
+Toggle only, do not clean up sys.modules (purge is only for `extension_reload`).
+- **Note module-level singleton**: Like `_window = WindowService()` / `_router = APIRouter()`
+The import-time singleton is regenerated when the module is reimported after purge and is reload-safe, but `on_shutdown`
+Without cleanup, zombies remain (see zombie cleanup pattern below).
 
-## 검증 패턴 (reload 성공 여부 확인)
+## Verification pattern (check whether reload is successful)
 
-코드에 hard-coded marker (예: 응답 dict 에 임시 필드 추가) 추가 → tool 호출 → marker
-보이는지 확인:
-- 보임 → reload 성공
-- 안 보임 → reload 실패 → Kit process restart 필요
+Add a hard-coded marker to your code (e.g. add a temporary field to the response dict) → call the tool → marker
+Make sure you see:
+- Visible → reload success
+- Not visible → reload failed → Kit process restart required
 
-## ui.Window zombie cleanup 패턴 (L16)
+## ui.Window zombie cleanup pattern (L16)
 
-fswatcher 자동 disable→enable 시 `on_shutdown` 의 `self._window.destroy()` 만으로는
-`ui.Workspace` registry 에서 즉시 unregister 안 됨 (next update tick 에서 처리) →
-다음 `on_shutdown` 이 같은 이름으로 새 `ui.Window` 생성 → registry 에 동명 entry
-2개 → walker 가 stale OLD widget tree 반환 → MCP UI automation 의 widget path
-호출이 callback 미발화.
+When fswatcher automatically disable→enable, only `self._window.destroy()` of `on_shutdown`
+`ui.Workspace` is not immediately unregistered from the registry (processed at the next update tick) →
+Next, create a new `ui.Window` with the same name as `on_shutdown` → enter the same name in the registry
+2 → walker returns stale OLD widget tree → widget path of MCP UI automation
+The call is not fired.
 
-표준 cleanup pattern (모든 신규/기존 Extension 의 `on_shutdown` 권장):
+Standard cleanup pattern (`on_shutdown` recommended for all new/existing extensions):
 
 ```python
 # extension.py on_shutdown
 if self._window is not None:
-    self._window.visible = False  # Workspace 에서 deregister hint
+    self._window.visible = False  # deregister hint for Workspace
     self._window.destroy()
     self._window = None
 
-# ui_panel.py build() 시작
+# ui_panel.py build() start
 existing = ui.Workspace.get_window("<name>")
 if existing is not None:
     existing.visible = False
     existing.destroy()
 self._window = ui.Window("<name>", ...)
-```
+```Both layers must be applied to be effective — if destroy is deferred, build() sweep is backup.
+If you need a completely zero zombie, yield `next_update_async()` twice in build() and then sweep —
+Currently, there is only 1 invisible orphan left, but walker is the first visible rule, so only normal NEW is picked.
+So there is no user impact.
 
-두 layer 모두 적용해야 효과적 — destroy 가 deferred 인 경우 build() sweep 가 backup.
-완전 zero zombie 가 필요하면 build() 에서 `next_update_async()` 2회 yield 후 sweep —
-현재는 invisible orphan 1개 남지만 walker 가 first visible 룰로 정상 NEW 만 picking
-하므로 사용자 영향 없음.
-
-## 증상 (zombie 잔존 시)
+## Symptoms (if zombie remains)
 
 - kit log: `[Warning] [omni.ui_query.query] found 2 windows named "<name>". Using first
   visible window found`
-- `extension_get_ui_tree` 가 `matched_windows: ["<name>", "<name>"]` 로 두 매치 보고
-- Walker 가 OLD (visible) 를 walk → stale widget tree → MCP UI automation 호출
-  callback 미발화
-- 누적되면 메모리 leak (Kit 재시작까지)
+- `extension_get_ui_tree` reports two matches with `matched_windows: ["<name>", "<name>"]`
+- Walker walks OLD (visible) → stale widget tree → calls MCP UI automation
+callback unspoken
+- If accumulated, memory leaks (until Kit restart)
 
 ## `branch/kit-app-template` source ↔ \_build hardlink
 
-`branch/kit-app-template/source/apps/<app>.kit` 와
-`branch/kit-app-template/_build/windows-x86_64/release/apps/<app>.kit` 는
-premake 가 만든 hardlink (동일 inode). source 만 Edit 해도 _build 쪽이
-자동 갱신되지만, 한 쪽 Edit 후 같은 세션에서 다른 쪽을 추가 Edit 하려고
-하면 **`Edit` tool 이 "File has been modified since read" 로 실패** —
-inode 가 동일해 메타데이터가 동시 갱신되기 때문.
+`branch/kit-app-template/source/apps/<app>.kit` and
+`branch/kit-app-template/_build/windows-x86_64/release/apps/<app>.kit` is
+hardlink created by premake (same inode). Even if you just edit the source, _build
+It renews automatically, but after editing one side, if you try to edit another side in the same session,
+**`Edit` tool fails with "File has been modified since read"** —
+This is because the inodes are the same, so metadata is updated simultaneously.
 
-권장 패턴:
-- **source/apps/ 만 Edit** — \_build 쪽은 자동 동기화
-- 검증: `stat <source>.kit <build>.kit` 의 Inode 비교 (동일하면 hardlink)
-- 동일 .kit 을 양쪽 모두 수정해야 한다고 느끼면 hardlink 인지 먼저 확인
+Recommended pattern:
+- **source/apps/ only Edit** — \_build side automatically syncs
+- Verification: Inode comparison of `stat <source>.kit <build>.kit` (hardlink if identical)
+- If you feel you need to modify the same .kit on both sides, check first whether it is a hardlink or not.
 
-(이 hardlink 패턴은 `branch/usd-composer-webrtc-streaming/kit-app-template/`
-에도 동일 적용)
+(This hardlink pattern is `branch/usd-composer-webrtc-streaming/kit-app-template/`
+the same applies to)
 
-## 관련 경계
+## Related Boundaries
 
-- L9 / L16 사고 기록: `kkr-extensions/docs/lessons-learned.md`
-- Extension 일반 규칙 (IExt / hot-reload / 한글 UI 금지): `kkr-extensions/docs/extension-basics.md`
+- L9 / L16 Incident Log: `kkr-extensions/docs/lessons-learned.md`
+- Extension general rules (IExt / hot-reload / Korean UI prohibited): `kkr-extensions/docs/extension-basics.md`
 - Window/UI automation sequence (panel race + dual-path drift): `docs/invariants/ui-invoke.md`
-- MCP server import cache (별개 프로세스): `src/omniverse_kit_mcp/CLAUDE.md`
+- MCP server import cache (separate process): `src/omniverse_kit_mcp/CLAUDE.md`

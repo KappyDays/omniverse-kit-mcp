@@ -1,4 +1,4 @@
-"""Cross-reference substance tests (카테고리 F).
+"""Cross-reference substance tests (category F).
 
 Complements ``test_doc_integrity`` (syntactic link validity) by checking
 that things the documentation *claims* exist — files, MCP tools, scripts,
@@ -17,7 +17,10 @@ import yaml
 PROJECT = Path(__file__).resolve().parents[2]
 ROOT_CLAUDE = PROJECT / "CLAUDE.md"
 
-_CUE_RE = re.compile(r"(참조|상세|읽어|먼저|필독|참고|SoT)")
+_CUE_RE = re.compile(
+    r"(reference|details|read|before|required|see|SoT|Source of truth|Related Boundaries)",
+    re.IGNORECASE,
+)
 _BACKTICK_FILE_RE = re.compile(
     r"`([A-Za-z0-9_./\-]+\.(?:md|py|sh|bat|yaml|yml|json|ts|toml))`"
 )
@@ -34,6 +37,8 @@ _SNAKE_TOKEN_RE = re.compile(r"`([a-z][a-z0-9_]*_[a-z0-9_]+)`")
 _F1_EXTERNAL_BASENAMES = frozenset({
     "isaac-sim.bat",        # NVIDIA Isaac Sim launcher (installed product)
     "user.config.json",     # Kit runtime config written by Isaac Sim itself
+    "extensions.json",      # ignored local generated reference catalog
+    "extensions-catalog.md",  # ignored local generated reference catalog render
 })
 
 # Source-tree roots used by F1/F6 for unique-basename fallback. We avoid
@@ -126,7 +131,7 @@ def _expected_tool_names() -> set[str]:
 
 
 # ---------------------------------------------------------------------------
-# F1: explicit "참조/상세/…" pointers land on real files
+# F1: explicit "reference/details/…" pointers land on real files
 # ---------------------------------------------------------------------------
 
 def test_f1_referenced_files_exist():
@@ -146,7 +151,7 @@ def test_f1_referenced_files_exist():
                     missing.append(f"{md.relative_to(PROJECT)}: `{rel}`")
     missing = sorted(set(missing))
     assert not missing, (
-        "Documents reference missing files (search cue '참조/상세/…'):\n  "
+        "Documents reference missing files (search cue 'reference/details/…'):\n  "
         + "\n  ".join(missing[:40])
     )
 
@@ -187,10 +192,10 @@ def test_f2_root_claude_mentions_registered_tools():
 def test_f3_phase_report_artifacts_exist():
     docs = PROJECT / "docs"
     if not docs.exists():
-        pytest.skip("docs/ 없음")
+        pytest.skip("docs/ absent")
     reports = list(docs.glob("phase-*-validation-report.md"))
     if not reports:
-        pytest.skip("phase-*-validation-report.md 없음")
+        pytest.skip("phase-*-validation-report.md absent")
     missing: list[str] = []
     pat = re.compile(r"artifacts/(phase-[A-Za-z0-9_\-]+)(/[A-Za-z0-9_./\-]*)?")
     for md in reports:
@@ -235,7 +240,7 @@ def _walk_usd_urls(obj, offenders: list[str], scope: str) -> None:
 def test_f4_scenario_usd_urls_are_remote():
     scenarios = PROJECT / "scenarios"
     if not scenarios.exists():
-        pytest.skip("scenarios/ 없음")
+        pytest.skip("scenarios/ absent")
     offenders: list[str] = []
     for yml in sorted(scenarios.rglob("*.yaml")):
         rel = str(yml.relative_to(PROJECT)).replace("\\", "/")

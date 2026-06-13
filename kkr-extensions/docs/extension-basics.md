@@ -1,58 +1,58 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: Kit Extension 작성 / 수정 / 디버깅 공통 기본 지식 -->
+<!-- Scope: Common basic knowledge of Kit Extension creation / modification / debugging -->
 
-# Extension Basics
+#ExtensionBasics
 
-Kit Extension 을 새로 만들거나 기존 것을 수정할 때 공통으로 알아야 할 내용.
+Common information you need to know when creating a new Kit Extension or modifying an existing one.
 
-## IExt 상속 3 요소 (필수)
+## IExt inheritance 3 elements (required)
 
-1. `config/extension.toml` 에 `[[python.module]]` 선언
-2. `omni/<vendor>/<name>/__init__.py` 에서 `IExt` 서브클래스 **import** — 없으면 Kit 이 `on_startup` 호출 안 함
-3. `omni.ext.IExt` 를 **직접** 상속 (동적 변수나 metaclass 트릭 금지)
+1. Declare `config/extension.toml` to `[[python.module]]`
+2. `omni/<vendor>/<name>/__init__.py` to `IExt` subclass **import** — if not present, Kit will not call `on_startup`
+3. **Directly** inherit `omni.ext.IExt` (no dynamic variables or metaclass tricks)
 
-## 코드 수정 반영
+## Reflection of code modifications
 
-| 상황 | 반영 방식 |
+| Situation | Reflection method |
 |------|----------|
-| 로컬 개발 (스트리밍 미사용) | **Hot-reload** — 파일 저장만으로 자동 재로드됨. 필요 시 Extension Manager 에서 비활성→활성 토글로 강제 reload. `__pycache__` 는 자동 처리 |
-| 스트리밍 / 원격 환경 | `__pycache__` 삭제 + Kit 완전 재시작 권장 (경험적 안전) |
-| `extension.toml` 의 `[dependencies]` 변경 | **Kit 완전 재시작 필수** — hot-reload 로 dependency 그래프 갱신 안 됨 |
+| Local development (non-streaming) | **Hot-reload** — Automatically reloads just by saving the file. If necessary, force reload by toggling inactive → active in Extension Manager. `__pycache__` is automatically processed |
+| Streaming / Remote Environment | Recommended to delete `__pycache__` + complete restart of Kit (empirically safe) |
+| Change `[dependencies]` in `extension.toml` | **Kit complete restart required** — Dependency graph not updated with hot-reload |
 
-## 로깅
+## Logging
 
-- `carb.log_info / log_warn / log_error` 만 Kit Console 에 보임
-- Python 표준 `logging`, `print` 은 Kit Console 에 안 찍힘 (디버깅 시 혼란 유의)
+- Only `carb.log_info / log_warn / log_error` is visible in Kit Console
+- Python standard `logging` and `print` are not recorded in the Kit Console (beware of confusion when debugging)
 
-## Extension API 호출 우선순위
+## Extension API call priority
 
-1. `omni.kit.commands.execute(...)` — USD 조작 표준, **undo/redo 자동 지원**
-2. `omni.usd.get_context().get_stage()` — Stage 직접 접근 필요할 때
-3. `omni.timeline.get_timeline_interface()` — 시뮬레이션 제어
-4. `pxr.*` (UsdGeom, Gf, Sdf, UsdSkel 등) — 저수준 USD 조작
+1. `omni.kit.commands.execute(...)` — USD operation standard, **undo/redo automatic support**
+2. `omni.usd.get_context().get_stage()` — When direct access to the stage is required
+3. `omni.timeline.get_timeline_interface()` — Simulation Control
+4. `pxr.*` (USDGeom, Gf, Sdf, USDSkel, etc.) — Low-level USD manipulation
 
-`omni.kit.commands.CreatePrimWithDefaultXformCommand` 로 생성된 prim 은 이미 `xformOp` 포함 → `AddTranslateOp()` 대신 `prim.GetAttribute("xformOp:translate").Set(...)` 사용.
+The prim created with `omni.kit.commands.CreatePrimWithDefaultXformCommand` already includes `xformOp` → Use `prim.GetAttribute("xformOp:translate").Set(...)` instead of `AddTranslateOp()`.
 
-## omni.ui 제약 (UI 기획 전 필독)
+## omni.ui constraints (must read before UI planning)
 
-- **Isaac Sim 6.0 / Kit 110 계열에서도 `omni.ui` CJK 렌더링 제약 실측**, UI 문자열은 ASCII / Latin 중심으로 작성
-- **한글 / CJK 문자 UI 에 넣지 말 것** — mojibake 또는 missing glyph 로 깨짐. label, tooltip, status 모두 영어
-- `omni.ui` 는 pytest 환경에서 위젯 동작 검증 불가 (stub 수준) — 실 UI QA 는 **live Kit + QA_CHECKLIST 수동** 방식
-- Viewport overlay UI 는 `viewport_window.get_frame()` 아래 단일 root `ui.ZStack` 을 두고 여러 `ui.Placer` 를 그 안에 배치한다. 상세: `kit-sdk-pitfalls.md` 의 "Viewport-owned overlay UI"
-- Image tile click UI 는 `with ui.Button` / `with button` 금지. `ui.ZStack` + image + 투명 mouse-event rectangle 패턴 사용. 상세: `kit-sdk-pitfalls.md` 의 "`omni.ui.Button` 은 context manager 가 아님"
-- Viewport overlay 버튼은 `ui.ZStack(..., content_clipping=True)` 안의 실제 `ui.Button(opaque_for_mouse_events=True)` 으로 만든다. `Rectangle + Label + 투명 Rectangle` 합성 버튼은 Prim 선택 관통 / hover 상실 위험이 있다. 상세: `kit-sdk-pitfalls.md` 의 "Viewport overlay 버튼은 `content_clipping=True` + `ui.Button`"
-- Viewport point hover/pick 은 `ViewportAPI.request_query` 단독 의존 금지. 고정 camera 모드에서는 camera-ray fallback 을 둔다. 상세: `kit-sdk-pitfalls.md` 의 "Viewport point picking 은 `request_query` 단독 의존 금지"
-- Extension UI 에서 색상/투명도 값을 사용자가 바꾸는 항목은 항상 `omni.ui.ColorWidget(r, g, b, a)` 로 만든다. hex `StringField` + alpha `IntDrag` 조합은 임시 debug UI 가 아니면 금지. 상세: `kit-sdk-pitfalls.md` 의 "색상 변경 UI 는 `ColorWidget` 사용"
+- **Actual measurement of `omni.ui` CJK rendering constraints even in Isaac Sim 6.0 / Kit 110 series**, UI strings are written focusing on ASCII / Latin
+- **Do not include Korean/CJK characters in UI** — Broken by mojibake or missing glyph. Label, tooltip, status all in English
+- `omni.ui` cannot verify widget behavior in the pytest environment (stub level) — Actual UI QA uses **live Kit + QA_CHECKLIST manual** method
+- Viewport overlay UI places a single root `ui.ZStack` under `viewport_window.get_frame()` and places multiple `ui.Placer` within it. Details: "Viewport-owned overlay UI" of `kit-sdk-pitfalls.md`
+- Image tile click UI is prohibited for `with ui.Button` / `with button`. `ui.ZStack` + image + transparent mouse-event rectangle pattern used. Details: "`omni.ui.Button` is not a context manager" in `kit-sdk-pitfalls.md`
+- The Viewport overlay button is made with the actual `ui.Button(opaque_for_mouse_events=True)` within `ui.ZStack(..., content_clipping=True)`. `Rectangle + Label + transparent Rectangle` composite buttons are at risk of losing Prim selection penetration/hover. Details: "Viewport overlay button of `kit-sdk-pitfalls.md` is `content_clipping=True` + `ui.Button`"
+- Viewport point hover/pick is prohibited from relying solely on `ViewportAPI.request_query`. In fixed camera mode, camera-ray fallback is enabled. Details: "Viewport point picking must not depend solely on `request_query`" of `kit-sdk-pitfalls.md`
+- Items where the user changes the color/transparency value in the Extension UI are always set to `omni.ui.ColorWidget(r, g, b, a)`. The combination of hex `StringField` + alpha `IntDrag` is prohibited unless it is a temporary debug UI. Details: "Color change UI uses `ColorWidget`" of `kit-sdk-pitfalls.md`
 
-## Kit Python 환경 (Isaac Sim 6.0 / Kit 110 계열 기준)
+## Kit Python environment (based on Isaac Sim 6.0 / Kit 110 series)
 
-- Isaac Sim 6.0 bundled Kit Python 은 Python 3.12 계열
-- FastAPI / Pydantic 은 `validation_api` REST boundary 에서만 사용. 정확한 package version 은 local extension catalog 또는 Kit install 의 `pip show` 결과로 확인
-- `omni.services.core` 는 FastAPI 기반 router registration 경로. 버전은 Kit install 에 따라 달라질 수 있으므로 hard-code 하지 말 것
+- Isaac Sim 6.0 bundled Kit Python is Python 3.12 series
+- FastAPI / Pydantic is used only in `validation_api` REST boundary. The exact package version can be checked using the local extension catalog or the `pip show` result of Kit install.
+- `omni.services.core` is a FastAPI-based router registration route. The version may vary depending on Kit install, so do not hard-code it.
 
-## 신규 독립 Extension 스켈레톤 (copy-paste)
+## New independent Extension skeleton (copy-paste)
 
-> ⚠️ 루트 `CLAUDE.md` 의 **"신규 Extension 은 독립 구조"** 정책에 따라, 신규 extension 은 `validation_api` 에 의존하지 말고 Kit SDK 를 직접 사용.
+> ⚠️ In accordance with the **"new extension is an independent structure"** policy of the root `CLAUDE.md`, the new extension does not depend on `validation_api` but uses the Kit SDK directly.
 
 ```
 kkr-extensions/omni.mycompany.<my_ext>/
@@ -66,25 +66,23 @@ kkr-extensions/omni.mycompany.<my_ext>/
 **`config/extension.toml`**:
 ```toml
 [package]
-version = "0.1.0"
+version="0.1.0"
 title = "My Extension"
 description = "Short description of what this does."
-category = "Tools"   # or Tutorial / Validation / ...
+category = "Tools" # or Tutorial / Validation / ...
 keywords = ["..."]
 
 [dependencies]
 "omni.kit.uiapp" = {}
 "omni.ui" = {}
-# ⚠️ 신규 extension 은 validation_api 의존 금지
-# "omni.mycompany.validation_api" = {}  ← 쓰지 말 것
-
-[[python.module]]
+# ⚠️ New extensions are prohibited from relying on validation_api
+# "omni.mycompany.validation_api" = {} ← Do not use[[python.module]]
 name = "omni.mycompany.<my_ext>"
 ```
 
 **`__init__.py`**:
 ```python
-from .extension import MyExtension  # noqa: F401 — Kit 이 IExt 서브클래스 탐색
+from .extension import MyExtension # noqa: F401 — Kit navigation to this IExt subclass
 ```
 
 **`extension.py`**:
@@ -103,21 +101,21 @@ class MyExtension(omni.ext.IExt):
     def on_startup(self, ext_id: str) -> None:
         carb.log_warn(f"[{_SOURCE}] on_startup ({ext_id})")
         self._ext_id = ext_id
-        # TODO: UI 창 / scene 동작 구현
+        # TODO: Implement UI window/scene behavior
 
     def on_shutdown(self) -> None:
         carb.log_warn(f"[{_SOURCE}] on_shutdown")
-        # TODO: UI 정리 / listener 해제
+        # TODO: Clean up the UI / release the listener
 ```
 
-MDL-heavy S3 asset 을 직접 로드해야 하면 `docs/usd-load-deadlock-recipe.md` 의 방어 코드를 복사해 가 사용.
+If you need to load the MDL-heavy S3 asset directly, copy the defense code of `docs/usd-load-deadlock-recipe.md` and use it.
 
-## Extension 활성화 경로
+## Extension activation path
 
-| 경로 | 사용 시점 |
+| path | When to use |
 |------|----------|
-| `kit.exe --enable <ext_id>` | 프로세스 레벨 (1회성 실행) |
-| `.env` 의 `ISAAC_SIM_EXTRA_EXT_IDS` JSON array | `setup-omniverse-kit-mcp.bat` 로 MCP 서버 기동 시 자동 (학생 PC 배포 시 권장) |
-| Extension Manager UI 토글 | 로컬 개발 중 수동 |
+| `kit.exe --enable <ext_id>` | Process level (one-time execution) |
+| `ISAAC_SIM_EXTRA_EXT_IDS` JSON array of `.env` | Automatically starts the MCP server with `setup-omniverse-kit-mcp.bat` (recommended when distributing student PCs) |
+| Extension Manager UI Toggle | Manual during local development |
 
-학생 / 신규 PC 에 자동 활성화하려면 **`.env`** 방식 채택 + `setup/setup_omniverse_kit_mcp.ps1` 에 반영.
+To automatically activate for student/new PC, adopt **`.env`** method + reflected in `setup/setup_omniverse_kit_mcp.ps1`.

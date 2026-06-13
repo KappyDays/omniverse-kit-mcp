@@ -120,7 +120,7 @@ Upgrade-driving facts already verified from official docs:
 - Isaac Sim 6.0 removes `omni.isaac.*` compatibility shims. Migrate to
   `isaacsim.*`.
 - `isaacsim.core.api`, `isaacsim.core.prims`, and `isaacsim.core.utils` are
-  deprecated. Prefer `isaacsim.core.experimental.*`,
+  deprecated. Preferred `isaacsim.core.experimental.*`,
   `isaacsim.core.simulation_manager`, and related documented replacements.
 - Isaac Sim Python package installation requires Python 3.12, and the bundled
   Python environment is Python 3.12.
@@ -150,7 +150,7 @@ the chosen API.
   `medium`, `high`, and `xhigh`.
 - Work in a new isolated worktree/branch for implementation.
 - Suggested branch: `codex/isaac-sim-6-live-upgrade`.
-- Suggested worktree root:
+-Suggested worktree root:
   `C:\Users\kang\.codex\worktrees\isaac6-live\omniverse-kit-mcp`
 - If a worktree starts detached, attach a branch before editing.
 - Copy this SoT into the worktree before editing if the branch does not contain
@@ -166,7 +166,7 @@ Every resumed session starts here:
 1. Read this document.
 2. Read root `AGENTS.md`.
 3. Read root `CLAUDE.md`.
-4. Use root `CLAUDE.md` "작업 전 필수 pull-doc" table to choose pull-docs.
+4. Use root `CLAUDE.md` "Required pull-docs before work" table to choose pull-docs.
 5. Enumerate local rules:
    ```powershell
    rg --files -g CLAUDE.md
@@ -174,7 +174,7 @@ Every resumed session starts here:
    rg --files docs/runbooks -g "*.md"
    ```
 6. Read all minimum pull-docs below.
-7. Before editing a path, walk from repo root to that path and read every
+7. Before editing a path, walk from repo root to that path and read everything
    applicable `CLAUDE.md`.
 8. If a `CLAUDE.md` references `.claude/skills/*/SKILL.md`, read the relevant
    skill before acting.
@@ -183,34 +183,34 @@ Every resumed session starts here:
 
 Minimum pull-docs for this upgrade:
 
-- `docs/CLAUDE.md`
-- `docs/invariants/multi-app.md`
-- `docs/invariants/process-lifecycle.md`
-- `docs/invariants/ext-reload.md`
-- `docs/invariants/ui-invoke.md`
-- `docs/invariants/mcp-tool-add.md`
-- `docs/invariants/module-add.md`
-- `docs/invariants/asset-discovery.md`
-- `docs/invariants/usd-load.md`
-- `docs/invariants/scenario-validation.md`
-- `docs/invariants/visual-validation.md`
-- `docs/references/CLAUDE.md`
-- `.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`
-- `.claude/skills/omniverse-asset-inventory-sync/SKILL.md`
-- `.claude/skills/omniverse-docs-sweep/SKILL.md`
+-`docs/CLAUDE.md`
+-`docs/invariants/multi-app.md`
+-`docs/invariants/process-lifecycle.md`
+-`docs/invariants/ext-reload.md`
+-`docs/invariants/ui-invoke.md`
+-`docs/invariants/mcp-tool-add.md`
+-`docs/invariants/module-add.md`
+-`docs/invariants/asset-discovery.md`
+-`docs/invariants/usd-load.md`
+-`docs/invariants/scenario-validation.md`
+-`docs/invariants/visual-validation.md`
+-`docs/references/CLAUDE.md`
+-`.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`
+-`.claude/skills/omniverse-asset-inventory-sync/SKILL.md`
+-`.claude/skills/omniverse-docs-sweep/SKILL.md`
 - `.claude/skills/omniverse-mcp-tool-upgrade/SKILL.md` if a missing MCP tool
   blocks live verification.
 
 Read runbooks only when the matching failure appears:
 
-- `docs/tool-diagnostic-map.md`
-- `docs/runbooks/cold-boot-timeout.md`
-- `docs/runbooks/kit-stdin-deadlock.md`
-- `docs/runbooks/hub-orphan.md`
-- `docs/runbooks/env-sub-config.md`
-- `docs/runbooks/kit-dep-solver-fail.md`
-- `docs/runbooks/multi-app.md`
-- `docs/runbooks/scene-reexport-lock.md`
+-`docs/tool-diagnostic-map.md`
+-`docs/runbooks/cold-boot-timeout.md`
+-`docs/runbooks/kit-stdin-deadlock.md`
+-`docs/runbooks/hub-orphan.md`
+-`docs/runbooks/env-sub-config.md`
+-`docs/runbooks/kit-dep-solver-fail.md`
+-`docs/runbooks/multi-app.md`
+-`docs/runbooks/scene-reexport-lock.md`
 
 ## Upgrade Scope
 
@@ -218,9 +218,7 @@ The target is Isaac Sim 6.0.0-primary. Isaac Sim 5.1 remains only as historical
 context in incident logs, old validation artifacts, and clearly marked
 compatibility notes.
 
-Upgrade all current surfaces:
-
-| Surface | Scope |
+Upgrade all current surfaces:| Surface | Scope |
 |---|---|
 | Launch/profile/config | `types/profile.py`, `config.py`, `process_module.py`, `.env.example`, setup scripts, workspace docs |
 | MCP server metadata | package docstrings, prompts, resources, tool catalog regeneration |
@@ -380,7 +378,7 @@ Required outcomes:
   isolated with evidence and a deprecation note.
 - Stage-loading checks must use
   `isaacsim.core.experimental.utils.stage.is_stage_loading` first and retain
-  `UsdContext.get_stage_loading_status()` as fallback.
+  `USDContext.get_stage_loading_status()` as fallback.
 - Remaining `isaacsim.core.prims` / `isaacsim.core.utils.types` usage is
   allowed only in robot/physics runtime wrappers where the 6.0 experimental
   articulation API is not a drop-in replacement. Those call sites must be lazy,

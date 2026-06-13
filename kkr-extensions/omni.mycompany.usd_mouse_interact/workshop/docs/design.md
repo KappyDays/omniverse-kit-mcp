@@ -1,28 +1,28 @@
 # usd-mouse-interact — Design
 
-## 목표
+## Goal
 
-USD Composer 에서 timeline **Play** 시 1인칭(FPS) 시점 컨트롤 모드에 진입한다:
+When you play timeline **Play** in USD Composer, you enter first-person (FPS) viewpoint control mode:
 
-1. 마우스 이동 만으로 활성 카메라의 yaw/pitch 변경 (마우스 캡처)
-2. Viewport 정중앙에 크로스헤어(+) 표시
-3. WASD (옵션 Q/E) 로 카메라 평행 이동 (forward/strafe/up-down)
-4. 크로스헤어가 가리키는 prim 을 하이라이트 (USD selection 갱신)
-5. Timeline **Stop/Pause** 시 모드 해제 — cursor 복원, 크로스헤어 숨김, selection 정리
-6. 사용자 안전장치로 **ESC** 시 즉시 mode 해제
+1. Change the yaw/pitch of the active camera just by moving the mouse (mouse capture)
+2. Crosshair (+) displayed in the exact center of the viewport
+3. Camera translation (forward/strafe/up-down) with WASD (option Q/E)
+4. Highlight the prim indicated by the crosshair (update USD selection)
+5. Release mode when Timeline **Stop/Pause** — restore cursor, hide crosshair, organize selection
+6. As a user safety device, the mode is immediately released when **ESC** is pressed.
 
 ## Non-goals (YAGNI)
 
-- gamepad / VR 입력
+- gamepad/VR input
 - prim drag / transform manipulation
-- 카메라 물리 충돌 (no-clip 자유 비행)
-- 멀티 viewport 동시 컨트롤 (active viewport 1 개만)
+- Camera physics collision (no-clip free flight)
+- Simultaneous multi-viewport control (only 1 active viewport)
 
-## Scope 가정 (검증 단계에서 재확인)
+## Scope assumption (reconfirmed during verification stage)
 
-- USD Composer (Kit 110.1.0) 환경 — `omni.timeline`, `omni.kit.viewport.utility`, `carb.input`, `omni.appwindow` 가용
-- 활성 카메라가 `UsdGeom.Camera` (Stage 의 prim) — read/write 가능한 transform
-- Y-up 또는 Z-up stage 모두 지원 (`UsdGeom.GetStageUpAxis` 로 분기)
+- USD Composer (Kit 110.1.0) environment — `omni.timeline`, `omni.kit.viewport.utility`, `carb.input`, `omni.appwindow` available
+- Active camera is `USDGeom.Camera` (prim of Stage) — read/write transform
+- Supports both Y-up or Z-up stage (branched to `USDGeom.GetStageUpAxis`)
 
 ## Architecture
 
@@ -45,23 +45,23 @@ TimelineWatcher                       (omni.timeline event sub)
 
 ## Components
 
-| 모듈 | 책임 | 외부 의존 |
-|------|------|-----------|
-| `extension.py` | `omni.ext.IExt` 진입점, 라이프사이클 | `omni.ext` |
-| `interaction_controller.py` | timeline event → 활성/비활성 토글, 컴포넌트 오케스트레이션 | `omni.timeline`, `omni.kit.app` |
-| `input_state.py` | WASD/Q/E/ESC 키 상태 + 마우스 dx/dy 누적 | `carb.input` |
-| `camera_controller.py` | active viewport camera 의 yaw/pitch + translation 적용. 순수 수학은 별도 함수로 분리해 **단위 테스트** | `omni.kit.viewport.utility`, `pxr.UsdGeom`, `pxr.Gf` |
-| `mouse_capture.py` | cursor 숨김 + 매 프레임 cursor 를 viewport center 로 warp (delta 계산 후) | `omni.appwindow`, `carb.input` |
-| `crosshair_overlay.py` | viewport 중앙에 + 모양 그리는 transparent `omni.ui.Window` | `omni.ui`, `omni.kit.viewport.utility` |
-| `pick_highlighter.py` | viewport 중심 NDC → world ray → first hit prim → selection set | `omni.usd`, `omni.physx.scene_query` (1차) / USD ray-AABB (fallback) |
+| module | responsibility | external dependence |
+|------|------|-------|
+| `extension.py` | `omni.ext.IExt` entry point, life cycle | `omni.ext` |
+| `interaction_controller.py` | timeline event → active/inactive toggle, component orchestration | `omni.timeline`, `omni.kit.app` |
+| `input_state.py` | WASD/Q/E/ESC key state + mouse dx/dy cumulative | `carb.input` |
+| `camera_controller.py` | Apply yaw/pitch + translation of active viewport camera. Separate pure math into separate functions **Unit Test** | `omni.kit.viewport.utility`, `pxr.USDGeom`, `pxr.Gf` |
+| `mouse_capture.py` | Hide cursor + warp cursor to viewport center every frame (after calculating delta) | `omni.appwindow`, `carb.input` |
+| `crosshair_overlay.py` | Draw a + shape in the center of the viewport transparent `omni.ui.Window` | `omni.ui`, `omni.kit.viewport.utility` |
+| `pick_highlighter.py` | viewport centered NDC → world ray → first hit prim → selection set | `omni.usd`, `omni.physx.scene_query` (1st round) / USD ray-AABB (fallback) |
 
-## Data Flow (per-frame, 활성 상태)
+## Data Flow (per-frame, active)
 
 ```
 update tick
   │
   ▼
-InputState.poll()           — carb.input 으로 키 / 마우스 button 상태 갱신
+InputState.poll()           — carb.input updates key / mouse button state via
   │
   ▼
 mouse_dx, mouse_dy = MouseCaptureSession.read_delta_and_warp()
@@ -70,10 +70,10 @@ mouse_dx, mouse_dy = MouseCaptureSession.read_delta_and_warp()
 CameraController.apply_yaw_pitch(dx, dy, dt)
   │
   ▼
-CameraController.apply_translation(input_state, dt)   — WASD 처리
+CameraController.apply_translation(input_state, dt)   — handles WASD
   │
   ▼
-PickHighlighter.update_at_center(viewport_api)        — 중심 ray → prim path
+PickHighlighter.update_at_center(viewport_api)        — center ray to prim path
   │
   ▼
 omni.usd Selection.set_selected_prim_paths([path])    — outline highlight
@@ -81,23 +81,23 @@ omni.usd Selection.set_selected_prim_paths([path])    — outline highlight
 
 ## Key Decisions
 
-1. **Mouse capture = cursor warp pattern**, OS-level raw input 미사용
-   - 매 프레임 (1) 현재 cursor 위치 read → (2) viewport center 와의 차이 = delta → (3) cursor 를 center 로 warp
-   - cross-platform, kit native API 만 사용. 단, Windows 에서 cursor visible/invisible 토글 위해 `omni.appwindow.get_default_app_window().get_window().set_cursor_mode("hidden")` 시도 → 실패 시 cursor 를 viewport 밖으로 warp 하는 방식 fallback
-2. **Highlight = USD Selection** (별도 outline material 안 만듦)
-   - `omni.usd.get_context().get_selection().set_selected_prim_paths([path], True)` — Composer 의 selection outline (orange) 활용
-   - 추가 비용 0, 사용자에게 직관적
-3. **Pick = PhysX raycast 우선, USD ray-AABB fallback**
-   - timeline play 중 → PhysX 활성화 가정. `omni.physx.scene_query.raycast_closest`
-   - PhysX 비활성 / collider 없는 prim 환경에서는 USD `BBoxCache` 기반 ray-AABB 검색으로 fallback (느리지만 정확성)
-4. **ESC = soft 해제**
-   - timeline 은 그대로 play 상태. mode 만 해제. 다시 mode 진입은 사용자가 viewport 클릭 시 — 이건 v2. v1 에서는 timeline stop 후 다시 play 만 지원
-5. **Camera up-axis 자동 감지**
-   - `UsdGeom.GetStageUpAxis(stage)` → "Y" or "Z". yaw 회전 축 결정
+1. **Mouse capture = cursor warp pattern**, OS-level raw input not used
+   - Every frame (1) read current cursor position → (2) difference from viewport center = delta → (3) warp cursor to center
+   - Only cross-platform, kit native API used. However, in Windows, try `omni.appwindow.get_default_app_window().get_window().set_cursor_mode("hidden")` to toggle the cursor visible/invisible → in case of failure, fallback to warping the cursor out of the viewport.
+2. **Highlight = USD Selection** (no separate outline material created)
+   - `omni.usd.get_context().get_selection().set_selected_prim_paths([path], True)` — Utilize Composer’s selection outline (orange)
+   - 0 additional costs, intuitive for users
+3. **Pick = PhysX raycast first, USD ray-AABB fallback**
+   - During timeline play → Assuming PhysX is enabled. `omni.physx.scene_query.raycast_closest`
+   - In a prim environment with PhysX disabled/no collider, fallback to USD `BBoxCache` based ray-AABB search (slow but accurate)
+4. **ESC = soft release**
+   - The timeline remains in the play state. Only turn off mode. Entering mode again occurs when the user clicks on the viewport — this is v2. In v1, only replay is supported after stopping the timeline.
+5. **Camera up-axis automatic detection**
+   - `USDGeom.GetStageUpAxis(stage)` → "Y" or "Z". yaw rotation axis determination
 6. **dt clamp**
-   - frame drop 시 큰 dt 로 카메라가 튀는 것 방지 → max 0.1s 로 clamp
+   - Prevent camera from bouncing with large dt when frame drops → clamp to max 0.1s
 
-## Camera Math (단위 테스트 대상)
+## Camera Math (unit test target)
 
 ```python
 def update_yaw_pitch(yaw: float, pitch: float, dx_pixels: float, dy_pixels: float,
@@ -116,37 +116,33 @@ def translation_from_input(forward: Vec3, right: Vec3, up: Vec3,
     ...
 ```
 
-순수 함수 — Kit/USD 없이 테스트 가능.
+Pure function — testable without Kit/USD.
 
-## Error Handling
-
-| 시나리오 | 동작 |
+## Error Handling| Scenario | Action |
 |---------|------|
-| 활성 viewport 없음 | `carb.log_warn` + activate 노옵 |
-| 활성 카메라 prim missing / 잘못된 type | log_warn + activate 노옵 |
-| 마우스 캡처 실패 | log_warn + 크로스헤어 + 카메라만 동작 (raycast/하이라이트는 정상) |
-| Raycast 실패 / hit 없음 | selection clear (highlight 해제) |
-| timeline event subscription 누수 | `on_shutdown` 에서 명시적 unsubscribe + `_window.destroy()` |
+| No active viewport | `carb.log_warn` + activate noop |
+| Active camera prim missing / wrong type | log_warn + activate noop |
+| Mouse capture failed | log_warn + crosshair + only camera works (raycast/highlights are normal) |
+| Raycast failed/no hit | selection clear (clear highlight) |
+| timeline event subscription leak | explicit unsubscribe from `on_shutdown` + `_window.destroy()` |
 
 ## Testing Plan
 
-### 단위 테스트 (pytest, Kit 없이 실행)
+### Unit tests (pytest, run without Kit)
 
-- `test_camera_math.py` — yaw/pitch clamp, basis 직교성, translation 방향
-- `test_input_state.py` — 키 press/release 누적, double-press idempotency
-- `test_interaction_state_machine.py` — IDLE → ACTIVE → IDLE 트랜지션, ESC 시 deactivate
+- `test_camera_math.py` — yaw/pitch clamp, basis orthogonality, translation direction
+- `test_input_state.py` — key press/release accumulation, double-press idempotency
+- `test_interaction_state_machine.py` — IDLE → ACTIVE → IDLE transition, deactivate during ESC
 
-### 수동 + MCP 검증 (USD Composer 라이브)
+### Manual + MCP Verification (USD Composer Live)
 
-1. Timeline Play → 활성화 (app + viewport 캡처)
-2. 크로스헤어 가시성 (app + viewport 캡처)
-3. 마우스 시점 변환 — 좌/우/상/하 회전 후 viewport 변화 확인 (전후 캡처)
-4. WASD 이동 — 전진 후 카메라 transform 변화 확인 (전후 캡처)
-5. Prim highlight — 마우스 중심으로 prim 가리키면 selection outline 출현 (전후 캡처)
-6. Timeline Stop → 비활성화 + cursor 복원 (캡처)
-
-각 단계 `window_capture` (app 전체) + `viewport_capture` (viewport) 2 장씩 저장.
-`workshop/captures/` 는 local verification output 이며 public repo 에 commit 하지 않는다.
+1. Timeline Play → Activate (app + viewport capture)
+2. Crosshair visibility (app + viewport capture)
+3. Mouse viewpoint conversion — Check viewport change after rotating left/right/up/down (capture before and after)
+4. WASD movement — Check camera transform change after moving forward (capture before and after)
+5. Prim highlight — When you point to prim with the mouse, a selection outline appears (capture before and after)
+6. Timeline Stop → Disable + Restore cursor (Capture)Save 2 copies of `window_capture` (whole app) + `viewport_capture` (viewport) for each step.
+`workshop/captures/` is a local verification output and does not commit to the public repo.
 
 ## File Layout
 
@@ -155,7 +151,7 @@ kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/
 ├── README.md
 ├── docs/
 │   ├── design.md                      ← THIS
-│   └── verification-report.md         (검증 후 작성)
+│   └── verification-report.md         (written after validation)
 ├── exts/
 │   └── omni.mycompany.usd_mouse_interact/
 │       ├── config/extension.toml
@@ -189,10 +185,8 @@ kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/
 "omni.appwindow" = {}
 ```
 
-PhysX raycast 는 USD Composer 의 standard package 이므로 별도 dependency 불필요 (있으면 사용, 없으면 fallback).
+PhysX raycast is a standard package of USD Composer, so no separate dependency is required (use if available, fallback if not).
 
-## Open Risks
-
-- USD Composer 의 cursor mode API 가 Kit 110.1.0 에서 어떤 형태인지 — capture 단계에서 실측 후 결정. fallback: warp 만 사용 (cursor 는 보일 수 있지만 정중앙 고정).
-- `omni.physx.scene_query` 가 timeline play 즉시 ready 인지 — race condition 가능. 1 frame 지연 허용.
-- USD Composer 의 active viewport camera path 가 default `/OmniverseKit_Persp` 같은 비-stage 카메라일 가능 — write 시도 시 readonly. 이 경우 stage 에 새 `UsdGeom.Camera` 생성 후 active 로 set. v1 에서는 default persp 그대로 두되 transform write 가능 여부를 try/except 로 가드.
+## Open Risks- What USD Composer's cursor mode API looks like in Kit 110.1.0 — Determined after actual measurement at the capture stage. fallback: Use only warp (cursor is visible but fixed in the exact center).
+- `omni.physx.scene_query` is ready for timeline play immediately — race condition is possible. 1 frame delay allowed.
+- USD Composer's active viewport camera path may be a non-stage camera such as the default `/OmniverseKit_Persp` — readonly when attempting to write. In this case, create a new `USDGeom.Camera` on stage and set it to active. In v1, leave the default persp as is, but guard whether transform write is possible with try/except.

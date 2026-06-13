@@ -1,97 +1,95 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: docs/references/ 편집 규칙 + public-safe reference 관리 -->
+<!-- Scope: docs/references/ Editing rules + public-safe reference management -->
 
-# docs/references/ — 편집 규칙 & public-safe reference 관리
+# docs/references/ — Editing rules & public-safe reference management
 
-> Public repo 에는 curated reference 만 둔다. 로컬 Kit / Isaac Sim / USD
-> Composer 설치 메타데이터나 외부 문서 스냅샷은 생성 가능하지만 commit 하지
-> 않는다.
+> Only curated references are placed in public repo. Local Kit/Isaac Sim/USD
+> Composer installation metadata or external document snapshots can be created, but not committed.
+>No.
 
-## 레퍼런스 파일 맵
+## Reference file map
 
-| 파일 / 하위 디렉토리 | 용도 | 재생성 방식 |
-|---------------------|------|------------|
-| `sensor_menu_catalog.md` | `Create > Sensors` 메뉴의 모든 센서 — vendor × model grouping + `window_menu_trigger` menu_path | Isaac Sim 기동 후 `window_menu_list(menu_path="Create")` 재호출 |
-| `extensions.json` / `extensions-catalog.md` / `harvest-progress.json` | 로컬 설치 기반 extension catalog (public repo 에서는 ignored) | `harvest_extension_metadata.py` + `render_catalog_md.py` |
-| `app-specific/` / `testbed-snapshot/` | 로컬 research 보강 자료 (public repo 에서는 ignored) | 필요 시 로컬에서 재생성 / 별도 보관 |
+| file/subdirectory | Use | Regeneration method |
+|---------------------|------|---------------------------|
+| `sensor_menu_catalog.md` | All sensors in `Create > Sensors` menu — vendor × model grouping + `window_menu_trigger` menu_path | Recall `window_menu_list(menu_path="Create")` after starting Isaac Sim |
+| `extensions.json` / `extensions-catalog.md` / `harvest-progress.json` | Locally installed extension catalog (ignored in public repo) | `harvest_extension_metadata.py` + `render_catalog_md.py` |
+| `app-specific/` / `testbed-snapshot/` | Local research enrichment material (ignored in public repo) | Recreate locally when needed / Store separately |
 
-## MCP 기능 research 순서 (task-driven, 자율 루프 기준)
+## MCP function research order (task-driven, based on autonomous loop)
 
-사용자 자연어 task 를 MCP 로 수행하려 할 때의 research flow. 각 단계는 이전 단계 결과에 의존.
+Research flow when trying to perform user natural language tasks with MCP. Each step depends on the results of the previous step.
 
-0. **중복 확인**: `docs/tool-catalog.md` 에서 task 에 해당하는 기존 MCP tool 이 있는지 검색. 있으면 재사용 (이 flow 종료).
-1. **기존 tool 중복 확인**: `docs/tool-catalog.md` 에서 task 에 해당하는 MCP tool 검색.
-2. **로컬 catalog 가 있으면 검색**: `extension_search(...)` 또는 ignored
-   `docs/references/extensions-catalog.md` 에서 후보 ext 식별. 없으면 다음 단계로
-   진행하고 필요한 경우 catalog 를 로컬 재생성.
-3. **실 소스 탐색** — app 별 설치 경로에서 직접 확인:
+0. **Duplicate check**: Search for an existing MCP tool corresponding to the task in `docs/tool-catalog.md`. If so, reuse (end this flow).
+1. **Check for duplicate existing tools**: Search MCP tool corresponding to the task in `docs/tool-catalog.md`.
+2. **Search if local catalog exists**: `extension_search(...)` or ignored
+   Identification of candidate exts in `docs/references/extensions-catalog.md`. If not, go to the next step
+   Proceed and regenerate the catalog locally if necessary.
+3. **Exploring the actual source** — Check directly from the installation path for each app:
    - Isaac Sim: `<isaac-sim-root>/exts`, `extscache`, `kit/extscore`
    - USD Composer: `<usd-composer-root>/exts`, `extscache`, `extsbuild`, `kit/extscore`
-   - **Command 패턴 search 팁**: 많은 ext 는 `omni.kit.commands.execute("<CommandName>", **kwargs)` 형태로 일회성 작업을 노출한다. 후보 탐색: MCP 의 `extension_search("<keyword>")` 로 관련 ext 조회 → `.commands` 로 끝나는 것 우선 (예: `omni.kit.commands`, `omni.physx.commands`, `omni.fabric.commands`, `omni.kit.graph.usd.commands`). 실행: MCP 의 `kit_command_execute("<CommandName>", payload)` 로 1줄 호출 (예: `isaacsim.asset.gen.conveyor` 의 `CreateConveyorBelt`).
-4. **공식 문서**: NVIDIA / Omniverse 공식 문서를 직접 확인하고, durable rule 만
-   project docs 로 요약.
+   - **Command pattern search tip**: Many exts expose one-time operations in the form of `omni.kit.commands.execute("<CommandName>", **kwargs)`. Candidate search: Look up related exts with MCP's `extension_search("<keyword>")` → Those ending with `.commands` take precedence (e.g. `omni.kit.commands`, `omni.physx.commands`, `omni.fabric.commands`, `omni.kit.graph.usd.commands`). Execute: 1-line call to `kit_command_execute("<CommandName>", payload)` in MCP (e.g. `CreateConveyorBelt` in `isaacsim.asset.gen.conveyor`).
+4. **Official document**: Check the NVIDIA / Omniverse official document directly, and only durable rules
+   Summary of project docs.
 
-## 센서 요청 응답 순서
+## Sensor request response sequence
 
-사용자가 "특정 센서 사용해달라" 요청 시:
+When a user requests to “use a specific sensor”:
 
-1. `sensor_menu_catalog.md` 에서 해당 vendor/model 검색
-2. menu_path 확인 (e.g. `Create/Sensors/RTX Lidar/Ouster/OS1`)
-3. `window_menu_trigger(menu_path=...)` 호출로 USD prim 생성 (실물 센서 schema)
-4. `created_prims` 필드로 새 prim path 확인
-5. 필요시 `stage_set_property` 로 mount_offset / mount_rotation 조정
+1. Search for the vendor/model in `sensor_menu_catalog.md`
+2. Check menu_path (e.g. `Create/Sensors/RTX Lidar/Ouster/OS1`)
+3. Generate USD prim by calling `window_menu_trigger(menu_path=...)` (physical sensor schema)
+4. Check the new prim path with the `created_prims` field
+5. Adjust mount_offset / mount_rotation with `stage_set_property` if necessary
 
-mock 센서 (`sensor_attach_rtx_*` MCP tool) 는 시각 교육용 · 실 센서 데이터 필요 시 이 카탈로그 경로 사용.
+The mock sensor (`sensor_attach_rtx_*` MCP tool) is for visual education. If you need real sensor data, use this catalog path.
 
-## 편집 규칙
+## Editing Rules
 
-- `sensor_menu_catalog.md` 는 MCP resource source 이므로 tracked 유지.
-- 생성 catalog / snapshot 은 `.gitignore` 대상이다. public repo 에 commit 금지.
-- catalog 에서 발견한 durable rule 은 원문 덤프 대신 `docs/invariants/` 또는
-  `docs/runbooks/` 로 요약 이관한다.
+- `sensor_menu_catalog.md` is tracked because it is an MCP resource source.
+- The creation catalog / snapshot is `.gitignore` target. No commits to public repo.
+- The durable rule found in the catalog is `docs/invariants/` or `docs/invariants/` instead of the original dump.
+  Summary transfer to `docs/runbooks/`.
 
-## extensions.json v2 스키마 주의사항
+## extensions.json v2 schema notes
 
-- `schema_version: 2` — apps map 기반 (v1 은 backward compat 위해 render 에서만 지원).
-- `apps.<app>` 의 app 이름: `"isaacsim"` / `"usd_composer"` (두 개 허용). present 는 `true` 고정.
-- `apps.<app>.source_dir` 허용값: Isaac Sim = `exts` / `extscache` / `extsDeprecated` / `kit/extscore`. USD Composer = `exts` / `extscache` / `extsbuild`.
-- `apps.<app>.deprecated: true` 는 Isaac Sim `extsDeprecated/` 에서만 자동 설정.
-- `enrichment_status` 허용값: `"enriched"` / `"skipped"` / `"bootstrap"` 3가지만. `skipped` 항목은 반드시 `skipped_reason` 설정.
-- `api_delta_note` — 두 앱의 major.minor 버전이 다를 때만 자동 설정 (patch diff 는 무시). 수동 편집 가능.
-- `mcp_research_hint` (v2) == `mcp_extension_idea` (v1). v2 전용 필드명.
+- `schema_version: 2` — based on apps map (v1 is supported only in render for backward compat).
+- App name for `apps.<app>`: `"isaacsim"` / `"usd_composer"` (two allowed). present is fixed to `true`.
+- `apps.<app>.source_dir` Allowed values: Isaac Sim = `exts` / `extscache` / `extsDeprecated` / `kit/extscore`. USD Composer = `exts` / `extscache` / `extsbuild`.
+- `apps.<app>.deprecated: true` is automatically set only in Isaac Sim `extsDeprecated/`.
+- `enrichment_status` Allowed values: Only 3 types: `"enriched"` / `"skipped"` / `"bootstrap"`. The `skipped` item must be set to `skipped_reason`.
+- `api_delta_note` — Autoset only when the major.minor versions of two apps are different (ignore patch diff). Manual editing possible.
+- `mcp_research_hint` (v2) == `mcp_extension_idea` (v1). v2 only field name.
 
-## 카탈로그 재생성 시나리오
+## Catalog regeneration scenario
 
-| 상황 | 명령 |
+| Situation | command |
 |------|------|
-| 두 앱 중 하나라도 extscache 변동 (새 ext / 버전 업) | `uv run python scripts/harvest_extension_metadata.py` → `uv run python scripts/render_catalog_md.py` |
-| JSON 수정 후 MD 재동기 | `uv run python scripts/render_catalog_md.py` |
-| v1 레거시 single-app 모드 (deprecated) | `uv run python scripts/harvest_extension_metadata.py --mode v1-bootstrap [--resume]` |
-| 기존 enrichment 포기하고 전수 재수확 (파괴적) | `uv run python scripts/harvest_extension_metadata.py --no-preserve-enrichment` |
-| testbed 원본 변경 | `uv run python scripts/sync_testbed_snapshot.py` |
-| 처음부터 재구축 | sync_testbed → harvest → render → enrichment 수동 루프 |
+| Change extscache in either app (new ext/version up) | `uv run python scripts/harvest_extension_metadata.py` → `uv run python scripts/render_catalog_md.py` |
+| MD resynchronization after JSON modification | `uv run python scripts/render_catalog_md.py` |
+| v1 legacy single-app mode (deprecated) | `uv run python scripts/harvest_extension_metadata.py --mode v1-bootstrap [--resume]` |
+| Abandon existing enrichment and re-harvest (destructive) | `uv run python scripts/harvest_extension_metadata.py --no-preserve-enrichment` |
+| change testbed source | `uv run python scripts/sync_testbed_snapshot.py` |
+| Rebuilt from scratch | sync_testbed → harvest → render → enrichment manual loop |
 
-## harvest-progress.json 해석
+## harvest-progress.json interpretation
 
-- 각 phase status: `pending` → `running` → `complete`.
-- v2 multi-app harvest 는 v1 bootstrap phase 를 덮지 않고 병렬 trace (향후 재설계 후보 — 현재는 v1 마커 유지).
-- enrichment 단계만 수동 (Sonnet 루프). 나머지는 스크립트 자동.
+- Each phase status: `pending` → `running` → `complete`.
+- v2 multi-app harvest does not cover the v1 bootstrap phase and supports parallel traces (candidate for future redesign — retaining v1 markers for now).
+- Manual enrichment step only (Sonnet loop). The rest is automatically scripted.
 
-## MCP tool: `extension_search` (Phase E 구현 완료)
+## MCP tool: `extension_search` (Phase E implementation completed)
 
-`extension_search(keyword, app, category, limit)` 는 local generated
-`extensions.json` 이 있을 때만 검색한다. public clone 에서 파일이 없으면
-`EXTENSION_CATALOG_UNAVAILABLE` 을 반환한다. 구현:
+`extension_search(keyword, app, category, limit)` is locally generated
+Search only when `extensions.json` is present. If there is no file in public clone
+Returns `EXTENSION_CATALOG_UNAVAILABLE`. Implementation:
 `src/omniverse_kit_mcp/modules/catalog_module.py`.
 
-## Kit / app 업데이트 후 catalog 동기화
+## Catalog synchronization after kit/app updateCanonical procedure is `/omniverse-kit-extension-catalog-sync` skill (`.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`). Called by the user when updating Kit / Isaac Sim / USD Composer installation → 6-step workflow (diff → integrity → harvest → render → enrichment → commit). SKILL.md is SoT for procedures, invariants, and stop-conditions.
 
-Canonical 절차는 `/omniverse-kit-extension-catalog-sync` skill (`.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`). Kit / Isaac Sim / USD Composer 설치 갱신 시 사용자가 호출 → 6-step workflow (diff → integrity → harvest → render → enrichment → commit). 절차·invariants·stop-condition 은 SKILL.md 가 SoT.
+## Related Boundaries
 
-## 관련 경계
-
-- 상위 문서 루트: `../CLAUDE.md`
+- Parent document root: `../CLAUDE.md`
 - tracked MCP resource source: `sensor_menu_catalog.md`
 - ignored local generated refs: `extensions.json`, `extensions-catalog.md`,
   `harvest-progress.json`, `app-specific/`, `testbed-snapshot/`
-- 재생성 스크립트 규약: `../../scripts/CLAUDE.md`
+- Regeneration script convention: `../../scripts/CLAUDE.md`
