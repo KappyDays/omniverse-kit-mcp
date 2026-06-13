@@ -41,8 +41,7 @@ from omniverse_kit_mcp.types.robot import (
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_PICK_OBJECT_CATALOG_PATH = "Props/KLT_Bin/small_KLT.usd"
-_DEFAULT_DEMO_GRID_CATALOG_PATH = "Environments/Grid/default_environment.usd"
+_DEFAULT_DEMO_GRID_CATALOG_PATH = "Grid/default_environment.usd"
 
 
 class RobotModule:
@@ -488,8 +487,9 @@ class RobotModule:
                 "target_position": list(request.target_position),
                 "object_initial_position": list(request.object_initial_position),
                 "object_size": request.object_size,
-                "object_asset_url": request.object_asset_url
-                or resolve_catalog_asset_url("props", _DEFAULT_PICK_OBJECT_CATALOG_PATH),
+                "object_asset_url": request.object_asset_url,
+                "max_grasp_width_m": request.max_grasp_width_m,
+                "fit_clearance_m": request.fit_clearance_m,
                 "grid_asset_url": request.grid_asset_url
                 or resolve_catalog_asset_url("environments", _DEFAULT_DEMO_GRID_CATALOG_PATH),
                 "robot_description": request.robot_description,
@@ -555,7 +555,7 @@ class RobotModule:
                 started_ms=started,
             )
 
-        if profile.profile_name == "franka_panda":
+        if _uses_franka_pick_place_adapter(profile):
             franka_result = await self.install_franka_pick_place_playback_demo(
                 meta,
                 RobotFrankaPickPlaceDemoRequest(
@@ -566,6 +566,8 @@ class RobotModule:
                     object_size=request.object_size,
                     object_asset_url=request.object_asset_url,
                     grid_asset_url=request.grid_asset_url,
+                    max_grasp_width_m=profile.max_grasp_width_m,
+                    fit_clearance_m=profile.fit_clearance_m,
                     robot_description=profile.robot_description or "Franka",
                     picking_position=request.picking_position,
                     end_effector_initial_height=request.end_effector_initial_height,
@@ -650,6 +652,10 @@ def _parse_pick_place_demo_status(
     target_default = request.target_position if request else (0.0, 0.0, 0.0)
     initial_default = request.object_initial_position if request else (0.0, 0.0, 0.0)
     bbox = raw.get("object_bbox", {}) if isinstance(raw.get("object_bbox"), dict) else {}
+    diagnostics = dict(raw.get("diagnostics", {}))
+    fit_info = diagnostics.get("object_fit", {})
+    if not isinstance(fit_info, dict):
+        fit_info = {}
     return RobotFrankaPickPlaceDemoStatus(
         ok=bool(raw.get("ok", raw.get("status") != "failed")),
         status=str(raw.get("status", "idle")),
@@ -678,11 +684,32 @@ def _parse_pick_place_demo_status(
         object_bbox_size=tuple(
             float(v) for v in raw.get("object_bbox_size", bbox.get("size", (0.0, 0.0, 0.0)))
         ),  # type: ignore[arg-type]
+        object_fit_ok=bool(raw.get("object_fit_ok", fit_info.get("ok", True))),
+        object_fit_reason=(
+            str(raw.get("object_fit_reason", fit_info.get("reason")))
+            if raw.get("object_fit_reason", fit_info.get("reason")) is not None
+            else None
+        ),
+        object_fit_axis=(
+            str(raw.get("object_fit_axis", fit_info.get("axis")))
+            if raw.get("object_fit_axis", fit_info.get("axis")) is not None
+            else None
+        ),
+        object_fit_limit_m=(
+            float(raw.get("object_fit_limit_m", fit_info.get("limit_m")))
+            if raw.get("object_fit_limit_m", fit_info.get("limit_m")) is not None
+            else None
+        ),
+        object_fit_measured_m=(
+            float(raw.get("object_fit_measured_m", fit_info.get("measured_m")))
+            if raw.get("object_fit_measured_m", fit_info.get("measured_m")) is not None
+            else None
+        ),
         picking_position=tuple(
             float(v) for v in raw.get("picking_position", initial_default)
         ),  # type: ignore[arg-type]
         end_effector_initial_height=float(raw.get("end_effector_initial_height", 0.0)),
-        diagnostics=dict(raw.get("diagnostics", {})),
+        diagnostics=diagnostics,
         profile_name=(
             str(raw.get("profile_name"))
             if raw.get("profile_name") is not None
@@ -733,6 +760,11 @@ def _with_profile_status(
         max_lift_delta=status.max_lift_delta,
         object_bbox_center=status.object_bbox_center,
         object_bbox_size=status.object_bbox_size,
+        object_fit_ok=status.object_fit_ok,
+        object_fit_reason=status.object_fit_reason,
+        object_fit_axis=status.object_fit_axis,
+        object_fit_limit_m=status.object_fit_limit_m,
+        object_fit_measured_m=status.object_fit_measured_m,
         picking_position=status.picking_position,
         end_effector_initial_height=status.end_effector_initial_height,
         diagnostics=status.diagnostics,
@@ -742,6 +774,13 @@ def _with_profile_status(
         controller_strategy=getattr(profile, "controller_strategy", None),
         last_error=status.last_error,
     )
+
+
+def _uses_franka_pick_place_adapter(profile: object) -> bool:
+    return getattr(profile, "controller_strategy", None) in {
+        "official_franka_pick_place",
+        "same_family_franka_candidate",
+    }
 
 
 def _unsupported_pick_place_demo_status(
@@ -769,6 +808,11 @@ def _unsupported_pick_place_demo_status(
         max_lift_delta=0.0,
         object_bbox_center=request.object_initial_position,
         object_bbox_size=(0.0, 0.0, 0.0),
+        object_fit_ok=False,
+        object_fit_reason="Profile has no validated pick/place fit metadata.",
+        object_fit_axis=None,
+        object_fit_limit_m=None,
+        object_fit_measured_m=None,
         picking_position=request.picking_position or request.object_initial_position,
         end_effector_initial_height=request.end_effector_initial_height or 0.0,
         diagnostics={

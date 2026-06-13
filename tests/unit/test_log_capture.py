@@ -133,6 +133,13 @@ def test_clear_empties_buffer():
     assert svc.size() == 0
 
 
+def test_is_running_reports_hook_state():
+    svc = LogCaptureService()
+    assert svc.is_running() is False
+    svc._handle = object()
+    assert svc.is_running() is True
+
+
 def test_start_is_idempotent():
     """Double-start must be a no-op; we do not have carb in this env, so
     the `start()` path should silently tolerate the import failure."""

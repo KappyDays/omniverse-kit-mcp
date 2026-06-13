@@ -148,10 +148,12 @@ class IsaacRestClient:
         since_ms: int | None = None,
         level: str = "INFO",
         limit: int = 1000,
+        stop_after_capture: bool = False,
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             "level": level,
             "limit": str(limit),
+            "stop_after_capture": str(bool(stop_after_capture)).lower(),
         }
         if ext_id is not None:
             params["ext_id"] = ext_id

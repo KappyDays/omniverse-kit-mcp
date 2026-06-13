@@ -26,6 +26,8 @@ def _profile(
     support_status: str,
     support_reason: str,
     evidence: tuple[str, ...],
+    max_grasp_width_m: float | None = None,
+    fit_clearance_m: float = 0.005,
 ) -> RobotArmProfile:
     return RobotArmProfile(
         profile_name=profile_name,
@@ -41,6 +43,8 @@ def _profile(
         support_status=support_status,
         support_reason=support_reason,
         evidence=evidence,
+        max_grasp_width_m=max_grasp_width_m,
+        fit_clearance_m=fit_clearance_m,
     )
 
 
@@ -71,6 +75,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
                 "robot_install_franka_pick_place_playback_demo",
                 "isaacsim.robot.manipulators.examples.franka.controllers.pick_place_controller",
             ),
+            max_grasp_width_m=0.08,
         ),
         _profile(
             "franka_fr3",
@@ -86,6 +91,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "Isaac Sim ships an FR3 Lula motion-policy config and a Franka-family gripper, but this repo has not completed live pick/place proof for FR3.",
             ("live asset_list", "policy_map.json", "load_supported_motion_policy_config"),
+            max_grasp_width_m=0.08,
         ),
         _profile(
             "factory_franka",
@@ -101,6 +107,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "The asset is a Franka-family manipulator with compatible motion-policy data, but it lacks live bbox-backed pick/place evidence in this repo.",
             ("live asset_list", "policy_map.json"),
+            max_grasp_width_m=0.08,
         ),
         _profile(
             "ur3",
@@ -353,6 +360,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "The mobile manipulator embeds a Franka arm/gripper pair, but the combined base+arm asset has not been validated against table-to-table pick/place checks.",
             ("docs asset inventory", "policy_map.json"),
+            max_grasp_width_m=0.08,
         ),
         _profile(
             "ridgeback_ur5",

@@ -148,6 +148,8 @@ class RobotArmProfile:
     support_status: str
     support_reason: str
     evidence: tuple[str, ...]
+    max_grasp_width_m: float | None = None
+    fit_clearance_m: float = 0.005
 
 
 @dataclass(slots=True, frozen=True)
@@ -222,9 +224,11 @@ class RobotFrankaPickPlaceDemoRequest:
     object_prim_path: str = "/World/PickCube"
     target_position: tuple[float, float, float] = (0.45, -0.35, 0.02575)
     object_initial_position: tuple[float, float, float] = (0.3, 0.35, 0.02575)
-    object_size: float = 0.0515
+    object_size: float = 0.04
     object_asset_url: str | None = None
     grid_asset_url: str | None = None
+    max_grasp_width_m: float | None = 0.08
+    fit_clearance_m: float = 0.005
     robot_description: str = "Franka"
     picking_position: tuple[float, float, float] | None = None
     end_effector_initial_height: float | None = None
@@ -247,7 +251,7 @@ class RobotPickPlaceDemoRequest:
     object_prim_path: str = "/World/PickCube"
     target_position: tuple[float, float, float] = (0.45, -0.35, 0.02575)
     object_initial_position: tuple[float, float, float] = (0.3, 0.35, 0.02575)
-    object_size: float = 0.0515
+    object_size: float = 0.04
     object_asset_url: str | None = None
     grid_asset_url: str | None = None
     picking_position: tuple[float, float, float] | None = None
@@ -281,6 +285,11 @@ class RobotFrankaPickPlaceDemoStatus:
     max_lift_delta: float
     object_bbox_center: tuple[float, float, float]
     object_bbox_size: tuple[float, float, float]
+    object_fit_ok: bool
+    object_fit_reason: str | None
+    object_fit_axis: str | None
+    object_fit_limit_m: float | None
+    object_fit_measured_m: float | None
     picking_position: tuple[float, float, float]
     end_effector_initial_height: float
     diagnostics: dict[str, Any]

@@ -23,6 +23,12 @@ class _OfficialFrankaPickPlaceClasses:
     single_articulation: Any
 
 
+@dataclass(frozen=True)
+class _FrankaParallelGripperSpec:
+    end_effector_prim_name: str
+    joint_prim_names: tuple[str, str]
+
+
 @dataclass
 class _FrankaPickPlaceDemoState:
     request: dict[str, Any]
@@ -30,6 +36,7 @@ class _FrankaPickPlaceDemoState:
     gripper: Any
     controller: Any
     subscription: Any
+    robot_description: str
     robot_prim_path: str
     object_prim_path: str
     target_position: list[float]
@@ -521,8 +528,10 @@ class RobotService:
         target_position = [float(v) for v in request["target_position"]]
         if len(target_position) != 3:
             raise ValueError("target_position must be [x, y, z]")
-        if str(request.get("robot_description", "Franka")).lower() != "franka":
-            raise ValueError("robot/franka_pick_place currently supports robot_description='Franka' only")
+        _assert_franka_family_pick_place_robot(
+            request.get("robot_description", "Franka"),
+            endpoint="robot/franka_pick_place",
+        )
 
         max_steps = int(request.get("max_steps", 1800))
         position_tolerance = float(request.get("position_tolerance", 0.05))
@@ -558,9 +567,11 @@ class RobotService:
         robot = classes.single_articulation(robot_prim_path)
         await _ensure_articulation_ready(robot, robot_prim_path, max_frames=180)
 
+        robot_description = str(request.get("robot_description", "Franka"))
+        gripper_spec = _franka_parallel_gripper_spec(robot_description)
         gripper = classes.parallel_gripper(
-            end_effector_prim_path=f"{robot_prim_path}/panda_rightfinger",
-            joint_prim_names=["panda_finger_joint1", "panda_finger_joint2"],
+            end_effector_prim_path=f"{robot_prim_path}/{gripper_spec.end_effector_prim_name}",
+            joint_prim_names=list(gripper_spec.joint_prim_names),
             joint_opened_positions=np.array([0.05, 0.05], dtype=np.float32),
             joint_closed_positions=np.array([0.0, 0.0], dtype=np.float32),
             action_deltas=np.array([0.05, 0.05], dtype=np.float32),
@@ -606,12 +617,13 @@ class RobotService:
         diagnostics["end_effector_initial_height"] = resolved_hover_height
         diagnostics["end_effector_initial_height_source"] = hover_height_source
 
-        controller = classes.pick_place_controller(
-            name="mcp_official_franka_pick_place",
+        controller = _create_franka_pick_place_controller(
+            classes=classes,
+            robot=robot,
             gripper=gripper,
-            robot_articulation=robot,
-            end_effector_initial_height=resolved_hover_height,
+            hover_height=resolved_hover_height,
             events_dt=events_dt,
+            robot_description=robot_description,
         )
 
         app = omni.kit.app.get_app()
@@ -742,8 +754,10 @@ class RobotService:
             raise ValueError("target_position must be [x, y, z]")
         if len(object_initial_position) != 3:
             raise ValueError("object_initial_position must be [x, y, z]")
-        if str(request.get("robot_description", "Franka")).lower() != "franka":
-            raise ValueError("franka_pick_place_demo supports robot_description='Franka' only")
+        _assert_franka_family_pick_place_robot(
+            request.get("robot_description", "Franka"),
+            endpoint="franka_pick_place_demo",
+        )
 
         self._clear_pick_place_demo_subscription()
         _assert_articulation(robot_prim_path)
@@ -751,7 +765,7 @@ class RobotService:
             _ensure_franka_pick_place_demo_scene(
                 object_prim_path=object_prim_path,
                 object_initial_position=object_initial_position,
-                object_size=float(request.get("object_size", 0.0515)),
+                object_size=float(request.get("object_size", 0.04)),
                 object_asset_url=request.get("object_asset_url"),
                 grid_asset_url=request.get("grid_asset_url"),
             )
@@ -767,7 +781,13 @@ class RobotService:
             raise ValueError("Robot joint positions unavailable while installing demo")
         initial_joints = np.asarray(initial_joints, dtype=np.float32).copy()
 
-        gripper = _create_franka_parallel_gripper(classes, robot, robot_prim_path)
+        robot_description = str(request.get("robot_description", "Franka"))
+        gripper = _create_franka_parallel_gripper(
+            classes,
+            robot,
+            robot_prim_path,
+            robot_description=robot_description,
+        )
         _open_franka_gripper(robot, gripper)
 
         _set_prim_world_translate(object_prim_path, object_initial_position)
@@ -819,6 +839,7 @@ class RobotService:
             gripper=gripper,
             hover_height=resolved_hover_height,
             events_dt=events_dt,
+            robot_description=robot_description,
         )
 
         app = omni.kit.app.get_app()
@@ -841,6 +862,7 @@ class RobotService:
             gripper=gripper,
             controller=controller,
             subscription=subscription,
+            robot_description=robot_description,
             robot_prim_path=robot_prim_path,
             object_prim_path=object_prim_path,
             target_position=target_position,
@@ -1418,12 +1440,11 @@ def _ensure_franka_pick_place_demo_scene(
     _ensure_parent_xform(stage, object_prim_path)
     prim = stage.GetPrimAtPath(object_prim_path)
     if not prim.IsValid():
-        if not object_asset_url:
-            raise ValueError("object_asset_url is required when create_demo_scene=True")
-        obj = UsdGeom.Xform.Define(stage, Sdf.Path(object_prim_path))
-        prim = obj.GetPrim()
-        prim.GetReferences().AddReference(str(object_asset_url))
-        _set_prim_uniform_scale(prim, float(object_size))
+        if object_asset_url:
+            prim = UsdGeom.Xform.Define(stage, Sdf.Path(object_prim_path)).GetPrim()
+            prim.GetReferences().AddReference(str(object_asset_url))
+        else:
+            prim = _define_pick_place_demo_cube(stage, object_prim_path, object_size)
     _set_prim_world_translate(object_prim_path, object_initial_position)
     if not prim.HasAPI(UsdPhysics.RigidBodyAPI):
         body = UsdPhysics.RigidBodyAPI.Apply(prim)
@@ -1436,19 +1457,32 @@ def _ensure_franka_pick_place_demo_scene(
     prim.GetAttribute("physics:angularVelocity").Set(Gf.Vec3f(0.0, 0.0, 0.0)) if prim.GetAttribute("physics:angularVelocity").IsValid() else prim.CreateAttribute("physics:angularVelocity", Sdf.ValueTypeNames.Vector3f).Set(Gf.Vec3f(0.0, 0.0, 0.0))
 
 
+def _define_pick_place_demo_cube(stage: Any, prim_path: str, object_size: float) -> Any:
+    """Create a small rigid cube that fits the default Franka gripper opening."""
+    from pxr import UsdGeom
+
+    cube = UsdGeom.Cube.Define(stage, prim_path)
+    cube.CreateSizeAttr(float(object_size))
+    return cube.GetPrim()
+
+
 def _create_franka_parallel_gripper(
     classes: _OfficialFrankaPickPlaceClasses,
     robot: Any,
     robot_prim_path: str,
+    *,
+    robot_description: str = "Franka",
 ) -> Any:
     import numpy as np
 
+    gripper_spec = _franka_parallel_gripper_spec(robot_description)
+    use_absolute_targets = str(robot_description or "").strip().lower() == "fr3"
     gripper = classes.parallel_gripper(
-        end_effector_prim_path=f"{robot_prim_path}/panda_rightfinger",
-        joint_prim_names=["panda_finger_joint1", "panda_finger_joint2"],
+        end_effector_prim_path=f"{robot_prim_path}/{gripper_spec.end_effector_prim_name}",
+        joint_prim_names=list(gripper_spec.joint_prim_names),
         joint_opened_positions=np.array([0.05, 0.05], dtype=np.float32),
         joint_closed_positions=np.array([0.0, 0.0], dtype=np.float32),
-        action_deltas=np.array([0.05, 0.05], dtype=np.float32),
+        action_deltas=None if use_absolute_targets else np.array([0.05, 0.05], dtype=np.float32),
     )
     gripper.initialize(
         articulation_apply_action_func=robot.apply_action,
@@ -1466,13 +1500,63 @@ def _create_franka_pick_place_controller(
     gripper: Any,
     hover_height: float,
     events_dt: list[float] | None,
+    robot_description: str = "Franka",
 ) -> Any:
+    if str(robot_description or "").strip().lower() == "fr3":
+        return _create_fr3_pick_place_controller(
+            name="mcp_gui_franka_pick_place_demo",
+            robot=robot,
+            gripper=gripper,
+            hover_height=hover_height,
+            events_dt=events_dt,
+            robot_description=robot_description,
+        )
     return classes.pick_place_controller(
         name="mcp_gui_franka_pick_place_demo",
         gripper=gripper,
         robot_articulation=robot,
         end_effector_initial_height=float(hover_height),
         events_dt=events_dt,
+    )
+
+
+def _franka_pick_place_default_events_dt() -> list[float]:
+    return [0.008, 0.005, 1.0, 0.1, 0.05, 0.05, 0.0025, 1.0, 0.008, 0.08]
+
+
+def _create_fr3_pick_place_controller(
+    *,
+    name: str,
+    robot: Any,
+    gripper: Any,
+    hover_height: float,
+    events_dt: list[float] | None,
+    robot_description: str,
+) -> Any:
+    import isaacsim.robot.manipulators.controllers as manipulators_controllers
+    import isaacsim.robot_motion.motion_generation as mg
+
+    _, interface_config_loader, _ = _resolve_lula_modules()
+    if interface_config_loader is None:
+        raise ValueError("FR3 pick/place requires Isaac Sim Lula/RMPflow config loader")
+    cfg = _resolve_lula_config(interface_config_loader, robot_description)
+    rmp_flow = mg.lula.motion_policies.RmpFlow(**cfg)
+    articulation_rmp = mg.ArticulationMotionPolicy(robot, rmp_flow, 1.0 / 60.0)
+    cspace_controller = mg.MotionPolicyController(
+        name=name + "_fr3_cspace_controller",
+        articulation_motion_policy=articulation_rmp,
+    )
+    default_position, default_orientation = robot.get_world_pose()
+    cspace_controller.get_motion_policy().set_robot_base_pose(
+        robot_position=default_position,
+        robot_orientation=default_orientation,
+    )
+    return manipulators_controllers.PickPlaceController(
+        name=name,
+        cspace_controller=cspace_controller,
+        gripper=gripper,
+        end_effector_initial_height=float(hover_height),
+        events_dt=events_dt if events_dt is not None else _franka_pick_place_default_events_dt(),
     )
 
 
@@ -1549,6 +1633,7 @@ def _reset_franka_pick_place_demo_state(state: _FrankaPickPlaceDemoState) -> Non
             classes,
             state.robot,
             state.robot_prim_path,
+            robot_description=state.robot_description,
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("demo reset wrapper recreation failed; reusing previous wrapper: %s", exc)
@@ -1560,6 +1645,7 @@ def _reset_franka_pick_place_demo_state(state: _FrankaPickPlaceDemoState) -> Non
         gripper=state.gripper,
         hover_height=state.end_effector_initial_height,
         events_dt=events_dt,
+        robot_description=state.robot_description,
     )
     bbox = _compute_world_bbox(state.object_prim_path)
     state.initial_object_position = list(bbox["center"])
@@ -1602,6 +1688,7 @@ def _tick_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
 
     try:
         if state.steps >= state.max_steps:
+            _refresh_franka_pick_place_demo_metrics(state)
             state.status = "failed"
             state.last_error = (
                 "Official PickPlaceController did not finish within "
@@ -1653,15 +1740,8 @@ def _tick_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
 
 
 def _finish_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
-    bbox = _compute_world_bbox(state.object_prim_path)
-    final_center = list(bbox["center"])
-    initial_center = state.initial_object_position or state.object_initial_position
+    _refresh_franka_pick_place_demo_metrics(state)
     state.done = True
-    state.final_object_position = final_center
-    state.final_distance = _distance3(final_center, state.target_position)
-    state.max_lift_delta = state.max_center_z - float(initial_center[2])
-    state.lifted = state.max_lift_delta >= state.lift_height_tolerance
-    state.placed = state.final_distance <= state.position_tolerance
     if state.lifted and state.placed:
         state.status = "done"
         state.last_error = None
@@ -1681,9 +1761,26 @@ def _finish_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
         )
 
 
+def _refresh_franka_pick_place_demo_metrics(state: _FrankaPickPlaceDemoState) -> None:
+    bbox = _compute_world_bbox(state.object_prim_path)
+    final_center = list(bbox["center"])
+    initial_center = state.initial_object_position or state.object_initial_position
+    state.final_object_position = final_center
+    state.final_distance = _distance3(final_center, state.target_position)
+    state.max_lift_delta = state.max_center_z - float(initial_center[2])
+    state.lifted = state.max_lift_delta >= state.lift_height_tolerance
+    state.placed = state.final_distance <= state.position_tolerance
+
+
 def _franka_pick_place_demo_status(state: _FrankaPickPlaceDemoState) -> dict[str, Any]:
     bbox = _compute_world_bbox(state.object_prim_path)
     bbox_center = list(bbox["center"])
+    bbox_size = [float(v) for v in bbox["size"]]
+    object_fit = _evaluate_pick_object_fit(
+        bbox_size,
+        max_grasp_width_m=state.request.get("max_grasp_width_m"),
+        fit_clearance_m=state.request.get("fit_clearance_m", 0.005),
+    )
     final_position = state.final_object_position or bbox_center
     initial_position = state.initial_object_position or state.object_initial_position
     final_distance = (
@@ -1708,11 +1805,60 @@ def _franka_pick_place_demo_status(state: _FrankaPickPlaceDemoState) -> dict[str
         "final_distance": float(final_distance),
         "max_lift_delta": float(state.max_lift_delta),
         "object_bbox_center": [float(v) for v in bbox_center],
-        "object_bbox_size": [float(v) for v in bbox["size"]],
+        "object_bbox_size": bbox_size,
+        "object_fit_ok": bool(object_fit["ok"]),
+        "object_fit_reason": object_fit["reason"],
+        "object_fit_axis": object_fit["axis"],
+        "object_fit_limit_m": object_fit["limit_m"],
+        "object_fit_measured_m": object_fit["measured_m"],
         "picking_position": [float(v) for v in state.picking_position],
         "end_effector_initial_height": float(state.end_effector_initial_height),
-        "diagnostics": dict(state.diagnostics),
+        "diagnostics": {**dict(state.diagnostics), "object_fit": object_fit},
         "last_error": state.last_error,
+    }
+
+
+def _evaluate_pick_object_fit(
+    object_bbox_size: list[float],
+    *,
+    max_grasp_width_m: object,
+    fit_clearance_m: object,
+) -> dict[str, Any]:
+    try:
+        max_width = float(max_grasp_width_m) if max_grasp_width_m is not None else None
+    except (TypeError, ValueError):
+        max_width = None
+    try:
+        clearance = max(0.0, float(fit_clearance_m))
+    except (TypeError, ValueError):
+        clearance = 0.0
+
+    if max_width is None:
+        return {
+            "ok": True,
+            "reason": "No max grasp width metadata is available for this profile.",
+            "axis": None,
+            "limit_m": None,
+            "measured_m": None,
+        }
+
+    xy_sizes = [
+        ("x", float(object_bbox_size[0]) if len(object_bbox_size) > 0 else 0.0),
+        ("y", float(object_bbox_size[1]) if len(object_bbox_size) > 1 else 0.0),
+    ]
+    axis, measured = max(xy_sizes, key=lambda item: item[1])
+    limit = max(0.0, max_width - clearance)
+    ok = measured <= limit
+    return {
+        "ok": bool(ok),
+        "reason": (
+            "Object bbox fits within gripper opening."
+            if ok
+            else "Object bbox exceeds gripper opening; collect evidence and do not run play validation."
+        ),
+        "axis": axis,
+        "limit_m": float(limit),
+        "measured_m": float(measured),
     }
 
 
@@ -2052,6 +2198,30 @@ def _lula_robot_name_candidates(robot_description: str) -> tuple[str, ...]:
         if candidate and candidate not in unique:
             unique.append(candidate)
     return tuple(unique or ["Franka"])
+
+
+def _assert_franka_family_pick_place_robot(
+    robot_description: object,
+    *,
+    endpoint: str,
+) -> None:
+    normalized = str(robot_description or "").strip().lower()
+    if normalized in {"franka", "fr3"}:
+        return
+    raise ValueError(f"{endpoint} supports robot_description in ('Franka', 'FR3') only")
+
+
+def _franka_parallel_gripper_spec(robot_description: object) -> _FrankaParallelGripperSpec:
+    normalized = str(robot_description or "").strip().lower()
+    if normalized == "fr3":
+        return _FrankaParallelGripperSpec(
+            end_effector_prim_name="fr3_rightfinger",
+            joint_prim_names=("fr3_finger_joint1", "fr3_finger_joint2"),
+        )
+    return _FrankaParallelGripperSpec(
+        end_effector_prim_name="panda_rightfinger",
+        joint_prim_names=("panda_finger_joint1", "panda_finger_joint2"),
+    )
 
 
 def _assert_articulation(prim_path: str) -> None:

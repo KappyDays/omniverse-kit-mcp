@@ -195,6 +195,7 @@ async def test_capture_logs_default(ext_module, mock_client, meta):
     assert logs.count == 1
     assert logs.truncated is False
     assert logs.level_filter == "INFO"
+    assert logs.capture_running is False
     entry = logs.entries[0]
     assert entry.level == "INFO"
     assert entry.source == "omni.mycompany.ui_demo"
@@ -204,7 +205,12 @@ async def test_capture_logs_default(ext_module, mock_client, meta):
 @pytest.mark.asyncio
 async def test_capture_logs_filter_passthrough(ext_module, mock_client, meta):
     await ext_module.capture_logs(
-        meta, ext_id="omni.mycompany", since_ms=1_700_000_001_000, level="ERROR", limit=10,
+        meta,
+        ext_id="omni.mycompany",
+        since_ms=1_700_000_001_000,
+        level="ERROR",
+        limit=10,
+        stop_after_capture=True,
     )
     name, payload = mock_client.calls[-1]
     assert name == "extension_logs"
@@ -213,6 +219,7 @@ async def test_capture_logs_filter_passthrough(ext_module, mock_client, meta):
         "since_ms": 1_700_000_001_000,
         "level": "ERROR",
         "limit": 10,
+        "stop_after_capture": True,
     }
 
 
@@ -232,7 +239,7 @@ async def test_capture_logs_error(ext_module, mock_client, meta):
 async def test_clear_logs_returns_count(ext_module, mock_client, meta):
     result = await ext_module.clear_logs(meta)
     assert result.ok is True
-    assert result.data == {"ok": True, "removed": 42}
+    assert result.data == {"ok": True, "removed": 42, "capture_running": True}
     name, _payload = mock_client.calls[-1]
     assert name == "extension_clear_logs"
 

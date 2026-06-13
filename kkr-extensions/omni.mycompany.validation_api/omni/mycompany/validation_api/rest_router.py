@@ -1074,14 +1074,20 @@ async def extension_logs(
     since_ms: int | None = Query(None, description="Unix ms; return only entries with ts_ms >= since_ms."),
     level: str = Query("INFO", description="VERBOSE|INFO|WARN|ERROR|FATAL|ALL"),
     limit: int = Query(1000, ge=1, le=10000),
+    stop_after_capture: bool = Query(False, description="Stop the request-scoped carb log hook after querying."),
 ) -> Any:
     try:
-        return _log_capture.query(
+        result = _log_capture.query(
             since_ms=since_ms,
             level=level,
             source_filter=ext_id,
             limit=limit,
         )
+        result["capture_running"] = _log_capture.is_running()
+        if stop_after_capture:
+            _log_capture.stop()
+            result["capture_running"] = False
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -1092,8 +1098,13 @@ async def extension_logs(
 @router.post("/extension/logs/clear")
 async def extension_logs_clear() -> Any:
     try:
+        _log_capture.start()
         removed = _log_capture.clear()
-        return {"ok": True, "removed": int(removed)}
+        return {
+            "ok": True,
+            "removed": int(removed),
+            "capture_running": _log_capture.is_running(),
+        }
     except Exception as exc:
         logger.error("extension/logs/clear failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc

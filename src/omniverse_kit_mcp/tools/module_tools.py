@@ -196,7 +196,7 @@ def register_module_tools(
 
     @mcp.tool()
     async def kit_app_restart() -> str:
-        """Restart the Kit application (stop → clear __pycache__ → start); use after modifying Extension code."""
+        """Restart Kit (stop → clear __pycache__ → start). Use only for crash/hang recovery, validation_api self-code changes, extension.toml/native dependency changes, failed extension_reload/marker checks, or explicit fresh-process requests; otherwise prefer kit_app_start attach and extension_reload."""
         result = await process.restart()
         return json.dumps(result, indent=2)
 
@@ -776,7 +776,7 @@ def register_module_tools(
         object_prim_path: str = "/World/PickCube",
         target_position: list[float] | None = None,
         object_initial_position: list[float] | None = None,
-        object_size: float = 0.0515,
+        object_size: float = 0.04,
         object_asset_url: str | None = None,
         grid_asset_url: str | None = None,
         max_steps: int = 1800,
@@ -845,7 +845,7 @@ def register_module_tools(
         object_prim_path: str = "/World/PickCube",
         target_position: list[float] | None = None,
         object_initial_position: list[float] | None = None,
-        object_size: float = 0.0515,
+        object_size: float = 0.04,
         object_asset_url: str | None = None,
         grid_asset_url: str | None = None,
         max_steps: int = 1800,
@@ -859,7 +859,7 @@ def register_module_tools(
         create_demo_scene: bool = True,
         reset_on_play: bool = True,
     ) -> str:
-        """Install a profile-selected pick/place playback demo. franka_panda routes to the validated official Franka adapter; candidate/IK/profile-only arms return status='unsupported' until live proof exists."""
+        """Install a profile-selected pick/place playback demo. franka_panda is validated; Franka-family candidates may run for live proof but remain candidate_pick_place; other unsupported arms return status='unsupported'."""
         meta = make_meta(ModuleName.ROBOT)
         target = target_position or [0.45, -0.35, 0.02575]
         initial = object_initial_position or [0.3, 0.35, 0.02575]
@@ -1309,17 +1309,23 @@ def register_module_tools(
         since_ms: int | None = None,
         level: str = "INFO",
         limit: int = 1000,
+        stop_after_capture: bool = False,
     ) -> str:
-        """Peek Extension carb.log ring buffer (maxlen 10000, does not drain). Filters: ext_id substring, since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL."""
+        """Peek Extension carb.log ring buffer (maxlen 10000, does not drain). Filters: ext_id substring, since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL. Use extension_clear_logs before risky live work to start a request-scoped capture window; set stop_after_capture=True after collecting failure logs."""
         meta = make_meta(ModuleName.EXTENSION)
         result = await extension.capture_logs(
-            meta, ext_id=ext_id, since_ms=since_ms, level=level, limit=limit,
+            meta,
+            ext_id=ext_id,
+            since_ms=since_ms,
+            level=level,
+            limit=limit,
+            stop_after_capture=stop_after_capture,
         )
         return _serialize(result)
 
     @mcp.tool()
     async def extension_clear_logs() -> str:
-        """Empty the carb log ring buffer; returns removed count. Subsequent extension_capture_logs calls will only see entries logged after this point."""
+        """Start a request-scoped carb Console log capture window and empty the ring buffer; subsequent extension_capture_logs calls only see entries logged after this point."""
         meta = make_meta(ModuleName.EXTENSION)
         result = await extension.clear_logs(meta)
         return _serialize(result)

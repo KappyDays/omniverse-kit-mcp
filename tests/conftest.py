@@ -508,7 +508,7 @@ class MockIsaacRestClient:
                 "final_object_position": request.get("target_position", [0.0, 0.0, 0.0]),
                 "final_distance": 0.01,
                 "max_lift_delta": 0.08,
-                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "object_bbox_size": [0.04, 0.04, 0.04],
                 "picking_position": request.get("picking_position") or [0.0, 0.0, 0.0],
                 "picking_position_source": (
                     "explicit" if request.get("picking_position") is not None else "bbox_center"
@@ -552,10 +552,25 @@ class MockIsaacRestClient:
                 "final_distance": 0.7,
                 "max_lift_delta": 0.0,
                 "object_bbox_center": request.get("object_initial_position", [0.3, 0.35, 0.02575]),
-                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "object_bbox_size": [0.04, 0.04, 0.04],
+                "object_fit_ok": True,
+                "object_fit_reason": "Object bbox fits within gripper opening.",
+                "object_fit_axis": "x",
+                "object_fit_limit_m": 0.075,
+                "object_fit_measured_m": 0.04,
                 "picking_position": request.get("picking_position") or request.get("object_initial_position", [0.3, 0.35, 0.02575]),
                 "end_effector_initial_height": request.get("end_effector_initial_height") or 0.3,
-                "diagnostics": {"warnings": [], "hints": []},
+                "diagnostics": {
+                    "warnings": [],
+                    "hints": [],
+                    "object_fit": {
+                        "ok": True,
+                        "reason": "Object bbox fits within gripper opening.",
+                        "axis": "x",
+                        "limit_m": 0.075,
+                        "measured_m": 0.04,
+                    },
+                },
                 "last_error": None,
             },
         )
@@ -581,10 +596,23 @@ class MockIsaacRestClient:
                 "final_distance": 0.7,
                 "max_lift_delta": 0.0,
                 "object_bbox_center": [0.3, 0.35, 0.02575],
-                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "object_bbox_size": [0.04, 0.04, 0.04],
+                "object_fit_ok": True,
+                "object_fit_reason": "Object bbox fits within gripper opening.",
+                "object_fit_axis": "x",
+                "object_fit_limit_m": 0.075,
+                "object_fit_measured_m": 0.04,
                 "picking_position": [0.3, 0.35, 0.02575],
                 "end_effector_initial_height": 0.3,
-                "diagnostics": {},
+                "diagnostics": {
+                    "object_fit": {
+                        "ok": True,
+                        "reason": "Object bbox fits within gripper opening.",
+                        "axis": "x",
+                        "limit_m": 0.075,
+                        "measured_m": 0.04,
+                    },
+                },
                 "last_error": None,
             },
         )
@@ -610,10 +638,23 @@ class MockIsaacRestClient:
                 "final_distance": 0.01,
                 "max_lift_delta": 0.08,
                 "object_bbox_center": [0.45, -0.35, 0.02575],
-                "object_bbox_size": [0.0515, 0.0515, 0.0515],
+                "object_bbox_size": [0.04, 0.04, 0.04],
+                "object_fit_ok": True,
+                "object_fit_reason": "Object bbox fits within gripper opening.",
+                "object_fit_axis": "x",
+                "object_fit_limit_m": 0.075,
+                "object_fit_measured_m": 0.04,
                 "picking_position": [0.3, 0.35, 0.02575],
                 "end_effector_initial_height": 0.3,
-                "diagnostics": {},
+                "diagnostics": {
+                    "object_fit": {
+                        "ok": True,
+                        "reason": "Object bbox fits within gripper opening.",
+                        "axis": "x",
+                        "limit_m": 0.075,
+                        "measured_m": 0.04,
+                    },
+                },
                 "last_error": None,
             },
         )
@@ -915,7 +956,10 @@ class MockIsaacRestClient:
 
     async def extension_clear_logs(self) -> dict:
         self.calls.append(("extension_clear_logs", {}))
-        return self.responses.get("extension_clear_logs", {"ok": True, "removed": 42})
+        return self.responses.get(
+            "extension_clear_logs",
+            {"ok": True, "removed": 42, "capture_running": True},
+        )
 
     async def window_capture(self, request: dict) -> dict:
         self.calls.append(("window_capture", request))
@@ -1493,6 +1537,7 @@ class MockIsaacRestClient:
         since_ms: int | None = None,
         level: str = "INFO",
         limit: int = 1000,
+        stop_after_capture: bool = False,
     ) -> dict:
         self.calls.append(
             (
@@ -1502,6 +1547,7 @@ class MockIsaacRestClient:
                     "since_ms": since_ms,
                     "level": level,
                     "limit": limit,
+                    "stop_after_capture": stop_after_capture,
                 },
             )
         )
@@ -1525,6 +1571,7 @@ class MockIsaacRestClient:
                 "level_filter": level,
                 "since_ms": since_ms,
                 "source_filter": ext_id,
+                "capture_running": False,
             },
         )
 
