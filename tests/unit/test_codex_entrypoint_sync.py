@@ -1,8 +1,8 @@
 """Codex entrypoint drift guards.
 
-- Group A: AGENTS.md ↔ root CLAUDE.md / invariants 정합
-- Group B: .codex/config.toml ↔ .mcp.json 미러 + no legacy launcher
-- Group C: shared docs 에 Claude-only 표현 재도입 방지
+- Group A: AGENTS.md ↔ root CLAUDE.md / invariants consistency
+- Group B: .codex/config.toml ↔ .mcp.json mirror + no legacy launcher
+- Group C: prevent reintroducing Claude-only phrasing into shared docs
 - Group D: AGENTS.md hard rules ↔ root CLAUDE.md key phrase sync
 """
 import json
@@ -25,30 +25,30 @@ def _plain_agents_text() -> str:
 
 
 def test_agents_md_references_root_claude_md():
-    """t1: AGENTS.md 가 root CLAUDE.md 를 진입점으로 참조."""
+    """t1: AGENTS.md references root CLAUDE.md as the entrypoint."""
     text = _agents_text()
     assert "Read root `CLAUDE.md`" in text or "Read root CLAUDE.md" in text
 
 
 def test_agents_md_references_all_invariants():
-    """t2: AGENTS.md 가 모든 docs/invariants/*.md 파일을 reference (drift 가드)."""
+    """t2: AGENTS.md references every docs/invariants/*.md file (drift guard)."""
     text = _agents_text()
-    # 디렉토리 통합 reference 인정
+    # Directory-wide references are accepted.
     if "docs/invariants/" in text or "docs\\invariants\\" in text:
         return
     missing = [p.name for p in INVARIANTS if p.name not in text]
-    assert not missing, f"AGENTS.md 가 빠뜨린 invariants: {missing}"
+    assert not missing, f"AGENTS.md missing invariants: {missing}"
 
 
 def test_agents_md_declares_codex_adapter_not_canonical_copy():
-    """t7: AGENTS.md 는 Codex adapter 이고 CLAUDE.md hierarchy 가 canonical."""
+    """t7: AGENTS.md is a Codex adapter and the CLAUDE.md hierarchy is canonical."""
     text = _plain_agents_text()
     assert re.search(r"CLAUDE\.md[^.]*canonical", text, re.IGNORECASE)
     assert re.search(r"AGENTS\.md[^.]*(adapter|entrypoint)", text, re.IGNORECASE)
 
 
 def test_agents_md_requires_manual_claude_walk_before_editing():
-    """t8: nested CLAUDE.md 자동 로드 부재를 path walk 규칙으로 보완."""
+    """t8: path-walk rules compensate for lack of nested CLAUDE.md auto-loading."""
     text = _plain_agents_text()
     assert re.search(r"nested[^.]*CLAUDE\.md[^.]*not auto-loaded", text, re.IGNORECASE)
     assert re.search(r"repo root[^.]*target path", text, re.IGNORECASE)
@@ -59,7 +59,7 @@ def test_agents_md_references_pull_docs_and_runbooks():
     """t9: pull-doc table, invariants, runbooks are explicit entrypoint concepts."""
     text = _agents_text()
     required = [
-        "작업 전 필수 pull-doc",
+        "Required pull-docs before work",
         "docs/invariants/",
         "docs/runbooks/",
     ]
@@ -95,8 +95,7 @@ def test_agents_md_final_report_requires_doc_and_risk_details():
 
 
 def test_workspace_codex_configs_mirror_mcp_json():
-    """t3: 각 workspace 의 .codex/config.toml 의 MCP entry 가
-    같은 workspace 의 .mcp.json 의 entry 와 server name / args / env 1:1 일치."""
+    """t3: each workspace .codex/config.toml MCP entry mirrors its .mcp.json entry."""
     assert WORKSPACES, "no workspaces/*/instance-* directories found"
     for ws in WORKSPACES:
         mcp_json_path = ws / ".mcp.json"
@@ -124,7 +123,7 @@ def test_workspace_codex_configs_mirror_mcp_json():
 
 
 def test_no_legacy_launch_codex_bats():
-    """t4: Codex 진입은 workspace 폴더에서 직접 `codex`; launcher 재도입 금지."""
+    """t4: Codex starts directly from the workspace folder; legacy launchers stay absent."""
     assert WORKSPACES, "no workspaces/*/instance-* directories found"
     leftovers = [
         str(ws / "launch-codex.bat")
@@ -137,13 +136,13 @@ def test_no_legacy_launch_codex_bats():
 
 
 def test_no_claude_only_phrasing_in_shared_docs():
-    """t5: Shared docs 에 Claude-only 동사 결합 표현 재도입 방지."""
+    """t5: prevent reintroducing Claude-only verb phrases into shared docs."""
     deny_patterns = [
-        re.compile(r"Claude Code\s*재시작"),
-        re.compile(r"Claude Code\s*[가는]\s*(stdio|spawn|stdin|폴링|job_status)"),
-        re.compile(r"Claude Code\s*의\s*(stdio|stdin)"),
-        re.compile(r"Claude Code\s*UI에\s*표시"),
-        re.compile(r"Claude Code\s*와의\s*양방향"),
+        re.compile(r"Claude Code\s*restart"),
+        re.compile(r"Claude Code\s*(stdio|spawn|stdin|polling|job_status)"),
+        re.compile(r"Claude Code(?:'s)?\s*(stdio|stdin)"),
+        re.compile(r"displayed\s*in\s*Claude Code\s*UI", re.IGNORECASE),
+        re.compile(r"bidirectional\s*with\s*Claude Code", re.IGNORECASE),
     ]
     targets = [
         REPO / "CLAUDE.md",
@@ -161,11 +160,11 @@ def test_no_claude_only_phrasing_in_shared_docs():
             for m in pat.finditer(text):
                 line_no = text[: m.start()].count("\n") + 1
                 violations.append(f"{f.relative_to(REPO)}:L{line_no}: {m.group(0)!r}")
-    assert not violations, "Claude-only 표현 재도입:\n  " + "\n  ".join(violations)
+    assert not violations, "Claude-only phrasing reintroduced:\n  " + "\n  ".join(violations)
 
 
 def test_agents_md_hard_rules_match_root_claude_md_key_phrases():
-    """t6: AGENTS.md 의 Hard project rules 핵심 phrase 가 root CLAUDE.md 와 sync."""
+    """t6: AGENTS.md hard-rule key phrases stay synced with root CLAUDE.md."""
     agents = (REPO / "AGENTS.md").read_text(encoding="utf-8")
     root = (REPO / "CLAUDE.md").read_text(encoding="utf-8")
     key_phrases = [
@@ -181,5 +180,5 @@ def test_agents_md_hard_rules_match_root_claude_md_key_phrases():
     ]
     missing_in_agents = [p for p in key_phrases if p not in agents]
     missing_in_root = [p for p in key_phrases if p not in root]
-    assert not missing_in_agents, f"AGENTS.md 빠뜨린 key phrase: {missing_in_agents}"
-    assert not missing_in_root, f"root CLAUDE.md 빠뜨린 key phrase: {missing_in_root}"
+    assert not missing_in_agents, f"AGENTS.md missing key phrase: {missing_in_agents}"
+    assert not missing_in_root, f"root CLAUDE.md missing key phrase: {missing_in_root}"

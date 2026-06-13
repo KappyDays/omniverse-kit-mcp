@@ -19,7 +19,7 @@ INVENTORY_INDEX = PROJECT_ROOT / "docs" / "assets" / "isaac" / "asset_inventory.
 COMPOSER_ASSETS_DIR = PROJECT_ROOT / "docs" / "assets" / "composer"
 
 PREFIX_DECL_RE = re.compile(r"^`(\$\w+)`\s*=\s*`(https?://[^`]+)`", re.MULTILINE)
-ROOT_DECL_RE = re.compile(r"^루트:\s*`(\$\w+/[^`]+?)/?`", re.MULTILINE)
+ROOT_DECL_RE = re.compile(r"^Root:\s*`(\$\w+/[^`]+?)/?`", re.MULTILINE)
 
 
 def _is_index_file(md: Path) -> bool:
@@ -117,7 +117,7 @@ def test_no_file_protocol_urls(all_sub_md_files):
 
 
 def test_root_declaration_uses_known_prefix(all_sub_md_files):
-    """Each `루트:` declaration must use a prefix variable declared in the same file."""
+    """Each `Root:` declaration must use a prefix variable declared in the same file."""
     offenders = []
     for md in all_sub_md_files:
         text = md.read_text(encoding="utf-8")
@@ -127,6 +127,6 @@ def test_root_declaration_uses_known_prefix(all_sub_md_files):
             var = root_path.split("/", 1)[0]
             if var not in declared_vars:
                 offenders.append(
-                    f"{md.relative_to(PROJECT_ROOT)}: 루트 uses {var} but not declared"
+                    f"{md.relative_to(PROJECT_ROOT)}: Root uses {var} but not declared"
                 )
     assert not offenders, str(offenders)

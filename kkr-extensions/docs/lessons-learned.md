@@ -1,299 +1,281 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: Historical incident log — 사고 맥락 / 재현 증거 추적용. 영구 규칙은 docs/invariants/ 에 편입 -->
+<!-- Scope: Historical incident log — For tracking accident context/reproducible evidence. Permanent rules are incorporated into docs/invariants/ -->
 
 # Lessons Learned — Historical Incident Log
 
-**본 파일의 역할이 바뀌었다** (2026-04-24 Pull-First restructure):
-- 과거에는 "새 작업 전 필독" 이었으나, **영구 규칙 (L14/L15/L16/L17 등) 은 `../../docs/invariants/*.md` 와 `../../docs/runbooks/*.md` 로 편입 완료**
-- 새 작업 시작 시 필독 → invariants/ pull-doc 을 Read. 루트 `../../CLAUDE.md` 의 "작업 전 필수 pull-doc" 표가 진입점
-- 이 파일은 **사고 맥락 추적 / 재현 증거 / 잘못된 진단 회피 기록** 용 historical log. 재발 시 상세 증상·재현 절차를 찾을 때 참조
-- 새 영구 규칙은 여기에 추가하지 말고 `docs/invariants/` 에 신규 pull-doc 작성 (작업 전 로드 대상)
+**The role of this file has changed** (2026-04-24 Pull-First restructure):
+- In the past, it was "must read before new work", but **Permanent rules (L14/L15/L16/L17, etc.) have been transferred to `../../docs/invariants/*.md` and `../../docs/runbooks/*.md`**
+- Must read when starting a new task → Read invariants/pull-doc. The "Required pull-doc before work" table in root `../../CLAUDE.md` is the entry point.
+- This file is a historical log for **accident context tracking / reproduction evidence / incorrect diagnosis avoidance records**. Refer to detailed symptoms/reprocedures in case of recurrence.
+- Do not add new permanent rules here, but create a new pull-doc in `docs/invariants/` (target for loading before work)
 
-엔트리 형식 (historical entries):
-- **원인** — 무엇이 잘못됐는가 (1-2 문장)
-- **증상** — 어떻게 드러나는가
-- **재발 방지** — 다음엔 어떻게 할 것인가 (구체적 절차) — 영구 규칙화된 항목은 invariants/ 포인터 추가
+Entry format (historical entries):
+- **Cause** — What went wrong (1-2 sentences)
+- **Symptoms** — How do they manifest themselves?
+- **Prevention of recurrence** — What to do next time (specific procedures) — Permanently regularized items add invariants/ pointer
 
 ---
 
-## 2026-05-04 — `branch/` 외부 Kit app `.bat` 직접 실행 fail (디렉토리 rename 후폭풍)
+## 2026-05-04 — `branch/` External Kit app `.bat` direct execution fails (directory rename aftereffects)
 
-### L18. `.kit` 의 `[settings.app.exts.folders]` 절대경로가 repo rename 후 stale → dependency solver 즉시 종료
+###L18. The absolute path of `[settings.app.exts.folders]` of `.kit` is stale after repo rename → dependency solver terminates immediately
 
-- **원인**: commit `be4aced refactor: rename Isaac-sim-MCP -> omniverse-kit-mcp` 가 작업 디렉토리만 rename 하고 `branch/` 의 외부 Kit app build 안에 박힌 `.kit` 절대경로 (`<old-repo>/kkr-extensions` 등) 는 갱신 누락. 옛 경로는 빈 폴더만 잔존, 실 extension 은 `omniverse-kit-mcp/kkr-extensions/` 로 이동 → kit 이 ext folder 에서 `omni.mycompany.*` 미발견 → solver 즉시 종료.
-- **영향 받은 파일** (3 곳, 모두 stale 동일 패턴):
-  - `branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit` line 191
-  - `branch/kit-app-template/source/apps/kkr_usd_composer.kit` line 188 (`_build/.../release/apps/` 와 hardlink)
-  - `branch/usd-composer-webrtc-streaming/kit-app-template/source/apps/kkr_usd_composer.kit` line 189 (옛 경로는 `isaac_extension` 이지만 동일 stale 패턴)
-- **증상 (실측 2026-05-04)**:
-  - `.bat` 직접 실행 약 3 초만에 cmd 창 닫힘 (kit.exe 가 GUI 보이기 전)
-  - stderr 마지막 라인:
+- **Cause**: Commit `be4aced refactor: rename Isaac-sim-MCP -> omniverse-kit-mcp` renames only the working directory, and the absolute path of `.kit` embedded in the external kit app build of `branch/` (`<old-repo>/kkr-extensions`, etc.) is missing from update. In the old path, only an empty folder remains, and the actual extension moves to `omniverse-kit-mcp/kkr-extensions/` → Kit does not find `omni.mycompany.*` in the ext folder → Solver terminates immediately.
+- **Files affected** (3 locations, all stale pattern):
+  -`branch/isaac-sim-standalone-5.1.0-windows-x86_64/apps/isaacsim.exp.full.kit` line 191
+  - `branch/kit-app-template/source/apps/kkr_usd_composer.kit` line 188 (hardlink with `_build/.../release/apps/`)
+  - `branch/usd-composer-webrtc-streaming/kit-app-template/source/apps/kkr_usd_composer.kit` line 189 (old path is `isaac_extension`, but same stale pattern)
+- **Symptoms (actual measurement 2026-05-04)**:
+  - Direct execution of `.bat` closes cmd window in about 3 seconds (before kit.exe shows GUI)
+  -stderr last line:
     ```
     [3,235ms] [Error] [omni.ext.plugin] Failed to resolve extension dependencies. Failure hints:
       [isaacsim.exp.full-5.1.0] dependency: 'omni.mycompany.navmesh_playground' = { version='^' } can't be satisfied. ...
     [3,236ms] [Error] [omni.kit.app.plugin] Exiting app because of dependency solver failure...
     ```
-  - kkr_usd_composer 측은 미해결 ext 가 `omni.mycompany.validation_api`
-- **잘못된 진단 회피**:
-  - kkr_usd_composer.kit.bat line 3 의 `"%%~dp0apps/..."` 의 `%%` 는 batch escape — `call` 안에서 두 번째 expansion 으로 정상 평가됨. **여기 손대지 말 것** (1차 가설이었으나 오답)
-  - "extension registry sync 문제" / "registry URL 잘못됨" 도 후행 증상일 뿐 — solver 의 `Synced registries: ... found N packages` 메시지는 정상이고 진짜 원인은 ext folder 가 빈 디렉토리라는 것
-- **재발 방지**:
-  - 디렉토리 rename / repo move 시 작업 시작 전 [`docs/invariants/multi-app.md`](../../docs/invariants/multi-app.md) 의 `## .kit ext folder 절대경로` 섹션 Read
-  - rename 직후 `grep -rn '"<workspace>/' --include='*.kit' branch/` 로 stale 경로 일괄 검출
-  - 진단 / 복구 절차 본문: [`docs/runbooks/kit-dep-solver-fail.md`](../../docs/runbooks/kit-dep-solver-fail.md)
-- **잔존 정리 (2026-05-04 동시 처리)**:
-  - 빈 stale 디렉토리 `<old-repo>/` (rename 잔재) 제거
-  - 세 `.kit` 모두 `<repo>/kkr-extensions` 로 통일
+  - kkr_usd_composer side has unresolved ext `omni.mycompany.validation_api`
+- **Avoiding incorrect diagnosis**:
+  - `%%` of `"%%~dp0apps/..."` in kkr_usd_composer.kit.bat line 3 is batch escape — evaluated normally as the second expansion within `call`. **Do not touch here** (First hypothesis, but wrong answer)
+  - "Extension registry sync problem" / "registry URL incorrect" are also just post-symptoms — the `Synced registries: ... found N packages` message in the solver is normal, and the real cause is that the ext folder is an empty directory.
+- **Prevention of recurrence**:
+  - When renaming / repo moving a directory, read the `## .kit ext folder absolute path` section of [`docs/invariants/multi-app.md`](../../docs/invariants/multi-app.md)] before starting work.
+  - Batch detection of stale paths with `grep -rn '"<workspace>/' --include='*.kit' branch/` immediately after rename
+  - Diagnostic/recovery procedure text: [`docs/runbooks/kit-dep-solver-fail.md`](../../docs/runbooks/kit-dep-solver-fail.md)
+- **Residual cleanup (concurrent processing on 2026-05-04)**:
+  - Remove empty stale directory `<old-repo>/` (rename remnants)
+  - All three `.kit` are unified into `<repo>/kkr-extensions`
 
 ---
 
 ## 2026-04-24 — ProcessModule cold boot hang root cause
 
-### L17. `subprocess.Popen` 의 `stdin` 명시 누락 = MCP server 자식 프로세스에서 boot 정지
-
-- **원인**: `src/omniverse_kit_mcp/modules/process_module.py::start()` 의 `subprocess.Popen(...)` 가 `stdin` 인자 미지정. MCP server (`omniverse-kit-mcp`) 는 Claude Code 의 stdio 자식이라 그 stdin = MCP protocol 양방향 pipe. 자식 kit.exe 가 그 pipe stdin 을 상속 → cold boot 어느 init 단계에서 stdin read 시도 → MCP pipe 에서 indefinite block → 그 thread + join 대기 thread 들 모두 정지 → 전체 boot 멈춤.
-- **증상 (실측 2026-04-23 두 번 hang, 2026-04-24 root cause 확정)**:
-  - `isaac_sim_start` 응답 `status=timeout` (240s 후) 또는 `status=still_loading`
-  - PowerShell `Get-Process kit`: alive (PID 정상), CPU < 5s (5분 idle), WS ~60MB (boot 시작도 못함)
-  - internal kit log (`%LocalAppData%/../.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_*.log`) mtime 이 **~85-91ms 시점 정체** (마지막 line 보통 `[ext: omni.kit.loop-isaac] registered`)
-  - `bash` 에서 `scripts/run_process_module_standalone.py start` 로 같은 코드 / 같은 .env 호출하면 **15초만에 정상 ready** — false negative 위험
-- **잘못된 진단 회피** (2026-04-23 의 mistake):
-  - "extra_ext_ids 7-8개 race", "GPU 셰이더 캐시 cold", "user.config corruption" 등은 모두 상관관계만 있고 인과관계 없음
-  - ext 갯수 / dependency 변경은 stdin race 의 timing 만 바꿈 — 진짜 원인 가린다
-  - 다음 hang 발생 시 **반드시 stdin 명시 여부 첫 번째로 확인** (코드 수정 시 누락 의심)
-- **재발 방지 (코드 baseline)**:
+### L17. Omission of `stdin` in `subprocess.Popen` = boot stop in MCP server child process- **Cause**: `subprocess.Popen(...)` of `src/omniverse_kit_mcp/modules/process_module.py::start()` does not specify the `stdin` factor. MCP server (`omniverse-kit-mcp`) is a stdio child of Claude Code, so stdin = MCP protocol two-way pipe. The child kit.exe inherits the pipe stdin → cold boot Attempts to read stdin at some init stage → indefinite block in the MCP pipe → the thread + join waiting threads all stop → the entire boot stops.
+- **Symptoms (actual hang twice on 2026-04-23, root cause confirmed on 2026-04-24)**:
+  - `isaac_sim_start` response `status=timeout` (after 240s) or `status=still_loading`
+  - PowerShell `Get-Process kit`: alive (PID normal), CPU < 5s (idle for 5 minutes), WS ~60MB (failed to boot)
+  - internal kit log (`%LocalAppData%/../.nvidia-omniverse/logs/Kit/Isaac-Sim Full/5.1/kit_*.log`) mtime is stagnant at **~85-91ms** (last line is usually `[ext: omni.kit.loop-isaac] registered`)
+  - If you call the same code/same .env from `bash` to `scripts/run_process_module_standalone.py start`, **normally ready in 15 seconds** — false negative risk
+- **Avoiding incorrect diagnosis** (mistake on 2026-04-23):
+  - "extra_ext_ids 7-8 races", "GPU shader cache cold", "user.config corruption", etc. are all correlational and not causal.
+  - Changing the number of exts / dependencies only changes the timing of the stdin race — hides the real cause
+  - When the next hang occurs, **Make sure to check first whether stdin is specified** (suspect of omission when modifying the code)
+- **Prevention of recurrence (code baseline)**:
   ```python
   self._process = subprocess.Popen(
       cmd,
-      stdin=subprocess.DEVNULL,  # CRITICAL — 절대 누락 금지
+      stdin=subprocess.DEVNULL,  # CRITICAL — never omit
       stdout=self._stdout_handle,
       stderr=subprocess.STDOUT,
       env=env,
       ...
   )
   ```
-  - 다른 `subprocess.Popen` 호출도 자식이 input 안 받으면 동일하게 `stdin=DEVNULL` 명시 (default = inherit 이라 silent leak)
-  - 재현 검증 (Fix 회귀 방지): `python -c "import subprocess; p=subprocess.Popen(['.venv/Scripts/python.exe','scripts/run_process_module_standalone.py','start'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True); print(p.communicate(input='', timeout=300))"` → ~13s ready 여야 PASS, 240s timeout 면 stdin DEVNULL 누락
-- **상세**: 루트 `CLAUDE.md §"kit.exe cold boot hang — stdin pipe deadlock"` 와 `src/omniverse_kit_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 1번
+  - Other `subprocess.Popen` calls also specify `stdin=DEVNULL` in the same way if the child does not receive input (default = inherit, so silent leak)
+  - Reproducibility verification (Fix regression prevention): `python -c "import subprocess; p=subprocess.Popen(['.venv/Scripts/python.exe','scripts/run_process_module_standalone.py','start'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True); print(p.communicate(input='', timeout=300))"` → PASS must be ~13s ready, stdin DEVNULL is missing if timeout is 240s
+- **Details**: Root `CLAUDE.md §"kit.exe cold boot hang — stdin pipe deadlock"` and `src/omniverse_kit_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 1
 
 ---
 
-## 2026-04-23 — NavMesh Playground (Phase J) 구현 세션
-
-### L15. `ext_ui_invoke` "float division by zero" 의 진짜 원인 = 패널 layout 미초기화
-
-- **원인**: `omni.kit.ui_test.input.emulate_mouse:49` 가 `pos.x / window_width` 호출. `window_width = ui.Workspace.get_main_window_width()` 가 **panel 생성 직후 (또는 `extension_activate(reload=True)` 직후)** 1~10 프레임 동안 0 반환 → `ZeroDivisionError`. OS 윈도우는 정상 (3864×2100, `window_list` 확인).
-- **증상 (실측 2026-04-23)**:
-  - 첫 `ext_ui_invoke` 실패: HTTP 500 "float division by zero"
-  - 동일 path 재호출도 실패 (workspace 가 settle 안 함)
-  - `window_ui_show(name, focus=true, settle_frames=10)` 호출 후 → 모든 ext_ui_invoke 성공
-- **진짜 회피**: 호출 sequence
+## 2026-04-23 — NavMesh Playground (Phase J) implementation session### L15. `ext_ui_invoke` Real cause of "float division by zero" = Panel layout not initialized- **Cause**: `omni.kit.ui_test.input.emulate_mouse:49` calls `pos.x / window_width`. `window_width = ui.Workspace.get_main_window_width()` **returns 0 for 1 to 10 frames immediately after panel creation (or immediately after `extension_activate(reload=True)`) → `ZeroDivisionError`. OS window is normal (3864×2100, check `window_list`).
+- **Symptoms (Actual measurement 2026-04-23)**:
+  - First `ext_ui_invoke` failure: HTTP 500 "float division by zero"
+  - Recalling the same path also fails (workspace does not settle)
+  - After calling `window_ui_show(name, focus=true, settle_frames=10)` → all ext_ui_invoke success
+- **True Avoidance**: Call sequence
   ```
   window_ui_show(panel, focus=true, settle_frames=10)
-    → ext_ui_invoke(widget_path)  # 이제 정상
+    → ext_ui_invoke(widget_path)  # now works normally
   ```
-- **재발 방지 (코드)**:
-  - `validation_api/services/ui_service.py::ui_invoke` 가 widget_path 의 window 부분 자동으로 `_auto_show_window(name, settle_frames=10)` 호출 (auto-settle)
-  - 추가 방어책: `_install_ui_test_dimensions_patch()` 가 `omni.kit.ui_test.input.emulate_mouse` 를 monkey-patch — workspace dimensions=0 시 OS app-window dimensions 으로 대체 (legacy normalised channel; 절대 좌표는 영향 없음)
-  - 두 layer 모두 적용 — 어느 한 쪽만으로도 충분히 fix 되지만 같이 적용하면 future timing 변화에도 robust
-- **L8 갱신**: 이전에 "ext_ui_invoke binding stale" 이라 진단했으나, 실제는 layout race 였음. L8 의 "사용자 마우스 직접 click 만 안정" 은 무효 — Claude 도 위 sequence 로 클릭 가능.
+- **Prevention of recurrence (code)**:
+  - `validation_api/services/ui_service.py::ui_invoke` automatically calls `_auto_show_window(name, settle_frames=10)` in the window part of widget_path (auto-settle)
+  - Additional defense measures: `_install_ui_test_dimensions_patch()` replaces `omni.kit.ui_test.input.emulate_mouse` with monkey-patch — OS app-window dimensions when workspace dimensions=0 (legacy normalized channel; absolute coordinates are not affected)
+  - Apply both layers — either one alone is sufficient for fixation, but if applied together, it is robust against future timing changes.
+- **L8 Update**: Previously diagnosed as "ext_ui_invoke binding stale", but actually it was a layout race. L8's "Only click directly with the user's mouse is stable" is invalid — Claude can also click with the above sequence.
 
-### L14. pydantic-settings v2 sub-config 가 부모 `env_file` 을 안 받음
+### L14. pydantic-settings v2 sub-config does not accept parent `env_file`
 
-- **원인**: `AppConfig(BaseSettings)` 가 `model_config = SettingsConfigDict(env_file=".env")` 를 갖고, sub-config (`IsaacSimProcessConfig` 등) 가 `Field(default_factory=IsaacSimProcessConfig)` 로 인스턴스화될 때, **각 sub-config 는 독립 BaseSettings 인스턴스**여서 부모의 `env_file` 을 전파받지 않음. 자체 `env_file` 이 없으면 OS 환경변수만 참조.
-- **증상 (실측 2026-04-23)**:
-  - `.env` 의 `ISAAC_SIM_STARTUP_TIMEOUT=120.0` 항상 무시 → default 240.0 사용
-  - `.env` 의 `ISAAC_SIM_EXTRA_EXT_IDS=[7개]` 항상 무시 → default 4개만 → navmesh_playground 등 미활성
-  - 사용자 / 운영자가 `.env` 변경해도 효과 없는 silent failure
-- **재발 방지**:
-  - 모든 sub-`BaseSettings` 에 `env_file=".env"` 명시 (config.py 가 SoT)
-  - 신규 sub-config 추가 시 동일 패턴 (env_prefix + env_file + extra="ignore")
-  - 검증 명령 (PR 전 필수):
+- **Cause**: When `AppConfig(BaseSettings)` has `model_config = SettingsConfigDict(env_file=".env")` and a sub-config (`IsaacSimProcessConfig`, etc.) is instantiated as `Field(default_factory=IsaacSimProcessConfig)`, **each sub-config is an independent BaseSettings instance**, so it does not propagate the parent's `env_file`. If you do not have your own `env_file`, refer only to the OS environment variable.
+- **Symptoms (Actual measurement 2026-04-23)**:
+  - Always ignore `ISAAC_SIM_STARTUP_TIMEOUT=120.0` of `.env` → Use default 240.0
+  - `ISAAC_SIM_EXTRA_EXT_IDS=[7 entries]` of `.env` is always ignored → default 4 only → navmesh_playground, etc. are inactive
+  - Silent failure with no effect even if user/operator changes `.env`
+- **Prevention of recurrence**:
+  - Specify `env_file=".env"` in all sub-`BaseSettings` (config.py is SoT)
+  - Same pattern when adding a new sub-config (env_prefix + env_file + extra="ignore")
+  - Verification command (required before PR):
     ```bash
     .venv/Scripts/python.exe -c "from omniverse_kit_mcp.config import AppConfig; ac=AppConfig(); print(ac.isaac_sim_process.startup_timeout)"
     ```
-    → `.env` 값 반영 확인
+    → Confirm that `.env` value is reflected### L13. Replacing Extension UI verification with direct MCP call eliminates bugs in the controller code path.
 
-### L13. Extension UI 검증을 MCP 직접 호출로 대체하면 controller 코드 경로의 버그 못 잡음
+- **Cause**: Verify the spawn/Go/Sit operation of navmesh_playground by directly calling MCP `character_load` / `character_play_animation_variant` → Passed. However, when the user clicks the Extension UI button, a **different path** of `_on_spawn_random` → `safe_spawn_character_sync` (self-implementation) → `_walk_then_sit` (controller code) is used. 6 bugs accumulated (AnimGraph incorrect path suffix, JobService method name error, SkelRoot vs parent prim path confusion, etc.).
+- **Symptom**: MCP verification result = "all PASSED", user UI click result = "Animation graph not assigned valid skeleton" + "Type mismatch (Action, Walk variables)" + "Unsupported type: list" + "JobService has no attribute status".
+- **Prevention of recurrence**:
+  - Extension UI button operation **must be measured by button clicking like the user**. The MCP equivalent call only checks the possibility of operation, not verification.
+  - When controller / usd_loader uses validation_api singleton, prevent dual-path drift by directly matching the method name + signature + response dict key with **service code SoT**. Example: `vr._job.get_status` (sync) vs `vr._job.status` (X). `_ANIM_GRAPH_SUFFIX` also follows character_service.py SoT.
+  - If there are two types of paths (parent payload vs SkelRoot) like AgentRecord, separate them into separate fields (`prim_path` + `skel_root_path`) — Reusing a single field causes delete vs animation API conflict.
 
-- **원인**: navmesh_playground 의 spawn/Go/Sit 동작을 MCP `character_load` / `character_play_animation_variant` 직접 호출로 검증 → 통과. 하지만 사용자가 Extension UI 버튼 클릭 시 `_on_spawn_random` → `safe_spawn_character_sync` (자체 구현) → `_walk_then_sit` (controller code) 의 **다른 경로** 사용. 6 가지 버그 누적 (AnimGraph 잘못된 path suffix, JobService method name 오류, SkelRoot vs parent prim path 혼동 등).
-- **증상**: MCP 검증 결과 = "all PASSED", 사용자 UI 클릭 결과 = "Animation graph not assigned valid skeleton" + "Type mismatch (Action, Walk variables)" + "Unsupported type: list" + "JobService has no attribute status".
-- **재발 방지**:
-  - Extension UI 버튼 동작은 **반드시 사용자처럼 button click 으로 실측**. MCP 등가 호출은 동작 가능성 확인일 뿐 검증 아님.
-  - controller / usd_loader 가 validation_api singleton 을 사용하는 경우, 사용 메서드명 + 시그니처 + 응답 dict key 를 **service 코드 SoT 와 직접 매칭**하여 dual-path drift 방지. 예: `vr._job.get_status` (sync) vs `vr._job.status` (X). `_ANIM_GRAPH_SUFFIX` 도 character_service.py SoT 따라가기.
-  - AgentRecord 처럼 path 가 두 종류 (parent payload vs SkelRoot) 인 경우 별도 필드 (`prim_path` + `skel_root_path`) 로 분리 — 단일 필드 재사용은 delete vs animation API 충돌 발생.
+###L7. `tasklist //FI "IMAGENAME eq kit.exe"` (git bash) is false negative
 
-### L7. `tasklist //FI "IMAGENAME eq kit.exe"` (git bash) 가 false negative
-
-- **원인**: git bash 의 `tasklist //FI` 호출이 timing/filter 처리 buggy. alive Kit 도 빈 결과 반환.
-- **증상**: 본 세션 중 "silent crash" 진단 8+회 모두 잘못. Kit 은 살아있었음 (PowerShell `Get-Process -Name kit` + MCP `simulation_get_status` 200 응답으로 확정).
-- **재발 방지**: Kit alive 판단은 다음 도구로만:
+- **Cause**: The `tasklist //FI` call in git bash has a timing/filter processing buggy. alive Kit also returns an empty result.
+- **Symptom**: During this session, all 8+ “silent crash” diagnoses were incorrect. Kit was alive (confirmed by PowerShell `Get-Process -Name kit` + MCP `simulation_get_status` 200 response).
+- **Prevention of recurrence**: Kit alive can only be judged using the following tools:
   - **PowerShell** `Get-Process -Name kit -ErrorAction SilentlyContinue`
-  - **MCP** `simulation_get_status` (응답 ≤ 1s = alive)
+  - **MCP** `simulation_get_status` (response ≤ 1s = alive)
   - **`curl http://127.0.0.1:8111/validation/v1/health`** (200 = alive)
-  - 절대 `tasklist //FI` (git bash) 사용 금지. `src/omniverse_kit_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"` 에 정정.
+  - Never use `tasklist //FI` (git bash). Correction in `src/omniverse_kit_mcp/modules/CLAUDE.md §"ProcessModule hang recovery"`.
 
-### L8. `extension_ui_invoke` callback 호출 inconsistency (hot-reload 후)
+###L8. `extension_ui_invoke` callback call inconsistency (after hot-reload)- **Cause**: Mouse event simulation of `omni.kit.ui_test.click` points to stale button widget reference when hot-reload accumulates (closure of previous panel instance).
+- **Symptom**: ext_ui_invoke response OK + post_state normal, but button callback itself is not called (no carb.log_warn log, prim not created). User mouse direct click only stable.
+- **Prevention of recurrence**: Autonomous verification creates equivalent results through **MCP direct operation** (`stage_load_usd`, `character_load`, `navigation_*`, etc.) (spec §14 intent). Extension UI button is for user demonstration. Automatic verification is blocked when multiple `extension_ui_invoke` are used in the spec's scenarios YAML — Rewrite as an equivalent MCP action if necessary.
 
-- **원인**: `omni.kit.ui_test.click` 의 mouse event simulation 이 hot-reload 누적 시 stale button widget reference 가리킴 (이전 panel instance 의 closure).
-- **증상**: ext_ui_invoke 응답 OK + post_state 정상이지만 button callback 자체 호출 안 됨 (carb.log_warn 로그 없음, prim 미생성). 사용자 마우스 직접 click 만 안정.
-- **재발 방지**: 자율 검증은 **MCP 직접 동작** (`stage_load_usd`, `character_load`, `navigation_*` 등) 으로 동등 결과 만들기 (spec §14 의도). Extension UI button 은 사용자 시연용. spec 의 scenarios YAML 에 `extension_ui_invoke` 다수 사용 시 자동 검증 차단됨 — 필요 시 동등 MCP action 으로 재작성.
+### L9. Extension `.py` hot-reload — fswatcher can only be disabled → enabled, sys.modules cleanup cannot be trusted
 
-### L9. Extension `.py` hot-reload — fswatcher 는 disable→enable 만, sys.modules cleanup 신뢰 불가
+- **Cause (Re-diagnosis verified on 2026-04-23)**: omni.ext.plugin (C++) fswatcher automatically watches the ext python folder — When saving a file, the kit log `FS Change triggers reloading: <path>` + `Processing ext disable request` + `on_shutdown` + `enable` + `on_startup` sequence occurs. **But sys.modules cleanup is not guaranteed** — `_reload_enabled = False` (omni/ext/_impl/_internal.py:152 default) is assumed to apply to the fswatcher path as well.
+- **Validation (verification after adding hard-coded `_reload_marker` response field in validation_api)**: Modify code → Save file → fswatcher reload sequence occurs correctly → However, marker field does not appear in response = **New code is not imported**. In other words, disable → enable occurs, but `from .rest_router import router` returns to the old cached module.
+- **Previous (2026-04-23 am) Wrong conclusion**: The correction to "fswatcher automatically reloads — MCP toggle not required" was inferred from the fact that the `ui.Button` label change of navmesh_playground was reflected on the screen. In fact, as ui_panel's build() was newly called with the `ui.Workspace.get_window()` zombie sweep code (L16), some of the new ui_panel module was *accidentally* cleaned up, or more precisely, the reload itself was a partial operation.
+- **Reliable Conclusion** (no changes):
+  - **To ensure that the code is reflected after modifying Extension `.py`, Kit process restart** (`isaac_sim_restart` or `scripts/run_process_module_standalone.py stop + start`)
+  - fswatcher reload may work for some changes, but is unreliable — always requires verification. Like validation_api, the module-level singleton (`_window = WindowService()`) pattern fails to reload 100% of the time.
+  - MCP `extension_activate(ext_id, reload=True)` also does not cleanup sys.modules — same limitations as fswatcher
+  - **Change verification pattern**: Call with a hard-coded marker (e.g. add a response field) to the code → If the marker is not visible, reload fails → Kit restart
 
-- **원인 (재재진단 2026-04-23 실증)**: omni.ext.plugin (C++) fswatcher 가 ext python 폴더를 자동 watch — 파일 저장 시 kit log `FS Change triggers reloading: <path>` + `Processing ext disable request` + `on_shutdown` + `enable` + `on_startup` 시퀀스 발생. **하지만 sys.modules cleanup 은 보장 안 됨** — `_reload_enabled = False` (omni/ext/_impl/_internal.py:152 default) 가 fswatcher 경로에도 적용되는 것으로 추정.
-- **실증 (validation_api 에서 hard-coded `_reload_marker` 응답 필드 추가 후 검증)**: 코드 수정 → 파일 저장 → fswatcher reload 시퀀스 정확 발생 → 그러나 응답에 marker 필드 안 나타남 = **새 코드가 import 되지 않음**. 즉 disable→enable 은 일어나지만 `from .rest_router import router` 가 cached 옛 module 리턴.
-- **이전 (2026-04-23 오전) 잘못된 결론**: "fswatcher 가 자동 reload — MCP toggle 불필요" 라고 정정한 것은 navmesh_playground 의 `ui.Button` 라벨 변경이 화면에 반영된 것을 보고 추론. 실은 ui_panel 의 build() 가 `ui.Workspace.get_window()` zombie sweep 코드 (L16) 와 함께 새로 호출되면서 *우연히* 새 ui_panel module 이 일부 cleanup 됐거나, 더 정확히는 reload 자체가 partial 동작.
-- **신뢰 가능한 결론** (변경 금지):
-  - **Extension `.py` 수정 후 코드 반영을 확실히 하려면 Kit process restart** (`isaac_sim_restart` 또는 `scripts/run_process_module_standalone.py stop + start`)
-  - fswatcher reload 가 일부 변경에는 작동할 수 있으나 신뢰 못 함 — 항상 검증 필요. validation_api 처럼 module-level singleton (`_window = WindowService()`) 패턴은 100% reload 실패
-  - MCP `extension_activate(ext_id, reload=True)` 도 sys.modules cleanup 안 함 — fswatcher 와 동일 한계
-  - **변경 검증 패턴**: 코드에 hard-coded marker (예: 응답 필드 추가) 하고 호출 → marker 안 보이면 reload 실패 → Kit restart
+###L16. fswatcher auto reload + ui.Window orphan zombie
 
-### L16. fswatcher 자동 reload + ui.Window orphan zombie
-
-- **원인**: omni.ext.plugin fswatcher 가 .py 저장 시 자동 disable→enable. `on_shutdown` 의 `self._window.destroy()` 호출만으로는 `ui.Workspace` 의 window registry 에서 즉시 unregister 되지 않고 **next update tick 에서 처리됨**. 다음 `on_startup` 이 같은 tick 내에 동일 이름으로 새 `ui.Window` 생성 → registry 에 동명 entry 2개 (OLD-being-destroyed + NEW).
-- **증상**:
+- **Cause**: omni.ext.plugin fswatcher automatically disable→enable when saving .py. Just calling `self._window.destroy()` from `on_shutdown` does not immediately unregister it from the window registry of `ui.Workspace`, but is processed at the **next update tick**. Next `on_startup` creates a new `ui.Window` with the same name within the same tick → 2 entries with the same name in the registry (OLD-being-destroyed + NEW).
+-**Symptoms**:
   - kit log: `[Warning] [omni.ui_query.query] found 2 windows named "<name>". Using first visible window found`
-  - `extension_get_ui_tree` 가 `matched_windows: ["<name>", "<name>"]` 로 두 매치 보고
-  - Walker 가 OLD (visible) 를 walk 하면 stale widget tree 반환 → MCP UI automation 이 옛 widget path 호출 → callback 미발화
-  - 누적되면 메모리 leak (Kit 재시작까지)
-- **재발 방지** (`navmesh_playground/extension.py` + `ui_panel.py` 적용 패턴):
+  - `extension_get_ui_tree` reports two matches as `matched_windows: ["<name>", "<name>"]`
+  - When Walker walks OLD (visible), stale widget tree is returned → MCP UI automation calls old widget path → callback is not fired
+  - If accumulated, memory leaks (until Kit restart)
+- **Prevention of recurrence** (`navmesh_playground/extension.py` + `ui_panel.py` application pattern):
   ```python
   # extension.py on_shutdown
   if self._window is not None:
-      self._window.visible = False  # Workspace 에서 deregister hint
+      self._window.visible = False  # deregister hint for Workspace
       self._window.destroy()
       self._window = None
 
-  # ui_panel.py build() 시작
+  # ui_panel.py build() start
   existing = ui.Workspace.get_window("<name>")
   if existing is not None:
       existing.visible = False
       existing.destroy()
   self._window = ui.Window("<name>", ...)
   ```
-  - 두 layer 모두 적용해야 효과적 — destroy 가 deferred 인 경우 build() sweep 가 backup
-  - 완전 zero zombie 가 필요하면 build() 에서 next_update_async() 2회 yield 후 sweep — 현재는 invisible orphan 1개 남지만 walker 가 first visible 룰로 정상 NEW 만 picking 하므로 사용자 영향 없음
-  - **모든 신규/기존 Extension 의 on_shutdown 에 `visible=False; destroy(); =None` 패턴 표준화 권장**
+  - Both layers must be applied to be effective — If destroy is deferred, build() sweep is backup
+  - If you need a completely zero zombie, yield next_update_async() twice in build() and then sweep — Currently, one invisible orphan remains, but since the walker picks only normal NEWs with the first visible rule, there is no effect on the user.
+  - **Recommended standardization of `visible=False; destroy(); =None` pattern for on_shutdown of all new/existing extensions**
 
-### L10. `DifferentialController.forward()` Isaac Sim 5.1 type 변경
+### L10. `DifferentialController.forward()` Isaac Sim 5.1 type change
 
-- **원인**: spec §T2.1 가정 "numpy.ndarray (2,) 또는 list[2]" 와 다름. Kit 5.1 의 `DifferentialController.forward([lin, ang])` 는 **`ArticulationAction` 객체** 반환 (joint_velocities 속성에 wheel velocity).
-- **증상**: `TypeError: 'ArticulationAction' object is not subscriptable` (subscript `wv[0]` 시도 시).
-- **재발 방지**: Kit SDK API 반환 type 은 Phase 0 의 단순 `extension_list_all` enabled 확인만으로 부족. 실제 `forward()` 호출하여 type 확인 필요. 본 ext 의 `_drive_physics_coro` 가 양쪽 호환:
+- **Cause**: Different from spec §T2.1 assumption "numpy.ndarray (2,) or list[2]". `DifferentialController.forward([lin, ang])` in Kit 5.1 returns **`ArticulationAction` object** (wheel velocity in joint_velocities property).
+- **Symptom**: `TypeError: 'ArticulationAction' object is not subscriptable` (when trying subscript `wv[0]`).
+- **Prevention of recurrence**: Kit SDK API return type is not enough to simply check `extension_list_all` enabled in Phase 0. You need to check the type by actually calling `forward()`. This ext of `_drive_physics_coro` is compatible with both sides:
   ```python
   wv = ctrl.forward([lin, ang])
   if hasattr(wv, "joint_velocities") and wv.joint_velocities is not None:
       jv = np.asarray(wv.joint_velocities, dtype=np.float32)
   else:
       jv = np.asarray(wv, dtype=np.float32)
-  ```
+  ```### L11. CreatePayloadCommand silently fails when the nested parent is not created- **Cause**: When `CreatePayloadCommand(path_to="/World/People/People_01")` is called, if `/World/People` Xform does not exist, silent fail. prim not created, error not raised.
+- **Symptom**: The callback log outputs "safe_load_usd_sync OK", but prim does not exist in the stage. It was caught next time by strengthening validation (raise if `prim.GetTypeName()` is empty).
+- **Prevention of recurrence**:
+  - Automatic creation of nested intermediate Xform with `_ensure_parent_xform(stage, prim_path)`
+  - Or use a simple 1-step path (`/World/People/People_01` instead of `/World/People_01`) — User Insight (same pattern as Load Warehouse)
+  - When checking prim validity, only `IsValid()` is not enough — `GetTypeName()` is also verified
 
-### L11. CreatePayloadCommand 가 nested parent 미생성 시 silent fail
+###L12. `stage_capture_snapshot` glob `*` does not match `/`
 
-- **원인**: `CreatePayloadCommand(path_to="/World/People/People_01")` 호출 시 `/World/People` Xform 이 존재하지 않으면 silent fail. prim 생성 안 됨, 에러 raise 안 됨.
-- **증상**: callback log 가 "safe_load_usd_sync OK" 출력하지만 stage 에 prim 미존재. validation 강화 (`prim.GetTypeName()` 비어있으면 raise) 로 다음에는 잡힘.
-- **재발 방지**:
-  - `_ensure_parent_xform(stage, prim_path)` 로 nested intermediate Xform 자동 생성
-  - 또는 단순 1단계 path 사용 (`/World/People_01` 대신 `/World/People/People_01`) — 사용자 통찰 (Load Warehouse 와 동일 패턴)
-  - prim validity 확인 시 `IsValid()` 만 으로 부족 — `GetTypeName()` 도 검증
-
-### L12. `stage_capture_snapshot` glob `*` 가 `/` 매치 안 함
-
-- **원인**: glob 의 `*` 는 path separator (`/`) 를 cross 하지 않음.
-- **증상**: `include_prim_patterns=["/World/People*"]` 가 `/World/People/People_01` 미매치.
-- **재발 방지**: `["/World/People/*"]` (1단계 children) 또는 `stage_assert_prim_exists(prim_path=...)` 로 정확 명시.
+- **Cause**: `*` of glob does not cross the path separator (`/`).
+- **Symptom**: `include_prim_patterns=["/World/People*"]` does not match `/World/People/People_01`.
+- **Prevention of recurrence**: Specify exactly as `["/World/People/*"]` (stage 1 children) or `stage_assert_prim_exists(prim_path=...)`.
 
 ---
 
-## 2026-04-22 — isaac_tutorial 최초 구현 세션
+## 2026-04-22 — isaac_tutorial first implementation session
 
-### L1. Service signature 를 plan 단계의 가정으로 호출
+###L1. Service signature is called as an assumption in the plan step
 
-**원인**: `validation_api.services.*` 메서드 시그니처를 직접 확인하지 않고, "보통 이런 kwarg 쓰겠지" 로 호출 코드 작성. 실제로는 대부분 메서드가 단일 `request: dict` 인자 + Pydantic `ConfigDict(extra="forbid")` 라 낯선 키 하나가 즉시 TypeError.
+**Cause**: Instead of directly checking the `validation_api.services.*` method signature, the calling code was written as “I would usually use this kwarg.” In reality, most methods have a single `request: dict` argument + Pydantic `ConfigDict(extra="forbid")` and one unfamiliar key will immediately throw a TypeError.
 
-**증상**:
-- `StageService.load_usd() got an unexpected keyword argument 'url'`
-- `TypeError: RobotService.__init__() missing 1 required positional argument: 'job_service'`
+**Symptoms**:
+-`StageService.load_usd() got an unexpected keyword argument 'url'`
+-`TypeError: RobotService.__init__() missing 1 required positional argument: 'job_service'`
 
-둘 다 live Kit 에서만 터짐. pytest 는 MagicMock 이 모든 signature 를 허용하므로 감지 못 함.
+Both only work with the live kit. pytest cannot detect MagicMock because it accepts all signatures.
 
-**재발 방지**:
-1. 호출 전 해당 `services/<name>_service.py` 에 `grep "async def\|def "` 로 시그니처 확인
-2. 요청이 dict 이면 `models/<name>.py` 에서 `class ...RequestModel` 찾아 필드 이름 확인
-3. 반환 확인은 `grep "return {"` 로 dict 키 확인
-4. 테스트에서도 **positional dict 인자 + 정확한 키** 를 assert (`call_args.args[0] == {...}` 형태)
+**Prevent recurrence**:
+1. Check the signature as `grep "async def\|def "` in the relevant `services/<name>_service.py` before calling.
+2. If the request is a dict, check the field name by looking for `class ...RequestModel` in `models/<name>.py`
+3. To confirm the return, check the dict key with `grep "return {"`
+4. Assert **positional dict argument + correct key** in test (`call_args.args[0] == {...}` form)
 
-### L2. Service 인스턴스를 직접 만들려고 시도
+###L2. Trying to create a Service instance directly
 
-**원인**: `RobotService()`, `CharacterService()` 처럼 arg 없이 인스턴스화. 실제로는 `RobotService(job_service)`, `CharacterService(job_service, stage_service)` 의존성 체인.
+**Cause**: Instantiated without arg like `RobotService()`, `CharacterService()`. Actually `RobotService(job_service)`, `CharacterService(job_service, stage_service)` dependency chain.
 
-**증상**: `TypeError: RobotService.__init__() missing 1 required positional argument: 'job_service'` (live Kit 에서만)
+**Symptom**: `TypeError: RobotService.__init__() missing 1 required positional argument: 'job_service'` (live Kit only)
 
-**재발 방지**:
-- validation_api 재사용 시 **절대 직접 인스턴스화하지 말 것**
-- `from omni.mycompany.validation_api import rest_router as vr` 후 `vr._stage`, `vr._robot`, `vr._character`, `vr._job` 등 모듈 레벨 싱글턴 사용
-- 이 재사용 가이드는 폐기됨. 현재 Extension 정책은 validation_api service import
-  대신 Kit SDK 직접 호출.
+**Prevent recurrence**:
+- When reusing validation_api, **never instantiate it directly**
+- After `from omni.mycompany.validation_api import rest_router as vr`, use module level singleton such as `vr._stage`, `vr._robot`, `vr._character`, `vr._job`
+- This reuse guide is obsolete. Current extension policy is validation_api service import
+  Instead, call the Kit SDK directly.
 
-### L3. Kit 107 omni.ui font atlas 는 CJK glyph 없음
+###L3. Kit 107 omni.ui font atlas does not have CJK glyph
 
-**원인**: UI label / tooltip / status 에 한글 삽입. Kit 107 `omni.ui` font atlas 는 kit.exe 기동 시 ASCII + Latin glyph 만 로드, Extension `on_startup` 시점에는 font 교체 경로 없음.
+**Cause**: Inserting Korean into UI label / tooltip / status. Kit 107 `omni.ui` font atlas only loads ASCII + Latin glyph when starting kit.exe, and there is no font replacement path at the time of Extension `on_startup`.
 
-**증상**: 한글이 모두 mojibake (□□□ / 깨진 사각형) 로 렌더링. 기능은 동작하나 학생에게 읽히지 않음.
+**Symptom**: All Korean characters are rendered as mojibake (□□□ / broken square). The function works, but the student cannot read it.
 
-**재발 방지**:
-- **모든 UI 문자열 영어 전용**. label, tooltip, status_label 텍스트, notification 메시지 전부
-- 특수문자도 주의: `✓` / `✗` / `→` / `×` / `÷` 중 일부는 Latin 에 있지만 보수적으로 `[OK]` / `[FAIL]` / `->` / `x` / `/` 사용
-- 한글은 docstring / code comment / git commit message 에서만 허용 (Kit Console 출력은 OK, UI 위젯 아님)
-- 실측: `grep "[가-힣]" kkr-extensions/omni.mycompany.<ext>/` 로 runtime 문자열만 남기고 검수
+**Prevent recurrence**:
+- **All UI strings English only**. label, tooltip, status_label text, notification message all
+- Be careful of special characters: `✓` / `✗` / `→` / `×` / `÷`, some of which are in Latin, but conservatively, `[OK]` / `[FAIL]` / `->` / `x` / Use `/`
+- Korean is only allowed in docstring / code comment / git commit message (Kit Console output is OK, not UI widget)
+- Actual measurement: Inspection with `grep "[Hangul]" kkr-extensions/omni.mycompany.<ext>/`, leaving only the runtime string
 
-### L4. omni.ui 위젯은 pytest 에서 단위 검증 불가
+###L4. omni.ui widget cannot be unit verified in pytest
 
-**원인**: UI 패널 (env_setup_panel, steps_panel, main_window) 에 pytest 테스트 작성 시도. `omni.ui` 는 conftest.py 에서 stub 된 빈 ModuleType — 위젯 실제 동작 시뮬레이션 안 됨.
+**Cause**: Attempting to write a pytest test in a UI panel (env_setup_panel, steps_panel, main_window). `omni.ui` is an empty ModuleType stubbed in conftest.py — does not simulate the actual behavior of the widget.
 
-**증상**: UI 관련 `assert btn.text == "..."` 같은 테스트가 "테스트는 통과하지만 실 동작 모름" 상태. 또는 stub 한계로 아예 import 실패.
+**Symptom**: UI-related tests such as `assert btn.text == "..."` are in the state of “the test passes, but the actual behavior is unknown.” Or the import fails altogether due to stub limitations.
 
-**재발 방지**:
-- `omni.ui` 를 쓰는 코드는 **actions / state / services 로직과 분리**해서, 로직 부분만 pytest 로 검증
-- UI 부분은 **live Kit + Extension 고유 QA_CHECKLIST** 로 검증
-- conftest.py 의 stub 은 "import 되게만 하는" 수준 — 위젯 동작 검증 용도 아님을 코멘트로 명시
+**Prevent recurrence**:
+- Code using `omni.ui` is separated from **actions / state / services logic**, and only the logic part is verified with pytest.
+- The UI part is verified with **live Kit + Extension’s unique QA_CHECKLIST**
+- The stub in conftest.py is at the “import only” level — it is stated in the comment that it is not for verifying widget behavior.
 
-### L5. 신규 Extension 은 독립 구조 (정책)
+###L5. New extension is independent structure (policy)
 
-**원인**: 초기 `isaac_tutorial` 설계 시 "validation_api services in-process import" 를 기본 패턴으로 제안. 하지만 이건 tutorial_ext 의 특수 상황 (heavy orchestration — office load, sit_on_prim, NavMesh navigate 재사용 필요) 때문.
+**Cause**: When initially designing `isaac_tutorial`, "validation_api services in-process import" was suggested as the default pattern. But this is due to the special situation of tutorial_ext (heavy orchestration — office load, sit_on_prim, NavMesh navigate needs to be reused).
 
-**증상**: 모든 신규 Extension 이 이 패턴 따라가면 의존 그래프 증가, 학생 배포 2-Extension 필수, validation_api 업데이트가 downstream 깨뜨릴 위험.
+**Symptom**: If all new extensions follow this pattern, the dependency graph increases, student distribution 2-Extension is required, and validation_api updates risk breaking downstream.**Reoccurrence Prevention (Policy)**:
+- New Extension calls **Kit SDK directly (independent structure)** by default
+- If you need to load S3 MDL-heavy asset, **copy** the defense code of `usd-load-deadlock-recipe.md` (not import)
+- Do not reuse validation_api service import. The necessary functions are in the Kit SDK within the extension.
+  Implemented by direct call
+- Copy and paste the “New Independent Extension Skeleton” template from `extension-basics.md` when starting a new extension.
 
-**재발 방지 (정책)**:
-- 신규 Extension 은 **Kit SDK 직접 호출 (독립 구조)** 기본
-- S3 MDL-heavy asset 로드 필요 시 `usd-load-deadlock-recipe.md` 의 방어 코드 **복사** (import 아닌)
-- validation_api service import 재사용 금지. 필요한 기능은 Extension 안에서 Kit SDK
-  직접 호출로 구현
-- 새 Extension 시작 시 `extension-basics.md` 의 "신규 독립 Extension 스켈레톤" 템플릿 복붙
+### L6. Large single CLAUDE.md is not maintained**Cause**: `kkr-extensions/CLAUDE.md` contains all validation_api internal implementation + domain trap + Extension common rules + tutorial_ext section in a single file, resulting in a bloat of 275+ lines.
 
-### L6. 대형 단일 CLAUDE.md 는 유지보수 안 됨
+**Symptoms**:
+- It is difficult for the person creating a new extension to determine “what to read” (even unrelated content in validation_api is read)
+- No location to record lessons learned
+- Topics mix together, reducing searchability
 
-**원인**: `kkr-extensions/CLAUDE.md` 가 단일 파일에 validation_api 내부 구현 + 도메인 함정 + Extension 공통 규칙 + tutorial_ext 섹션을 모두 담아 275+ line 비대해짐.
-
-**증상**:
-- 새 Extension 만드는 사람이 "뭘 읽어야 하는지" 판단 어려움 (validation_api 무관한 내용까지 다 읽게 됨)
-- Lessons learned 를 기록할 위치 부재
-- 토픽이 서로 섞여 검색성 저하
-
-**재발 방지**:
-- `kkr-extensions/CLAUDE.md` 를 **nav hub** 로만 운영 (Extension 목록 + 정책 + docs/* 포인터)
-- 토픽별로 `kkr-extensions/docs/` 아래 분리 (extension-basics / kit-sdk-pitfalls / usd-load-deadlock-recipe / lessons-learned)
-- 새 Extension 은 **CLAUDE.md 파일 자체를 두지 말 것** — 공통 내용은 docs/, 개별 QA 는 각 Extension 폴더 내 QA_CHECKLIST.md 로 국한
+**Prevent recurrence**:
+- Operate `kkr-extensions/CLAUDE.md` only as **nav hub** (Extension list + policy + docs/* pointer)
+- Separated by topic under `kkr-extensions/docs/` (extension-basics / kit-sdk-pitfalls / usd-load-deadlock-recipe / lessons-learned)
+- New Extensions should not have a **CLAUDE.md file itself** — Common content should be limited to docs/, and individual QA should be limited to QA_CHECKLIST.md in each Extension folder.
 
 ---
 
-## 엔트리 추가 방법
+## How to add an entry
 
-새 실수를 겪었으면:
+If you encounter a new mistake:
 
-1. 이 파일 최상단 (가장 최근 세션) 에 섹션 추가 (날짜 + 세션 타이틀 H2)
-2. 각 실수당 `### L<번호>. 제목` + **원인 / 증상 / 재발 방지** 3 필드
-3. 가능하면 구체적 파일 경로 / 증상 로그 / 방지 절차 스크립트 포함
-4. Commit message 에 `docs(lessons): ...` prefix
+1. Add section at the top of this file (most recent session) (date + session title H2)
+2. `### L<number>. title` + **Cause/Symptom/Recurrence Prevention** 3 fields for each mistake
+3. Include specific file paths/symptom logs/prevention procedure scripts if possible.
+4. `docs(lessons): ...` prefix in Commit message

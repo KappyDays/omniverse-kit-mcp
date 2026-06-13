@@ -6,88 +6,88 @@
 
 ## IsaacLab
 
-루트: `$ISAAC/IsaacLab/` — 강화학습 · 조작 연구용 에셋.
+Root: `$ISAAC/IsaacLab/` — Asset for reinforcement learning/manipulation research.
 
-| 폴더 | 용도 |
+| folder | use |
 |---|---|
-| ActuatorNets | 액추에이터 신경망 모델 |
-| Arena | RL 아레나 환경 |
-| AutoMate | 자동화 조립 태스크 |
+| ActuatorNets | Actuator neural network model |
+| Arena | RL Arena Environment |
+| AutoMate | Automated assembly tasks |
 | Contrib | contributed IsaacLab assets |
-| Controllers | 제어기 USD |
-| Factory | 공장 환경 (RL) |
-| Materials | IsaacLab 전용 재질 |
-| Mimic | Mimic 태스크 (Packing 등) |
-| Objects | RL 오브젝트 |
-| Policies | 사전학습 정책 파일 |
-| PretrainedCheckpoints | 체크포인트 |
-| Robots | IsaacLab 전용 로봇 |
+| Controllers | Controller USD |
+| Factory | Factory environment (RL) |
+| Materials | Materials exclusive to IsaacLab |
+| Mimic | Mimic tasks (Packing, etc.) |
+| Objects | RL object |
+| Policies | Pre-training policy file |
+| PretrainedCheckpoints | checkpoint |
+| Robots | IsaacLab exclusive robot |
 | TacSL | Tactile Sim-to-Real |
-| Tests | 테스트 씬 |
+| Tests | test scene |
 
 ---
 
 ## Materials
 
-루트: `$ISAAC/Materials/`
+Root: `$ISAAC/Materials/`
 
-| 폴더 | 용도 |
+| folder | use |
 |---|---|
-| AprilTag | AprilTag 마커 재질 |
-| Base | 기본 재질 라이브러리 |
-| Isaac | Isaac 전용 재질 |
-| Textures | 텍스처 파일 |
-| vMaterials_2 | NVIDIA vMaterials 2.0 라이브러리 |
+| AprilTag | AprilTag Marker Material |
+| Base | Basic Material Library |
+| Isaac | Isaac Exclusive Materials |
+| Textures | texture file |
+| vMaterials_2 | NVIDIA vMaterials 2.0 library |
 
 ---
 
 ## Samples
 
-루트: `$ISAAC/Samples/` — 데모·예제 씬.
+Root: `$ISAAC/Samples/` — Demo/example scene.
 
-| 폴더 | 내용 |
+| folder | detail |
 |---|---|
-| AnimRobot | 애니메이션 로봇 예제 |
-| BehaviorTree | Behavior Tree 예제 |
-| BehaviorTreeGen | Behavior Tree generation 예제 |
-| Cortex | Cortex 예제 |
-| DR | Domain Randomization 예제 |
-| Examples | 일반 예제 씬 |
-| Groot | Groot 행동 트리 예제 |
-| Leonardo | Leonardo 예제 |
+| AnimRobot | Animated Robot Example |
+| BehaviorTree | Behavior Tree Example |
+| BehaviorTreeGen | Behavior Tree generation example |
+| Cortex | Cortex example |
+| DR | Domain Randomization Example |
+| Examples | General example scene |
+| Groot | Groot behavior tree example |
+| Leonardo | Leonardo example |
 | Mujoco_Menagerie | MuJoCo Menagerie import/sample assets |
-| NvBlox | NvBlox 3D 재구성 예제 |
-| OmniGraph | OmniGraph 예제 |
-| OmniIsaacGymEnvs | OpenAI Gym 환경 |
-| Policies | 정책 예제 |
-| ROS2 | ROS2 통합 예제 (`Carter_ROS.usd` 등) |
-| Replicator | 데이터 생성 예제 |
-| Rigging | 리깅 예제 |
-| Scene_Blox | 씬 블록스 |
+| NvBlox | NvBlox 3D reconstruction example |
+| OmniGraph | OmniGraph example |
+| OmniIsaacGymEnvs | OpenAI Gym environment |
+| Policies | Policy example |
+| ROS2 | ROS2 integration example (`Carter_ROS.usd`, etc.) |
+| Replicator | Data generation example |
+| Rigging | Rigging Example |
+| Scene_Blox | thin blocks |
 
 ---
 
 ## Sensors
 
-루트: `$ISAAC/Sensors/` — 센서 USD 에셋 (RTX Lidar/Camera 설정 파일).
+Root: `$ISAAC/Sensors/` — Sensor USD asset (RTX Lidar/Camera configuration file).
 
-| 벤더 | 센서 유형 |
+| vendor | sensor type |
 |---|---|
 | HESAI | RTX Lidar (Pandar series) |
-| LeopardImaging | 카메라 모듈 |
+| LeopardImaging | camera module |
 | Luxonis | OAK/Luxonis camera assets |
-| NVIDIA | NVIDIA 센서 |
-| Orbbec | RGB-D 카메라 |
+| NVIDIA | NVIDIA Sensor |
+| Orbbec | RGB-D camera |
 | Ouster | RTX Lidar |
-| RealSense | Intel RealSense RGB-D 카메라 |
-| SICK | Lidar · 카메라 |
-| Sensing | 카메라 모듈 (SG2 등) |
+| RealSense | Intel RealSense RGB-D Camera |
+| SICK | Lidar · Camera |
+| Sensing | Camera module (SG2, etc.) |
 | Slamtec | 2D Lidar (RPLIDAR) |
-| Stereolabs | ZED 스테레오 카메라 |
-| Tashan | LightBeam 센서 |
+| Stereolabs | ZED Stereo Camera |
+| Tashan | LightBeam Sensor |
 | TexasInstruments | TI radar / sensor assets |
 | Velodyne | RTX Lidar |
 | ZVISION | RTX Lidar |
 
-> `Create > Sensors` 메뉴 (prim 생성)와 USD 직접 로드 두 방법 모두 가능.  
-> `window_menu_trigger` menu_path 전체: `docs/references/sensor_menu_catalog.md`
+> Both `Create > Sensors` menu (prim creation) and USD direct loading are possible.
+> `window_menu_trigger` menu_path All: `docs/references/sensor_menu_catalog.md`

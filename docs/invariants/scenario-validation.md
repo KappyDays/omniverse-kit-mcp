@@ -1,82 +1,88 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: scenario YAML 저작 / 검증 작업 시작 전 필수 숙지 -->
+<!-- Scope: scenario YAML required knowledge before starting authoring/verification work -->
 # Scenario Validation — Invariants
 
-`scenarios/**/*.yaml` 저작 또는 `scenario_validate` 실행 전 이 파일 Read.
-R1/R1a/R2/R3 위반 시 검증 결과는 무효.
+Read this file before authoring `scenarios/**/*.yaml` or executing `scenario_validate`.
+If R1/R1a/R2/R3 is violated, the verification result is invalid.
 
-## R1. 실제 asset 으로만 검증 (primitive 대용 금지)
+## R1. The actual output is an actual asset, and the fixture is a primitive.
 
-- **금지**: primitive (Cube/Sphere 등) 를 의자·로봇·캐릭터 대용으로 사용한 검증
-- **허용**: `asset_list` 또는 알려진 S3 경로의 실 USD 만
+- **Prohibited**: In user-facing digital twin / 3D modeling / scenario deliverable
+Verification using primitives (Cube/Sphere, etc.) as a substitute for chairs, robots, and characters
+- **Accept real output**: Real USD from `asset_list` or known S3 path
   - `.../Environments/Office/Props/SM_Armchair.usd`
   - `.../Robots/NVIDIA/NovaCarter/nova_carter.usd`
   - `.../People/Characters/F_Business_02/F_Business_02.usd`
-- **SoT 카탈로그** (전체 S3 URL 목록): `docs/assets/isaac/asset_inventory.md` + `docs/assets/isaac/assets/*.md` — scenario 저작 전 후보 asset 선택 진입점
+- **fixture exception**: prototype / unit test / smoke demo / diagnostic scene
+Controlled test objects are allowed as primitives. Example: robot pick/place playback demo
+0.04 m native cube fixture. However, if you specify the actual asset, the same bbox/fit/visual
+Must pass preflight.
+- **SoT Catalog** (full S3 URL list): `docs/assets/isaac/asset_inventory.md` + `docs/assets/isaac/assets/*.md` — Candidate asset selection entry point before scenario authoring
 
-### 이유 (실측 False Positive)
+### Reason (actual false positive)
 
-primitive 는 bbox·pivot·forward axis·physics material·mesh topology 특성이 실 asset
-과 달라 False Positive 빈발. 예: chair sit 검증에서 Cube 는 통과하지만 실 Armchair
-는 NavMesh step-up 실패.
+In verification of actual output, the primitives are bbox·pivot·forward axis·physics material·mesh
+False positives occur frequently because the topology characteristics are different from the actual asset. Example: In chair sit verification
+Cube passes, but actual Armchair NavMesh step-up fails. Conversely, controller smoke
+The size and shape of the fixture must be controlled to separate the cause, so primitives are allowed.
 
-## R1a. NavMesh bake 는 timeline stopped 필수
+## R1a. NavMesh bake requires timeline stopped
 
-`navigation_bake` 는 playing 중에 호출 시 `bake=True` 반환하지만 `get_navmesh()`
+`navigation_bake` returns `bake=True` when called while playing, but `get_navmesh()`
 = None (silent False Positive).
 
 `stage_load_usd` / `robot_load` / `stage_create_prim` / `stage_set_property` /
-`viewport_capture(settle_frames)` / `window_capture` 는 모두 timeline advance
-시키므로 bake 직전 `simulation_stop` **재호출** 필수.
+`viewport_capture(settle_frames)` / `window_capture` are all timeline advance
+Therefore, `simulation_stop` **recall** is required just before bake.
 
-표준 sequence:
+Standard sequence:
 ```
 load → stop → bake → query_path → play → navigate_path
 ```
 
-`robot_load` 는 stage mutation 이므로 active async job 중에는 금지. Isaac Sim
-6.0 live 검증에서 NovaCarter `navigate_path` job 이 pending/running 인 상태로
-Franka 를 payload load 하면 Kit/PhysX crash 가 재현됐다. `robot_load` 서비스는
-pending/running job 을 HTTP 400 으로 거부하고, playing timeline 은 먼저 stop 한다.
+`robot_load` is a stage mutation, so it is prohibited during active async jobs. Isaac Sim
+In 6.0 live verification, NovaCarter `navigate_path` job is pending/running.
+When payload loading Franka, Kit/PhysX crash was reproduced. `robot_load` service is
+Pending/running job is rejected with HTTP 400, and playing timeline is stopped first.
 
-## R2. Robot 동작은 `simulation_play` 에서만
+## R2. Robot operation only occurs in `simulation_play`
 
-- 예외: `robot_load` 는 stage mutation 이므로 playing 상태를 내부에서 stop 하며,
-  active async job 이 없어야 한다.
-- 필수 playing: `robot_set_joint_positions` / `robot_navigate_to` /
+- Exception: `robot_load` is a stage mutation, so the playing state is stopped internally.
+There must be no active async job.
+- Required playing: `robot_set_joint_positions` / `robot_navigate_to` /
   `robot_navigate_path` / `robot_drive_physics` / `robot_gripper_control` /
-  `robot_set_ee_target` 등 움직임·관절·물리 상호작용
+`robot_set_ee_target`, etc. Movement, joints, and physics interaction
 
-이유: PhysX articulation view 는 physics step 이 돌아야 populate. Extension
-`robot_service.navigate_path` 는 `omni.timeline.is_playing()` 미통과 시 HTTP 400
-거부. scenario 는 `simulation_play` 를 arrange 에 필수 배치.
+Reason: PhysX articulation view needs to run physics step to populate. Extension
+`robot_service.navigate_path` returns HTTP 400 if `omni.timeline.is_playing()` does not pass.
+refusal. scenario is required to place `simulation_play` in arrange.
 
-## R3. Viewport 캡처 시각 검증 의무
+## R3. Viewport capture visual verification obligation
 
-`viewport_capture` 후 반드시 `Read` tool 로 PNG 시각 확인.
+After `viewport_capture`, be sure to check the PNG time with the `Read` tool.
 
-**흰색/검은색 배경만** 보이거나 asset 이 점처럼 작으면 **실패 처리** — 아래 순서로
-조정 후 재캡처:
+**If only white/black background** is visible or the asset is small as a dot, **Fail** — in the following order:
+Recapture after adjustment:
 
-1. **조명 추가/조정** — scene 에 `DistantLight` 또는 `DomeLight` 가 없으면
+1. **Add/Adjust Lights** — If your scene does not have `DistantLight` or `DomeLight`,
    `stage_create_prim(prim_type="DistantLight")` + `stage_set_property(inputs:intensity=3000)`.
-   이미 있으면 intensity 2배 증가
-2. **카메라 위치/각도 조정** — `stage_set_property("/OmniverseKit_Persp",
-   "xformOp:translate", [x,y,z])` 로 asset bbox 기준 거리 재설정 (small asset 은
-   1~3 m, large env 는 10~30 m 외부)
-3. **Asset 위치 조정** — bounding box 를 참조하여 asset 중심이 viewport 정면이 되게
-   asset 자체 또는 camera target 재배치
-4. 조정 후 `viewport_capture` 재호출 + Read 재검증. 이 cycle 은 geometry 가 명확히
-   보일 때까지 반복 — 2-3 회 시도 후에도 실패면 해당 작업 artifact 또는 신규
-   runbook 후보로 기록
+If it already exists, the intensity is doubled.
+2. **Adjust camera position/angle** — `stage_set_property("/OmniverseKit_Persp",
+Reset the asset bbox standard distance with "xformOp:translate", [x,y,z])` (small asset is
+1~3 m, large env is 10~30 m outside)
+3. **Adjust asset position** — Refer to the bounding box so that the asset center is in front of the viewport
+Relocating the asset itself or camera target
+4. After adjustment, re-invoke `viewport_capture` + re-verify Read. This cycle has a clear geometry
+Repeat until visible — if it fails after 2-3 attempts, replace the task with artifact or new
+Recorded as a runbook candidate
 
-## Character 표준 sequence (T-pose 방지)
+## Character standard sequence (T-pose prevention)
 
-`stage_load_usd` 로 character USD 를 raw reference 로드하면 BehaviorAgent/IRA runtime
-binding 이 누락되어 simulation_play 시 T-pose 또는 정지 상태가 될 수 있다.
-**반드시 `character_load`** (runtime API bind + `anim_graph_bound=true` 호환 필드).
+When character USD is loaded as a raw reference with `stage_load_usd`, BehaviorAgent/IRA runtime
+Due to missing binding, simulation_play may result in T-pose or stop state.
+**Must be `character_load`** (runtime API bind + `anim_graph_bound=true` compatible field).
 
-표준 pattern:
+Standard pattern:
 ```
 character_load(...)
   → simulation_play
@@ -86,22 +92,22 @@ character_load(...)
   → simulation_play
 ```
 
-후속 호출은 반드시 응답의 `sanitized_prim_path` 사용 (F_Business_02 등 skin variant 는
-`/World/Characters/{name}` 로 자동 이동).
+Subsequent calls must use `sanitized_prim_path` in the response (skin variants such as F_Business_02
+automatically moves to `/World/Characters/{name}`).
 
-## Scenario cleanup (kit.exe shutdown hang 방지)
+## Scenario cleanup (prevent kit.exe shutdown hang)
 
-scenario cleanup 은 `simulation_play → simulation_stop` (최종 physics tick) 을
-`kit_app_stop` 이전에 반드시 실행. 생략 시 character runtime / NavMesh 내부 핸들 정리
-타이밍 문제로 kit.exe 셔다운 hang. canonical pattern:
+scenario cleanup uses `simulation_play → simulation_stop` (final physics tick)
+Must be executed before `kit_app_stop`. When omitted, character runtime / NavMesh internal handle cleanup
+kit.exe hangs due to timing issue. canonical pattern:
 `scenarios/smoke/character_control.yaml`
 
-## 관련 경계
+## Related Boundaries
 
-- Scenario YAML 저작 가이드: `scenarios/CLAUDE.md`
-- Scenario 엔진 (Arrange/Act/Assert/Cleanup, action_registry): `src/omniverse_kit_mcp/scenario/CLAUDE.md`
-- Asset URL 카탈로그 진입점: `docs/assets/isaac/asset_inventory.md`
-- Character domain constraints (실측): `src/omniverse_kit_mcp/modules/CLAUDE.md`
-- USD 로드 4 조건: `docs/invariants/usd-load.md`
-- 반복 실패 / 개선 항목: 해당 작업 artifact 에 기록하고, 영구 절차가 되면
-  `docs/runbooks/` 또는 `docs/invariants/` 로 승격
+- Scenario YAML Authoring Guide: `scenarios/CLAUDE.md`
+- Scenario Engine (Arrange/Act/Assert/Cleanup, action_registry): `src/omniverse_kit_mcp/scenario/CLAUDE.md`
+- Asset URL catalog entry point: `docs/assets/isaac/asset_inventory.md`
+- Character domain constraints (actual measurement): `src/omniverse_kit_mcp/modules/CLAUDE.md`
+- USD LOAD 4 CONDITION: `docs/invariants/usd-load.md`
+- Iterative failure/improvement items: Recorded in the relevant work artifact, once it becomes a permanent procedure
+Promote to `docs/runbooks/` or `docs/invariants/`

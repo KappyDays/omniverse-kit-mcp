@@ -1,132 +1,132 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: Isaac Sim / Kit SDK 실측 기반 함정 모음 — 5.1 historical + 6.0 current deltas -->
+<!-- Scope: Isaac Sim / Kit SDK A collection of ground truth traps — 5.1 historical + 6.0 current deltas -->
 
-# Kit SDK 함정 모음
+# Kit SDK Trap Collection
 
-Isaac Sim / Kit 환경에서 실제 마주친 함정들. 5.1 / Kit 107 historical 항목은 보존하고, 6.0 / Kit 110 기준으로 결론이 바뀐 항목은 본문에 current delta 를 명시한다. 새 Extension 이 해당 도메인 API 를 건드릴 때 여기부터 검색.
+Traps actually encountered in the Isaac Sim/Kit environment. 5.1 / Kit 107 historical items are preserved, and for items whose conclusions have changed based on 6.0 / Kit 110, the current delta is specified in the text. Start searching here when a new extension touches the domain API.
 
 ---
 
-## Stage / USD 로드
+## Stage / USD load
 
 ### Viewport capture — `omni.syntheticdata._get_node_path` AttributeError
 
-Isaac Sim 5.1 의 `omni.syntheticdata._get_node_path` 가 `render_product` (HydraTexture) 를 문자열로 간주하고 `.split()` 을 호출해 `AttributeError`. 단, 에러는 `rgb_annot.get_data()` **이후** `detach([rp])` 내부에서 발생하므로 데이터 자체는 확보된 상태.
+`omni.syntheticdata._get_node_path` in Isaac Sim 5.1 regards `render_product` (HydraTexture) as a string and calls `.split()`. However, since the error occurs inside `rgb_annot.get_data()` **after** `detach([rp])`, the data itself is secured.
 
-구현 규약:
-1. `get_data()` 결과는 별도 보관
-2. `detach([rp])` 는 `try/except Exception` 으로 감싸 비치명 처리
-3. data 가 None/empty 이면 `capture_viewport_to_file` 폴백 (PNG 저장 후 읽기)
+Implementation conventions:
+1. `get_data()` Results are stored separately
+2. `detach([rp])` is wrapped with `try/except Exception` for non-fatal processing.
+3. If data is None/empty, fallback to `capture_viewport_to_file` (save and read PNG)
 
-### `CreatePrimWithDefaultXformCommand` 후 xformOps 존재
+### xformOps exists after `CreatePrimWithDefaultXformCommand`
 
-이 명령으로 만든 prim 은 이미 `xformOp:translate / rotate / scale` 가 추가된 상태 → `AddTranslateOp()` 다시 부르면 중복. `prim.GetAttribute("xformOp:translate").Set(...)` 사용.
+The prim created with this command already has `xformOp:translate / rotate / scale` added → If `AddTranslateOp()` is called again, it will be duplicated. Use `prim.GetAttribute("xformOp:translate").Set(...)`.
 
-### UsdLux intensity 는 `inputs:intensity`
+### UsdLux intensity is `inputs:intensity`
 
-`stage_create_prim(prim_type="DistantLight"|"DomeLight"|...)` 로 만든 UsdLux prim 의 강도는 **`inputs:intensity`** (USD 2023+ schema). `intensity` 로 호출하면 `"Attribute 'intensity' not found"`. 색상 `inputs:color`, 온도 `inputs:colorTemperature` 등 `inputs:*` prefix 동일.
+The strength of UsdLux prim made with `stage_create_prim(prim_type="DistantLight"|"DomeLight"|...)` is **`inputs:intensity`** (USD 2023+ schema). If you call it `intensity`, it will get `"Attribute 'intensity' not found"`. Color `inputs:color`, temperature `inputs:colorTemperature`, etc. have the same prefix `inputs:*`.
 
-### Plane prim 함정 — 시각 vs Physics
+### Plane prim trap — Vision vs Physics
 
-`stage_create_prim(prim_type="Plane")` 은 UsdGeomPlane (**시각 plane only, collision 없음**) → robot / character 가 `simulation_play` 시 plane 을 통과해 자유낙하. Physics 가 필요한 지면은 `window_menu_trigger("Create/Physics/Ground Plane")` 호출 — `CollisionPlane + CollisionMesh + PhysicsCollisionAPI` 3-prim 자동 생성 (`omni.physxui` action).
+`stage_create_prim(prim_type="Plane")` is UsdGeomPlane (**visual plane only, no collision**) → robot / character passes through plane at `simulation_play` and falls freely. For surfaces that require physics, call `window_menu_trigger("Create/Physics/Ground Plane")` — automatically create `CollisionPlane + CollisionMesh + PhysicsCollisionAPI` 3-prim (`omni.physxui` action).
 
-### S3 MDL-heavy asset 로드 deadlock
+### S3 MDL-heavy asset load deadlock
 
-별도 문서 참조 → `usd-load-deadlock-recipe.md`.
+Refer to separate document → `usd-load-deadlock-recipe.md`.
 
 ---
 
 ## Articulation / Robot
 
-### Isaac Sim 5.1 은 `SingleArticulation.initialize()` 필수
+### Isaac Sim 5.1 requires `SingleArticulation.initialize()`
 
-4.x 기준 "initialize 없이 set/get OK" 는 5.1 에서 더 이상 적용 안 됨. 초기화 없이 joint I/O 시 `NoneType.link_names` 내부 에러. 호출자가 articulation 진입 시 순차 적용:
+Based on 4.x, "set/get OK without initialize" is no longer applicable in 5.1. `NoneType.link_names` internal error when performing joint I/O without initialization. Apply sequentially when the caller enters articulation:
 
-1. `_assert_articulation(prim_path)` — prim 유효성 + PhysxArticulationAPI/Root 를 `Usd.PrimRange` 로 재귀 탐색. 없으면 `ValueError` → HTTP 400 (silent no-op 차단)
-2. `_ensure_initialized(art)` — `SingleArticulation.initialize()` 자동 호출. idempotent 이므로 중복 호출 안전
+1. `_assert_articulation(prim_path)` — prim validity + recursive search of PhysxArticulationAPI/Root to `Usd.PrimRange`. If not, `ValueError` → HTTP 400 (silent no-op blocking)
+2. `_ensure_initialized(art)` — Automatically calls `SingleArticulation.initialize()`. Duplicate calls are safe since it is idempotent
 
-PhysX 가 articulation view 를 populate 하려면 **최소 1 physics step** 이 돌아야 하므로 scenario 는 `simulation_play → pause` 를 arrange 에 배치해 warm-up. 없으면 `_ensure_initialized` 도 실패 가능 → `continueOnFailure: true` 로 감쌀 것.
+In order for PhysX to populate the articulation view, **at least 1 physics step** must run, so the scenario is warmed up by placing `simulation_play → pause` in arrange. If not, `_ensure_initialized` may also fail → wrap it with `continueOnFailure: true`.
 
-### Gripper DOF 자동 감지
+### Gripper DOF automatic detection
 
-`SingleArticulation.dof_names` 에서 `finger` / `gripper` substring 매칭으로 자동 감지. `action ∈ {open, close, set}`; open/close 는 `get_dof_limits()` → `dof_properties` 순서로 limits 읽고 Franka-default 0.04 / 0.0 fallback.
+Automatically detects `SingleArticulation.dof_names` to `finger` / `gripper` substring matching. `action ∈ {open, close, set}`; open/close reads limits in the order `get_dof_limits()` → `dof_properties` and falls back to Franka-default 0.04 / 0.0.
 
-### Lula IK — 모듈 경로 두 가지
+### Lula IK — Two module paths
 
-`_resolve_lula_modules()` 가 `isaacsim.robot_motion.motion_generation.lula` 와 `omni.isaac.motion_generation.lula` 중 importable 경로 선택, 실패 시 `ValueError → 400`. Isaac Sim 5.1 은 `load_supported_motion_policy_config(robot_description, "RMPflow")` 로 URDF/robot_description path 를 획득한다. 구버전 호환 fallback 으로 `load_supported_robot_motion_policy_configs(...)` 도 유지한다.
+`_resolve_lula_modules()` selects the importable path among `isaacsim.robot_motion.motion_generation.lula` and `omni.isaac.motion_generation.lula`. If it fails, it returns `ValueError → 400`. Isaac Sim 5.1 obtains the URDF/robot_description path with `load_supported_motion_policy_config(robot_description, "RMPflow")`. `load_supported_robot_motion_policy_configs(...)` is also maintained as a fallback compatible with older versions.
 
 ---
 
 ## Character / AnimGraph
 
-### SkelRoot 사전 검증 + AnimGraph ready retry
+### SkelRoot pre-verification + AnimGraph ready retry
 
-Character 관련 API (`play_animation`, `navigate`, `set_position`, `get_state`) 진입 시 순차 적용:
+Apply sequentially when entering character-related API (`play_animation`, `navigate`, `set_position`, `get_state`):
 
-1. `_assert_skel_root(prim_path)` — prim 유효성 + `UsdSkel.Root` 재귀 탐색. 없으면 HTTP 400
-2. `_ensure_animation_ready(prim_path)` — `omni.anim.graph.core.get_character(prim_path)` 가 None 이면 (graph registry populate 지연) 1-frame `simulation_play → pause` warm-up 후 재시도. 여전히 None 이면 HTTP 500
+1. `_assert_skel_root(prim_path)` — prim validity + `UsdSkel.Root` recursive search. If not, HTTP 400
+2. `_ensure_animation_ready(prim_path)` — If `omni.anim.graph.core.get_character(prim_path)` is None (delay in graph registry populate), retry after 1-frame `simulation_play → pause` warm-up. If still None, HTTP 500
 
-`ApplyAnimationGraphAPICommand` 실행 직후에는 아직 AnimGraph registry 에 populate 안 됨 — scenario arrange 에 `simulation.play → pause` 명시 권장.
+Immediately after executing `ApplyAnimationGraphAPICommand`, it has not yet been populated in the AnimGraph registry — it is recommended to specify `simulation.play → pause` in scenario arrange.
 
-### Shutdown hang 방지
+### Shutdown hang prevention
 
-`kit_app_stop` 이전에 `simulation.play → step → stop` (최종 physics tick) 이 없으면 AnimGraph / NavMesh 내부 핸들 정리 타이밍 문제로 kit.exe 셔다운 hang. scenario cleanup 에 반드시 포함.
+If there is no `simulation.play → step → stop` (the final physics tick) before `kit_app_stop`, kit.exe will hang due to timing issues with AnimGraph/NavMesh internal handle cleanup. Must be included in scenario cleanup.
 
-### USD prim 이름 `_sanitize_prim_name` 필수
+### USD prim name `_sanitize_prim_name` required
 
-USD prim 이름 규칙은 **`[A-Za-z0-9_]`** 만. 하이픈 / 점 / 공백 / leading digit 이 들어가면 `Sdf.Path` / `CreatePrimCommand` 가 `"... is not a valid path"` HTTP 400. 대표 케이스: DH_Characters_Extended UUID `02c80685-06e3-11ef-ae8a-f4b30194174e` → `c_02c80685_06e3_11ef_ae8a_f4b30194174e`.
+USD prim name convention is **`[A-Za-z0-9_]`** only. If hyphen / dot / space / leading digit is entered, `Sdf.Path` / `CreatePrimCommand` becomes `"... is not a valid path"` HTTP 400. Representative case: DH_Characters_Extended UUID `02c80685-06e3-11ef-ae8a-f4b30194174e` → `c_02c80685_06e3_11ef_ae8a_f4b30194174e`.
 
-응답에 `prim_path` (caller echo) + `sanitized_prim_path` (실제 USD 배치 경로) 양쪽 반환 — 후속 호출은 **반드시 `sanitized_prim_path` 기준**.
+Return both `prim_path` (caller echo) + `sanitized_prim_path` (actual USD placement path) in response — subsequent calls **must be based on `sanitized_prim_path`**.
 
-### play_animation_variant 의 variable split
+### variable split of play_animation_variant
 
-`_parse_variant(variant)` 가 prefix (Sit/Walk/Run/Idle) 로 split. `SitReading` → base=`Sit`, style_var=`sit_style`, style_value=`reading`. base 는 `graph.set_variable("Action", base)` 로 무조건 set, style_var 는 try/except 로 silent no-op (AnimGraph 에 variable 없으면 Kit 내부 조용히 실패). `response.variables_set` 이 실제 적용된 key 리스트.
+`_parse_variant(variant)` is split into prefix (Sit/Walk/Run/Idle). `SitReading` → base=`Sit`, style_var=`sit_style`, style_value=`reading`. The base is unconditionally set to `graph.set_variable("Action", base)`, and style_var is a silent no-op with try/except (if there is no variable in AnimGraph, the Kit fails silently). `response.variables_set` This is the actual applied key list.
 
 ---
 
 ## NavMesh
 
-### Bake 는 timeline stopped 필수
+### Bake timeline stopped is required
 
-playing 중 호출 시 `start_navmesh_baking_and_wait()` 가 True 를 반환해도 **`get_navmesh()` 는 None / 빈 mesh** (False Positive). `stage/load_usd`, `robot/load`, `stage/create_prim`, `stage/set_property`, `viewport/capture(settle_frames)`, `window/capture` 는 모두 timeline 을 advance / 재생시킬 수 있으므로 bake 직전에 `simulation/stop` 을 한 번 더 명시. service 내부엔 precondition 체크 없음 — 호출자 책임.
+Even if `start_navmesh_baking_and_wait()` returns True when called while playing, **`get_navmesh()` is None / empty mesh** (False Positive). `stage/load_usd`, `robot/load`, `stage/create_prim`, `stage/set_property`, `viewport/capture(settle_frames)`, and `window/capture` can all advance/regenerate the timeline, so specify `simulation/stop` one more time just before bake. There are no precondition checks inside the service — caller responsibility.
 
-### 표준 시퀀스
+### standard sequence
 
 `load assets → setup cameras → stop → bake → query_path → play → navigate_path`.
 
-### NavMeshVolume 자동 생성
+### Automatic creation of NavMeshVolume
 
-`navigation_bake` 는 Stage 에 `NavMeshVolume` prim 이 하나도 없으면 `CreateNavMeshVolumeCommand(volume_type=0, scale=40m)` 로 Include 볼륨 자동 생성 후 `start_navmesh_baking_and_wait()`. 기존 볼륨이 있으면 재사용. 응답에 `agent_max_radius` / `area_count` / `mesh_signature` 포함 — **None 이면 bake 실패**.
+If there is no `NavMeshVolume` prim in the Stage, `navigation_bake` automatically creates an Include volume as `CreateNavMeshVolumeCommand(volume_type=0, scale=40m)` and then `start_navmesh_baking_and_wait()`. Reuse existing volumes if you have them. Include `agent_max_radius` / `area_count` / `mesh_signature` in response — **bake fails if None**.
 
-### Step-up caveat (chair walkable 오판)
+### Step-up caveat (misjudgment of chair walkable)
 
-기본 NavMesh 는 chair / low prop 을 walkable 로 판정 가능 (agent_max_step_height ≈ seat height). 캐릭터가 의자 위에 올라선 채 Sit 재생되는 artifact 발생.
+The basic NavMesh can determine chair / low prop as walkable (agent_max_step_height ≈ seat height). An artifact occurs where the character is played while standing on a chair.
 
-회피:
-- (a) `navigation/add_exclude_volume?prim_path=<chair>` 로 bbox 기반 Exclude 자동 배치
-- (b) NavMesh agent_max_step_height 를 chair seat 이하로 낮춤
+evasion:
+- (a) Automatic placement of bbox-based Exclude with `navigation/add_exclude_volume?prim_path=<chair>`
+- (b) Lower NavMesh agent_max_step_height to chair seat or lower.
 
 ### set_visualization backend
 
-`carb.settings.get_settings().set("/persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh", mode=="walkable")` + obstacles 키 토글. 실패 시 `NavMeshVolume` prim 의 `visibility` 토글로 폴백. Response `backend: "carb_settings"|"prim_visibility"` 로 어느 경로가 이겼는지 보고.
+Toggle `carb.settings.get_settings().set("/persistent/exts/omni.anim.navigation.core/navMesh/viewNavMesh", mode=="walkable")` + obstacles key. On failure, fall back to the `visibility` toggle on `NavMeshVolume` prim. Report which path won with Response `backend: "carb_settings"|"prim_visibility"`.
 
 ---
 
 ## Sensor
 
-### Sensor 종류별 stamp 패턴
+### Stamp patterns by sensor type
 
-`services/sensor_service.py` 가 `CreatePrimWithDefaultXformCommand(prim_type="Camera")` 로 부모 robot 아래 Camera prim 생성 + `mount_offset` / `mount_rotation` 을 xformOp 로 설정. 센서 종류는 `customData.validation_api.sensor_type` ∈ {rtx_camera, rtx_lidar, rtx_depth_camera} 로 stamp — `set_visualization` 이 재방문 시 이 태그만 읽어 dispatch.
+`services/sensor_service.py` creates a camera prim under the parent robot with `CreatePrimWithDefaultXformCommand(prim_type="Camera")` + sets `mount_offset` / `mount_rotation` to xformOp. The sensor type is `customData.validation_api.sensor_type` ∈ {rtx_camera, rtx_lidar, rtx_depth_camera} stamp — `set_visualization` reads and dispatches only this tag when it revisits.
 
-- **RTX Camera**: UsdGeom.Camera + `horizontalAperture=20.955`, `focalLength=24.0` 기본
-- **RTX Lidar**: Camera prim 기반 + `config_preset` (`Example_Rotary` 등) + `annotator: "RtxSensorCpuIsaacCreateRTXLidarScanBuffer"` customData 기록. 실제 Lidar 데이터 획득은 `isaacsim.sensors.rtx` extension 활성 + capture 시점에 annotator attach 필요
-- **RTX Depth Camera**: Camera prim + `annotator: "distance_to_camera"` metadata. viewport capture 가 depth annotator 를 attach 해 grayscale distance map 생성
+- **RTX Camera**: UsdGeom.Camera + `horizontalAperture=20.955`, `focalLength=24.0` default
+- **RTX Lidar**: Based on Camera prim + `config_preset` (`Example_Rotary`, etc.) + `annotator: "RtxSensorCpuIsaacCreateRTXLidarScanBuffer"` customData recording. Actual Lidar data acquisition requires activation of `isaacsim.sensors.rtx` extension + annotator attach at the time of capture.
+- **RTX Depth Camera**: Camera prim + `annotator: "distance_to_camera"` metadata. Viewport capture attaches a depth annotator to create a grayscale distance map
 
-### Contact / IMU 는 fallback 패턴
+### Contact / IMU is a fallback pattern
 
-`from isaacsim.sensors.physics import ContactSensor` 시도 → 성공 시 ContactSensor 생성자 호출 (prim 자동 생성). ImportError / RuntimeError 시 `CreatePrimWithDefaultXformCommand(prim_type="Xform")` 로 fallback + `xformOp:translate` 설정. customData 에 `backend` (성공 경로 or `fallback_xform:<ErrorType>`) stamp.
+Try `from isaacsim.sensors.physics import ContactSensor` → Upon success, call the ContactSensor constructor (automatically create prim). In case of ImportError / RuntimeError, set fallback to `CreatePrimWithDefaultXformCommand(prim_type="Xform")` + `xformOp:translate`. stamp `backend` (success path or `fallback_xform:<ErrorType>`) into customData.
 
-IMU `mount_orientation` 은 `[qw, qx, qy, qz]` **scalar-first** quaternion, `numpy.array` 로 변환 후 `IMUSensor(..., orientation=np.array(quat))` 전달.
+IMU `mount_orientation` is converted to `[qw, qx, qy, qz]` **scalar-first** quaternion, `numpy.array` and then passed to `IMUSensor(..., orientation=np.array(quat))`.
 
 ---
 
@@ -134,169 +134,165 @@ IMU `mount_orientation` 은 `[qw, qx, qy, qz]` **scalar-first** quaternion, `num
 
 ### BasicWriter channel kwargs
 
-`rep.WriterRegistry.get("BasicWriter")` + `writer.initialize(output_dir=..., rgb=True, distance_to_camera=True, semantic_segmentation=...)`. writer 인스턴스는 service 내부 dict (`self._writers[writer_id]`) 에 보관 — 세션 lifetime. output_dir 은 `os.makedirs(exist_ok=True)` 자동 생성.
+`rep.WriterRegistry.get("BasicWriter")` + `writer.initialize(output_dir=..., rgb=True, distance_to_camera=True, semantic_segmentation=...)`. The writer instance is stored in the service internal dict (`self._writers[writer_id]`) — session lifetime. output_dir is automatically created by `os.makedirs(exist_ok=True)`.
 
-> ⚠️ validation_api REST 의 `depth` kwarg 는 내부에서 `distance_to_camera=True` 로 매핑됨. REST 레벨에서는 `depth` 사용, `rep.WriterRegistry` 레벨에서는 `distance_to_camera`.
+> ⚠️ `depth` kwarg in validation_api REST is internally mapped to `distance_to_camera=True`. At the REST level, use `depth`, at the `rep.WriterRegistry` level, use `distance_to_camera`.
 
 ### Orchestrator trigger
 
-- `trigger_once`: `rep.orchestrator.run_async(num_frames=N)` 우선, 미구현 Kit build 에서는 sync `run(num_frames=N)` 폴백
-- `trigger_on_time`: `with rep.trigger.on_time(interval=s)` wrap. interval < simulation tick (0.016 s) 시 큐 buildup 경고
-- Timeline play 만으로는 writer 가 flush 하지 않음 — **명시 trigger 필수**
+- `trigger_once`: `rep.orchestrator.run_async(num_frames=N)` First, sync `run(num_frames=N)` falls back in unimplemented kit builds.
+- `trigger_on_time`: `with rep.trigger.on_time(interval=s)` wrap. interval < simulation tick (0.016 s) cue buildup warning
+- Timeline play alone does not flush the writer — **Explicit trigger required**
 
 ---
 
 ## OmniGraph
 
-### ActionGraph 생성 + 재사용
+### ActionGraph creation + reuse
 
-`og.get_graph_by_path(graph_path)` 확인 후 없으면 `og.Controller.edit({"graph_path": ..., "evaluator_name": "execution"}, {})` 로 ActionGraph 생성. 있으면 재사용 + `graph_existed=True`.
+If `og.get_graph_by_path(graph_path)` is not found after checking, create ActionGraph with `og.Controller.edit({"graph_path": ..., "evaluator_name": "execution"}, {})`. If there is, reuse + `graph_existed=True`.
 
-Node 생성은 `og.Controller.edit(graph, {Keys.CREATE_NODES: [(name, type)]})`. 속성 경로: `/GraphPath/NodeName.outputs:<attr>` → `/GraphPath/NodeName.inputs:<attr>`.
+Node creation is `og.Controller.edit(graph, {Keys.CREATE_NODES: [(name, type)]})`. Attribute path: `/GraphPath/NodeName.outputs:<attr>` → `/GraphPath/NodeName.inputs:<attr>`.
 
-### ROS2 publisher 구성
+### ROS2 publisher configuration
 
-OnTick + `isaacsim.core.nodes.IsaacCreateRenderProduct` + `isaacsim.ros2.bridge.ROS2PublishImage` 3 개 노드 + 3 개 connection. `rclpy` import 시도로 `ros2_available` 판정. 두 extension 이 미활성이면 unknown node type 은 `og.Controller.edit` 이 silent skip → response `nodes_created` 길이로 실제 생성 수 확인. **ROS2 런타임 없이도 graph 구조는 생성됨**.
+OnTick + `isaacsim.core.nodes.IsaacCreateRenderProduct` + `isaacsim.ros2.bridge.ROS2PublishImage` 3 nodes + 3 connections. An attempt to import `rclpy` results in `ros2_available`. If both extensions are inactive, the unknown node type is `og.Controller.edit`. Silent skip → response `nodes_created` Check the actual number of creations with the length. **Graph structure is created even without ROS2 runtime**.
 
-### graph.evaluate() 수동 실행
+### Running graph.evaluate() manually
 
-ActionGraph 가 scene event 대기 중일 때 결정적으로 한 번 실행시킴. 미존재 graph 는 `ValueError → 400`.
+Executes decisively once when ActionGraph is waiting for a scene event. The non-existent graph is `ValueError → 400`.
 
 ---
 
-## Viewport / Window capture
+## Viewport/Window capture
 
-### Viewport-owned overlay UI — `Frame` 아래 단일 root 필수
+### Viewport-owned overlay UI — single root required under `Frame`
 
-`viewport_window.get_frame(name)` 으로 만든 viewport overlay frame 에 `ui.Placer` / `ui.Button` /
-`ui.Image` 를 여러 개 직접 추가하면 Kit build 에 따라 마지막 child 만 보이는 증상이 발생한다.
-실측 증상: Button A/B 를 둘 다 생성했는데 마지막에 그린 Button B 만 viewport 에 표시됨.
+`ui.Placer` / `ui.Button` / in the viewport overlay frame created with `viewport_window.get_frame(name)`
+If you add multiple `ui.Image` directly, a symptom occurs where only the last child is visible depending on the kit build.
+Actual symptom: Both Button A/B were created, but only Button B, which was drawn last, is displayed in the viewport.Safety pattern:
+1. Place only a single root container directly below `with frame:`. Usually`ui.ZStack(width=ui.Fraction(1), height=ui.Fraction(1))`.
+2. Multiple absolute-position widgets are placed as `ui.Placer(offset_x=..., offset_y=...)` within the root `ZStack`.
+3. When changing state (Button HUD → Preview → Detail → Back), create a new root `ZStack` after `frame.clear()`.
 
-안전 패턴:
-1. `with frame:` 바로 아래에는 단일 root container 만 둔다. 보통 `ui.ZStack(width=ui.Fraction(1), height=ui.Fraction(1))`.
-2. 여러 absolute-position widget 은 그 root `ZStack` 안에서 `ui.Placer(offset_x=..., offset_y=...)` 로 배치한다.
-3. state 전환(Button HUD → Preview → Detail → Back) 때는 `frame.clear()` 후 새 root `ZStack` 을 다시 만든다.
+### `omni.ui.Button` is not a context manager
 
-### `omni.ui.Button` 은 context manager 가 아님
-
-Kit 107 / USD Composer 계열에서 `ui.Button` 인스턴스는 `with button:` 패턴을 지원하지 않는다.
-이미지를 버튼 안에 child 로 넣으려고 `with ui.Button(...): ui.Image(...)` 또는 `with button:` 을 쓰면
+In the Kit 107 / USD Composer series, the `ui.Button` instance does not support the `with button:` pattern.
+If you use `with ui.Button(...): ui.Image(...)` or `with button:` to place an image as a child in a button,
 `TypeError("'omni.ui._ui.Button' object does not support the context manager protocol")`.
 
-이미지 tile 을 클릭 가능하게 만들 때의 안전 패턴:
-1. `ui.ZStack(width=..., height=...)` 를 만든다.
-2. 배경 `ui.Rectangle` + `ui.Image(..., width=ui.Pixel(w), height=ui.Pixel(h))` 를 배치한다.
-3. 맨 위에 투명 `ui.Rectangle(opaque_for_mouse_events=True, style={"background_color": 0x00000000})` 를 올린다.
-4. 투명 rect 에 `set_mouse_pressed_fn` 또는 `set_mouse_released_fn` 을 연결한다.
+Safety pattern when making an image tile clickable:
+1. Create `ui.ZStack(width=..., height=...)`.
+2. Place background `ui.Rectangle` + `ui.Image(..., width=ui.Pixel(w), height=ui.Pixel(h))`.
+3. Place transparent `ui.Rectangle(opaque_for_mouse_events=True, style={"background_color": 0x00000000})` on top.
+4. Connect `set_mouse_pressed_fn` or `set_mouse_released_fn` to the transparent rect.
 
-### Viewport overlay 버튼은 `content_clipping=True` + `ui.Button`
+### Viewport overlay buttons are `content_clipping=True` + `ui.Button`
 
-Viewport 위에 뜨는 버튼이 Stage prim 선택을 막아야 하면 `ui.Button` 을 실제 event target 으로 두고,
-그 주변을 `ui.ZStack(..., content_clipping=True)` 같은 Stack container 로 감싼다.
-NVIDIA No-Code UI 문서도 Viewport UI 가 기본적으로 Prim 선택을 막지 않으며, Stack 의 content clipping 을
-켜야 mouse click 을 consume 한다고 설명한다.
+If the button that appears above the viewport should prevent Stage prim selection, set `ui.Button` as the actual event target,
+Surround it with a stack container such as `ui.ZStack(..., content_clipping=True)`.
+The NVIDIA No-Code UI document also states that the Viewport UI does not block Prim selection by default and does not block content clipping of the Stack.
+It is explained that it must be turned on to consume mouse clicks.
 
-주의:
-1. `ui.Rectangle + ui.Label + 투명 ui.Rectangle(mouse callback)` 합성 버튼은 클릭 callback 은 실행될 수 있지만,
-   Viewport selection 까지 안정적으로 차단하지 못하고 hover style 도 잃기 쉽다.
-2. 버튼 스타일은 parent stack 에 style dict 를 주고 `Button`, `Button:hovered`, `Button:pressed`,
-   `Button.Label` selector 를 사용한다. `Button.Label` 이 text color / font size 를 제어하는 공식 selector 다.
-3. 이미지 preview tile 처럼 Button child 가 필요 없는 영역은 위의 투명 Rectangle hit layer 패턴을 계속 사용해도 된다.
-   실제 HUD 버튼과 preview tile 의 event 패턴을 섞지 않는다.
+caution:
+1. `ui.Rectangle + ui.Label + transparent ui.Rectangle(mouse callback)` composite button click callback can be executed,
+It does not reliably block viewport selection and it is easy to lose the hover style.
+2. For the button style, give a style dict to the parent stack and add `Button`, `Button:hovered`, `Button:pressed`,
+Use `Button.Label` selector. `Button.Label` is a formula selector that controls text color / font size.
+3. For areas where a Button child is not needed, such as the image preview tile, you can continue to use the transparent Rectangle hit layer pattern above.
+Do not mix the event patterns of the actual HUD buttons and preview tiles.
 
-### 색상 변경 UI 는 `ColorWidget` 사용
+### Color change UI uses `ColorWidget`
 
-Extension panel 에서 사용자가 색상이나 투명도를 바꾸는 설정은 항상 `omni.ui.ColorWidget(r, g, b, a)` 로 노출한다.
-`StringField("RRGGBB")` + `IntDrag(alpha)` 조합은 입력 오류, commit timing, 색상 preview 부재 때문에 운영 UI 로 쓰지 않는다.
+Settings where the user changes color or transparency in the extension panel are always exposed as `omni.ui.ColorWidget(r, g, b, a)`.
+The combination of `StringField("RRGGBB")` + `IntDrag(alpha)` is not used as an operational UI due to input errors, commit timing, and lack of color preview.Safety pattern:
+1. The internally stored value can be kept as ABGR int in line with the existing kit style.
+2. When panel build/sync, convert ABGR int to RGBA float `(0.0..1.0)` and put it in `ColorWidget` child model.
+3. Read the value of `r,g,b,a` of the child model from `ColorWidget.model.add_end_edit_fn(...)` and pack it back into ABGR int.
+4. Several colors such as Button/Hover/Text/Panel/Overlay/Border share the same helper.
 
-안전 패턴:
-1. 내부 저장값은 기존 Kit style 과 맞춰 ABGR int 로 유지해도 된다.
-2. panel build/sync 시 ABGR int 를 RGBA float `(0.0..1.0)` 로 변환해 `ColorWidget` child model 에 넣는다.
-3. `ColorWidget.model.add_end_edit_fn(...)` 에서 child model 의 `r,g,b,a` 값을 읽어 다시 ABGR int 로 pack 한다.
-4. Button/Hover/Text/Panel/Overlay/Border 등 여러 색상도 같은 helper 를 공유한다.
+### Viewport point picking is prohibited from relying solely on `request_query`
 
-### Viewport point picking 은 `request_query` 단독 의존 금지
+`ViewportAPI.request_query(pixel, callback)` is an async callback, and the coordinate system/transmission timing may vary depending on Kit app/build.
+If a new query is sent every frame and the previous callback is invalidated by generation, the callback is stale before it arrives.
+The hover highlight / description overlay may not appear at all.
 
-`ViewportAPI.request_query(pixel, callback)` 은 async callback 이며, 좌표계/전달 timing 이 Kit app/build 별로 다를 수 있다.
-매 프레임 새 query 를 보내며 이전 callback 을 generation 으로 무효화하면 callback 이 도착하기 전에 stale 처리되어
-hover highlight / description overlay 가 전혀 뜨지 않을 수 있다.
+In modes where a fixed camera is set, such as top-view, a fallback is included:
+1. Convert viewport-local pixel `(x, y)` to NDC based on camera projection.
+2. Create a ray (origin, direction) directly using the world transform of USD camera prim.
+3. For whitelist prim, hits are obtained in the order of PhysX raycast → USD BBox raycast.
+4. `request_query` is set as the best-effort fast path, and the camera-ray path is set directly as the deterministic fallback.
 
-Top-view 처럼 고정 camera 가 정해진 모드에서는 fallback 을 함께 둔다:
-1. viewport-local pixel `(x, y)` 를 camera projection 기준 NDC 로 변환한다.
-2. USD camera prim 의 world transform 으로 ray(origin, direction)를 직접 만든다.
-3. whitelist prim 에 대해 PhysX raycast → USD BBox raycast 순서로 hit 를 구한다.
-4. `request_query` 는 best-effort fast path 로 두고, 직접 camera-ray path 를 deterministic fallback 으로 둔다.
+### Create multi-viewport
 
-### Multi-viewport 생성
+Check the existence of a window with the same name as `omni.ui.Workspace.get_window(name)` → If it is `existed=true`, reuse. If it doesn't exist, try `omni.kit.viewport.window.ViewportWindow(name, width, height)`, if it fails, fallback to `omni.kit.viewport.utility.create_viewport_window`. 3 tick `next_update_async` wait for first frame to settle. destroy is idempotent (200 response even if it does not exist).
 
-`omni.ui.Workspace.get_window(name)` 으로 동명 창 존재 확인 → `existed=true` 이면 재사용. 존재하지 않으면 `omni.kit.viewport.window.ViewportWindow(name, width, height)` 시도, 실패 시 `omni.kit.viewport.utility.create_viewport_window` 폴백. 3 tick `next_update_async` 대기로 첫 프레임 settle. destroy 는 idempotent (존재 안 해도 200 응답).
+### Window capture strategy
 
-### Window capture 전략
+- Target window: `kernel32.GetCurrentProcessId()` + `user32.EnumWindows`, which is the largest visible top-level (Kit main is class `GLFW30`, title includes "Isaac Sim" / "Omniverse" / "Kit")
+- Capture: `PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT=0x2)` → `PrintWindow(.., 0)` on failure → final `BitBlt` fallback. DWM / RTX composite window must require **0x2 flag** (prevent black screen)
+- Purely implemented with `ctypes` + PIL (not dependent on pywin32/mss)
 
-- 대상 윈도우: `kernel32.GetCurrentProcessId()` + `user32.EnumWindows` 로 가장 큰 visible top-level (Kit 메인은 class `GLFW30`, title 에 "Isaac Sim" / "Omniverse" / "Kit" 포함)
-- 캡처: `PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT=0x2)` → 실패 시 `PrintWindow(.., 0)` → 최종 `BitBlt` 폴백. DWM / RTX 합성 윈도우는 반드시 **0x2 플래그** 필요 (검은 화면 방지)
-- 순수 `ctypes` + PIL 로만 구현 (pywin32/mss 미의존)
+### wait_stable mode — wait for async UI loading
 
-### wait_stable 모드 — async UI 로딩 대기
-
-`wait_stable=true` 를 주면 `stable_interval_s` 간격으로 재캡처하며 **연속 L1 픽셀 diff** (128×128 grayscale 다운샘플, 0-1 스케일) 가 `stable_diff_threshold` (기본 0.01) 미만을 `stable_consecutive` 회 (기본 2) 넘으면 반환. `sha256` 비교는 **사용 불가** (FPS 오버레이 / Timeline cursor 가 매 프레임 픽셀 바꿈). `stable_max_wait_s` (기본 45 s) 초과 시 `stabilized: false` + 마지막 capture 반환.
+If `wait_stable=true` is given, it will be recaptured at intervals of `stable_interval_s` and will be returned if **consecutive L1 pixel diff** (128×128 grayscale downsample, scale 0-1) is less than `stable_diff_threshold` (default 0.01) more than `stable_consecutive` times (default 2). `sha256` comparison is **not available** (FPS overlay / Timeline cursor changes pixels every frame). If `stable_max_wait_s` (default 45 s) is exceeded, `stabilized: false` + last capture is returned.
 
 ---
 
 ## UI Window / Menu Introspection
 
-### omni.kit.ui_test 사용법
+### How to use omni.kit.ui_test
 
-- `omni.kit.ui_test.find/find_all()` 은 **sync**, `WidgetRef.click/double_click/input()` 은 **async**
-- Path grammar 는 typed: `"Win Title//Frame/**/Button[*]"` 처럼 widget class 를 명시해야 매치. `**/*` 는 `*` 가 인덱스 wildcard 로만 해석되어 0 매치
-- `ui_invoke(action=type)` 는 `WidgetRef.input(text, clear_before_input=True)` + `end_key=ENTER`. Omni ui `StringField` 는 Enter 로 commit — 생략 시 model 에 값 미반영. 타이핑 후 `app.next_update_async()` 4 프레임 돌려 post-state 읽기
+- `omni.kit.ui_test.find/find_all()` is **sync**, `WidgetRef.click/double_click/input()` is **async**
+- Path grammar requires the widget class to be specified, such as typed: `"Win Title//Frame/**/Button[*]"` to match. `**/*` matches 0 because `*` is interpreted only as an index wildcard.
+- `ui_invoke(action=type)` is `WidgetRef.input(text, clear_before_input=True)` + `end_key=ENTER`. Omni ui `StringField` is committed with Enter — If omitted, the value is not reflected in the model. After typing, turn `app.next_update_async()` 4 frames to read post-state
 
 ### Menu introspection
 
-- Kit 2.x 에는 `get_menu_dict()` **없음**. `omni.kit.menu.utils.get_merged_menus()` 만 사용
-- 반환은 **flat dict**. 키는 `_` 구분자 hierarchy — 예: `"Window_Browsers"` ↔ `Window > Browsers` submenu. 중첩 구조 아님
-- 값은 `{items: [MenuItemDescription], action_prefix: str, sub_menu: ..., delegate: ...}` wrapper dict — `items` 키 안에 실제 리프 아이템 리스트. `top_items` 를 list 로 간주하면 0 개 잘못 집계
-- 메뉴 아이템 trigger 는 `omni.kit.actions.core.execute_action(ext_id, action_id)` — 실제 클릭 경로와 동일. `onclick_action` tuple 이 없으면 `(action_prefix, item_name)` 관례로 synthesize 가능하나 등록된 action 과 실제로 매칭 안 될 수 있음 → trigger 성공 응답만으로 판단 금지
+- `get_menu_dict()` **None** in Kit 2.x. Use only `omni.kit.menu.utils.get_merged_menus()`
+- Returns **flat dict**. The key is `_` delimiter hierarchy — Example: `"Window_Browsers"` ↔ `Window > Browsers` submenu. Not a nested structure
+- The value is `{items: [MenuItemDescription], action_prefix: str, sub_menu: ..., delegate: ...}` wrapper dict — a list of actual leaf items within the `items` key. If you consider `top_items` as a list, it counts 0 incorrectly
+- Menu item trigger is `omni.kit.actions.core.execute_action(ext_id, action_id)` — Same as actual click path. If there is no `onclick_action` tuple, `(action_prefix, item_name)` can be synthesized by convention, but it may not actually match the registered action → Do not judge based on the trigger success response alone.
 
-### Browser 창 lazy instantiation
+### Browser window lazy instantiation
 
-- `Workspace.get_window(name)` 은 **exact title match** 만. Browser 창의 `[Beta]` / `[Experimental]` suffix 가 menu label 과 항상 일치하지 않음 → case-insensitive substring scan 으로 fallback
-- Browser 류 창은 **lazy-instantiated** — 첫 `show_window` 호출 전까지 `get_windows()` 에 등록 안 됨. 전체 Browser 집합 자동 순회 시: `menu_list(Window/Browsers)` → 각 항목 `menu_trigger` → `ui_list` 재조회 순서 필수
-- Browser 썸네일 로딩은 **extension 별 상이** — `isaacsim.asset.browser` (`Isaac Sim Assets [Beta]`) 는 첫 open 시 NVIDIA 공개 S3 를 실시간 crawl. 즉시 capture 시 빈 그리드. `omni.kit.browser.asset` / `omni.simready.explorer` 는 cached catalog 포함 → 즉시 populate. S3-crawl 은 show 후 10~30 s settle 필요
+- `Workspace.get_window(name)` is **exact title match** only. The `[Beta]` / `[Experimental]` suffix in the browser window does not always match the menu label → fallback to case-insensitive substring scan
+- Browser-type windows are **lazy-instantiated** — are not registered in `get_windows()` until the first `show_window` call. When automatically traversing the entire Browser set: `menu_list(Window/Browsers)` → each item `menu_trigger` → `ui_list` re-search order is required
+- Browser thumbnail loading **different depending on extension** — `isaacsim.asset.browser` (`Isaac Sim Assets [Beta]`) crawls NVIDIA public S3 in real time when first opened. Empty grid upon immediate capture. `omni.kit.browser.asset` / `omni.simready.explorer` includes cached catalog → populate immediately. S3-crawl requires 10~30 s to settle after showing
 
-### Browser / content browser 는 deadlock root cause 가 아님
+### Browser / content browser is not deadlock root cause
 
-과거 `isaacsim.asset.browser` / `omni.kit.window.content_browser` 금지 가설은 2026-04-25 자동 검증으로 무효화. deadlock 인과는 **carb log hook 등록 + MDL resolver 결합**이며, 최신 baseline 은 `docs/invariants/usd-load.md` 의 결론을 따른다.
+The past `isaacsim.asset.browser` / `omni.kit.window.content_browser` prohibition hypothesis was invalidated by automatic verification on 2026-04-25. The deadlock causality is **carb log hook registration + MDL resolver combination**, and the latest baseline follows the conclusion of `docs/invariants/usd-load.md`.
 
-Browser 계열 extension 은 첫 open 때 S3 thumbnail/catalog crawl 로 UI settle 시간이 길어질 수 있다. 따라서 capture/test 에서는 10-30 s settle 을 고려하되, USD load hang 의 root cause 로 취급하거나 `.env` 에서 금지 목록처럼 관리하지 않는다.
-
----
-
-## Extension 관리 / carb 로그
-
-### ExtensionManager API 함정
-
-- `manager.set_extension_enabled_immediate(ext_id, True)` **반환값이 진실의 원천**
-- `manager.get_extension_dict(bare_id)` 는 Kit 107.3 에서 bare id 에 대해 **None 반환** (full qualified `{name}-{version}` 필요) — 유효성 검증 용으로 **사용 금지**
-- `activate` 는 enable-immediate 호출 결과 False 시 `ValueError → 400`. `reload=True` 는 enable 상태에서도 off/on 사이클을 돌려 Python package 재 import
-
-### LogCaptureService 규약
-
-- `carb.logging.acquire_logging().add_logger(cb)` 콜백 시그니처 **5-arg** `(source, level, filename, line, msg)` — 공식 문서 6-arg (tid 포함) 는 구버전
-- Level 정수: VERBOSE=-2, INFO=-1, WARN=0, ERROR=1, FATAL=2
-- 콜백은 **carb 스레드에서 호출**되므로 `_on_log` 는 절대 raise 안 함 (try/except swallow)
-- `add_logger` handle 은 `on_shutdown` 에서 `remove_logger` — 생략 시 Extension reload 간 중복 엔트리
-- `query(since_ms, level, source_filter, limit)` 은 thread-safe snapshot peek (drain 아님) — 반복 호출 시 같은 range 에 같은 엔트리 반환. Kit console 이 chatty 하므로 `ext_id` substring filter 필수
+Browser-type extensions may require a long UI settle time due to S3 thumbnail/catalog crawl when first opened. Therefore, consider 10-30 s settle in capture/test, but do not treat it as the root cause of USD load hang or manage it as a prohibition list in `.env`.
 
 ---
 
-## ASYNC Job 패턴
+## Extension management / carb log
 
-`services/job_service.py` 의 `JobService`:
+### ExtensionManager API pitfalls
 
-- `start_job(coro_factory)` 이 `asyncio.create_task` 로 background 실행 + task reference 를 `_tasks[job_id]` 에 보관 (cancel 용)
-- job dict: `{status, progress, result, error, created_at_ms, updated_at_ms}`. terminal state `done` / `error` / `canceled` 는 TTL 1h 후 sweep (cleanup loop 120s)
-- **모든 예외는 반드시 try/except 으로 `error` 상태에 저장**. silent catch (pass) 금지 — 호출자가 실패 원인 확인 필요
-- `cancel(job_id)` 은 `Task.cancel()` + `status=canceled`. 이미 terminal 이면 현재 상태 리턴 (idempotent). Navigate coroutine 은 `try/finally` 로 `stop_animation` 을 보장 (취소 후 중간 프레임 freeze 방지)
-- Extension 재시작 시 in-flight job 전부 손실 → HTTP 404. 장기 작업은 호출 측 재시도 정책 필요
-- **`JobService.get_status`, `cancel` 은 sync 메서드** (async 아님). in-process import 재사용 시 `await` 하지 말 것
+- `manager.set_extension_enabled_immediate(ext_id, True)` **Return value is the Source of truth**
+- `manager.get_extension_dict(bare_id)` returns **None** for bare id in Kit 107.3 (requires fully qualified `{name}-{version}`) — **Do not use** for validation purposes
+- `activate` becomes `ValueError → 400` when the enable-immediate call result is False. Even in the enabled state, `reload=True` turns the off/on cycle to re-import the Python package.
+
+### LogCaptureService Protocol
+
+- `carb.logging.acquire_logging().add_logger(cb)` callback signature **5-arg** `(source, level, filename, line, msg)` — official documentation 6-arg (with tid) is outdated
+- Level integer: VERBOSE=-2, INFO=-1, WARN=0, ERROR=1, FATAL=2
+- The callback is called on the **carb thread**, so `_on_log` never raises (try/except swallow)
+- `add_logger` handle is `on_shutdown` to `remove_logger` — If omitted, duplicate entries between extension reloads
+- `query(since_ms, level, source_filter, limit)` is a thread-safe snapshot peek (not a drain) — returns the same entry in the same range when called repeatedly. Since the kit console is chatty, `ext_id` substring filter is required
+
+---
+
+## ASYNC Job Pattern
+
+`JobService` of `services/job_service.py`:
+
+- `start_job(coro_factory)` runs in the background as `asyncio.create_task` + keeps the task reference in `_tasks[job_id]` (for cancel)
+- job dict: `{status, progress, result, error, created_at_ms, updated_at_ms}`. terminal state `done` / `error` / `canceled` sweep after TTL 1h (cleanup loop 120s)
+- **All exceptions must be stored in the `error` state as try/except**. No silent catch (pass) — caller needs to determine cause of failure
+- `cancel(job_id)` is `Task.cancel()` + `status=canceled`. If it is already a terminal, the current state is returned (idempotent). Navigate coroutine ensures `stop_animation` with `try/finally` (prevents mid-frame freeze after cancellation)
+- When extension restarts, all in-flight jobs are lost → HTTP 404. Long-term jobs require a retry policy on the calling side.
+- **`JobService.get_status`, `cancel` are sync methods** (not async). When reusing in-process import, do not use `await`

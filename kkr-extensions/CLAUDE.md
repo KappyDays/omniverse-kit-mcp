@@ -1,62 +1,62 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: Kit Extension 개발 루트 — 네비게이션 허브 -->
+<!-- Scope: Kit Extension Development Root — Navigation Hub -->
 
-# kkr-extensions — Kit Extension 개발
+# kkr-extensions — Kit Extension Development
 
-Isaac Sim GUI (`kit.exe`) 내부에서 실행되는 Kit Extension 들이 모여 있는 루트. 이 파일은 **토픽 문서 (`docs/`) 와 각 Extension 폴더 로 안내하는 nav hub**.
+A root containing Kit Extensions that run inside the Isaac Sim GUI (`kit.exe`). This file contains a **topic document (`docs/`) and a nav hub** that guides you to each Extension folder.
 
-## ⚠️ 작업 전 필독 (invariants)
+## ⚠️ Must read before work (invariants)
 
-- Extension `.py` 수정 / reload (fswatcher + zombie cleanup): [`../docs/invariants/ext-reload.md`](../docs/invariants/ext-reload.md)
-- USD 로드 4 조건 (MDL deadlock 방어): [`../docs/invariants/usd-load.md`](../docs/invariants/usd-load.md)
-- UI automation 시퀀스 (`extension_ui_invoke`): [`../docs/invariants/ui-invoke.md`](../docs/invariants/ui-invoke.md)
+- Modify Extension `.py` / reload (fswatcher + zombie cleanup): [`../docs/invariants/ext-reload.md`](../docs/invariants/ext-reload.md)
+- USD load 4 condition (MDL deadlock defense): [`../docs/invariants/usd-load.md`](../docs/invariants/usd-load.md)
+- UI automation sequence (`extension_ui_invoke`): [`../docs/invariants/ui-invoke.md`](../docs/invariants/ui-invoke.md)
 
-## Extension 목록
+## Extension list
 
-| 디렉토리 | 역할 |
+| directory | Role |
 |---------|------|
-| `omni.mycompany.validation_api/` | **REST bridge Extension** — MCP 서버가 Kit SDK 를 원격 조작할 수 있게 하는 FastAPI router (`localhost:8111/validation/v1/**`). 이 프로젝트의 MCP tool 전부가 이 REST 에 의존 |
-| `omni.mycompany.navmesh_playground/` | Phase J Extension — `full_warehouse.usd` 위에 People/Robot 을 random walkable 배치 후 NavMesh path 따라 이동. People = BehaviorAgent/IRA Walk→Sit FSM, Robot = DifferentialController 기반 물리 바퀴. **독립 구조** (validation_api 의존 없음). deadlock-recipe 복사. |
-| `omni.mycompany.usd_mouse_interact/` | Composer Extension v0.2 — FPS fly-camera + whitelist prim picker + info overlay (timeline-driven). dev panel 의 manual inject button (yaw / WASD / Force pick) 으로 OS-level input 우회 검증. **독립 구조** — `workshop/` 에 docs / tests / helper scripts 별도 |
-| `omni.mycompany.usd_mouse_interact_demo/` | Composer input/streaming demo 작업본 — button overlay + multi-mode mouse interaction 실험용 |
+| `omni.mycompany.validation_api/` | **REST bridge Extension** — FastAPI router (`localhost:8111/validation/v1/**`) that allows the MCP server to remotely operate the Kit SDK. All MCP tools in this project depend on this REST |
+| `omni.mycompany.navmesh_playground/` | Phase J Extension — Place People/Robot on `full_warehouse.usd` as random walkable and move along NavMesh path. People = BehaviorAgent/IRA Walk→Sit FSM, Robot = DifferentialController based physics wheel. **Standalone** (no validation_api dependency). Copy deadlock-recipe. |
+| `omni.mycompany.usd_mouse_interact/` | Composer Extension v0.2 — FPS fly-camera + whitelist prim picker + info overlay (timeline-driven). OS-level input bypass verification using the manual inject button (yaw / WASD / Force pick) on the dev panel. **Independent structure** — Separate docs / tests / helper scripts in `workshop/` |
+| `omni.mycompany.usd_mouse_interact_demo/` | Composer input/streaming demo working copy — button overlay + multi-mode mouse interaction experimental use |
 
-## 핵심 정책
+## Core policies
 
-### 🛑 Extension 은 **독립 구조** (2026-04-22 확정)
+### 🛑 Extension is **independent structure** (confirmed on 2026-04-22)
 
-- Kit SDK (`omni.kit.commands` / `omni.usd` / `pxr.*` 등) **직접 호출**
-- `validation_api` 의존 **금지**
-- S3 MDL-heavy asset (office / warehouse / nova_carter / 6.0 character skins 등) 로드 필요 시 `docs/usd-load-deadlock-recipe.md` 의 방어 코드를 **복사** (import 아닌)
-- `validation_api` 내부 service import 재사용 금지 — Extension 은 Kit SDK 를 직접 호출
+- Kit SDK (`omni.kit.commands` / `omni.usd` / `pxr.*`, etc.) **Direct call**
+- Depends on `validation_api` **Prohibited**
+- When necessary to load S3 MDL-heavy assets (office / warehouse / nova_carter / 6.0 character skins, etc.), **copy** the defense code of `docs/usd-load-deadlock-recipe.md` (not import)
+- Do not reuse `validation_api` internal service import — Extension calls Kit SDK directly
 
-### 공통 규칙 (상세는 docs/extension-basics.md)
+### Common rules (docs/extension-basics.md for details)
 
-- `__init__.py` 에 `IExt` 서브클래스 import 필수 (없으면 `on_startup` 호출 안 됨)
-- 로깅은 `carb.log_warn / log_info / log_error` 만 — Python `logging` / `print` 은 Kit Console 안 보임
-- 코드 수정 반영: **로컬 개발은 hot-reload** / `[dependencies]` 변경은 Kit 완전 재시작
-- **UI 문자열은 영어만 (hard rule — 예외 없음)** — Isaac Sim 6.0 / Kit 110 계열에서도 `omni.ui` CJK 렌더링 제약이 실측된다. DevPanel 라벨 / Button text / hint label / Window title / status text 모두 영어로 author
-- Viewport overlay UI 는 `viewport_window.get_frame()` 아래 단일 root `ui.ZStack` 사용 — 상세: `docs/kit-sdk-pitfalls.md` "Viewport-owned overlay UI"
-- 사용자-facing 색상/투명도 설정 UI 는 항상 `omni.ui.ColorWidget(r, g, b, a)` 사용 — 상세: `docs/kit-sdk-pitfalls.md` "색상 변경 UI 는 `ColorWidget` 사용"
-- 새 viewport/UI pitfall 발견 시 `docs/kit-sdk-pitfalls.md` 본문 + `docs/extension-basics.md` 체크리스트 포인터를 함께 갱신
+- `IExt` subclass must be imported into `__init__.py` (if not present, `on_startup` will not be called)
+- Logging is only for `carb.log_warn / log_info / log_error` — Python `logging` / `print` is not visible in the Kit Console.
+- Reflection of code modifications: **hot-reload for local development** / Kit complete restart for `[dependencies]` changes
+- **UI strings are English only (hard rule — no exceptions)** — `omni.ui` CJK rendering restrictions are also observed in Isaac Sim 6.0 / Kit 110 series. DevPanel label / Button text / hint label / Window title / status text all in English author
+- Viewport overlay UI uses a single root `ui.ZStack` under `viewport_window.get_frame()` — Details: `docs/kit-sdk-pitfalls.md` "Viewport-owned overlay UI"
+- User-facing color/transparency setting UI always uses `omni.ui.ColorWidget(r, g, b, a)` — Details: `docs/kit-sdk-pitfalls.md` "Color changing UI uses `ColorWidget`"
+- When a new viewport/UI pitfall is found, the `docs/kit-sdk-pitfalls.md` body + `docs/extension-basics.md` checklist pointer are updated together.
 
-## 토픽 문서 (`docs/`)
+## Topic document (`docs/`)
 
-| 문서 | 언제 읽나 |
+| document | When to read |
 |------|----------|
-| [`docs/extension-basics.md`](docs/extension-basics.md) | **신규 Extension 시작할 때** — IExt / toml / hot-reload / 독립 스켈레톤 copy-paste 템플릿 |
-| [`docs/kit-sdk-pitfalls.md`](docs/kit-sdk-pitfalls.md) | 특정 Kit API (USD load / articulation / character / NavMesh / sensor / viewport / UI automation) 쓰다가 막혔을 때 도메인별 실측 함정 검색 |
-| [`docs/usd-load-deadlock-recipe.md`](docs/usd-load-deadlock-recipe.md) | S3 MDL-heavy asset 을 독립 Extension 에서 로드할 때 복사할 방어 코드 (log_capture disable + run_coroutine + CreatePayloadCommand instanceable 3-요소) |
-| [`docs/lessons-learned.md`](docs/lessons-learned.md) | 과거 구현 실수 + 교훈 누적 로그. 새 작업 시작 전 훑어보면 같은 실수 회피 |
+| [`docs/extension-basics.md`](docs/extension-basics.md) | **When starting a new extension** — IExt / toml / hot-reload / independent skeleton copy-paste template |
+| [`docs/kit-sdk-pitfalls.md`](docs/kit-sdk-pitfalls.md) | When you get stuck while using a specific Kit API (USD load / articulation / character / NavMesh / sensor / viewport / UI automation), search for ground truth pitfalls by domain |
+| [`docs/usd-load-deadlock-recipe.md`](docs/usd-load-deadlock-recipe.md) | Defense code to copy when loading S3 MDL-heavy asset from independent extension (log_capture disable + run_coroutine + CreatePayloadCommand instanceable 3-element) |
+| [`docs/lessons-learned.md`](docs/lessons-learned.md) | Cumulative log of past implementation mistakes + lessons learned. Avoid the same mistakes by scanning before starting a new task |
 
-## Extension 별 개별 문서
+## Individual documents for each extension
 
-공통 내용은 `docs/` 에, 각 Extension 고유한 것만 Extension 폴더 내에:
+The common content is in `docs/`, and only the unique contents of each Extension are in the Extension folder:
 
-- Extension 고유 QA 문서는 해당 Extension 폴더 안에 둔다.
+- Extension-specific QA documents are placed in the relevant Extension folder.
 
-## 관련 경계
+## Related Boundaries
 
-- MCP 서버가 `validation_api` 를 어떻게 호출하는지: [`../src/omniverse_kit_mcp/CLAUDE.md`](../src/omniverse_kit_mcp/CLAUDE.md) + [`../src/omniverse_kit_mcp/modules/CLAUDE.md`](../src/omniverse_kit_mcp/modules/CLAUDE.md)
-- `validation_api` REST endpoint 전체 목록 SoT: [`omni.mycompany.validation_api/omni/mycompany/validation_api/rest_router.py`](omni.mycompany.validation_api/omni/mycompany/validation_api/rest_router.py) (코드가 SoT)
-- Extension 활성화 설치 절차: [`../setup/CLAUDE.md`](../setup/CLAUDE.md)
-- Scenario YAML 에서 Extension UI 자동 조작: [`../scenarios/CLAUDE.md`](../scenarios/CLAUDE.md)
+- How the MCP server calls `validation_api`: [`../src/omniverse_kit_mcp/CLAUDE.md`](../src/omniverse_kit_mcp/CLAUDE.md) + [`../src/omniverse_kit_mcp/modules/CLAUDE.md`](../src/omniverse_kit_mcp/modules/CLAUDE.md)
+- `validation_api` REST endpoint full list SoT: [`omni.mycompany.validation_api/omni/mycompany/validation_api/rest_router.py`](omni.mycompany.validation_api/omni/mycompany/validation_api/rest_router.py) (code is SoT)
+- Extension activation installation procedure: [`../setup/CLAUDE.md`](../setup/CLAUDE.md)
+- Automatically manipulate Extension UI in Scenario YAML: [`../scenarios/CLAUDE.md`](../scenarios/CLAUDE.md)

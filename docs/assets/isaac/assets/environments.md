@@ -2,32 +2,32 @@
 
 `$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
 
-루트: `$ISAAC/Environments/`  
-드릴다운: `asset_list(category="environments", subpath="{FolderName}")`
+Root: `$ISAAC/Environments/`
+Drill down to: `asset_list(category="environments", subpath="{FolderName}")`
 
 ---
 
-| 환경 | 주요 USD | 크기 | 특징 |
+| environment | Major USD | size | characteristic |
 |---|---|---|---|
-| **Simple_Warehouse** | `warehouse.usd` ✓ | 1.59 MB | 기본 창고 |
-| | `full_warehouse.usd` | 6.8 MB | 상세 창고 (무거움) |
-| | `warehouse_multiple_shelves.usd` | 2.3 MB | 다열 선반 |
-| | `warehouse_with_forklifts.usd` | ~14 KB | stub (거의 빈 파일) |
-| **Office** | `office.usd` ✓ | 256 KB | 현대 사무실 |
-| **Simple_Room** | `simple_room.usd` ✓ | 1.63 MB | 거실/단순 실내 |
-| **Hospital** | `hospital.usd` ✓ | 137 KB | 병원 복도 |
-| **Grid** | `default_environment.usd` ✓ | 14 KB | 무한 그리드 (기본 테스트용) |
-| | `gridroom_black.usd` | 15 KB | 검정 그리드 |
-| | `gridroom_curved.usd` | 217 KB | 곡면 그리드 룸 |
-| **Digital_Twin_Warehouse** | (내부 구조 미확인) | — | 고품질 창고 DT |
-| **Modular_Warehouse** | (내부 구조 미확인) | — | 모듈형 창고 |
+| **Simple_Warehouse** | `warehouse.usd` ✓ | 1.59 MB | basic warehouse |
+| | `full_warehouse.usd` | 6.8 MB | Detailed warehouse (heavy) |
+| | `warehouse_multiple_shelves.usd` | 2.3 MB | multi-row shelf |
+| | `warehouse_with_forklifts.usd` | ~14 KB | stub (almost empty file) |
+| **Office** | `office.usd` ✓ | 256 KB | modern office |
+| **Simple_Room** | `simple_room.usd` ✓ | 1.63 MB | Living room/simple interior |
+| **Hospital** | `hospital.usd` ✓ | 137 KB | hospital hallway |
+| **Grid** | `default_environment.usd` ✓ | 14 KB | Infinite Grid (for basic testing) |
+| | `gridroom_black.usd` | 15 KB | black grid |
+| | `gridroom_curved.usd` | 217 KB | Curved Grid Room |
+| **Digital_Twin_Warehouse** | (Internal structure unconfirmed) | — | High quality warehouse DT |
+| **Modular_Warehouse** | (Internal structure unconfirmed) | — | modular warehouse |
 | **Modular_Warehouse_New** | `warehouse_10m_all_new.usda` ✓ | — | 10m warehouse module set |
 | | `warehouse_h10m_center.usda` ✓ | — | center module |
 | | `warehouse_h10m_straight.usda` ✓ | — | straight module |
-| **Outdoor** | (내부 구조 미확인) | — | 실외 환경 |
-| **Jetracer** | (내부 구조 미확인) | — | Jetracer 레이스트랙 |
-| **Terrains** | `flat_plane.usd` ✓ | — | 평지 |
-| | `rough_plane.usd` ✓ | — | 거친 평면 |
-| | `slope.usd` ✓ | — | 경사 |
-| | `stairs.usd` ✓ | — | 계단 |
+| **Outdoor** | (Internal structure unconfirmed) | — | outdoor environment |
+| **Jetracer** | (Internal structure unconfirmed) | — | Jetracer Racetrack |
+| **Terrains** | `flat_plane.usd` ✓ | — | flat |
+| | `rough_plane.usd` ✓ | — | rough plane |
+| | `slope.usd` ✓ | — | slope |
+| | `stairs.usd` ✓ | — | stairs |
 | **warehouse_20x20_envi** | `warehouse_20x20_envi.usd` ✓ | — | 20x20 warehouse environment |

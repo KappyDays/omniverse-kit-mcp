@@ -1,72 +1,72 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: kit_app_start timeout 응답 (still_loading / crashed) 분기 해석 -->
-# Cold boot timeout 응답 해석
+<!-- Scope: kit_app_start timeout response (still_loading / crashed) branch analysis -->
+#Interpretation of cold boot timeout response
 
-`kit_app_start` 가 `startup_timeout` 만료 후 timeout 응답을 줄 때, 다음 액션을
-결정하는 분기 가이드.
+When `kit_app_start` gives a timeout response after `startup_timeout` expires, take the following action:
+Your decision-making quarterly guide.
 
-## 응답 분기
+## response branch
 
-| `process_alive` | `status` | 의미 | 다음 action |
+| `process_alive` | `status` | meaning | next action |
 |---|---|---|---|
-| `true` | `still_loading` | cold boot 진행 중. spawn 안 함 | **재호출** (Branch 2 폴링 이어감) — 강제 죽이지 말 것 |
-| `false` | `crashed` | spawn 후 즉시 죽음 또는 boot 실패 | **즉시 진단** — log_tail 분석 |
+| `true` | `still_loading` | Cold boot in progress. Do not spawn | **Recall** (Branch 2 Falling Continues) — Do not force kill |
+| `false` | `crashed` | Immediate death or boot failure after spawn | **Instant Diagnosis** — log_tail analysis |
 
-## still_loading 처리
+## still_loading processing
 
-cold boot 가 GPU 셰이더 캐시 재빌드 등으로 5-10 분 걸릴 수 있음. timeout 후 status
-가 still_loading 이면:
-1. `log_tail` 마지막 line 확인 — ext registration 진행 중이면 정상
-2. `kit_app_start` 재호출 — Branch 2 (alive but health 무응답) 로 진입하여 spawn
-   없이 폴링만 이어감
-3. 여러 번 재호출해도 계속 still_loading 이면 hang 의심:
-   - **stdin pipe deadlock 의심** → `docs/runbooks/kit-stdin-deadlock.md`
-   - hub orphan 의심 → `docs/runbooks/hub-orphan.md`
-   - 수 분째 mtime 정체 → `cmd //c "taskkill /F /IM kit.exe /T"` + 재기동
+Cold boot may take 5-10 minutes due to GPU shader cache rebuilding, etc. status after timeout
+If still_loading is:
+1. Check the last line of `log_tail` — If ext registration is in progress, it is normal.
+2. `kit_app_start` Recall — Enter Branch 2 (alive but health no response) and spawn
+   Just continue polling without any
+3. If still_loading continues even after re-invoking multiple times, hang is suspected:
+   - **stdin pipe deadlock suspected** → `docs/runbooks/kit-stdin-deadlock.md`
+   - Suspected hub orphan → `docs/runbooks/hub-orphan.md`
+   - mtime stagnant for several minutes → `cmd //c "taskkill /F /IM kit.exe /T"` + restart
 
-## crashed 처리 — log_tail 분석 패턴
+## crashed handling — log_tail analysis pattern
 
-`startup_log` / `log_tail` 의 마지막 entries 시그니처별 진단:
+Diagnosis by signature of the last entries of `startup_log` / `log_tail`:
 
-### ext 누락
+### missing ext
 ```
 [Error] [omni.ext.plugin] Extension 'X' could not be found
 ```
-→ `.env` 의 `ISAAC_SIM_EXTRA_EXT_IDS` 가 silent 무시된 경우 가능 (L14) →
+→ Possible when `ISAAC_SIM_EXTRA_EXT_IDS` of `.env` is silently ignored (L14) →
 `docs/runbooks/env-sub-config.md`
 
-### MDL deadlock (S3 asset 로드 시)
+### MDL deadlock (when loading S3 asset)
 ```
 [Warning] [omni.usd.resolver] Disabling base URL to resolve MDL identifier 'OmniPBR.mdl'
-... (반복) ...
+... (repeated) ...
 (silent)
 ```
-→ `LogCaptureService` 활성 + S3 MDL-heavy asset 로드 → carb log callback GIL 경합 →
-Kit main loop deadlock. 회피: USD 로드 4 조건 → `docs/invariants/usd-load.md`
+→ `LogCaptureService` active + S3 MDL-heavy asset load → carb log callback GIL contention →
+Kit main loop deadlock. Avoidance: USD load 4 conditions → `docs/invariants/usd-load.md`
 
-### GPU driver 문제
+### GPU driver problem
 ```
 [Error] [carb.graphics-vulkan.plugin] Failed to create Vulkan instance
 ```
-→ GPU driver 재설치 / Vulkan SDK 확인
+→ Reinstall GPU driver / Check Vulkan SDK
 
 ### Hub failure
 ```
 Hub failed to launch: child exited with exit code: 1
 ```
-→ `docs/runbooks/hub-orphan.md`
+→`docs/runbooks/hub-orphan.md`
 
-## startup_timeout 기본값 변경 시
+## When changing the startup_timeout default value
 
-`.env` 의 `ISAAC_SIM_STARTUP_TIMEOUT=600` (예: cold boot 까지 기다리고 싶을 때) —
-주의: silent fail 시 진단이 늦어짐. 기본 120 이 빠른 진단 위해 권장.
+`ISAAC_SIM_STARTUP_TIMEOUT=600` of `.env` (e.g. when you want to wait until cold boot) —
+Caution: Diagnosis is delayed in case of silent failure. Default 120 is recommended for quick diagnosis.
 
-설정 적용 안 되는 경우 env sub-config 함정 확인 → `docs/runbooks/env-sub-config.md`
+If the settings are not applied, check the env sub-config trap → `docs/runbooks/env-sub-config.md`
 
-## 관련 경계
+## Related Boundaries
 
-- ProcessModule 결정 트리 + stdin/stdout 규약: `src/omniverse_kit_mcp/modules/process-ops.md`
-- Process 생애주기 invariants: `docs/invariants/process-lifecycle.md`
-- stdin pipe hang 본문: `docs/runbooks/kit-stdin-deadlock.md`
-- env 무시 함정: `docs/runbooks/env-sub-config.md`
+- ProcessModule decision tree + stdin/stdout convention: `src/omniverse_kit_mcp/modules/process-ops.md`
+- Process life cycle invariants: `docs/invariants/process-lifecycle.md`
+- stdin pipe hang Main text: `docs/runbooks/kit-stdin-deadlock.md`
+- env ignore trap: `docs/runbooks/env-sub-config.md`
 - Hub orphan: `docs/runbooks/hub-orphan.md`

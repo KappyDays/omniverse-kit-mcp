@@ -1,8 +1,8 @@
-"""Static integrity tests for CLAUDE.md / docs markdown (카테고리 A).
+"""Static integrity tests for CLAUDE.md / docs markdown (category A).
 
 Detects drift introduced by documentation restructuring: broken relative
 links, oversized roots/subs, missing navigation sections, pull-doc files
-growing past their per-category hard caps, pull-doc "N 개" counts drifting
+growing past their per-category hard caps, pull-doc "N files" counts drifting
 from the actual file count (A8), and invariants/runbooks files missing from
 the root/docs index (A9).
 
@@ -37,8 +37,8 @@ RUNBOOK_HARDCAP = int(os.environ.get("CLAUDE_RUNBOOK_HARDCAP", "300"))
 _LINK_RE = re.compile(
     r"\[([^\]]+)\]\((?!https?://|mailto:|#)([^)\s]+?\.md)(#[^)]*)?\)"
 )
-# Headers that qualify as "navigation" under §2.3 (관련 경계 or 문서 맵).
-_NAV_SECTION_RE = re.compile(r"^##.*(관련 경계|문서 맵)", re.MULTILINE)
+# Headers that qualify as "navigation" under §2.3.
+_NAV_SECTION_RE = re.compile(r"^##.*(Related Boundaries|Document Map)", re.MULTILINE)
 
 # Memory index location on this workstation. Purely read-only inspection.
 _MEMORY_INDEX = (
@@ -82,15 +82,15 @@ def _line_count(path: Path) -> int:
 
 
 def _stated_count(text: str, anchor: str) -> int | None:
-    """Return the integer before '개' on the first *anchor* line that has one.
+    """Return the integer before 'files' on the first *anchor* line that has one.
 
-    Anchored count lookup (NOT a global '\\d+ 개' scan) so prose counts like
-    root CLAUDE.md's '8 개 13s 통과' (a DO-NOT-EDIT note, not an index count)
+    Anchored count lookup (NOT a global '\\d+ files' scan) so prose counts like
+    root CLAUDE.md's '8 extensions passed in 13s' (a DO-NOT-EDIT note, not an index count)
     are never matched. Returns None if no anchor line carries a count.
     """
     for line in text.splitlines():
         if anchor in line:
-            m = re.search(r"(\d+)\s*개", line)
+            m = re.search(r"(\d+)\s*files\b", line)
             if m:
                 return int(m.group(1))
     return None
@@ -130,7 +130,7 @@ def test_a1_markdown_relative_links_resolve():
 
 def test_a2_memory_index_pointers_resolve():
     if not _MEMORY_INDEX.exists():
-        pytest.skip(f"MEMORY.md 부재: {_MEMORY_INDEX}")
+        pytest.skip(f"MEMORY.md absent: {_MEMORY_INDEX}")
     text = _MEMORY_INDEX.read_text(encoding="utf-8")
     pattern = re.compile(r"\[[^\]]+\]\(([^)#]+\.md)\)")
     missing = [
@@ -180,7 +180,7 @@ def test_a5_navigation_section_present():
         if not _NAV_SECTION_RE.search(md.read_text(encoding="utf-8"))
     ]
     assert not missing, (
-        "CLAUDE.md missing '## 관련 경계' or '## 문서 맵' section: "
+        "CLAUDE.md missing '## Related Boundaries' or '## Document Map' section: "
         f"{missing}"
     )
 
@@ -208,7 +208,7 @@ def test_a6_invariant_and_runbook_hardcaps():
 
 
 # ---------------------------------------------------------------------------
-# A8: docs/CLAUDE.md pull-doc "N 개" counts match actual file counts
+# A8: docs/CLAUDE.md pull-doc "N files" counts match actual file counts
 # ---------------------------------------------------------------------------
 
 def test_a8_pull_doc_counts_match():
@@ -219,7 +219,7 @@ def test_a8_pull_doc_counts_match():
         actual = len(list((PROJECT / "docs" / cat).glob("*.md")))
         if stated is None:
             problems.append(
-                f"could not locate 'N 개' count in docs/CLAUDE.md '{cat}/' row"
+                f"could not locate 'N files' count in docs/CLAUDE.md '{cat}/' row"
             )
         elif stated != actual:
             problems.append(

@@ -139,7 +139,7 @@ Or hit the REST route directly: `POST http://127.0.0.1:8111/validation/v1/extens
 
 **Exposing your extension as MCP tools**
 
-Loading is one step; surfacing your extension's functionality as natural-language tools is another. See the "새 MCP tool (`tools/`)" row in root [`CLAUDE.md`](./CLAUDE.md)의 변경 파급 매트릭스 — the 8-step checklist (REST endpoint → client → type → module → `@mcp.tool()` → tests → frozenset → `verify_mcp_sync`) covers the full surface-up path.
+Loading is one step; surfacing your extension's functionality as natural-language tools is another. See the "New MCP tool (`tools/`)" row in root [Change propagation matrix for `CLAUDE.md`Z
 
 ### Wiring into Claude Code — workspace folders
 
@@ -302,7 +302,7 @@ Chain Replicator tools: `replicator_create_writer("BasicWriter", output_dir)` �
 ## Development
 
 ```bash
-# Add a new MCP tool — touch-point checklist in CLAUDE.md "변경 파급 매트릭스"
+# Add a new MCP tool — touch-point checklist in CLAUDE.md "Change Propagation Matrix"
 # Core steps:
 #   1. Extension side: models/ + services/ + rest_router.py
 #   2. MCP side: clients/isaac_rest_client.py + types/ + modules/ + tools/
@@ -353,7 +353,7 @@ applications, see [`docs/oss-application-notes.md`](./docs/oss-application-notes
 
 ## Documentation Map
 
-Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문서 맵" table. High-signal entries:
+Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md document map" table. High-signal entries:
 
 - **Operational rules & escalation protocols** → root [`CLAUDE.md`](./CLAUDE.md)
 - **Tool surface contract** → [`docs/tool-catalog.md`](./docs/tool-catalog.md) + [`src/omniverse_kit_mcp/tools/CLAUDE.md`](./src/omniverse_kit_mcp/tools/CLAUDE.md)
@@ -365,9 +365,7 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md 문�
 
 ---
 
-## Status
-
-133 MCP tools + 5 resources covering stage / robot / character / sensor / multi-viewport / physics / lighting / material / SDG / OmniGraph / content / extension domains. Two Kit app profiles (Isaac Sim, USD Composer) with multi-instance support. See [`docs/tool-catalog.md`](./docs/tool-catalog.md) for the full surface.
+## Status133 MCP tools + 5 resources covering stage / robot / character / sensor / multi-viewport / physics / lighting / material / SDG / OmniGraph / content / extension domains. Two Kit app profiles (Isaac Sim, USD Composer) with multi-instance support. See [`docs/tool-catalog.md`](./docs/tool-catalog.md) for the full surface.
 
 ## License
 

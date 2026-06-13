@@ -2,34 +2,35 @@
 <!-- Scope: USD Composer profile workspace -->
 # USD Composer Workspace
 
-USD Composer 로 USD scene authoring / DCC 작업하는 워크스페이스.
-instance-1 (port 8114) / instance-2 (port 8115) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 또는 codex 시작.
+Workspace for USD scene authoring/DCC work using USD Composer.
+Up to instance-1 (port 8114) / instance-2 (port 8115) can be operated simultaneously — CC or codex starts after `cd instance-{1,2}`.
 
-## ⚠️ Capability 제약
+## ⚠️ Capability constraints
 
-USD Composer 는 robotics ext (`robot_*`, `sensor_attach_rtx_*`, `character_*`, `replicator_*`) 를 로드하지 않는다. 호출 시 `CAPABILITY_NOT_SUPPORTED` 반환 — 상세: `../../docs/invariants/multi-app.md`.
+USD Composer does not load robotics ext (`robot_*`, `sensor_attach_rtx_*`, `character_*`, `replicator_*`). Returns `CAPABILITY_NOT_SUPPORTED` when called — verbose: `../../docs/invariants/multi-app.md`.
 
-## ⚠️ 작업 전 필수 pull-doc
+## ⚠️ Required pull-doc before work
 
-| 작업 | 먼저 Read |
+| work | Read first |
 |---|---|
-| USD 로드 (`stage_load_usd` / `stage_open`) | `../../docs/invariants/usd-load.md` |
-| USD Composer 기동 / 종료 | `../../docs/invariants/process-lifecycle.md` |
+| USD Load (`stage_load_usd` / `stage_open`) | `../../docs/invariants/usd-load.md` |
+| USD Composer startup/exit | `../../docs/invariants/process-lifecycle.md` |
+| Parent ↔ live MCP worker coordination | `../../docs/invariants/live-worker-coordination.md` |
 | `viewport_capture` / scene build | `../../docs/invariants/visual-validation.md` |
 | Extension UI automation | `../../docs/invariants/ui-invoke.md` |
-| 에러 진단 | `../../docs/tool-diagnostic-map.md` |
+| Error diagnosis | `../../docs/tool-diagnostic-map.md` |
 
-## Scenario commit 룰
+## Scenario commit rule
 
-`scenarios/` YAML 은 R1 충족 시에만 commit. promote 절차: `../README.md` 의 4 항목 checklist 통과 후 `git mv` 로 server `scenarios/` 이동.
+`scenarios/` YAML commits only when R1 is satisfied. Promote procedure: After passing the 4-item checklist of `../README.md`, move server `scenarios/` to `git mv`.
 
-## Scratch 정리
+## Scratch cleanup
 
-`scratch/` 는 gitignored — 임시 USD / 스크린샷. 세션 종료 후 정리.
+`scratch/` is gitignored — Temporary USD / Screenshot. Clean up after the session ends.
 
-## 관련 경계
+## Related Boundaries
 
-- Server repo 룰: `../../CLAUDE.md` (root)
-- Multi-app / port 매트릭스 + Capability 규칙: `../../docs/invariants/multi-app.md`
-- 워크스페이스 전체 시나리오 매트릭스 + 디렉토리 규약: `../README.md`
-- Promote checklist 본문: `../README.md`
+- Server repo rule: `../../CLAUDE.md` (root)
+- Multi-app / port matrix + Capability rule: `../../docs/invariants/multi-app.md`
+- Workspace-wide scenario matrix + directory convention: `../README.md`
+- Promote checklist Main text: `../README.md`

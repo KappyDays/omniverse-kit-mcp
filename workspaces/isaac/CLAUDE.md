@@ -1,31 +1,32 @@
 <!-- Parent: ../../CLAUDE.md (server repo root) -->
-<!-- Scope: Isaac Sim profile workspace — 사용자가 cd 해서 CC 또는 codex 시작하는 곳 -->
+<!-- Scope: Isaac Sim profile workspace — Where the user cds to start CC or codex -->
 # Isaac Sim Workspace
 
-Isaac Sim 6.0.0 으로 USD scene / 시나리오 / robot demo 작업하는 워크스페이스.
-instance-1 (port 8111) / instance-2 (port 8112) 까지 동시 가동 가능 — `cd instance-{1,2}` 후 CC 또는 codex 시작.
+Workspace for USD scene/scenario/robot demo with Isaac Sim 6.0.0.
+Up to instance-1 (port 8111) / instance-2 (port 8112) can be operated simultaneously — CC or codex starts after `cd instance-{1,2}`.
 
-## ⚠️ 작업 전 필수 pull-doc
+## ⚠️ Required pull-doc before work
 
-| 작업 | 먼저 Read |
+| work | Read first |
 |---|---|
-| USD 로드 (`stage_load_usd` / `robot_load` / `character_load` / `stage_open`) | `../../docs/invariants/usd-load.md` |
-| Isaac Sim 기동 / 종료 / hang | `../../docs/invariants/process-lifecycle.md` |
+| USD Load (`stage_load_usd` / `robot_load` / `character_load` / `stage_open`) | `../../docs/invariants/usd-load.md` |
+| Isaac Sim start/shutdown/hang | `../../docs/invariants/process-lifecycle.md` |
+| Parent ↔ live MCP worker coordination | `../../docs/invariants/live-worker-coordination.md` |
 | `viewport_capture` / scene build | `../../docs/invariants/visual-validation.md` |
 | Extension UI automation (`extension_ui_invoke`) | `../../docs/invariants/ui-invoke.md` |
-| 에러 진단 | `../../docs/tool-diagnostic-map.md` |
+| Error diagnosis | `../../docs/tool-diagnostic-map.md` |
 
-## Scenario commit 룰
+## Scenario commit rule
 
-`scenarios/` 의 YAML 은 R1 (실 NVIDIA Nucleus / Hub URL asset 만) 충족 시에만 commit. 미충족이면 `scratch/` 에 보관. server 회귀로 박을 만하면 `../README.md` 의 promote checklist 4 항목 통과 후 `git mv` 로 server `scenarios/` 이동.
+YAML of `scenarios/` is committed only when it meets R1 (actual NVIDIA Nucleus / Hub URL asset only). If not met, stored in `scratch/`. If server regression is warranted, pass the promote checklist item 4 of `../README.md` and then move server `scenarios/` to `git mv`.
 
-## Scratch 정리
+## Scratch cleanup
 
-`scratch/` 는 gitignored — 임시 USD / 스크린샷 / 작업 메모. 세션 종료 후 의미 없으면 정리.
+`scratch/` is gitignored — temporary USD/screenshots/task notes. After the session ends, if it is not meaningful, clean it up.
 
-## 관련 경계
+## Related Boundaries
 
-- Server repo 룰: `../../CLAUDE.md` (root)
-- Multi-app / port 매트릭스: `../../docs/invariants/multi-app.md`
-- 워크스페이스 전체 시나리오 매트릭스 + 디렉토리 규약: `../README.md`
-- Promote checklist 본문: `../README.md`
+- Server repo rule: `../../CLAUDE.md` (root)
+- Multi-app / port matrix: `../../docs/invariants/multi-app.md`
+- Workspace-wide scenario matrix + directory convention: `../README.md`
+- Promote checklist Main text: `../README.md`

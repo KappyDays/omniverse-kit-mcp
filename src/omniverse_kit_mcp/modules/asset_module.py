@@ -30,8 +30,8 @@ _CATEGORY_FILES = ("robots", "environments", "people", "props", "simready", "oth
 # `$VAR` = `https://…`  prefix declaration (line-anchored, mirrors the format
 # contract guarded by tests/unit/test_asset_inventory_integrity.py).
 _PREFIX_RE = re.compile(r"^`(\$\w+)`\s*=\s*`(https?://[^`]+)`", re.MULTILINE)
-# 루트: `$VAR/path/`  section-root declaration.
-_ROOT_RE = re.compile(r"^루트:\s*`(\$\w+/[^`]*?)/?`")
+# Root: `$VAR/path/`  section-root declaration.
+_ROOT_RE = re.compile(r"^(?:루트|Root):\s*`(\$\w+/[^`]*?)/?`")
 # Any backtick-quoted token.
 _BACKTICK_RE = re.compile(r"`([^`]+)`")
 # Markdown heading.

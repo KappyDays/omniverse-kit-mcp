@@ -1,26 +1,26 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: 독립 Extension 이 MDL-heavy S3 asset 을 로드할 때 복사해 쓰는 방어 코드 -->
+<!-- Scope: Defense code copied when the independent extension loads the MDL-heavy S3 asset -->
 
 # USD Load Deadlock Recipe
 
-## 언제 필요한가
+## When is it needed?
 
-독립 Extension 이 S3 에서 **MDL-heavy asset** (office.usd, warehouse.usd, nova_carter.usd 등) 을 stage 에 로드해야 할 때. 그냥 `omni.kit.commands.execute("CreatePayloadCommand", ...)` 만 호출하면 학생 PC 에서 **kit.exe 가 92 초 freeze** 후 timeout — 증상:
+When an independent extension needs to load **MDL-heavy asset** (office.usd, warehouse.usd, nova_carter.usd, etc.) from S3 to the stage. If you just call `omni.kit.commands.execute("CreatePayloadCommand", ...)`, on the student PC, **kit.exe freezes** for 92 seconds and then times out — Symptoms:
 
-- viewport 검은 화면
-- UI 완전 무반응
-- Kit Console 에 아무 에러 없음 (silent hang)
+-viewport black screen
+- UI completely unresponsive
+- No error in Kit Console (silent hang)
 
-근본 원인: OmniUsdResolver 의 **MDL material 재조회 스레드** 가 `carb.logging` 콜백 스레드와 GIL 경합해 Kit 메인 이벤트 루프 정지. FastAPI handler / UI 콜백의 asyncio 루프도 동시 정지.
+Root cause: OmniUSDResolver's **MDL material retrieval thread** is in GIL contention with `carb.logging` callback thread, causing Kit main event loop to hang. The asyncio loop of the FastAPI handler/UI callback also stops simultaneously.
 
-## 방어 3 요소
+## Defense 3 Elements
 
-1. **`log_capture` 비활성화** — `carb.logging.acquire_logging().add_logger(cb)` 를 kit.exe 가동 중 켜두면 MDL resolver loop 이 carb thread 와 경합. Extension `on_startup` 에서는 `_log_capture = None` 유지 (request-scoped 로 켰다 끄는 구조로만 허용)
-2. **`omni.kit.async_engine.run_coroutine` + `asyncio.wrap_future`** — FastAPI handler / UI 콜백의 event loop 와 Kit 메인 이벤트 루프는 분리되어 있음. 명령을 Kit 메인 루프에 명시 schedule 후, caller 는 `wrap_future` 로 await
-3. **`CreatePayloadCommand`** — `CreateReferenceCommand` 대신 payload 방식. Isaac Sim GUI drag&drop 과 동등한 경로. Static payload 는 `instanceable=True`; robot/articulation payload 처럼 runtime traversal/write 가 필요한 outer payload 는 `instanceable=False`.
-4. **MDL-payload 씬은 `stage_open`/`open_stage`(LoadAll) 로 열지 말 것** — nested office.usd MDL 을 동기 해소하다 92s deadlock (office 세션 실증). 반드시 **fresh stage + `CreatePayloadCommand` 경로**로만 로드.
+1. **Disable `log_capture`** — If `carb.logging.acquire_logging().add_logger(cb)` is turned on while kit.exe is running, the MDL resolver loop will compete with the carb thread. Extension `on_startup` maintains `_log_capture = None` (allowed only by turning it on and off with request-scoped)
+2. **`omni.kit.async_engine.run_coroutine` + `asyncio.wrap_future`** — The event loop of the FastAPI handler / UI callback and the Kit main event loop are separated. After specifying schedule command in Kit main loop, caller awaits with `wrap_future`
+3. **`CreatePayloadCommand`** — payload method instead of `CreateReferenceCommand`. Path equivalent to Isaac Sim GUI drag&drop. Static payload is `instanceable=True`; Like the robot/articulation payload, the outer payload that requires runtime traversal/write is `instanceable=False`.
+4. **Do not open MDL-payload scene with `stage_open`/`open_stage`(LoadAll)** — Desynchronize nested office.usd MDL 92s deadlock (office session verification). Be sure to load only **fresh stage + `CreatePayloadCommand` path**.
 
-## Copy-paste 레시피
+## Copy-paste recipe
 
 ```python
 """Self-contained USD load with deadlock protection.
@@ -50,7 +50,7 @@ async def safe_load_usd(
     import omni.kit.async_engine
     import omni.kit.commands
     import omni.usd
-    from pxr import Gf, UsdGeom
+    from pxr import Gf, USDGeom
 
     usd_url = usd_url.replace("\\", "/")  # USD wants forward slashes
 
@@ -58,21 +58,19 @@ async def safe_load_usd(
         ctx = omni.usd.get_context()
         stage = ctx.get_stage()
         if stage is None:
-            raise RuntimeError("No USD stage available")
-
-        # Parent must be a DEFINED prim. CreatePayloadCommand(path_to="/World/X")
+            raise RuntimeError("No USD stage available")# Parent must be a DEFINED prim. CreatePayloadCommand(path_to="/World/X")
         # auto-creates the parent "/World" as an `over` (no defining specifier);
         # an undefined ancestor prunes the whole subtree from the default-predicate
         # Traverse() AND from Hydra rendering (black viewport, tags unreachable).
         from pxr import Sdf
         parent_path = Sdf.Path(prim_path).GetParentPath()
         if not parent_path.isEmpty and parent_path != Sdf.Path.absoluteRootPath:
-            UsdGeom.Xform.Define(stage, parent_path)
+            USDGeom.Xform.Define(stage, parent_path)
 
         # GUI drag&drop equivalent — Payload + instanceable.
         # instanceable=True locks the payload into an instance prototype:
         # great for STATIC heavy nested payloads (office.usd), but it makes
-        # prims unreachable to stage.Traverse() and un-editable. If THIS load
+        #prims unreachable to stage.Traverse() and un-editable. If THIS load
         # has runtime-edited/traversed content (emissive cables, customData
         # tags), pass instanceable=False for the OUTER load (nested static
         # payloads keep True).
@@ -84,15 +82,15 @@ async def safe_load_usd(
             instanceable=instanceable,
         )
 
-        # 대형 asset loading 완료까지 대기 (main loop 에서 tick 진행 가능)
-        await _wait_stage_loading()
+        # Wait until large asset loading is completed (tick can be performed in main loop)
+        await_wait_stage_loading()
 
         prim = stage.GetPrimAtPath(prim_path)
         if not prim.IsValid():
             raise RuntimeError(f"Prim not created at {prim_path}")
 
-        # Position / rotation 적용
-        xformable = UsdGeom.Xformable(prim)
+        # Apply position/rotation
+        xformable = USDGeom.Xformable(prim)
         if position is not None:
             t_attr = prim.GetAttribute("xformOp:translate")
             if not t_attr.IsValid():
@@ -106,14 +104,14 @@ async def safe_load_usd(
 
         return {
             "ok": True,
-            "prim_path": prim_path,
+            "prim_path":prim_path,
             "usd_url": usd_url,
             "type_name": str(prim.GetTypeName()),
         }
 
-    # 핵심: Kit main loop 에 명시 schedule + wrap_future 로 await
+    # Core: Kit main loop specified schedule + await with wrap_future
     future = omni.kit.async_engine.run_coroutine(_main_loop_impl())
-    return await asyncio.wrap_future(future)
+    return await asyncio. wrap_future(future)
 
 
 async def _wait_stage_loading(max_frames: int = 600) -> None:
@@ -125,10 +123,8 @@ async def _wait_stage_loading(max_frames: int = 600) -> None:
     with ``get_stage_loading_status() -> (msg, files_loaded, total_files)`` as
     fallback.
     """
-    import omni.kit.app  # lazy
-    import omni.usd
-
-    app = omni.kit.app.get_app()
+    import omni.kit.app # lazy
+    import omni. usd    app = omni.kit.app.get_app()
     ctx = omni.usd.get_context()
     for _ in range(max_frames):
         await app.next_update_async()
@@ -142,7 +138,7 @@ async def _wait_stage_loading(max_frames: int = 600) -> None:
                 return
 ```
 
-## 사용 예 (독립 Extension 의 button 콜백)
+## Example of use (button callback of independent extension)
 
 ```python
 import asyncio
@@ -166,17 +162,17 @@ def on_load_office_clicked() -> None:
     asyncio.ensure_future(_run())
 ```
 
-## 함정 체크리스트
+## Trap Checklist
 
-- [ ] Extension `on_startup` 에서 `carb.logging.add_logger()` 호출하지 않는가?
-- [ ] USD url 은 forward slash (`/`) 인가? (backslash 는 MDL resolver 가 이상하게 해석)
-- [ ] `log_capture` 를 request-scoped 외에 상시 활성화하지 않는가? Browser/content-browser presence 자체는 blocker 가 아니며 root cause 로 보지 않는다.
-- [ ] `simulation.play` 중에 로드하려 하지 않는가? (timeline advance 가 추가 경합)
-- [ ] 런타임에 편집/순회할 prim 이 있으면 outer 로드는 `instanceable=False` 인가? (True 면 instance prototype 에 갇혀 Traverse 미도달)
-- [ ] payload 부모 prim 을 로드 전에 `UsdGeom.Xform.Define` 로 def 화했는가? (over 부모는 subtree prune)
+- [ ] Doesn’t Extension `on_startup` call `carb.logging.add_logger()`?
+- [ ] Is the USD url a forward slash (`/`)? (backslash is interpreted strangely by the MDL resolver)
+- [ ] Isn’t `log_capture` always activated other than request-scoped? Browser/content-browser presence itself is not a blocker and is not considered a root cause.
+- [ ] Are you trying to load `simulation.play`? (timeline advance is additional contention)
+- [ ] If there is a prim to edit/traverse at runtime, is the outer load `instanceable=False`? (If True, Traverse is stuck in instance prototype and not reached)
+- [ ] Did you def the payload parent prim to `USDGeom.Xform.Define` before loading? (over parent subtree prune)
 
-## 근거
+## Grounds
 
-- `validation_api/services/stage_service.py::load_usd` 에 동일 코드 + docstring
-- 2026-04-20 사용자 실증: isaac-sim.bat Kit (Extension 없음) + GUI drag&drop 은 `CreatePayloadCommand(instanceable=True)` 로 static asset load 성공. Extension 이 load 된 Kit 에서는 FastAPI handler 의 event loop 와 Kit 메인 이벤트 루프가 분리되어 command 가 main loop 에서 실행 안 됨 → `run_coroutine` 필수.
-- 2026-06-10 Isaac Sim 6.0 robot live 실증: `robot_load` 는 같은 payload 패턴을 쓰되 `instanceable=False` + active job 거부 + timeline stop 이 필요. active navigation job 중 새 robot payload load 시 Kit/PhysX crash 재현.
+- Same code + docstring in `validation_api/services/stage_service.py::load_usd`
+- 2026-04-20 User verification: isaac-sim.bat Kit (no extension) + GUI drag&drop successfully loaded static asset with `CreatePayloadCommand(instanceable=True)`. In a kit with an extension loaded, the event loop of the FastAPI handler and the main event loop of the kit are separated, so the command is not executed in the main loop → `run_coroutine` is required.
+- 2026-06-10 Isaac Sim 6.0 robot live verification: `robot_load` uses the same payload pattern, but requires `instanceable=False` + active job rejection + timeline stop. Kit/PhysX crash reproduced when loading new robot payload during active navigation job.

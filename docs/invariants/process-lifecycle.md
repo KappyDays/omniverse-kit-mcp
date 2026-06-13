@@ -1,179 +1,192 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: kit_app_start / kit_app_stop / kit_app_restart 작업 시작 전 필수 숙지 -->
-<!-- Multi-app context: 이 문서의 "kit.exe" 는 모든 app profile 에 동일하게 적용됨.
-     Profile 별 launch 차이는 `docs/invariants/multi-app.md` 참조. -->
+<!-- Scope: kit_app_start / kit_app_stop / kit_app_restart Required knowledge before starting work -->
+<!-- Multi-app context: “kit.exe” in this document applies equally to all app profiles.
+For launch differences by profile, see `docs/invariants/multi-app.md`. -->
 # Process Lifecycle — Invariants
 
-이 MCP 서버의 모든 stage / viewport / character / robot / sensor / scenario tool 은
-`kit.exe` 가 기동되어 `GET /validation/v1/health` 가 200 응답 시까지 무의미.
-ProcessModule 호출 전 이 파일 Read.
+All stage / viewport / character / robot / sensor / scenario tools on this MCP server are
+It is meaningless until `kit.exe` is started and `GET /validation/v1/health` responds with 200.
+Read this file before calling ProcessModule.
 
-## Tool 동작 요약
+## Tool operation summary
 
-| Tool | 동작 | 정상 시간 |
+| Tool | movement | normal time |
 |------|------|----------|
-| `kit_app_start` | kit.exe 런치 (또는 alive process attach) + health polling (2 s interval, `startup_timeout` 까지) | warm boot 15-30 s · cold boot 13-30 s (stdin DEVNULL fix 후) |
-| `kit_app_stop` | `taskkill /F /IM kit.exe /T` + orphan hub 정리 | ≤10 s |
-| `kit_app_restart` | stop → `kkr-extensions/.../__pycache__` clear → start | stop + start 합 |
+| `kit_app_start` | Launch kit.exe (or attach alive process) + health polling (2 s interval, up to `startup_timeout`) | warm boot 15-30 s cold boot 13-30 s (after stdin DEVNULL fix) |
+| `kit_app_stop` | `taskkill /F /IM kit.exe /T` + clean up orphan hub | ≤10 s |
+| `kit_app_restart` | stop → `kkr-extensions/.../__pycache__` clear → start | stop + start sum |
 
-## ⚠️ stdin=subprocess.DEVNULL 필수 (변경 금지 — DO-NOT-EDIT)
+## Restart minimization principle
 
-`src/omniverse_kit_mcp/modules/process_module.py::start` 의 `subprocess.Popen(...)` 가
-`stdin=subprocess.DEVNULL` 명시 안 하면 MCP server 자식 kit.exe 가 MCP host (Claude Code / Codex CLI) 의
-MCP protocol stdin pipe 를 상속 → cold boot 중 stdin read 시 indefinite block →
-전체 boot 정지. **240s timeout, 13s ready 검증 (L17)**. "extra_ext_ids race" 진단은
-무효 — stdin pipe 가 실원인.
+The default entry point for live verification is `kit_app_start`. The kit for this MCP instance is already
+If it is alive and its health is 200, it ends with attach/idempotent ready, and the user can
+As with work, keep the process lifetime long. `kit_app_restart` is fresh stage or
+This is not a general preparation step for repeated verification.
 
-본문 / 재현 / 복구: `docs/runbooks/kit-stdin-deadlock.md`
+`kit_app_restart` acceptance conditions:
+- crash/hang confirmed (`simulation_get_status` refused or start timeout repeated + log stuck)
+- `omni.mycompany.validation_api` Reflects changes to own code
+- Change extension.toml `[dependencies]`/native dll/app profile
+- `extension_reload(ext_id)` or marker verification failed
+- User explicitly requests fresh process
 
-## `kit_app_start` 결정 트리 (2026-04-23 redesign)
+If you change user/demo Extension `.py` other than validation_api, you must first change `extension_reload(ext_id)`
+Use and check whether it is reflected with marker response. Promotes to restart only in case of failure.
+
+## ⚠️ stdin=subprocess.DEVNULL required (do not change — DO-NOT-EDIT)
+
+`subprocess.Popen(...)` of `src/omniverse_kit_mcp/modules/process_module.py::start` is
+If `stdin=subprocess.DEVNULL` is not specified, the MCP server child kit.exe runs on the MCP host (Claude Code / Codex CLI).
+Inherit MCP protocol stdin pipe → indefinite block when reading stdin during cold boot →
+Full boot stop. **240s timeout, 13s ready verification (L17)**. The "extra_ext_ids race" diagnosis is
+Void — stdin pipe is the actual cause.
+
+Text / Reproduction / Recovery: `docs/runbooks/kit-stdin-deadlock.md`
+
+## `kit_app_start` decision tree (2026-04-23 redesign)
 
 ```
 process alive?
-├─ NO  → spawn fresh + poll health (startup_timeout 초)
+├─ NO  → spawn fresh + poll health (startup_timeout seconds)
 └─ YES → health responding?
          ├─ YES → return status=ready (idempotent)
-         └─ NO  → poll health WITHOUT respawn (startup_timeout 초)
-                  (cold boot 진행 중일 수 있어 강제로 죽이지 않음)
+         └─ NO  → poll health WITHOUT respawn (startup_timeout seconds)
+                  (may still be cold-booting; do not force-kill)
 ```
 
-## Timeout 응답 (`startup_timeout` 만료 시)
-
-- `process_alive=true` → `{status: "still_loading", log_tail: [...], pid}` —
-  caller 재호출로 spawn 없이 폴링 이어감
+## Timeout response (when `startup_timeout` expires)- `process_alive=true` → `{status: "still_loading", log_tail: [...], pid}` —
+Polling continues without spawn by recalling the caller
 - `process_alive=false` → `{status: "crashed", log_tail: [...]}` —
-  즉시 진단 (commonly: ext 누락 / MDL deadlock / GPU driver)
+Immediate diagnosis (commonly: ext missing / MDL deadlock / GPU driver)
 
-응답 분기 / log_tail 해석 패턴: `docs/runbooks/cold-boot-timeout.md`
+Response branch / log_tail interpretation pattern: `docs/runbooks/cold-boot-timeout.md`
 
-## stdout/stderr 규약 (변경 금지)
+## stdout/stderr convention (no changes)
 
-- `stdout` / `stderr` 는 `%TEMP%/omniverse_kit_mcp/kit_<epoch>.log` 로 리다이렉트
-- **`subprocess.DEVNULL` 금지** (stdin 과 정반대) — Windows OS pipe 버퍼 포화 시
-  kit.exe 초기화 정지
-- `start()` 는 매 기동 시 `_sweep_old_logs()` 로 7일 이전 `kit_*.log` 자동 삭제
-- `startup_log` + `log_tail` 필드가 실패 원인 파악용
+- `stdout` / `stderr` redirects to `%TEMP%/omniverse_kit_mcp/kit_<epoch>.log`
+- **`subprocess.DEVNULL` prohibited** (opposite of stdin) — When Windows OS pipe buffer is full
+kit.exe initialization stop
+- `start()` is automatically deleted as `_sweep_old_logs()` at every startup. `kit_*.log` 7 days old.
+- `startup_log` + `log_tail` fields are used to determine the cause of failure.
 
-## startup_timeout 기본값
+## startup_timeout default
 
-- 기본 120 s (사용자 확정 2026-04-23). 의도: 빠른 진단 정보 반환
-- Cold boot (GPU 셰이더 캐시 재빌드) 가 5-10 분 걸려도 timeout 후 `still_loading` +
-  `process_alive=true` 반환 → 재호출하면 Branch 2 폴링 이어감
-- stdin fix 후 cold boot 는 보통 13-30 초 — 5-10분 케이스는 transient
-  (hub orphan / pycache 손상) 의심
+- Default 120 s (confirmed by user 2026-04-23). Intent: Return quick diagnostic information
+- Even if cold boot (GPU shader cache rebuild) takes 5-10 minutes, after timeout `still_loading` +
+Returns `process_alive=true` → When called again, Branch 2 polling continues.
+- Cold boot after stdin fix is ​​usually 13-30 seconds — 5-10 minute cases are transient.
+(hub orphan/pycache corruption) suspected
 
-## ROS env 자동 setup (silent fail 방지)
+## ROS env automatic setup (prevents silent fail)
 
-`src/omniverse_kit_mcp/modules/process_module.py::_prepare_launch_env` 가 isaac-sim.bat 의
-ROS env setup 을 Python 으로 재현 — 생략 시 ROS2 bridge 의존 ext silent fail →
-kit.exe 이벤트 루프 정지 → `/health` 미응답.
+`src/omniverse_kit_mcp/modules/process_module.py::_prepare_launch_env` is in isaac-sim.bat
+Reproduce ROS env setup in Python — If omitted, ROS2 bridge depends on ext silent fail →
+kit.exe event loop stopped → `/health` unresponsive.
 
-## OmniHub orphan 주의
+## OmniHub orphan warning
 
-kit.exe 는 `hub.exe` 를 `--mode=shared` daemon 으로 분리 spawn → `taskkill /T` 가
-kit tree 에 닿지 않아 hub 가 port 14090 orphan 잔존. 수 시간 경과 시 accept loop
-broken → 다음 기동 `"Hub failed to launch: exit code 1"`.
+kit.exe separates `hub.exe` into `--mode=shared` daemon and spawn → `taskkill /T`
+The hub does not reach the kit tree and port 14090 orphan remains. Accept loop after several hours
+broken → next start `"Hub failed to launch: exit code 1"`.
 
-자동 처리: `ProcessModule._cleanup_orphan_hub()` 가 `stop/start` 양쪽에서 자동
-실행. 수동 복구 절차: `docs/runbooks/hub-orphan.md`
+Automatic processing: `ProcessModule._cleanup_orphan_hub()` is automatically processed on both sides of `stop/start`
+execution. Manual recovery procedure: `docs/runbooks/hub-orphan.md`
 
-## `.env` ↔ sub-config 전파 (L14)
+## `.env` ↔ sub-config propagation (L14)
 
-pydantic-settings v2 는 `default_factory` sub-`BaseSettings` 에 부모의 `env_file` 을
-전파하지 않음. 모든 sub-config (`IsaacSimConfig`, `IsaacSimProcessConfig`,
-`LakehouseConfig`, `MCPServerConfig`, `ScenarioConfig`) 가 자체 `env_file=".env"`
-보유 필수.
+pydantic-settings v2 sets parent's `env_file` to `default_factory` sub-`BaseSettings`
+Does not spread. All sub-configs (`IsaacSimConfig`, `IsaacSimProcessConfig`,
+`LakehouseConfig`, `MCPServerConfig`, `ScenarioConfig`) is itself `env_file=".env"`
+Required to have.
 
-검증 명령:
+Verification command:
 ```bash
 .venv/Scripts/python.exe -c "from omniverse_kit_mcp.config import AppConfig; ac=AppConfig(); print(ac.isaac_sim_process.startup_timeout)"
 ```
-→ `.env` 값 반영 확인. 누락 시 silent failure.
+→ Confirm that the `.env` value is reflected. In case of omission, silent failure.
 
-사고 + 재발 방지 체크리스트: `docs/runbooks/env-sub-config.md`
+Accident + Reoccurrence Prevention Checklist: `docs/runbooks/env-sub-config.md`
 
-## External instance check (destructive 작업 전 필수)
+## External instance check (required before destructive operation)
 
-`kit_app_stop` 은 **THIS MCP server 가 spawn 한 kit.exe 만** 종료. 사용자가 GUI
-실행한 standalone Isaac Sim, 다른 MCP server (multi-instance / multi-app) 는 별도
-프로세스로 살아있을 수 있음 — Kit 은 종료 시 carb persistent settings (예:
-`%LOCALAPPDATA%\ov\data\Kit\<app>\<ver>\user.config.json`) 을 메모리에서 덮어쓰기
-때문에 **외부 인스턴스가 살아있는 채로 config 편집 시 변경분이 셧다운에 사라짐**.
+`kit_app_stop` terminates **only the kit.exe spawned by this MCP server**. User GUI
+Run standalone Isaac Sim, other MCP server (multi-instance / multi-app) is separate
+Can survive as a process — Kit will set carb persistent settings (e.g.
+`%LOCALAPPDATA%\ov\data\Kit\<app>\<ver>\user.config.json`) overwrite in memory
+Therefore, **if you edit the config while the external instance is alive, the changes will be lost on shutdown**.
 
-### 점검 절차
+### Inspection procedure
 
-destructive 작업 전 `process_list_kit_instances` MCP tool 호출:
+Call `process_list_kit_instances` MCP tool before destructive operation:
 
 ```
-process_list_kit_instances → instances[].is_this_mcp_instance == false 인 row 가
-있으면 외부 인스턴스 — 사용자에게 종료 요청 후 작업 진행
+process_list_kit_instances → instances[].is_this_mcp_instance == false row is
+if present, it is an external instance — ask the user to close it before proceeding
 ```
 
-### Destructive 작업 정의 (외부 인스턴스 영향 받음)
+### Destructive task definition (affected by external instances)
 
-- Kit `user.config.json` / `*.toml` 편집 (carb persistent settings)
-- `%LOCALAPPDATA%\ov\data\Kit\<app>` 캐시 / extension data 삭제
-- `extension_activate(reload=True)` 같은 강제 reload (다른 인스턴스에는 무영향이나
-  파일 충돌 가능)
-- `omniverse.toml` / `hub.toml` 등 omniverse 공통 config 편집
+- Edit Kit `user.config.json` / `*.toml` (carb persistent settings)
+- Delete `%LOCALAPPDATA%\ov\data\Kit\<app>` cache/extension data
+- Force reload like `extension_activate(reload=True)` (no effect on other instances)
+file conflicts possible)
+- Omniverse common config editing such as `omniverse.toml` / `hub.toml`
 
-### 영향 없는 (안전한) 작업
+### Impact-free (safe) operation
 
-- `__pycache__` 삭제 (`kit_app_restart` 가 자동 — ext_folder 한정)
-- `kit.exe stdout/stderr 로그 sweep` (`_sweep_old_logs`, 7일 이전)
-- `simulation_*` / `stage_*` / `viewport_*` (Extension REST 경유 — 다른 인스턴스
-  REST 와 격리)
+- Delete `__pycache__` (`kit_app_restart` is automatic — ext_folder only)
+- `kit.exe stdout/stderr log sweep` (`_sweep_old_logs`, 7 days ago)
+- `simulation_*` / `stage_*` / `viewport_*` (via Extension REST — another instance
+REST and isolation)
 
-## Hang 확정 지표 (정확한 도구)
+## Hang Confirmation Indicator (Accurate Tool)
 
-- **`kit_app_start` 응답** — `process_alive=true` 인데 반복 호출해도 ready 안 됨 +
-  log_tail mtime 수 분째 정체
+- **`kit_app_start` response** — It is `process_alive=true`, but it is not ready even if called repeatedly +
+log_tail mtime stagnant for several minutes
 - **PowerShell** `Get-Process -Name kit -ErrorAction SilentlyContinue` —
-  row 없음 = 죽음, row 있으면 alive
-- **MCP `simulation_get_status`** — 응답 (duration_ms < 1000) = alive, refused = 죽음
+No row = death, alive if there is a row
+- **MCP `simulation_get_status`** — response (duration_ms < 1000) = alive, refused = death
 - **`curl http://127.0.0.1:8111/validation/v1/health`** — 200 = alive
-- `netstat -ano | grep ":8111" | grep LISTENING` 없음 = endpoint 미기동
+- `netstat -ano | grep ":8111" | grep LISTENING` None = Endpoint not started
 
-**금지** (false negative — L7): `tasklist //FI "IMAGENAME eq kit.exe"` (git bash)
-filter 처리 timing 문제로 alive Kit 도 빈 결과 반환.
+**Forbidden** (false negative — L7): `tasklist //FI "IMAGENAME eq kit.exe"` (git bash)
+Due to a filter processing timing issue, the alive kit also returned an empty result.
 
-## `.bat` wrapper PID ≠ kit.exe PID (false-positive EXITED 회피)
+## `.bat` wrapper PID ≠ kit.exe PID (avoiding false-positive EXITED)
 
-수동 진단 (PowerShell) 에서 `branch/` 의 외부 Kit `.bat` 을 백그라운드로 띄울 때:
+When launching external kit `.bat` of `branch/` in the background in manual diagnosis (PowerShell):
 
 ```powershell
 $proc = Start-Process -FilePath $bat `
     -RedirectStandardOutput $log -RedirectStandardError $err `
     -PassThru -WindowStyle Hidden
-# $proc.Id 는 .bat 호스트 cmd.exe / 또는 .bat 자체의 PID — kit.exe 의 PID 가 아님
+# $proc.Id is the .bat host cmd.exe or the .bat process PID — kit.exe not the kit.exe PID
 ```
 
-`.bat` 은 내부에서 `call "%~dp0kit\kit.exe" ...` 으로 자식 kit.exe 를 spawn 하고
-대기. 호스트 wrapper 는 자식 종료를 따라 함께 종료되므로 kit.exe 가 살아있는 동안은
-wrapper PID 도 살아있다 — **그러나 일부 케이스 (cmd.exe wrapper 가 즉시 detach,
-또는 kit.exe 가 fastShutdown 후 wrapper 만 잔존하다 즉시 종료) 에서는 wrapper PID 가
-먼저 사라져 false-positive `EXITED` 보고**.
+`.bat` spawns a child kit.exe internally as `call "%~dp0kit\kit.exe" ...` and
+atmosphere. The host wrapper follows the child's termination and terminates along with it, so as long as kit.exe is alive,
+The wrapper PID is also alive — **but in some cases (cmd.exe wrapper will detach immediately,
+Or, after kit.exe fastShutdown, only the wrapper remains and terminates immediately), the wrapper PID is
+First it disappears and reports a false-positive `EXITED`**.
 
-생사 확인 권장 도구:
-
-```powershell
-# 자식 kit.exe 자체 확인 (multi-instance host 면 PID 비교 필요)
+Recommended tools for life and death confirmation:```powershell
+# check the child kit.exe itself (compare PID for a multi-instance host)
 Get-Process -Name kit -ErrorAction SilentlyContinue
 
-# 부모 wrapper PID 의 자식 process 트리
+# child process tree of the parent wrapper PID
 Get-CimInstance Win32_Process -Filter "ParentProcessId=<wrapperPID>" |
     Select-Object ProcessId, Name, CommandLine
 ```
 
-(Multi-app / multi-instance 에서 `Get-Process -Name kit` 는 host 의 모든 kit.exe
-매칭 — `port=<N>` 으로 식별. 본문 §"Process Identification (name scope 금지)" 참조 —
+(In multi-app / multi-instance, `Get-Process -Name kit` is all kit.exe on the host.
+Matching — identified as `port=<N>`. Refer to §"Process Identification (name scope prohibited)" in main text —
 [`multi-app.md`](multi-app.md))
 
-## 관련 경계
+## Related Boundaries
 
-- 코드 위치 SoT (ProcessModule hang recovery 4종 함정): `src/omniverse_kit_mcp/modules/process-ops.md`
-- Standalone 테스트 스크립트: `scripts/run_process_module_standalone.py`
-- DO-NOT-EDIT residual 본문 (재현 / 복구): `docs/runbooks/kit-stdin-deadlock.md`
-- Cold boot timeout 분기 해석: `docs/runbooks/cold-boot-timeout.md`
-- Hub orphan 수동 복구: `docs/runbooks/hub-orphan.md`
-- Env sub-config 함정 본문: `docs/runbooks/env-sub-config.md`
+- Code location SoT (4 types of ProcessModule hang recovery traps): `src/omniverse_kit_mcp/modules/process-ops.md`
+- Standalone test script: `scripts/run_process_module_standalone.py`
+- DO-NOT-EDIT residual body (reproduction/recovery): `docs/runbooks/kit-stdin-deadlock.md`
+- Cold boot timeout branch interpretation: `docs/runbooks/cold-boot-timeout.md`
+- Hub orphan manual recovery: `docs/runbooks/hub-orphan.md`
+- Env sub-config trap body: `docs/runbooks/env-sub-config.md`

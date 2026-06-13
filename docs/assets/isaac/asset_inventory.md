@@ -1,48 +1,48 @@
 # Isaac Sim 6.0 — Asset Catalog Index
 
-**실측 완료**: 2026-06-11 Isaac Sim 6.0 S3 LIST + HEAD 검증 (`scripts/diff_asset_inventory.py --verbose`: robots 228+ top-level USD/USDA 포함).
-**사용법**: 필요한 카테고리 파일만 Read — 불필요한 토큰 소비 없음.
+**Actual measurement completed**: 2026-06-11 Isaac Sim 6.0 S3 LIST + HEAD verification (`scripts/diff_asset_inventory.py --verbose`: robots 228+ top-level USD/USDA included).
+**Usage**: Read only the category files you need — no unnecessary token consumption.
 
 ---
 
-## 버킷 루트 URLs
+## Bucket root URLs
 
-| 카탈로그 | Bucket | Prefix |
+| catalog | Bucket | Prefix |
 |---|---|---|
 | **Isaac Sim Assets** | `omniverse-content-production.s3-us-west-2.amazonaws.com` | `Assets/Isaac/6.0/Isaac/` |
 | **SimReady Explorer** | `omniverse-content-staging.s3.us-west-2.amazonaws.com` | `Assets/simready_content/common_assets/props/` |
 
 - `$ISAAC` = `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac`
-- `$SIM`   = `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/common_assets/props`
+-`$SIM` = `https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/common_assets/props`
 
-두 버킷 모두 public read. `stage_load_usd` 호출 시 **full HTTPS URL** 사용 (`file://` 금지).
+Both buckets are public read. When calling `stage_load_usd`, use **full HTTPS URL** (`file://` is prohibited).
 
 ---
 
-## 카테고리별 파일 포인터
+## File pointers by category
 
-| 요청 종류 | 읽을 파일 | 내용 요약 |
+| request type | file to read | Summary of contents |
 |---|---|---|
-| 로봇 추가 / 로봇 추천 | `docs/assets/isaac/assets/robots.md` | 50 벤더 · 203+ 모델 폴더 · 228+ top-level USD/USDA · 유형별 인덱스 |
-| 환경 / 씬 로드 | `docs/assets/isaac/assets/environments.md` | 12개 환경 폴더 · 주요 USD/USDA |
-| 사람 / 캐릭터 / 애니메이션 | `docs/assets/isaac/assets/people.md` | Named Characters · DH_Characters · Animations |
-| 산업용 prop (팔레트·지게차·선반) | `docs/assets/isaac/assets/props.md` | Isaac Core Props 폴더 |
-| 가구 / 박스 / 컨테이너 | `docs/assets/isaac/assets/simready.md` | SimReady Props 1000+ 종 분류 목록 |
-| RL 학습 / 재질 / 예제 / 센서 | `docs/assets/isaac/assets/other.md` | IsaacLab · Materials · Samples · Sensors |
+| Add robot / Recommend robot | `docs/assets/isaac/assets/robots.md` | 50 vendors · 203+ model folders · 228+ top-level USD/USDA · Index by type |
+| Environment/Scene Loading | `docs/assets/isaac/assets/environments.md` | 12 environment folders · Major USD/USDA |
+| People / Characters / Animation | `docs/assets/isaac/assets/people.md` | Named Characters · DH_Characters · Animations |
+| Industrial prop (pallet, forklift, shelf) | `docs/assets/isaac/assets/props.md` | Isaac Core Props folder |
+| Furniture/Box/Container | `docs/assets/isaac/assets/simready.md` | SimReady Props 1000+ Species Category List |
+| RL Learning / Materials / Examples / Sensors | `docs/assets/isaac/assets/other.md` | IsaacLab · Materials · Samples · Sensors |
 
 ---
 
-## 검색 가이드
+## Search Guide
 
 ```python
-# 카테고리 목록
+# Category list
 asset_list()
 
-# 특정 카테고리 탐색
+# Browse a specific category
 asset_list(category="robots", subpath="Unitree")
 asset_list(category="environments", subpath="Simple_Warehouse")
 
-# SimReady 탐색 (1000+ 종, 알파벳 순 pagination)
+# Browse SimReady (1000+ items, alphabetical pagination)
 content_browse("$SIM", max_entries=500)
-content_browse("$SIM/{name}")  # → {name}.usd 가 canonical
+content_browse("$SIM/{name}")  # → {name}.usd is canonical
 ```

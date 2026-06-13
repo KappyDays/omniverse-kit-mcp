@@ -1,23 +1,23 @@
 # Isaac Sim Workspace
 
-Isaac Sim 6.0.0 으로 USD scene / robot demo / scenario validation 작업.
+USD scene / robot demo / scenario validation work with Isaac Sim 6.0.0.
 
-## 사용
+## use
 
 ```
-cd instance-1   # 또는 instance-2
+cd instance-1   # or instance-2
 claude
 ```
 
-## 동시 가동
+## Simultaneous operation
 
-| CC 창 | 폴더 | Kit REST 포트 |
+| CC Window | folder | Kit REST Port |
 |---|---|---|
 | 1 | `instance-1/` | 8111 |
 | 2 | `instance-2/` | 8112 |
 
-isaac + USD Composer 동시 사용 시 다른 창에서 `../usd-composer/instance-1/` 진입.
+When using isaac + USD Composer simultaneously, enter `../usd-composer/instance-1/` in another window.
 
-## 작업 룰
+## Work rules
 
-`CLAUDE.md` 의 pull-doc 표 + scenario commit 룰 참조.
+Refer to the pull-doc table + scenario commit rule of `CLAUDE.md`.

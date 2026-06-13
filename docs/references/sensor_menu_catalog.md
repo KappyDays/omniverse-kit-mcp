@@ -4,18 +4,18 @@
 **Last captured**: 2026-06-11, Isaac Sim 6.0.0 standalone + `omni.mycompany.validation_api` on port 8111.
 **Capture scope**: `Create/Sensors/**` plus `Create/Robots/Nova Carter with Sensors` (`84` sensor-related menu entries).
 
-## 사용 목적
+## Purpose of use
 
-- "특정 센서를 사용해달라" 요청 시 이 카탈로그에서 해당 센서 찾기
-- `onclick_action` (`ext_id`, `action_id`) 기반으로 `window_menu_trigger(menu_path="...")` 호출
-- 실 제조사 preset 이 필요한 경우 Extension 의 generic attach tool 대신 GUI menu action 사용
-- Isaac Sim GUI 유저와 동일 경로로 sensor prim/schema/preset 생성
+- When requesting “Use a specific sensor”, find the corresponding sensor in this catalog
+- Call `window_menu_trigger(menu_path="...")` based on `onclick_action` (`ext_id`, `action_id`)
+- If you need an actual manufacturer preset, use the GUI menu action instead of the extension’s generic attach tool.
+- Create sensor prim/schema/preset in the same path as the Isaac Sim GUI user.
 
-## 경로 규칙
+## Path Rules
 
-`window_menu_trigger` 는 이 문서의 **실제 `path` 값**을 그대로 받는다. Isaac Sim 6.0 menu introspection 은 일부 표시명을 path segment 로 나눈다.
+`window_menu_trigger` receives the **actual `path` value** in this document. Isaac Sim 6.0 menu introspection divides some display names into path segments.
 
-| 표시명 | 실제 trigger path 예 |
+| display name | Actual trigger path example |
 |---|---|
 | `Camera and Depth Sensors` | `Create/Sensors/Camera/and/Depth/Sensors/RealSense/Realsense D455` |
 | `RTX Lidar` | `Create/Sensors/RTX/Lidar/NVIDIA/Example Rotary` |
@@ -23,11 +23,11 @@
 | `Physics Raycast Sensor` | `Create/Sensors/Physics/Raycast/Sensor/Rotating Physics Raycast Sensor` |
 | `LightBeam Sensor` | `Create/Sensors/LightBeam/Sensor/Generic` |
 
-## 센서 카테고리 전체
+## All sensor categories
 
-| Top-level 항목 | 종류 | Leaf 수 | 비고 |
+| Top-level items | Type | Number of Leaf | Remarks |
 |---|---:|---:|---|
-| Asset Browser | Browser shortcut | 1 | sensor 생성 아님 |
+| Asset Browser | Browser shortcut | 1 | sensor not created |
 | Camera and Depth Sensors | RGB-D / stereo / mono camera | 26 | Orbbec, Leopard Imaging, Luxonis, RealSense, Sensing, SICK, Stereolabs |
 | Contact Sensor | Physics contact | 1 | `isaacsim.sensors.physics.ui` |
 | Imu Sensor | Physics IMU | 1 | `isaacsim.sensors.physics.ui` |
@@ -72,7 +72,7 @@ Action extension: `isaacsim.sensors.camera.ui`
 | SICK | `SICK/Visionary-T Mini` | `create_camera_visionary_t_mini` |
 | Stereolabs | `Stereolabs/ZED_X` | `create_camera_zed_x` |
 
-예:
+Example:
 
 ```text
 window_menu_trigger(menu_path="Create/Sensors/Camera/and/Depth/Sensors/RealSense/Realsense D455")
@@ -101,9 +101,7 @@ window_menu_trigger(menu_path="Create/Sensors/Camera/and/Depth/Sensors/Stereolab
 ## RTX Lidar
 
 Base path: `Create/Sensors/RTX/Lidar/{Vendor}/{Model}`
-Action extension: `isaacsim.sensors.rtx.ui`
-
-| Vendor | Model | Action id |
+Action extension: `isaacsim.sensors.rtx.ui`| Vendor | Model | Action id |
 |---|---|---|
 | HESAI | `XT32 SD10` | `create_lidar_HESAI_XT32_SD10` |
 | NVIDIA | `Example Rotary 2D` | `create_lidar_Example_Rotary_2D` |
@@ -127,7 +125,7 @@ Action extension: `isaacsim.sensors.rtx.ui`
 | ZVISION | `ML30S` | `create_lidar_ZVISION_ML30S` |
 | ZVISION | `MLXS` | `create_lidar_ZVISION_MLXS` |
 
-예:
+Example:
 
 ```text
 window_menu_trigger(menu_path="Create/Sensors/RTX/Lidar/NVIDIA/Example Rotary")
@@ -144,26 +142,26 @@ window_menu_trigger(menu_path="Create/Sensors/RTX/Lidar/Ouster/VLS 128")
 
 ## Robot-with-Sensors Preset
 
-`Create/Robots/Nova Carter with Sensors` 는 Nova Carter base + NVIDIA 공식 sensor 배치 preset 을 생성한다.
+`Create/Robots/Nova Carter with Sensors` creates Nova Carter base + NVIDIA official sensor placement preset.
 
 | Full path | Onclick action |
 |---|---|
 | `Create/Robots/Nova Carter with Sensors` | `["isaacsim.gui.menu", "create_robot_nova_carter"]` |
 
-## 현 Extension `sensor_service` vs 이 카탈로그
+## Current Extension `sensor_service` vs this catalog
 
-`sensor_service.py` 의 MCP attach tools 는 반복 가능한 programmatic attachment 를 위해 generic prim/schema 를 만든다.
+`sensor_service.py`'s MCP attach tools create generic prim/schema for repeatable programmatic attachment.
 
-- RTX camera / depth camera: `UsdGeom.Camera` + `customData.validation_api.sensor_type`
-- RTX Lidar: Isaac Sim 6.0 `isaacsim.sensors.experimental.rtx.Lidar.create` 경로의 OmniLidar/schema prim + customData tag
-- Contact / IMU: physics sensor 생성자 우선, 미활성 시 Xform fallback
+- RTX camera / depth camera: `USDGeom.Camera` + `customData.validation_api.sensor_type`
+- RTX Lidar: OmniLidar/schema prim + customData tag in Isaac Sim 6.0 `isaacsim.sensors.experimental.rtx.Lidar.create` path
+- Contact / IMU: physics sensor constructor first, Xform fallback when inactive
 
-제조사별 intrinsics/preset 이 중요한 경우는 이 문서의 GUI menu action 을 호출한다. 반대로 scenario 반복 검증, mount offset 고정, MCP response 기반 assertion 이 중요한 경우는 `sensor_attach_*` tool 이 더 적합하다.
+If manufacturer-specific intrinsics/presets are important, call the GUI menu action in this document. Conversely, if scenario repetition verification, fixed mount offset, and MCP response-based assertion are important, the `sensor_attach_*` tool is more suitable.
 
-## 재생성 절차
+## Regeneration Procedure
 
-1. Isaac Sim 6.0 기동 (`kit_app_start` 또는 `scripts/run_process_module_standalone.py start`)
-2. `window_menu_list(menu_path="Create")` 호출
-3. `items[].path` 중 `Create/Sensors` 또는 `Create/Robots/Nova Carter` 로 시작하는 항목만 필터
-4. leaf action 의 `onclick_action` tuple 을 보존해 vendor/model table 로 갱신
-5. Isaac Sim SDK / sensor extension / validation_api menu introspection 변경 시 재캡처
+1. Start Isaac Sim 6.0 (`kit_app_start` or `scripts/run_process_module_standalone.py start`)
+2. Call `window_menu_list(menu_path="Create")`
+3. Filter only items starting with `items[].path`, `Create/Sensors` or `Create/Robots/Nova Carter`
+4. Preserve `onclick_action` tuple of leaf action and update to vendor/model table
+5. Recapture when Isaac Sim SDK / sensor extension / validation_api menu introspection changes

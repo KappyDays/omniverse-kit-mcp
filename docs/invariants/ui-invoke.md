@@ -1,72 +1,70 @@
 <!-- Parent: ../../CLAUDE.md -->
-<!-- Scope: extension_ui_invoke / window_ui_show 사용 작업 시작 전 필수 숙지 -->
+<!-- Scope: extension_ui_invoke / window_ui_show Required knowledge before starting work -->
 # UI Invoke — Invariants
 
-`extension_ui_invoke` 는 panel layout race + controller 코드 경로 분리 두 함정이
-있다. UI automation 작업 전 이 파일 Read.
+`extension_ui_invoke` has two pitfalls: panel layout race + controller code path separation
+There is. Read this file before working on UI automation.
 
 ## panel layout race (L15)
 
-`omni.kit.ui_test.input.emulate_mouse:49` 가 `pos.x / window_width` 호출.
-`window_width = ui.Workspace.get_main_window_width()` 가 panel 생성 직후
-(또는 `extension_activate(reload=True)` 직후) 1~10 프레임 동안 0 반환 →
-`ZeroDivisionError`. OS 윈도우 자체는 정상 (3864×2100, `window_list` 확인됨).
+`omni.kit.ui_test.input.emulate_mouse:49` calls `pos.x / window_width`.
+Immediately after `window_width = ui.Workspace.get_main_window_width()` creates the panel
+(or immediately after `extension_activate(reload=True)`) Returns 0 for 1 to 10 frames →
+`ZeroDivisionError`. The OS window itself is normal (3864×2100, `window_list` confirmed).
 
-## 안전 호출 sequence
+## Safety call sequence
 
 ```
 extension_activate(ext_id, reload=True)
-  → window_ui_show(panel_name, focus=true, settle_frames=10)  # 자동 처리됨
+  → window_ui_show(panel_name, focus=true, settle_frames=10)  # handled automatically
   → extension_ui_invoke(widget_path)
 ```
 
-## 자동 방어 (현재 적용됨)
+## Auto-defense (currently applied)
 
 `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::ui_invoke`
-가:
-1. widget_path 의 window 부분을
+A:
+1. The window part of widget_path
    `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::_auto_show_window`
-   로 자동 호출 (settle_frames=10)
-2. `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::_install_ui_test_dimensions_patch`
-   가 `omni.kit.ui_test.input.emulate_mouse` 를 monkey-patch — workspace dimensions=0
-   시 OS app-window dimensions 으로 대체
+   Automatically called with (settle_frames=10)
+2.`kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/ui_service.py::_install_ui_test_dimensions_patch`
+   monkey-patch `omni.kit.ui_test.input.emulate_mouse` — workspace dimensions=0
+   Replaced by OS app-window dimensions
 
-두 layer 모두 적용 — 한 쪽만으로도 fix 되지만 함께 적용하면 future timing 변화에
+Apply both layers — just one side can fix it, but if applied together, it can be affected by future timing changes.
 robust.
 
-## L8 무효화 (재진단 결과)
+## L8 invalidation (re-diagnosis result)
 
-이전 "ext_ui_invoke binding stale → 사용자 마우스 직접 click 만 안정" 진단은 무효 —
-실제 원인은 layout race. **Claude 도 위 sequence 로 클릭 가능**.
+Previous “ext_ui_invoke binding stale → only stable user mouse direct click” diagnosis is invalid —
+The actual cause is layout race. **Claude can also be clicked using the above sequence**.
 
-## ⚠️ MCP 직접 호출 ≠ UI 버튼 검증 (L13)
+## ⚠️ Direct MCP call ≠ UI button validation (L13)
 
-Extension UI 버튼의 동작 검증을 MCP 직접 호출 (예: `character_load`,
-`character_play_animation_variant`) 로 대체하면 controller 코드 경로의 버그를 못
-잡음. 사용자가 UI 버튼 클릭 시:
-- `_on_spawn_random` → `safe_spawn_character_sync` (자체 구현) → `_walk_then_sit`
-  (controller code) — 다른 경로 사용
+Directly call MCP to verify the operation of Extension UI buttons (e.g. `character_load`,
+`character_play_animation_variant`) will eliminate the bug in the controller code path.
+Noise. When the user clicks a UI button:
+- `_on_spawn_random` → `safe_spawn_character_sync` (self-implementation) → `_walk_then_sit`
+  (controller code) — use a different path
 
-검증 결과 분리:
-- MCP 검증 PASS, UI 클릭 fail — controller 의 dual-path drift 가능
+Separate verification results:
+- MCP verification PASS, UI click fail — dual-path drift of controller possible
 
-**Extension UI 버튼 동작은 반드시 사용자처럼 button click 으로 실측**.
-MCP 등가 호출은 동작 가능성 확인일 뿐 검증 아님.
+**Extension UI button behavior must be measured by button clicking like the user**.
+The MCP equivalent call only checks the possibility of operation, not verification.
 
-## controller dual-path drift 방지
+## Controller dual-path drift prevention
 
-controller / usd_loader 가 validation_api singleton 을 사용하는 경우:
-- 사용 메서드명 + 시그니처 + 응답 dict key 를 service 코드 SoT 와 직접 매칭
-- 예: `vr._job.get_status` (sync) vs `vr._job.status` (X)
-- `_ANIM_GRAPH_SUFFIX` 도 character_service.py SoT 따라가기
+If controller / usd_loader uses validation_api singleton:
+- Directly match the method name + signature + response dict key with the service code SoT
+- Example: `vr._job.get_status` (sync) vs `vr._job.status` (X)
+- Follow `_ANIM_GRAPH_SUFFIX` character_service.py SoTIf there are two types of path (parent payload vs SkelRoot) like AgentRecord:
+- Separated into separate fields (`prim_path` + `skel_root_path`)
+- Reuse of a single field causes delete vs animation API conflict
 
-AgentRecord 처럼 path 가 두 종류 (parent payload vs SkelRoot) 인 경우:
-- 별도 필드 (`prim_path` + `skel_root_path`) 로 분리
-- 단일 필드 재사용은 delete vs animation API 충돌 발생
+## Related Boundaries
 
-## 관련 경계
-
-- L13 / L15 사고 기록: `kkr-extensions/docs/lessons-learned.md`
-- Window / Extension domain 분리: `src/omniverse_kit_mcp/modules/integration-facts.md`
-- Extension reload (UI panel zombie 와 같은 layer): `docs/invariants/ext-reload.md`
-- Extension 구현 정책: `kkr-extensions/CLAUDE.md` (validation_api service import 재사용 금지)
+- L13 / L15 accident record: `kkr-extensions/docs/lessons-learned.md`
+- Window / Extension domain separation: `src/omniverse_kit_mcp/modules/integration-facts.md`
+- Extension reload (UI panel zombie-like layer): `docs/invariants/ext-reload.md`
+- Extension implementation policy: `kkr-extensions/CLAUDE.md` (reuse of validation_api service import prohibited)

@@ -1,78 +1,76 @@
 <!-- Parent: ../CLAUDE.md → docs/extension-basics.md -->
-<!-- Scope: NavMesh Playground 사용자 워크플로우 + 수동 QA 체크리스트 -->
+<!-- Scope: NavMesh Playground User Workflow + Manual QA Checklist -->
 
 # NavMesh Playground — User Workflow + QA Checklist
 
-이 Extension 은 **Isaac Sim 단독 환경 (omniverse-kit-mcp 없이)** 에서도 동작합니다.
-모든 callback 은 Kit SDK 직접 호출 (`omni.kit.commands` / `omni.usd` /
-`isaacsim.replicator.agent.core` / `omni.anim.navigation.core` / `pxr.*` 등) — `omni.mycompany.validation_api` 의존 0.
+This extension also works in **Isaac Sim standalone environment (without omniverse-kit-mcp)**.
+All callbacks call Kit SDK directly (`omni.kit.commands` / `omni.usd` /
+`isaacsim.replicator.agent.core` / `omni.anim.navigation.core` / `pxr.*` etc.) — `omni.mycompany.validation_api` depends 0.
 
-## 사용자 워크플로우 (5 단계)
+## User Workflow (5 steps)
 
-NavMesh Playground 패널 열기 (`Window > NavMesh Playground` 또는 Extension 활성화 시 자동) 후:
+After opening the NavMesh Playground panel (`Window > NavMesh Playground` or automatically when Extension is enabled):
 
-| # | 동작 | 결과 / 주의 |
+| # | Action | Result/Caution |
 |---|------|-------------|
-| 1 | **Stage > Load Warehouse** 클릭 | `/World/Warehouse` 에 Simple_Warehouse 로드 (~17-20s S3) |
-| 2 | **NavMesh > Bake** — 3가지 중 하나 선택: | |
-|   | • **Bake (Stage)** — 기존 NavMeshVolume 사용 | |
-|   | • **Bake (New)** — 30m Include volume 신규 생성 + bake. **빠른 시작용** | |
-|   | • **Bake (Only Warehouse)** — 사용자 hand-authored 한 stage volume 들의 Transform/Scale/Type 그대로 보존하여 bake. 각 volume 의 properties 가 Status Log 에 출력. **권장: Stage 에 직접 Include + Exclude 배치 후 사용** | |
-| 3 | **Spawn > Type / Sit / Count 설정 → Spawn @ Random Walkable** | NavMesh walkable area 에서 random N개 사람 또는 로봇 생성 |
-|   | **Agents 패널 → 각 Agent의 Start/Goal 옆 "Set Cur" 클릭** | 현재 위치를 Start (또는 Goal) 좌표로 설정. Goal 은 직접 입력도 가능 |
-| 4 | **Sim Play (Space 키 또는 패널 Sim Play 버튼) — 선택사항** | 미실행 시 Step 5 의 Go 가 자동 timeline.play() 호출. 미리 play 해두면 character runtime register 가 빨라져서 첫 Go 응답이 즉각 |
-| 5 | **각 Agent의 "Go" 버튼 클릭** | People → Walk→Sit FSM. Robot → DifferentialController + Pure Pursuit. Stop 으로 중단, Remove 로 stage 에서 삭제 |
+| 1 | Click **Stage > Load Warehouse** | Load Simple_Warehouse into `/World/Warehouse` (~17-20s S3) |
+| 2 | **NavMesh > Bake** — Choose one of 3: | |
+|   | • **Bake (Stage)** — Use existing NavMeshVolume | |
+|   | • **Bake (New)** — Create a new 30m Include volume + bake. **For quick start** | |
+|   | • **Bake (Only Warehouse)** — Bake by preserving the Transform/Scale/Type of stage volumes hand-authored by the user. The properties of each volume are output to the Status Log. **Recommended: Use after placing Include + Exclude directly on Stage** | |
+| 3 | **Spawn > Type / Sit / Count settings → Spawn @ Random Walkable** | NavMesh Generate N random people or robots from walkable area |
+|   | **Agents panel → Click “Set Cur” next to Start/Goal of each Agent** | Set the current location as Start (or Goal) coordinates. Goal can also be entered directly |
+| 4 | **Sim Play (Space key or panel Sim Play button) — optional** | If not executed, Go in Step 5 automatically calls timeline.play(). If you play it in advance, the character runtime register becomes faster so the first Go response is immediate |
+| 5 | **Click the “Go” button on each Agent** | People → Walk → Sit FSM. Robot → DifferentialController + Pure Pursuit. Stop with Stop, remove from stage with Remove |
 
-## NavMesh Volume 직접 편집 (선택)
+## Edit NavMesh Volume directly (optional)
 
-특정 영역을 walkable 에서 제외하려면:
-1. Stage 패널 우클릭 → Create > NavMeshVolume → "Exclude" 타입
-2. xformOp:translate / scale 로 제외 영역 위치 + 크기 지정
-3. 패널의 **Bake (New-Warehouse)** 또는 **Bake (Stage)** 재클릭 → Include + Exclude 모두 적용
+To exclude a specific area from walkable:
+1. Right-click the Stage panel → Create > NavMeshVolume → “Exclude” type
+2. Specify exclusion area location + size with xformOp:translate / scale
+3. Re-click **Bake (New-Warehouse)** or **Bake (Stage)** on the panel → Apply both Include + Exclude
 
-`Bake (New-Warehouse)` 는 stage 의 모든 NavMeshVolume 자동 인식 — Include/Exclude 비율 status log 에 표시.
+`Bake (New-Warehouse)` automatically recognizes all NavMeshVolumes in the stage — Include/Exclude ratio is displayed in status log.
 
-## 수동 QA 체크리스트
+## Manual QA Checklist
 
-UI 위젯 동작은 Kit GUI 환경에서만 검증 가능 (pytest 단위 테스트 범위 밖). 사용자 시연 전 다음 항목을 마우스 직접 클릭으로 확인:
+UI widget behavior can only be verified in the Kit GUI environment (outside the scope of pytest unit tests). Before user demonstration, check the following items by directly clicking the mouse:
 
-### 기본 시나리오
-- [ ] 패널이 `Window > NavMesh Playground` 메뉴에 표시되고 클릭 시 열림
-- [ ] **Load Warehouse** 클릭 → Status Log 에 "Warehouse loaded: /World/Warehouse" + Stage 패널에 `/World/Warehouse` Xform 추가
-- [ ] **Bake (New-Warehouse)** 클릭 → Triangles 라벨이 0 이상 (실측: warehouse 면적의 베이크 결과 ≥ 100)
-- [ ] **Toggle Overlay** 클릭 → viewport 에 cyan walkable 영역 토글
-- [ ] Spawn type=People, count=1, **Spawn @ Random Walkable** 클릭 → Agents 섹션에 People-01 추가 + viewport 에 사람 표시
-- [ ] Agent 패널의 Start `Set Cur` 클릭 → Start 좌표 필드가 현재 위치로 갱신
-- [ ] Agent 패널의 Goal `Set Cur` 클릭 → 동일 (별도 좌표 입력도 OK)
-- [ ] **Sim Play** (또는 Space 키) → timeline 재생 시작
-- [ ] Agent 의 **Go** 클릭 → 캐릭터가 Goal 방향으로 walk 애니메이션 시작 (timeline 미재생 시 자동 play)
-- [ ] Goal 도달 시 Sit pose 로 전환 (SitIdle / SitTalk / SitReading 중 spawn 시 선택한 variant)
-- [ ] **Stop** → 캐릭터 정지 (state=Stopped)
-- [ ] **Remove** → stage 에서 prim 완전 삭제 (parent + 자식 SkelRoot 모두)
+### Basic scenario
+- The [ ] panel appears in the `Window > NavMesh Playground` menu and opens when clicked.
+- [ ] Click **Load Warehouse** → “Warehouse loaded: /World/Warehouse” in Status Log + Add `/World/Warehouse` Xform to Stage panel
+- [ ] Click **Bake (New-Warehouse)** → Triangles label is 0 or more (Actual measurement: bake result of warehouse area ≥ 100)
+- [ ] Click **Toggle Overlay** → Toggle cyan walkable area in viewport
+- [ ] Spawn type=People, count=1, click **Spawn @ Random Walkable** → Add People-01 to Agents section + Show people in viewport
+- [ ] Click Start `Set Cur` on the Agent panel → Start coordinate field is updated to the current location
+- [ ] Click Goal `Set Cur` on the Agent panel → Same (separate coordinate input is also OK)
+- [ ] **Sim Play** (or Space key) → Start timeline playback
+- Click **Go** on [ ] Agent → Character starts walk animation in the direction of goal (automatically plays when timeline is not playing)
+- [ ] Switch to Sit pose when reaching Goal (variant selected when spawning during SitIdle / SitTalk / SitReading)
+- [ ] **Stop** → Character stops (state=Stopped)
+- [ ] **Remove** → completely remove prim from stage (both parent + child SkelRoot)
 
-### Robot 시나리오
-- [ ] Spawn type=Robot, count=1, **Spawn @ Random Walkable** → Robots 섹션에 Robot-01 (NovaCarter or Jetbot) 추가
-- [ ] Start/Goal `Set Cur` + **Go** → 로봇이 NavMesh path 따라 wheel rotation 으로 주행 (S-curve 없이 부드럽게)
-- [ ] Goal 도달 또는 timeout 시 wheel velocity 0 으로 정지
-- [ ] Remove → stage 에서 articulation 완전 제거
+### Robot Scenario
+- [ ] Spawn type=Robot, count=1, **Spawn @ Random Walkable** → Add Robot-01 (NovaCarter or Jetbot) to the Robots section.
+- [ ] Start/Goal `Set Cur` + **Go** → The robot runs with wheel rotation along the NavMesh path (smoothly without S-curve)
+- [ ] When goal is reached or timeout, wheel velocity stops at 0
+- [ ] Remove → Completely remove articulation from stage
 
 ### Multi-Agent
-- [ ] count=3 으로 Spawn People → 서로 다른 walkable point 3 곳에 배치
-- [ ] count=2 로 Spawn Robot 추가 → 사람과 로봇 5개 동시 동작 가능
-- [ ] **Reset All Agents** → 모든 agent 일괄 정리
+- Spawn People with [ ] count=3 → Place at 3 different walkable points
+- Add Spawn Robot with [ ] count=2 → Simultaneous operation of 5 people and robots possible
+- [ ] **Reset All Agents** → Batch cleaning of all agents
 
-### NavMesh Volume 편집
-- [ ] Stage 패널에서 NavMeshVolume(Exclude) 직접 추가 + Bake (New-Warehouse) 재클릭 → Status Log 에 "1 Include + 1 Exclude" 표시 + Exclude 영역에는 random walkable point 가 spawn 안 됨
+### Edit NavMesh Volume
+- [ ] Add NavMeshVolume(Exclude) directly in the Stage panel + Re-click Bake (New-Warehouse) → “1 Include + 1 Exclude” is displayed in the Status Log + Random walkable points do not spawn in the Exclude area
 
-## 알려진 한계
+## Known limitations- **Mismatched units carb.log_warn**: Character skin (cm) ↔ stage (m) unit difference may cause USD to output an informational warning once. Harmless — USD automatically compensates `xformOp:scale:unitsResolve=(100,100,100)`. negligible
+- **Triangle count = 0 in Bake (New) UI button**: NavMesh itself is baked normally (sample_walkable_points verified operation). Due to a UI `iface.get_navmesh().get_triangle_count()` call timing issue, only the display value is 0. No effect on actual behavior.
+- **Panel state="Walking" does not automatically switch to "Sitting" (intermittently)**: character runtime world transform polling sometimes misses very close arrivals. The character itself reaches the summit + Sit posture. Diagnosis bug unique to UI label
+- **Only mouse clicks are stable (Claude MCP `extension_ui_invoke` is also possible, but the first call requires 1 second for layout settle)** — Automated testing is automatically handled by `validation_api/services/ui_service.py::ui_invoke`'s auto-show
 
-- **Mismatched units carb.log_warn**: character skin (cm) ↔ stage (m) 단위 차이로 USD 가 informational warning 1회 출력 가능. 무해 — USD 가 자동으로 `xformOp:scale:unitsResolve=(100,100,100)` 보상. 무시 가능
-- **Bake (New) UI button 의 Triangle count = 0 표시**: NavMesh 자체는 정상 baked (sample_walkable_points 작동 검증). UI 의 `iface.get_navmesh().get_triangle_count()` 호출 timing 문제로 표시값만 0. 실제 동작에 영향 없음
-- **Panel state="Walking" 이 "Sitting" 으로 자동 전환 안 됨 (간헐적)**: character runtime world transform 폴링이 매우 가까운 arrival 을 가끔 놓침. 캐릭터 자체는 정상 도달 + Sit 자세. UI label 만의 진단 버그
-- **Mouse 클릭만 안정 (Claude MCP `extension_ui_invoke` 도 가능하지만 첫 호출은 layout settle 1초 필요)** — 자동화 테스트는 `validation_api/services/ui_service.py::ui_invoke` 의 auto-show 가 자동 처리
+## Related Boundaries
 
-## 관련 경계
-
-- 코드 경로: `omni/mycompany/navmesh_playground/{ui_panel,people_controller,robot_controller,usd_loader,navmesh_sampler,agent_manager,extension}.py`
-- 자동 검증 시나리오: `scenarios/smoke/navmesh_playground_e2e.yaml` (MCP scenario_validate 로 실행)
-- ext_ui_invoke 사용 가이드: `docs/lessons-learned.md` L15
+- Code path: `omni/mycompany/navmesh_playground/{ui_panel,people_controller,robot_controller,usd_loader,navmesh_sampler,agent_manager,extension}.py`
+- Automatic verification scenario: `scenarios/smoke/navmesh_playground_e2e.yaml` (run with MCP scenario_validate)
+- ext_ui_invoke usage guide: `docs/lessons-learned.md` L15

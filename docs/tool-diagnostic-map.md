@@ -1,82 +1,82 @@
 <!-- Parent: ../CLAUDE.md -->
-<!-- Scope: 에러/실패 발생 시 코드 수정 전에 가설을 read-only MCP tool 로 검증 — 디버깅 첫 read -->
+<!-- Scope: When an error/failure occurs, verify the hypothesis with a read-only MCP tool before modifying the code — Debugging first read -->
 # Tool Diagnostic Map
 
-에러 / 예상외 동작 발생 시 **수정 → 시도 cycle 전에** 이 문서 read.
-같은 가설로 코드 수정 + 시도가 2회 fail 하면 → 가설 재검토 강제 (반복 시도 금지).
+When an error/unexpected operation occurs **Modify → Before the trial cycle** Read this document.
+If the code modification + attempt with the same hypothesis fails twice → Hypothesis reexamination is forced (repeated attempts are prohibited).
 
-## 진단 워크플로 (5초 cycle vs 10분 cycle)
+## Diagnostic workflow (5 second cycle vs 10 minute cycle)
 
-1. **Grep error message**: project source + Kit source (`C:/workspace/isaac-sim-standalone-*/exts/`) — 발생 line 식별, 가설 좁히기
-2. **MCP read-only 진단 tool 호출** (각 ~5초) — 아래 표로 가설 검증
-3. **환경 의존성 의심** 시: `extension_search/activate` (lazy install) + `content_browse` (URL 검증) + filesystem 직접
-4. **가설 확정 후에만** 코드 수정 시도. 같은 가설 2회 fail = 가설 폐기
+1. **Grep error message**: project source + Kit source (`C:/workspace/isaac-sim-standalone-*/exts/`) — Identify line of occurrence, narrow down hypothesis
+2. **Call MCP read-only diagnostic tool** (~5 seconds each) — Verify hypothesis using the table below
+3. **When environmental dependency is suspected**: `extension_search/activate` (lazy install) + `content_browse` (URL verification) + filesystem directly
+4. Attempt to modify the code **only after confirming the hypothesis**. Same hypothesis fails twice = hypothesis discarded
 
-## 의문 → MCP tool 역색인
+## Question → MCP tool reverse index
 
-| 의문 | 1차 MCP tool | 응답 필드 / 검증 method |
-|------|------------|---------------------|
-| 이 prim 이 articulation? | `robot_load(usd_url, prim_path)` | `has_articulation` |
-| 이 USD URL 실존? | `content_browse(parent_dir)` | `entries[]` 안 항목 (S3 catalog) |
-| Ext 등록? | `extension_search(keyword)` | result count > 0 |
-| Ext 활성화? | `extension_get_info(ext_id)` | `info.enabled` / `info.path` |
-| Ext lazy install + 활성화? | `extension_activate(ext_id)` | `was_enabled` / `enabled` |
-| Widget 클릭 effect? | `extension_ui_invoke` post-state + `extension_get_ui_tree` 의 label change |
-| Prim 존재? | `stage_assert_prim_exists(prim_path)` | `passed` |
-| Prim attribute 값? | `stage_assert_property(prim_path, property_name)` (expected 생략) | `actual.value` |
-| Stage 전체 prim? | `stage_capture_snapshot` → `data.prims` dict (응답 큼 — Bash + jq/python 권장) |
+| question | 1st MCP tool | Response field / validation method |
+|------|---------------|---------------------|
+| Is this prim this articulation? | `robot_load(usd_url, prim_path)` | `has_articulation` |
+| Is this USD URL real? | `content_browse(parent_dir)` | Items in `entries[]` (S3 catalog) |
+| Ext registration? | `extension_search(keyword)` | result count > 0 |
+| Enable Ext? | `extension_get_info(ext_id)` | `info.enabled` / `info.path` |
+| Ext lazy install + activation? | `extension_activate(ext_id)` | `was_enabled` / `enabled` |
+| Widget click effect? | `extension_ui_invoke` post-state + `extension_get_ui_tree` label change |
+| Prim being? | `stage_assert_prim_exists(prim_path)` | `passed` |
+| Prim attribute value? | `stage_assert_property(prim_path, property_name)` (expected omitted) | `actual.value` |
+| Stage full prim? | `stage_capture_snapshot` → `data.prims` dict (larger response — Bash + jq/python recommended) |
 | Timeline state? | `simulation_get_status` | `is_playing` / `current_time` |
-| Window 존재? | `window_list` | `windows[].class_name=GLFW30` |
-| Window UI tree? | `extension_get_ui_tree(window=)` | `widgets[]` (USD Composer 는 `omni.kit.ui_test` 부재 → 0 widgets + walk_error) |
-| Visual 상태? | `viewport_capture` / `window_capture` + `Read` tool | PNG (R3) |
-| Kit menu 항목? | `window_menu_list` / `window_menu_trigger` | `items[]` |
+| Window exists? | `window_list` | `windows[].class_name=GLFW30` |
+| Window UI tree? | `extension_get_ui_tree(window=)` | `widgets[]` (USD Composer does not have `omni.kit.ui_test` → 0 widgets + walk_error) |
+| Visual status? | `viewport_capture` / `window_capture` + `Read` tool | PNG (R3) |
+| Kit menu item? | `window_menu_list` / `window_menu_trigger` | `items[]` |
 | MDL deadlock? | `simulation_get_status` 92s timeout | → `runbooks/kit-stdin-deadlock.md` |
 
-## Extension 내부 진행 stamping 패턴
+## Extension internal progress stamping pattern
 
-`extension_capture_logs` 가 no-op (`invariants/usd-load.md`) 인 환경에서 ext 내부
-진행을 외부 polling 하려면 USD attribute stamp:
+Inside ext in an environment where `extension_capture_logs` is no-op (`invariants/usd-load.md`)
+For external polling of progress, USD attribute stamp:
 
 ```python
-# extension code (진행 단계마다)
-from pxr import Sdf, UsdGeom
-prim = UsdGeom.Xform.Define(stage, Sdf.Path("/World/MyExtStatus")).GetPrim()
+# extension code (at each progress step)
+from pxr import Sdf, USDGeom
+prim = USDGeom.Xform.Define(stage, Sdf.Path("/World/MyExtStatus")).GetPrim()
 prim.CreateAttribute("stage", Sdf.ValueTypeNames.String).Set("step_5_done")
 prim.CreateAttribute("last_error", Sdf.ValueTypeNames.String).Set(str(exc))
 ```
 
 ```python
-# MCP polling (외부)
+# MCP polling (external)
 stage_assert_property(prim_path="/World/MyExtStatus", property_name="stage")
-# response.actual.value 로 현재 단계 read
+# response.actual.value to read the current step
 ```
 
-## Self-test pattern (UI automation 없는 환경)
+## Self-test pattern (environment without UI automation)
 
-USD Composer 등 `omni.kit.ui_test` 부재 → `extension_ui_invoke` widget click 불가
-(`extension_get_ui_tree` widgets=0 + walk_error 로 표면화).
+USD Composer, etc. `omni.kit.ui_test` absent → `extension_ui_invoke` widget click not possible
+(Externalized as `extension_get_ui_tree` widgets=0 + walk_error).
 
-대안: extension `on_startup` 에서 self-test coroutine schedule, 결과를
-`/World/<Ext>SelfTestResult` prim attribute 로 stamp → MCP `stage_assert_property`
-read. Side-effect (예: highlight 후 restore) 와 검증 race 회피 위해 stamp 직후
-검증 state 분리 (highlighted_path = None 으로 reset 등).
+Alternative: self-test coroutine schedule, results in extension `on_startup`
+stamp with `/World/<Ext>SelfTestResult` prim attribute → MCP `stage_assert_property`
+read. Immediately after stamping to avoid side-effects (e.g. restore after highlight) and verification race.
+Separate verification state (reset to highlighted_path = None, etc.).
 
-## 가설 검증 비용 비교
+## Comparison of hypothesis testing costs
 
-| 동작 | 시간 |
+| Action | time |
 |------|------|
-| MCP read-only 호출 1회 | ~5 s |
-| Grep (project / Kit source) | ~5 s |
-| Standalone python 검증 (`scripts/run_*_standalone.py`) | ~10 s |
+| 1 MCP read-only call | ~5 s |
+| Grep (project/kit source) | ~5 s |
+| Standalone python verification (`scripts/run_*_standalone.py`) | ~10 s |
 | Kit restart + build + play + start cycle | ~10 min |
 
-→ 코드 수정 전 read-only 검증 1회로 cycle 1회 절약. 4-5회 시도 누적 1시간 vs 25 s.
+→ One cycle saved with one read-only verification before code modification. Accumulated 1 hour vs 25 s for 4-5 attempts.
 
-## 관련 경계
+## Related Boundaries
 
-- 전체 MCP tool signature: `tool-catalog.md` (auto-generated, signature 위주)
+- Full MCP tool signature: `tool-catalog.md` (auto-generated, signature-oriented)
 - Process lifecycle / hang: `invariants/process-lifecycle.md` + `runbooks/cold-boot-timeout.md`
-- USD load 함정 (S3 URL / MDL deadlock): `invariants/usd-load.md`
-- Ext reload (sys.modules cleanup 한계): `invariants/ext-reload.md`
+- USD load trap (S3 URL / MDL deadlock): `invariants/usd-load.md`
+- Ext reload (sys.modules cleanup limit): `invariants/ext-reload.md`
 - Multi-app port / profile: `invariants/multi-app.md`
-- Kit SDK domain 함정: `../kkr-extensions/docs/kit-sdk-pitfalls.md`
+- Kit SDK domain trap: `../kkr-extensions/docs/kit-sdk-pitfalls.md`
