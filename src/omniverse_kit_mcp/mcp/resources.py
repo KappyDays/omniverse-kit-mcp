@@ -101,10 +101,10 @@ def register_resources(mcp: FastMCP, config: AppConfig) -> None:
             "NVIDIA / Isaac Sim 6.0 asset inventory (robots 90+, "
             "environments 10, people / animations, props, SimReady 1000+). "
             "Maps a request type to the catalog file that holds concrete USD "
-            "URLs so you load a real NVIDIA asset (Validation Rule R1 — never "
-            "substitute a primitive Cube/Sphere). Pair with the asset_search "
-            "tool for natural-language lookup and docs/invariants/"
-            "asset-discovery.md for the full discovery workflow."
+            "URLs so user-facing outputs load real NVIDIA assets (Validation "
+            "Rule R1; controlled test/demo fixtures may use primitives). Pair "
+            "with the asset_search tool for natural-language lookup and "
+            "docs/invariants/asset-discovery.md for the full discovery workflow."
         ),
         mime_type="text/markdown",
     )

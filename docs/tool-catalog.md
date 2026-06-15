@@ -1279,12 +1279,13 @@ Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim
 a natural-language need (e.g. "forklift", "warehouse", "franka", "police character", "pallet")
 to concrete spawnable USD URLs by ranking the curated markdown catalog under docs/assets/isaac/
 (robots 90+, environments, people/animations, props, SimReady 1000+). Use this at planning time
-/ before building a scene to pick a real asset (Validation Rule R1 — never substitute a
-primitive); complements the live asset_list (which needs Isaac up) and content_browse.  Args:
-query: free-text terms matched against asset name / catalog text.   category: optional filter —
-one of robots / environments / people /     props / simready / other.   limit: max results
-(default 20).  Returns a ranked list of {name, url, category, source_file}. Load a chosen url
-with stage_load_usd / robot_load / character_load per docs/invariants/usd-load.md.
+/ before building a scene to pick a real asset (Validation Rule R1 — actual outputs use actual
+assets; controlled test/demo fixtures may be primitives); complements the live asset_list
+(which needs Isaac up) and content_browse.  Args:   query: free-text terms matched against
+asset name / catalog text.   category: optional filter — one of robots / environments / people
+/     props / simready / other.   limit: max results (default 20).  Returns a ranked list of
+{name, url, category, source_file}. Load a chosen url with stage_load_usd / robot_load /
+character_load per docs/invariants/usd-load.md.
 
 **Parameters**
 

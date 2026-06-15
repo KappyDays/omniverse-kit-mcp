@@ -1072,8 +1072,9 @@ def register_module_tools(
         the curated markdown catalog under docs/assets/isaac/ (robots 90+,
         environments, people/animations, props, SimReady 1000+). Use this at
         planning time / before building a scene to pick a real asset (Validation
-        Rule R1 — never substitute a primitive); complements the live asset_list
-        (which needs Isaac up) and content_browse.
+        Rule R1 — actual outputs use actual assets; controlled test/demo
+        fixtures may be primitives); complements the live asset_list (which
+        needs Isaac up) and content_browse.
 
         Args:
           query: free-text terms matched against asset name / catalog text.

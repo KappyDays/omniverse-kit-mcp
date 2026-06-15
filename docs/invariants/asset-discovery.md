@@ -5,10 +5,12 @@
 Create a scene or add robot / character / environment / prop / SimReady asset
 **Before** Read this file. NVIDIA·Isaac Sim 6.0 has rich real assets (robots 90+,
 Provides environments 10, people·animations, props, SimReady 1000+) — remembered URLs
-Don't go for or primitive (Cube/Sphere), but **find the actual asset in the catalog first**.
+Do not use remembered URLs or primitive stand-ins for user-facing deliverables;
+**find the actual asset in the catalog first**.
 
-This document follows the Validation Rule **R1** ("Only real assets — no primitive substitution").
-Operationalize with **entry workflow**, not validation.
+This document follows Validation Rule **R1**: actual outputs use actual assets,
+while controlled prototype/test/demo fixtures may use primitives. Operationalize
+with **entry workflow**, not validation.
 
 ## Discovery workflow (4 steps)
 
@@ -54,10 +56,14 @@ Alphabetical pagination (`$SIM` root). If the catalog contains only prose summar
 > SimReady canonical rule: `$SIM/{name}/{name}.usd`. Catalog prefix (`$ISAAC` / `$SIM`)
 > declared at the top of the catalog file — replace it with a full HTTPS URL (`file://` is prohibited).
 
-## R1 operationalize — real assets only
+## R1 operationalize — real assets first
 
 - **No primitive substitution**: Creating a Cube when the request is “Release the robot” is a False Positive.
 Secure and load the actual NVIDIA asset URL using Catalog/`asset_search`.
+- **Fixture exception**: Prototype / unit test / smoke demo / diagnostic scenes may use controlled primitive
+fixtures when the primitive is the test object itself, not a substitute for a requested real asset. Example:
+robot pick/place playback demo uses a 0.04 m cube fixture, and explicit real object assets still must pass
+bbox/fit/visual preflight.
 - **No remembered URLs**: Use catalog SoT or `asset_search` result URLs instead of hardcoded/remembered URLs.
 (avoiding 404/version drift). URL 404 / inventory update is a skill
   `/omniverse-asset-inventory-sync`.
