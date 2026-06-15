@@ -85,6 +85,10 @@ Workspace mapping:
   `docs/invariants/live-worker-coordination.md`: keep the root thread as
   coordinator and create/continue work in matching
   `workspaces/<app>/instance-N` so the workspace-local MCP entry loads.
+- Requests to launch/open/start Isaac Sim, USD Composer, or another Omniverse
+  app are live MCP work. Treat that wording as explicit permission to create or
+  continue the matching workspace Codex thread and run `kit_app_start` there.
+  See `docs/invariants/live-worker-coordination.md`.
 - Warning: this common parent/worker contract has only been live-verified with
   Codex threads so far; non-Codex hosts should report adapter gaps.
 - Global Codex MCP entries may appear alongside the workspace entry.

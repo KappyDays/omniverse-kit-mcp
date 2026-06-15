@@ -8,6 +8,10 @@
 
 - **Only this file** Automatically loads every turn (CC behavior). Codex CLI has `AGENTS.md` as the entry point — no nested auto-load — cap / writing rule: §meta
 - **Actual live MCP entry point**: `workspaces/<app>/instance-N/.mcp.json` (server spawns when you open CC in that folder). app ∈ {isaac, usd-composer}, N ∈ {1,2}. Details: `workspaces/README.md` · `docs/invariants/multi-app.md`
+- **App launch requests**: Treat launch/open/start of Isaac Sim, USD Composer,
+  or another Omniverse app as live MCP work. Read
+  `docs/invariants/live-worker-coordination.md` and use the matching
+  `workspaces/<app>/instance-N` entry.
 
 ## ⚠️ Required pull-doc before work
 

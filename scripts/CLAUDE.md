@@ -9,7 +9,7 @@
 |----------|------|-----------|
 | `generate_tool_catalog.py` | Regenerate `docs/tool-catalog.md` | Register a new `@mcp.tool()` / change the existing tool signature **must be done immediately** |
 | `verify_mcp_sync.py` | regen + drift test 1 command | Pre-block drift by executing tool changes before committing them |
-| `run_process_module_standalone.py <start\|stop\|restart>` | Control kit.exe lifecycle directly without MCP server import cache | When Isaac Sim needs to be restarted after changing the extension code (avoiding MCP session restart) |
+| `run_process_module_standalone.py <start\|stop\|restart>` | Low-level ProcessModule control without MCP server import cache | Recovery/diagnosis/import-cache bypass only. Normal app launch requests must use a `workspaces/<app>/instance-N` live worker and `kit_app_start`. |
 | `run_scenario_standalone.py <scenario_path>` | Run scenario runner with the latest `src/` code | Bypass MCP import cache and modify scenario live verification |
 | `live_test_extension_ui.py` | Phase D — Extension UI automation (ui_invoke/ui_tree) + carb log capture live | Phase verification — `docs/artifacts/phase-d/` |
 | `live_test_phase_e.py` · `live_test_sensor.py` · `live_test_navmesh_viz.py` · `live_test_viewport_multi.py` | Phase E — sensor (RTX cam/lidar/depth)·navmesh viz·multi viewport live | → `docs/artifacts/phase-e/` |
@@ -25,6 +25,10 @@
 ## Additional rules
 
 - **MCP import cache bypass**: Modifying the `src/omniverse_kit_mcp/` code will not be reflected in MCP tool calls until the MCP host (Claude Code / Codex CLI) is restarted. `run_scenario_standalone.py` / `run_process_module_standalone.py` is imported as a fresh Python process at every execution, so the latest code is reflected immediately. Extension code changes (`kkr-extensions/`) are immediately reflected as `kit_app_restart`.
+- **Do not use standalone start for ordinary app launch**: Root `.env` legacy
+  overrides (`ISAAC_SIM_KIT_EXE` / `ISAAC_SIM_KIT_FILE`) can override
+  profile defaults and launch the wrong `.kit` app. For "start Isaac/Composer",
+  use the workspace-local MCP worker and `kit_app_start`.
 - **Live script output**: Saved to `docs/artifacts/phase-{id}/` (e.g. `docs/artifacts/phase-e/`). The `PHASE_*_DIR` constant in each script is set to this path. Copy the original capture saved in `%TEMP%/validation_api_captures/` to a meaningful name.
 - **`live_test_*.py` personality**: **Manual ad-hoc phase verification tool** that directly hits `/validation/v1/*` with standalone httpx (pytest not collected — test signal unaffected). **The official path of domain regression is `scenarios/*.yaml` + `scenario_validate`** (Arrange→Act→Assert→Cleanup). live_test is for surfaces not covered by scenario (save/open, UI automation, viewport create/destroy) or quick one-shot inspection — add new regressions as scenario.
 - **verify_mcp_sync.py requires exit 0**: This script must end with 0 before committing the new tool. If non-zero, regen or frozenset updates are missing.

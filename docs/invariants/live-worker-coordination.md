@@ -18,8 +18,20 @@ Shorten it to Quiet Parent Contract.
 ## When to apply
 
 - If actual Isaac Sim / USD Composer MCP tool verification is required, use worker.
+- If the user asks to launch/open/start an Omniverse app, this is live MCP work:
+  create or continue the matching `workspaces/<app>/instance-N` Codex thread and call
+  `kit_app_start` there. Do not start the app from the repo-root parent thread.
 - If only code/document/static test/diff cleanup is needed, parent handles it.
 - A new worktree is not created unless the user specifies it.
+
+## Root-thread launch prohibition
+
+The parent thread must not use `scripts/run_process_module_standalone.py start` as
+the normal answer to "start Isaac/Composer". That bypasses the workspace-local MCP
+entry and can inherit repo-root `.env` legacy overrides (`ISAAC_SIM_KIT_EXE` /
+`ISAAC_SIM_KIT_FILE`), causing a `usd-composer` profile request to boot the Isaac
+Sim `.kit` file. Use the workspace worker MCP instead; reserve standalone process
+scripts for documented import-cache bypass, recovery, or explicit low-level diagnosis.
 
 ## Parent Responsibilities
 

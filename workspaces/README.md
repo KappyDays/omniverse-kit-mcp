@@ -11,6 +11,12 @@ When delegating to a thread, use `../docs/invariants/live-worker-coordination.md
 Follow. This rule is a common operating rule, but live thread operation is currently only available in Codex.
 Verified.
 
+When the user says to launch/open/start Isaac Sim, USD Composer, or another
+Omniverse app, create or continue the matching instance thread from this matrix
+and run `kit_app_start` inside that workspace. Do not launch from the repo root:
+standalone process scripts can inherit root `.env` overrides and boot the wrong
+`.kit` profile.
+
 ```
 cd workspaces/isaac/instance-1   # Isaac Sim instance 1 (port 8111)
 claude                            # Claude Code entry
