@@ -33,7 +33,7 @@ This is not a general preparation step for repeated verification.
 If you change user/demo Extension `.py` other than validation_api, you must first change `extension_reload(ext_id)`
 Use and check whether it is reflected with marker response. Promotes to restart only in case of failure.
 
-## ⚠️ stdin=subprocess.DEVNULL required (do not change — DO-NOT-EDIT)
+## ⚠️ stdin=subprocess.DEVNULL required (protected regression fact)
 
 `subprocess.Popen(...)` of `src/omniverse_kit_mcp/modules/process_module.py::start` is
 If `stdin=subprocess.DEVNULL` is not specified, the MCP server child kit.exe runs on the MCP host (Claude Code / Codex CLI).
@@ -186,7 +186,7 @@ Matching — identified as `port=<N>`. Refer to §"Process Identification (name 
 
 - Code location SoT (4 types of ProcessModule hang recovery traps): `src/omniverse_kit_mcp/modules/process-ops.md`
 - Standalone test script: `scripts/run_process_module_standalone.py`
-- DO-NOT-EDIT residual body (reproduction/recovery): `docs/runbooks/kit-stdin-deadlock.md`
+- Protected regression body (reproduction/recovery): `docs/runbooks/kit-stdin-deadlock.md`
 - Cold boot timeout branch interpretation: `docs/runbooks/cold-boot-timeout.md`
 - Hub orphan manual recovery: `docs/runbooks/hub-orphan.md`
 - Env sub-config trap body: `docs/runbooks/env-sub-config.md`

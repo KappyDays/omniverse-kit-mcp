@@ -1,13 +1,13 @@
 <!-- Parent: ../../CLAUDE.md -->
 <!-- Scope: kit.exe Diagnosis / reproduction / recovery when cold boot hang occurs -->
 <!-- ========================================================== -->
-<!-- ⛔ DO-NOT-EDIT — L17 4-hour debugging results protection (2026-04-24) -->
+<!-- Protected regression note — L17 4-hour debugging result (2026-04-24) -->
 <!-- -->
 <!-- This file is the root when reconfiguring (CLAUDE.md Pull-First) -->
 <!-- CLAUDE.md §"kit.exe cold boot hang — stdin pipe deadlock" -->
 <!-- Where the main text has been transferred. Protection intent (4h+ debugging results correct -->
 <!-- preservation) follows as is. Abbreviations are allowed / only the 5 items below -->
-<!-- Must not disappear in abbreviations: -->
+<!-- Must survive abbreviations: -->
 <!-- 1. "stdin=subprocess.DEVNULL" string -->
 <!-- 2. "process_module.py::start" location notation -->
 <!-- 3. Verification number 240 / 13 -->

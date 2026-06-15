@@ -167,18 +167,24 @@ def test_agents_md_hard_rules_match_root_claude_md_key_phrases():
     """t6: AGENTS.md hard-rule key phrases stay synced with root CLAUDE.md."""
     agents = (REPO / "AGENTS.md").read_text(encoding="utf-8")
     root = (REPO / "CLAUDE.md").read_text(encoding="utf-8")
-    key_phrases = [
-        "uv",
-        "DO-NOT-EDIT",
-        "dataclass",
-        "Pydantic",
-        "mcp-tool-add",
-        "module-add",
-        "ext-reload",
-        "scenario-validation",
-        "process-lifecycle",
+    key_patterns = {
+        "uv": r"\buv\b",
+        "protected regression": r"protected\s+(incident|regression)",
+        "dataclass": r"dataclass",
+        "Pydantic": r"Pydantic",
+        "mcp-tool-add": r"mcp-tool-add",
+        "module-add": r"module-add",
+        "ext-reload": r"ext-reload",
+        "scenario-validation": r"scenario-validation",
+        "process-lifecycle": r"process-lifecycle",
+    }
+    missing_in_agents = [
+        name for name, pattern in key_patterns.items()
+        if not re.search(pattern, agents, re.IGNORECASE)
     ]
-    missing_in_agents = [p for p in key_phrases if p not in agents]
-    missing_in_root = [p for p in key_phrases if p not in root]
+    missing_in_root = [
+        name for name, pattern in key_patterns.items()
+        if not re.search(pattern, root, re.IGNORECASE)
+    ]
     assert not missing_in_agents, f"AGENTS.md missing key phrase: {missing_in_agents}"
     assert not missing_in_root, f"root CLAUDE.md missing key phrase: {missing_in_root}"

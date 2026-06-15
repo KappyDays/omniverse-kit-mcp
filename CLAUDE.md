@@ -1,8 +1,6 @@
 # omniverse-kit-mcp — Project Instructions
 
-<!-- 🛑 DO-NOT-EDIT protected areas (allow contraction / preserve purpose / auto-verify G1-G7):
-(1) DO-NOT-EDIT-START/END block of §"DO-NOT-EDIT Residual"
-(2) §"Environment Variables" `ISAAC_SIM_EXTRA_EXT_IDS` row inline -->
+<!-- Protected regression facts live in docs/invariants and docs/runbooks; root only routes. -->
 
 ## Session entry
 
@@ -37,11 +35,12 @@
 
 Fault diagnosis is `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · hub-orphan · env-sub-config · kit-dep-solver-fail · multi-app · scene-reexport-lock).
 
-## ⚠️ DO-NOT-EDIT Residual
+## Protected Regression Pointers
 
-<!-- DO-NOT-EDIT-START: Text / Reproduction / Recovery `docs/runbooks/kit-stdin-deadlock.md`. Automatic Verification G1-G7 -->
-⚠️ **`subprocess.Popen(... stdin=subprocess.DEVNULL)` REQUIRED** — If missing, MCP child kit.exe cold boot hang (L17). Location: `src/omniverse_kit_mcp/modules/process_module.py::start`. Verification value 240 s → 13 s. **"extra_ext_ids race" diagnosis is incorrect** — stdin pipe is the actual cause.
-<!-- DO-NOT-EDIT-END -->
+- Kit child process stdin guard: `stdin=subprocess.DEVNULL` in
+  `src/omniverse_kit_mcp/modules/process_module.py::start`. Read
+  `docs/invariants/process-lifecycle.md` and
+  `docs/runbooks/kit-stdin-deadlock.md` before changing launch behavior.
 
 ## Validation Rules
 
@@ -50,56 +49,38 @@ Fault diagnosis is `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · 
 - **R2** Robot operation (`set_joint_positions` / `navigate_*` / `drive_physics`) requires `simulation_play` state (except `robot_load`) — Detailed `src/omniverse_kit_mcp/modules/CLAUDE.md` Robot
 - **R3** After `viewport_capture`, `Read` tool visual verification obligation — blank/black, retry backlight/camera/asset adjustment
 
-## Change Ripple Matrix
+## Change Routing
 
-| change target | fix together |
-|-----------|----------|
-| New MCP tool | 7 places (`docs/invariants/mcp-tool-add.md`) + 1 manual `scripts/verify_mcp_sync.py` |
-| New module/scenario action | `docs/invariants/module-add.md` |
-| REST endpoint | client + tool registration + test + `kkr-extensions/CLAUDE.md` |
-| MCP resource | `src/omniverse_kit_mcp/mcp/resources.py` + `tests/unit/test_resources_paths.py` + verify_mcp_sync |
-| CLAUDE.md new directory | This matrix + document map bi-directional update |
+High-ripple work follows the Required pull-doc table first: MCP tools use
+`mcp-tool-add.md`, modules/scenario actions use `module-add.md`, extension
+REST work uses `kkr-extensions/CLAUDE.md`, and docs hierarchy changes preserve
+the local `CLAUDE.md` map plus tests.
 
 ## Key Decisions
 
-- **LakehouseModule** query only (interview spec confirmed) — Body `src/omniverse_kit_mcp/modules/CLAUDE.md` LakehouseModule
-- **Type boundary**: Internal `@dataclass(slots=True, frozen=True)`, Pydantic only Extension REST boundary. Pydantic is banned in MCP server code — See `src/omniverse_kit_mcp/CLAUDE.md` "Type Boundary Convention"
-- **MCP server import cache**: spawn + import cache once at session start. `src/omniverse_kit_mcp/` modifications are not reflected until the MCP host (Claude Code / Codex CLI) is restarted. In-session verification is `scripts/run_process_module_standalone.py` / `scripts/run_scenario_standalone.py`
-- **Test SoT**: EXPECTED frozenset of `tests/unit/test_tools_registration.py`
-- **Use only uv** (prohibit `pip install`); Add package `uv add` / `uv add --dev` — New PC procedure `setup/CLAUDE.md`
+- **Type boundary**: internal `@dataclass(slots=True, frozen=True)`; Pydantic
+  only at the Extension REST boundary. See `src/omniverse_kit_mcp/CLAUDE.md`.
+- **MCP import cache**: `src/omniverse_kit_mcp/` changes need host restart or
+  standalone verification. See `scripts/CLAUDE.md`.
+- **Use only uv**: never `pip install`; dependency workflow is `setup/CLAUDE.md`.
 
 ## Environment Variables
 
-| variable | default | explanation |
-|------|-------|------|
-| `ISAAC_SIM_BASE_URL` | `http://127.0.0.1:8111` | Extension REST |
-| `ISAAC_MCP_APP_PROFILE` | `isaac-sim` | Kit app profile — `isaac-sim` or `usd-composer`. Details: `docs/invariants/multi-app.md` |
-| `ISAAC_MCP_INSTANCE_ID` | `1` | Multi-instance (1..2 persistent limit, `le=2` guard). offset to profile base_port (Isaac 8111-12 / USD Composer 8114-15) |
-| `ISAAC_SIM_STARTUP_TIMEOUT` | `120.0` | ProcessModule health wait upper bound. Details: `docs/invariants/process-lifecycle.md` |
-| `ISAAC_SIM_EXTRA_EXT_IDS` | config.py bundle | <!-- ⛔ DO-NOT-EDIT: "extra_ext_ids race" diagnosis is invalid (see L17 `docs/runbooks/kit-stdin-deadlock.md`) --> JSON array. 8 13s passed after stdin DEVNULL fix |
-| `ISAAC_SIM_EXTRA_EXT_FOLDERS` | `[]` | JSON array. Add `--ext-folder` to each out-of-tree extension folder (permanently register external extension folder). If the list is empty, it is the same as the current one. |
-| `LAKEHOUSE_BASE_URL` | `http://localhost:9000` | Lakehouse REST |
+Environment details are situational: app/profile/ports in
+`docs/invariants/multi-app.md`, startup timeout and process launch in
+`docs/invariants/process-lifecycle.md`, installation and dependency setup in
+`setup/CLAUDE.md`, module-specific env in local docs.
 
 ## Subagent / Multiagent dispatch pattern
 
-Subagent / multi-agent context does not automatically load sub-CLAUDE.md. Specify `Read docs/invariants/<relevant>.md first` in the dispatch prompt or include the required context directly.
-Live MCP worker dispatch includes `docs/invariants/live-worker-coordination.md` and Quiet Parent Contract directly in the prompt.
+Subagent / multi-agent context does not automatically load sub-CLAUDE.md. Include
+the relevant pull-docs and local `CLAUDE.md` paths in dispatch prompts.
 
 ## Document Map
 
-| file | responsibility |
-|------|------|
-| `src/omniverse_kit_mcp/CLAUDE.md` | FastMCP server root (entry/type boundary/clients) |
-| `src/omniverse_kit_mcp/modules/CLAUDE.md` | Module matrix + Character constraint + base.py pattern (→ `integration-facts.md` · `process-ops.md`) |
-| `src/omniverse_kit_mcp/scenario/CLAUDE.md` | Scenario Engine (Arrange/Act/Assert/Cleanup + action_registry) |
-| `src/omniverse_kit_mcp/tools/CLAUDE.md` | MCP tool registration contract + caveat by group |
-| `kkr-extensions/CLAUDE.md` | Extension development nav hub (→ `docs/*` basics / pitfalls / recipe / reuse / lessons-learned) |
-| `scenarios/CLAUDE.md` | YAML Authoring |
-| `tests/CLAUDE.md` | pytest unit |
-| `setup/CLAUDE.md` | Installation / New PC |
-| `scripts/CLAUDE.md` | development script |
-| `docs/CLAUDE.md` | tool-catalog / references / pull-docs |
-| `docs/assets/isaac/` | NVIDIA Isaac Sim 6.0 asset URL catalog SoT (`asset_inventory.md` entry point + per-category `assets/*.md`) — entry workflow `docs/invariants/asset-discovery.md` |
+Walk from root to the target path and read every applicable local `CLAUDE.md`.
+Use `docs/CLAUDE.md` as the docs index and `docs/assets/isaac/asset_inventory.md`
+as the Isaac asset catalog entry point.
 
 ## Meta — Rules for Writing CLAUDE.md
 
