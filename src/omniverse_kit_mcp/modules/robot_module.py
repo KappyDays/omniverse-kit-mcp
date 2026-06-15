@@ -556,6 +556,25 @@ class RobotModule:
             )
 
         if _uses_franka_pick_place_adapter(profile):
+            if request.create_demo_scene:
+                robot_raw = await self._client.robot_load({
+                    "usd_url": profile.asset_url,
+                    "prim_path": request.robot_prim_path,
+                    "position": None,
+                    "rotation": None,
+                })
+                if not bool(robot_raw.get("ok", True)):
+                    return error_result(
+                        f"Failed to load robot profile asset for {profile.profile_name}",
+                        started_ms=started,
+                        error_code="ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR",
+                    )
+                if not bool(robot_raw.get("has_articulation", True)):
+                    return error_result(
+                        f"Loaded robot profile asset has no articulation: {profile.profile_name}",
+                        started_ms=started,
+                        error_code="ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR",
+                    )
             franka_result = await self.install_franka_pick_place_playback_demo(
                 meta,
                 RobotFrankaPickPlaceDemoRequest(

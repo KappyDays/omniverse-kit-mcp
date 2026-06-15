@@ -444,7 +444,12 @@ async def test_robot_install_profile_pick_place_demo_routes_franka_panda():
     assert result.ok
     assert result.data.profile_name == "franka_panda"
     assert result.data.support_status == "validated_pick_place"
-    assert client.calls[-1][0] == "robot_install_franka_pick_place_playback_demo"
+    assert [call[0] for call in client.calls[-2:]] == [
+        "robot_load",
+        "robot_install_franka_pick_place_playback_demo",
+    ]
+    assert client.calls[-2][1]["prim_path"] == "/World/Franka"
+    assert client.calls[-2][1]["usd_url"].endswith("/Robots/FrankaRobotics/FrankaPanda/franka.usd")
 
 
 @pytest.mark.asyncio
@@ -463,6 +468,9 @@ async def test_robot_install_profile_pick_place_demo_routes_franka_family_candid
     assert result.data.profile_name == "franka_fr3"
     assert result.data.support_status == "candidate_pick_place"
     assert result.data.controller_strategy == "same_family_franka_candidate"
+    assert client.calls[-2][0] == "robot_load"
+    assert client.calls[-2][1]["prim_path"] == "/World/FR3"
+    assert client.calls[-2][1]["usd_url"].endswith("/Robots/FrankaRobotics/FrankaFR3/fr3.usd")
     assert client.calls[-1][0] == "robot_install_franka_pick_place_playback_demo"
     assert client.calls[-1][1]["robot_prim_path"] == "/World/FR3"
     assert client.calls[-1][1]["robot_description"] == "FR3"
