@@ -568,19 +568,11 @@ class RobotService:
         await _ensure_articulation_ready(robot, robot_prim_path, max_frames=180)
 
         robot_description = str(request.get("robot_description", "Franka"))
-        gripper_spec = _franka_parallel_gripper_spec(robot_description)
-        gripper = classes.parallel_gripper(
-            end_effector_prim_path=f"{robot_prim_path}/{gripper_spec.end_effector_prim_name}",
-            joint_prim_names=list(gripper_spec.joint_prim_names),
-            joint_opened_positions=np.array([0.05, 0.05], dtype=np.float32),
-            joint_closed_positions=np.array([0.0, 0.0], dtype=np.float32),
-            action_deltas=np.array([0.05, 0.05], dtype=np.float32),
-        )
-        gripper.initialize(
-            articulation_apply_action_func=robot.apply_action,
-            get_joint_positions_func=robot.get_joint_positions,
-            set_joint_positions_func=robot.set_joint_positions,
-            dof_names=list(robot.dof_names or []),
+        gripper = _create_franka_parallel_gripper(
+            classes,
+            robot,
+            robot_prim_path,
+            robot_description=robot_description,
         )
         try:
             robot.apply_action(gripper.forward(action="open"))
