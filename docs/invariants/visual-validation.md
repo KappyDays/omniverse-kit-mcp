@@ -20,6 +20,21 @@ belt", "Passing Franka belt", "Conveyor attached to the ground").
 - **Live Camera Framing**: `viewport_set_camera_lookat(eye, target, up)` — with Perspective
   Move the active camera to deadlock-safe (USD xformOp author, REST path). No build_scene rebuild required.
 
+## Acceptance capture after live MCP stage work
+
+Any MCP task that changes the user-visible Stage state must finish with visual
+acceptance, not only prim/API assertions:
+
+1. Frame the requested result with `viewport_frame_prims` or camera look-at.
+2. Capture with `viewport_capture(return_stats=true, warmup_frames>0)`.
+3. Reject blank/flat frames using pixel stats before claiming completion.
+4. Read the PNG and verify the user-requested state is actually visible.
+5. If occluded, too small, off-camera, or visually wrong, adjust the Stage/camera
+   and repeat capture before final reporting.
+
+Prim existence, bbox, and successful MCP return values are auxiliary evidence.
+They do not replace the final visual acceptance image.
+
 ## R1 — Ground = Grid (using NVIDIA Flat Grid)
 
 Plain solid-color ground (gray add_ground_plane) **Prohibited**. user

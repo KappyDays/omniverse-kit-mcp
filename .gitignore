@@ -54,8 +54,8 @@ node_modules/
 Thumbs.db
 desktop.ini
 
-# OMC (local tool state)
-.omc/
+# Omniverse Kit MCP local tool state
+.omniverse-kit-mcp/
 
 # Superpowers runtime state (brainstorm servers, generated HTML/logs)
 .superpowers/

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 SCENARIO_SCHEMA: dict = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/isaacsim/scenario.schema.json",
     "type": "object",
     "required": ["apiVersion", "kind", "metadata", "spec"],
     "additionalProperties": False,
@@ -86,6 +87,83 @@ SCENARIO_SCHEMA: dict = {
                         "maxBackoffSeconds": {"type": "number", "minimum": 0},
                     },
                 },
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "external_search"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/externalAssetSearchArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "external_download"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/externalAssetDownloadArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "external_convert"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/externalAssetConvertArgs"}
+                        }
+                    },
+                },
+            ],
+        },
+        "externalAssetSearchArgs": {
+            "type": "object",
+            "required": ["query"],
+            "additionalProperties": False,
+            "properties": {
+                "query": {"type": "string", "minLength": 1},
+                "providers": {"type": "array", "items": {"type": "string"}},
+                "limit": {"type": "integer", "minimum": 1},
+            },
+        },
+        "externalAssetDownloadArgs": {
+            "type": "object",
+            "required": ["provider", "asset_id"],
+            "additionalProperties": False,
+            "properties": {
+                "provider": {"type": "string", "minLength": 1},
+                "asset_id": {"type": "string", "minLength": 1},
+                "format_preference": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+        },
+        "externalAssetConvertArgs": {
+            "type": "object",
+            "required": ["manifest_path"],
+            "additionalProperties": False,
+            "properties": {
+                "manifest_path": {"type": "string", "minLength": 1},
+                "output_format": {"type": "string", "enum": ["usd"]},
+                "timeout_s": {"type": "number", "minimum": 1},
             },
         },
     },

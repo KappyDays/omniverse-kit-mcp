@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import httpx
 import pytest
 
 from omniverse_kit_mcp.modules.asset_module import AssetModule, resolve_catalog_asset_url
+from omniverse_kit_mcp.modules.external_asset import ExternalAssetRegistry
 from omniverse_kit_mcp.types.asset import AssetCategory, AssetItem, AssetListResult
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 
@@ -257,3 +259,259 @@ def test_resolve_catalog_asset_url_uses_markdown_catalog(synthetic_catalog: Path
         )
         == "https://example.com/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
     )
+
+
+# ---------------------------------------------------------------------------
+# external_asset_* — free provider search/download/convert preparation
+# ---------------------------------------------------------------------------
+
+
+def _mock_external_transport(request: httpx.Request) -> httpx.Response:
+    url = str(request.url)
+    if url.startswith("https://api.polyhaven.com/assets"):
+        return httpx.Response(
+            200,
+            json={
+                "wooden_chair": {
+                    "name": "Wooden Chair",
+                    "tags": ["chair", "wood"],
+                    "categories": ["furniture"],
+                },
+                "stone_wall": {
+                    "name": "Stone Wall",
+                    "tags": ["wall"],
+                    "categories": ["architecture"],
+                },
+            },
+        )
+    if url.startswith("https://api.sketchfab.com/v3/search"):
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "uid": "sketchfab_monitor",
+                        "name": "Sketchfab Monitor",
+                        "likeCount": 999,
+                        "viewerUrl": "https://sketchfab.com/3d-models/sketchfab_monitor",
+                        "license": {
+                            "slug": "cc0",
+                            "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+                        },
+                        "user": {"displayName": "Sketchfab Author"},
+                    }
+                ]
+            },
+        )
+    if url == "https://api.polyhaven.com/info/wooden_chair":
+        return httpx.Response(200, json={"name": "Wooden Chair", "authors": "Poly Haven"})
+    if url == "https://api.polyhaven.com/files/wooden_chair":
+        return httpx.Response(
+            200,
+            json={
+                "glb": {
+                    "2k": {
+                        "url": "https://cdn.example/wooden_chair.glb",
+                    },
+                    "textures": {
+                        "url": "https://cdn.example/wooden_chair_albedo.jpg",
+                    },
+                }
+            },
+        )
+    if url == "https://cdn.example/wooden_chair.glb":
+        return httpx.Response(200, content=b"glb-data")
+    if url == "https://cdn.example/wooden_chair_albedo.jpg":
+        return httpx.Response(200, content=b"jpg-data")
+    return httpx.Response(404, json={"detail": url})
+
+
+@pytest.mark.asyncio
+async def test_external_asset_registry_default_cache_root_uses_project_named_folder():
+    registry = ExternalAssetRegistry()
+    try:
+        assert registry.cache_root.name == "external_assets"
+        assert registry.cache_root.parent.name == ".omniverse-kit-mcp"
+    finally:
+        await registry.close()
+
+
+@pytest.mark.asyncio
+async def test_external_asset_search_polyhaven_normalizes_candidates(tmp_path: Path):
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(_mock_external_transport)
+    ) as http_client:
+        registry = ExternalAssetRegistry(cache_root=tmp_path, http_client=http_client)
+        module = AssetModule(
+            _ExplodingClient(), catalog_dir=REAL_CATALOG_DIR, external_assets=registry
+        )
+        result = await module.external_search(
+            _meta(), query="wood chair", providers=["polyhaven"], limit=5
+        )
+
+    assert result.ok, result.message
+    assert result.data["provider_status"] == {"polyhaven": "ok"}
+    assert result.data["candidates"][0]["provider"] == "polyhaven"
+    assert result.data["candidates"][0]["asset_id"] == "wooden_chair"
+    assert result.data["candidates"][0]["license"] == "CC0"
+
+
+@pytest.mark.asyncio
+async def test_external_asset_search_default_order_prefers_polyhaven(tmp_path: Path):
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(_mock_external_transport)
+    ) as http_client:
+        registry = ExternalAssetRegistry(
+            cache_root=tmp_path,
+            http_client=http_client,
+            sketchfab_token="test-token",
+        )
+        module = AssetModule(
+            _ExplodingClient(), catalog_dir=REAL_CATALOG_DIR, external_assets=registry
+        )
+        result = await module.external_search(_meta(), query="wood chair", limit=5)
+
+    assert result.ok, result.message
+    assert result.data["provider_status"] == {
+        "polyhaven": "ok",
+        "sketchfab": "ok",
+    }
+    assert result.data["candidates"][0]["provider"] == "polyhaven"
+
+
+@pytest.mark.asyncio
+async def test_external_asset_download_polyhaven_writes_manifest(tmp_path: Path):
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(_mock_external_transport)
+    ) as http_client:
+        registry = ExternalAssetRegistry(cache_root=tmp_path, http_client=http_client)
+        module = AssetModule(
+            _ExplodingClient(), catalog_dir=REAL_CATALOG_DIR, external_assets=registry
+        )
+        result = await module.external_download(
+            _meta(), provider="polyhaven", asset_id="wooden_chair"
+        )
+
+    assert result.ok, result.message
+    manifest_path = Path(result.data["manifest_path"])
+    assert manifest_path.is_file()
+    assert result.data["chosen_format"] == "glb"
+    assert Path(result.data["primary_file"]).read_bytes() == b"glb-data"
+    assert len(result.data["files"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_external_asset_search_sketchfab_requires_token(tmp_path: Path):
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(_mock_external_transport)
+    ) as http_client:
+        registry = ExternalAssetRegistry(cache_root=tmp_path, http_client=http_client)
+        module = AssetModule(
+            _ExplodingClient(), catalog_dir=REAL_CATALOG_DIR, external_assets=registry
+        )
+        result = await module.external_search(
+            _meta(), query="chair", providers=["sketchfab"], limit=5
+        )
+
+    assert result.ok
+    assert result.data["provider_status"] == {"sketchfab": "disabled_missing_token"}
+    assert result.data["candidates"] == []
+
+
+@pytest.mark.asyncio
+async def test_external_asset_convert_updates_manifest(tmp_path: Path):
+    from tests.conftest import MockIsaacRestClient
+
+    source = tmp_path / "polyhaven" / "asset-abc" / "source.glb"
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b"glb")
+    manifest = source.parent / "manifest.json"
+    manifest.write_text(
+        """
+{
+  "schema_version": 1,
+  "provider": "polyhaven",
+  "asset_id": "asset",
+  "name": "Asset",
+  "source_url": "https://example/asset",
+  "author": "Poly Haven",
+  "license": "CC0",
+  "license_url": "https://polyhaven.com/license",
+  "cache_dir": "__CACHE_DIR__",
+  "primary_file": "__SOURCE__",
+  "chosen_format": "glb",
+  "files": [],
+  "conversion": {"status": "not_started"}
+}
+""".replace("__CACHE_DIR__", str(source.parent).replace("\\", "\\\\")).replace(
+            "__SOURCE__", str(source).replace("\\", "\\\\")
+        ),
+        encoding="utf-8",
+    )
+
+    client = MockIsaacRestClient()
+    registry = ExternalAssetRegistry(cache_root=tmp_path)
+    module = AssetModule(client, catalog_dir=REAL_CATALOG_DIR, external_assets=registry)
+    result = await module.external_convert(_meta(), manifest_path=str(manifest))
+
+    assert result.ok, result.message
+    assert result.data["conversion"]["status"] == "converted"
+    assert result.data["converted_path"].endswith("asset.usd")
+    assert client.calls[-1][0] == "external_asset_convert"
+    assert client.calls[-1][1]["input_path"] == str(source)
+
+
+@pytest.mark.asyncio
+async def test_external_asset_convert_rejects_manifest_outside_cache(tmp_path: Path):
+    from tests.conftest import MockIsaacRestClient
+
+    outside = tmp_path.parent / "manifest.json"
+    outside.write_text("{}", encoding="utf-8")
+    registry = ExternalAssetRegistry(cache_root=tmp_path)
+    module = AssetModule(
+        MockIsaacRestClient(), catalog_dir=REAL_CATALOG_DIR, external_assets=registry
+    )
+
+    result = await module.external_convert(_meta(), manifest_path=str(outside))
+
+    assert not result.ok
+    assert result.error_code == "EXTERNAL_ASSET_CONVERT_ERROR"
+    assert "outside external asset cache" in (result.message or "")
+
+
+@pytest.mark.asyncio
+async def test_external_asset_converter_rest_rejects_paths_outside_cache(tmp_path: Path):
+    from omni.mycompany.validation_api.services.asset_service import AssetService
+
+    source = tmp_path / "source.glb"
+    source.write_bytes(b"glb")
+    output = tmp_path / "source.usd"
+
+    with pytest.raises(ValueError, match="input_path must be inside"):
+        await AssetService().convert_external_asset(
+            {
+                "input_path": str(source),
+                "output_path": str(output),
+                "output_format": "usd",
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_external_asset_converter_rest_keeps_output_in_asset_folder(tmp_path: Path):
+    from omni.mycompany.validation_api.services.asset_service import AssetService
+
+    asset_dir = tmp_path / ".omniverse-kit-mcp" / "external_assets" / "polyhaven" / "asset-abc"
+    asset_dir.mkdir(parents=True)
+    source = asset_dir / "source.glb"
+    source.write_bytes(b"glb")
+    output = asset_dir.parent / "source.usd"
+
+    with pytest.raises(ValueError, match="source asset cache folder"):
+        await AssetService().convert_external_asset(
+            {
+                "input_path": str(source),
+                "output_path": str(output),
+                "output_format": "usd",
+            }
+        )

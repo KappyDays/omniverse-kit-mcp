@@ -18,6 +18,82 @@ reachable, or that an unsupported capability was recorded cleanly.
   - `candidate_pick_place`: 10
   - `ik_only`: 12
   - `profile_only`: 18
+- Continuation checkpoint workers, 2026-06-17:
+  - Runtime `tool_count=143` values below are pre-new-tool worker evidence
+    captured before this branch's external asset MCP tools increased the
+    generated catalog to 146 tools.
+  - `workspaces/isaac/instance-1` fresh MCP runtime reported
+    `tool_count=143`, `source_newer_than_import=false`,
+    `restart_required_for_latest_mcp_code=false`, and
+    `stale_source_modules=[]`
+  - the no-Kit `robot_list_arm_profiles` planning surface was present:
+    `recommended_probe_mode_by_profile`,
+    `recommended_probe_mode_reasons`,
+    `dynamic_probe_recommended_profiles`, and
+    `static_only_probe_recommended_profiles`; the catalog partition was
+    `29` dynamic-recommended plus `12` static-only known-timeout profiles
+  - `workspaces/isaac/instance-1` smoke-probed exactly `franka_panda`,
+    `franka_fr3`, `factory_franka`, `ur10`, and `kawasaki_rs007l`;
+    all five returned `mcp_controllability=dynamic_joint_control`,
+    `ur10` recorded gripper unsupported/skipped, and no timeout,
+    batch-abort, hard-failure, or lifecycle-recovery rows were reported
+  - `workspaces/isaac/instance-2` then ran the dynamic-recommended matrix in
+    small batches; batches 1-5 produced 25 clean
+    `dynamic_joint_control` rows, while the final dynamic batch degraded:
+    `ridgeback_franka` timed out at `joint_config`, `simulation_stop` and
+    cleanup timed out, `ridgeback_ur5` was batch-aborted, and the follow-up
+    `simulation_get_status` took about `91.7s` before returning
+    `SIMULATION_STATUS_ERROR`
+  - because that host degraded, static-only hazard triage was not run on
+    instance-2 and no dynamic retry was attempted
+  - `workspaces/isaac/instance-1` subsequently refreshed all 12 known
+    dynamic-timeout hazards with `dynamic_checks=false` in three static-only
+    batches: `ur3`, `ur5`, `ur20`, `lite6`, `lite6_gripper`, `uf850`,
+    `xarm6`, `xarm7`, `openarm_unimanual`, `openarm_bimanual`, `dofbot`,
+    and `so101_new_calib`
+  - those 12 refreshed rows all returned
+    `mcp_controllability_counts={"static_load_articulation_metadata":4}`
+    per batch, for 12 aggregate static metadata rows; all intentionally had
+    `overall_ok=false` because dynamic joint read/write, safe nudge, gripper,
+    IK, and EE-pose checks were skipped by `dynamic_checks=false`
+  - refreshed static-only triage failure lists were empty:
+    `timed_out_profiles=[]`, `batch_timeout_profiles=[]`,
+    `batch_aborted_profiles=[]`, `hard_failure_profiles=[]`, and
+    `lifecycle_recovery_profiles=[]`; final instance-1 host health remained
+    responsive with `simulation_get_status` about `12ms`
+  - no continuation worker edited files or performed git operations
+  - no row from these probes is pick/place validation, and no new profile was
+    promoted to `validated_pick_place`
+- Bounded Franka Panda pick/place selector worker, 2026-06-17:
+  - Runtime `tool_count=143` here is also pre-new-tool worker evidence, not a
+    current catalog count for this branch.
+  - `workspaces/isaac/instance-1` fresh MCP runtime reported
+    `tool_count=143`, `source_newer_than_import=false`,
+    `restart_required_for_latest_mcp_code=false`, and
+    `stale_source_modules=[]`
+  - `kit_app_start` spawned Isaac Sim instance 1 on port `8111` as PID
+    `[redacted]` in about `23.0s`; `simulation_get_status` was responsive in
+    about `170ms` with `is_playing=false`, `is_stopped=true`, and
+    `current_time=0.0`
+  - after `extension_clear_logs`,
+    `robot_install_pick_place_playback_demo(profile_name="franka_panda")`
+    returned in about `164ms`; the MCP tool call passed, but the data result
+    was `ok=false`, `status=unsupported`,
+    `support_status=candidate_pick_place`,
+    `diagnostics.known_pick_place_blocker=true`, and
+    `diagnostics.known_pick_place_blocker_reason` reported the cycle-2
+    repeatability blocker where the cache-fix rerun avoided the prior
+    `ParallelGripper` `NoneType` crash but still failed with insufficient lift
+    for durable proof
+  - selector proof fields were `done=false`, `lifted=false`, `placed=false`,
+    `max_lift_delta=0.0`, `object_fit_ok=false`,
+    `object_fit_reason="Profile has no active validated pick/place adapter."`,
+    `controller_event=0`, `steps=0`, and `uses_kinematic_carry=false`
+  - per the bounded stop rule, playback status was not called after the
+    unsupported known-blocker selector result; WARN+ capture passed with
+    `count=0`
+  - no `done + lifted + placed` proof was produced, and `franka_panda` remains
+    not validated / known pick-place blocker
 - Stabilization checkpoint worker, thread
   `[worker-id-redacted]`:
   - workspace `workspaces/isaac/instance-1`

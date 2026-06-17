@@ -60,7 +60,7 @@ spec:
   cleanup: [<step>, ...]
 ```
 
-- `module` enum: `{stage, viewport, lakehouse, extension, simulation, robot, job, asset, character}` (9)
+- `module` enum: `{stage, viewport, lakehouse, extension, simulation, robot, job, asset, character, window, navigation, sensor, physics, lighting, material, replicator, omnigraph, content}` (18)
 - `action` mapping protocol: action_registry of `../src/omniverse_kit_mcp/scenario/CLAUDE.md`
 - `args` schema: Definition of `schema/scenario.schema.json` by action
 - **Cleanup is always executed regardless of whether assert fails** (finally)
@@ -71,7 +71,7 @@ spec:
 | `simulation` | WRITE + timeline (stage_load_usd, create/set/delete_prim, play/pause/stop, stage_save/open/new) | **Stage WRITE is simulation routing** (not StageModule) |
 | `viewport` | capture / compare_ssim / set_active_camera | Requires GUI mode |
 | `robot` / `character` | Domain tool (load / navigate / joints / play_animation, etc.) | R2 (playing required) + detailed caveat: `../src/omniverse_kit_mcp/tools/CLAUDE.md` |
-| `asset` / `extension` / `job` / `lakehouse` | list / trigger / status / query | `lakehouse` is query only |
+| `asset` / `extension` / `job` / `lakehouse` | list/search/external_* prepare / trigger / status / query | `lakehouse` is query only; `asset.external_*` prepares ignored-cache files and is not stage placement proof |
 
 **GUI equivalent tools**: File menu (`stage_save/open/new`), Stage panel (`stage_get/set_selection`), Viewport toolbar (`viewport_set_active_camera`). `stage_create_prim(prim_type=...)` also accepts Camera / DistantLight / DomeLight / SphereLight / RectLight in addition to Cube/Sphere.
 

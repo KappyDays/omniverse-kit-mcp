@@ -182,6 +182,7 @@ class CharacterModule:
                 "target_position": (
                     list(request.target_position) if request.target_position else None
                 ),
+                "dispatch_mode": request.dispatch_mode,
             })
             variables_raw = raw.get("variables_set") or {}
             variables_tuple = tuple(str(k) for k in variables_raw.keys()) if isinstance(
@@ -195,6 +196,37 @@ class CharacterModule:
                     speed=float(raw.get("speed", request.speed)),
                     variables_set=variables_tuple,
                     bound_graph=str(raw.get("bound_graph", "")),
+                    dispatch_mode=str(raw.get("dispatch_mode", request.dispatch_mode)),
+                    behavior_task_id=(
+                        int(raw["behavior_task_id"])
+                        if raw.get("behavior_task_id") is not None
+                        else None
+                    ),
+                    behavior_task_name=raw.get("behavior_task_name"),
+                    behavior_task_status=raw.get("behavior_task_status"),
+                    behavior_task_running=(
+                        bool(raw["behavior_task_running"])
+                        if raw.get("behavior_task_running") is not None
+                        else None
+                    ),
+                    task_error=raw.get("task_error"),
+                    skel_animation_path=raw.get("skel_animation_path"),
+                    skel_annotation_path=raw.get("skel_annotation_path"),
+                    skel_animation_start=(
+                        float(raw["skel_animation_start"])
+                        if raw.get("skel_animation_start") is not None
+                        else None
+                    ),
+                    skel_animation_end=(
+                        float(raw["skel_animation_end"])
+                        if raw.get("skel_animation_end") is not None
+                        else None
+                    ),
+                    skel_seek_time_seconds=(
+                        float(raw["skel_seek_time_seconds"])
+                        if raw.get("skel_seek_time_seconds") is not None
+                        else None
+                    ),
                 ),
                 started_ms=started,
             )

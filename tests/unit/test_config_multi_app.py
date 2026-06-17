@@ -22,6 +22,8 @@ def _clear_env(monkeypatch, tmp_path):
         "ISAAC_SIM_HEALTH_URL",
         "ISAAC_SIM_KIT_EXE",
         "ISAAC_SIM_KIT_FILE",
+        "USD_COMPOSER_KIT_EXE",
+        "USD_COMPOSER_KIT_FILE",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -92,6 +94,32 @@ def test_usd_composer_profile_uses_composer_kit_exe(monkeypatch):
     cfg = AppConfig()
     assert cfg.isaac_sim_process.app_profile.kit_exe == "C:/USDComposer/kit/kit.exe"
     assert "kkr_usd_composer.kit" in cfg.isaac_sim_process.app_profile.kit_file
+
+
+def test_usd_composer_ignores_legacy_isaac_kit_overrides(monkeypatch):
+    monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
+    monkeypatch.setenv("ISAAC_SIM_KIT_EXE", "C:/IsaacSim/kit/kit.exe")
+    monkeypatch.setenv("ISAAC_SIM_KIT_FILE", "C:/IsaacSim/apps/isaacsim.exp.full.kit")
+
+    cfg = AppConfig()
+
+    assert cfg.isaac_sim_process.effective_kit_exe == "C:/USDComposer/kit/kit.exe"
+    assert cfg.isaac_sim_process.effective_kit_file == (
+        "C:/USDComposer/apps/kkr_usd_composer.kit"
+    )
+
+
+def test_usd_composer_uses_composer_specific_kit_overrides(monkeypatch):
+    monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
+    monkeypatch.setenv("USD_COMPOSER_KIT_EXE", "D:/Composer/kit/kit.exe")
+    monkeypatch.setenv("USD_COMPOSER_KIT_FILE", "D:/Composer/apps/kkr_usd_composer.kit")
+
+    cfg = AppConfig()
+
+    assert cfg.isaac_sim_process.effective_kit_exe == "D:/Composer/kit/kit.exe"
+    assert cfg.isaac_sim_process.effective_kit_file == (
+        "D:/Composer/apps/kkr_usd_composer.kit"
+    )
 
 
 # --- ROS env requirement differs per profile -----------------------------

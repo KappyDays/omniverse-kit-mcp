@@ -195,6 +195,14 @@ class CharacterPlayAnimationVariantRequestModel(BaseModel):
         default=None,
         description="[x, y, z] target for Walk/Run variants (PathPoints steering)",
     )
+    dispatch_mode: Literal["auto", "task", "graph", "skel"] = Field(
+        default="auto",
+        description=(
+            "auto/task prefers Isaac Sim 6.0 BehaviorAgent task APIs such as "
+            "idle/dodge/sit when available; graph uses legacy Action variable "
+            "writes only; skel directly binds a built-in SkelAnimation clip."
+        ),
+    )
 
 
 class CharacterLoadCrowdRequestModel(BaseModel):

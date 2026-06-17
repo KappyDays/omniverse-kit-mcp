@@ -26,9 +26,11 @@ In the `ge=1, le=2` guard. Permanent limit (no extension procedure) by user deci
 instance matched.
 
 **Required**: PID based (`taskkill /F /PID <self._process.pid> /T`) or
-CommandLine filter (`ProcessModule._resolve_instance_pid` is
-identified by the string `port=<N>`). `port=<N>` is `--/exts/...port=N` at kit launch.
-Uniquely injected into CommandLine as a flag.
+CommandLine filter (`ProcessModule._resolve_instance_pid` is identified by
+both `port=<N>` and the expected profile `.kit` file name). `port=<N>` is
+`--/exts/...port=N` at kit launch; the `.kit` match prevents a USD Composer
+workspace from attaching to an Isaac Sim process that accidentally owns a
+Composer port, and vice versa.
 
 ## Hub.exe shared daemon
 

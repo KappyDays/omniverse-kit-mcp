@@ -99,6 +99,40 @@ def test_diff_snapshots_builder_validates_required_args():
         build_request(ModuleName.STAGE, "diff_snapshots", {})
 
 
+def test_external_asset_actions_have_registry_builders():
+    search = build_request(
+        ModuleName.ASSET,
+        "external_search",
+        {"query": "monitor", "providers": ["polyhaven"], "limit": 3},
+    )
+    download = build_request(
+        ModuleName.ASSET,
+        "external_download",
+        {"provider": "polyhaven", "asset_id": "monitor"},
+    )
+    convert = build_request(
+        ModuleName.ASSET,
+        "external_convert",
+        {"manifest_path": "manifest.json"},
+    )
+
+    assert search == {
+        "query": "monitor",
+        "providers": ["polyhaven"],
+        "limit": 3,
+    }
+    assert download == {
+        "provider": "polyhaven",
+        "asset_id": "monitor",
+        "format_preference": None,
+    }
+    assert convert == {
+        "manifest_path": "manifest.json",
+        "output_format": "usd",
+        "timeout_s": 180.0,
+    }
+
+
 @pytest.mark.asyncio
 async def test_simulation_create_prim_routes_through_runner():
     """End-to-end: YAML → compiler → runner → SimulationModule.stage_create_prim."""

@@ -72,6 +72,8 @@ class IsaacSimProcessConfig(BaseSettings):
 
     kit_exe: str | None = None
     kit_file: str | None = None
+    usd_composer_kit_exe: str | None = Field(default=None, alias="USD_COMPOSER_KIT_EXE")
+    usd_composer_kit_file: str | None = Field(default=None, alias="USD_COMPOSER_KIT_FILE")
 
     ext_folder: str = Field(
         default_factory=lambda: (
@@ -112,13 +114,21 @@ class IsaacSimProcessConfig(BaseSettings):
 
     @property
     def effective_kit_exe(self) -> str:
-        """kit_exe override (env) > profile default."""
-        return self.kit_exe or self.app_profile.kit_exe
+        """Profile-specific kit.exe override > profile default."""
+        if self.app_profile.name == "isaac-sim" and self.kit_exe:
+            return self.kit_exe
+        if self.app_profile.name == "usd-composer" and self.usd_composer_kit_exe:
+            return self.usd_composer_kit_exe
+        return self.app_profile.kit_exe
 
     @property
     def effective_kit_file(self) -> str:
-        """kit_file override (env) > profile default."""
-        return self.kit_file or self.app_profile.kit_file
+        """Profile-specific .kit override > profile default."""
+        if self.app_profile.name == "isaac-sim" and self.kit_file:
+            return self.kit_file
+        if self.app_profile.name == "usd-composer" and self.usd_composer_kit_file:
+            return self.usd_composer_kit_file
+        return self.app_profile.kit_file
 
     @model_validator(mode="after")
     def _resolve_profile_and_derived_fields(self) -> "IsaacSimProcessConfig":

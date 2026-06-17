@@ -20,6 +20,7 @@ from .models.character import (
     CharacterSitOnPrimRequestModel,
     CharacterStopAnimationRequestModel,
 )
+from .models.asset import ExternalAssetConvertRequestModel
 from .models.extension import (
     ExtensionActivateRequestModel,
     ExtensionReloadCleanRequestModel,
@@ -1460,6 +1461,17 @@ async def asset_list(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("assets/list failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/assets/external/convert")
+async def external_asset_convert(body: ExternalAssetConvertRequestModel) -> Any:
+    try:
+        return await _asset.convert_external_asset(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("assets/external/convert failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

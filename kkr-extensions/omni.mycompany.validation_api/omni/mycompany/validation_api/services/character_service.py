@@ -474,16 +474,76 @@ class CharacterService:
         variant: str = request["variant"]
         speed: float = float(request.get("speed", 1.0))
         target_position = request.get("target_position")
+        dispatch_mode: str = str(request.get("dispatch_mode", "auto"))
+        if dispatch_mode not in ("auto", "task", "graph", "skel"):
+            raise ValueError("dispatch_mode must be auto|task|graph|skel")
 
         if not variant:
             raise ValueError("variant must be a non-empty string")
 
         skel_root_path = _assert_skel_root(prim_path)
-        graph = await self._ensure_animation_ready(skel_root_path)
-
         base, style_var, style_value = _parse_variant(variant)
         variables_set: dict[str, Any] = {"Action": base}
-        graph.set_variable("Action", base)
+        if dispatch_mode == "skel":
+            skel_info = _bind_skel_animation_variant(skel_root_path, variant, base)
+            variables_set.update({
+                "skel:animationSource": skel_info["skel_animation_path"],
+                "timeline:time_seconds": skel_info["skel_seek_time_seconds"],
+            })
+            self._last_action[skel_root_path] = {
+                "action": base,
+                "walk_speed": 0.0,
+            }
+            return {
+                "ok": True,
+                "prim_path": prim_path,
+                "variant": variant,
+                "base_action": base,
+                "speed": speed,
+                "variables_set": variables_set,
+                "bound_graph": skel_root_path,
+                "dispatch_mode": "skel",
+                "behavior_task_id": None,
+                "behavior_task_name": None,
+                "behavior_task_status": None,
+                "behavior_task_running": None,
+                "task_error": None,
+                **skel_info,
+            }
+
+        graph = await self._ensure_animation_ready(skel_root_path)
+        task_info: dict[str, Any] = {
+            "dispatch_mode": "graph" if dispatch_mode == "graph" else "auto",
+            "behavior_task_id": None,
+            "behavior_task_name": None,
+            "behavior_task_status": None,
+            "behavior_task_running": None,
+            "task_error": None,
+            "skel_animation_path": None,
+            "skel_annotation_path": None,
+            "skel_animation_start": None,
+            "skel_animation_end": None,
+            "skel_seek_time_seconds": None,
+        }
+
+        if dispatch_mode in ("auto", "task") and hasattr(graph, "play_behavior_task"):
+            try:
+                task_info = graph.play_behavior_task(
+                    variant=variant,
+                    base=base,
+                    style_value=style_value,
+                    speed=speed,
+                    target_position=target_position,
+                    require_task=dispatch_mode == "task",
+                )
+                variables_set["behavior_task"] = task_info.get("behavior_task_name") or base
+            except Exception as exc:
+                if dispatch_mode == "task":
+                    raise
+                task_info["task_error"] = str(exc)
+
+        if task_info.get("behavior_task_id") is None:
+            graph.set_variable("Action", base)
 
         if base in ("Walk", "Run"):
             graph.set_variable("Walk", float(speed))
@@ -547,6 +607,7 @@ class CharacterService:
             "speed": speed,
             "variables_set": variables_set,
             "bound_graph": skel_root_path,
+            **task_info,
         }
 
     async def load_crowd(
@@ -762,6 +823,64 @@ class _BehaviorAgentAdapter:
                 self._bh_agent.set_speed(float(self._speed))
             self._bh_agent.move_to(target=carb.Float3(x, y, z))
 
+    def play_behavior_task(
+        self,
+        *,
+        variant: str,
+        base: str,
+        style_value: str,
+        speed: float,
+        target_position: Any,
+        require_task: bool,
+    ) -> dict[str, Any]:
+        """Prefer Isaac Sim 6.0 BehaviorAgent task APIs over graph variables."""
+        import carb  # lazy
+
+        if hasattr(self._bh_agent, "set_speed"):
+            self._bh_agent.set_speed(float(speed))
+
+        task_id: Any = None
+        task_name = base
+        if base == "Idle" and hasattr(self._bh_agent, "idle"):
+            task_id = self._bh_agent.idle()
+            task_name = "Idle"
+        elif base == "Sit" and hasattr(self._bh_agent, "sit"):
+            task_id = _call_behavior_method(self._bh_agent, "sit")
+            task_name = "Sit"
+        elif base == "Dodge" and hasattr(self._bh_agent, "dodge"):
+            task_id = _call_behavior_method(
+                self._bh_agent, "dodge",
+                style_value or variant[len("Dodge"):].lower() or None,
+            )
+            task_name = "Dodge"
+        elif base in ("Walk", "Run") and target_position is not None:
+            if len(target_position) != 3:
+                raise ValueError("target_position must be [x, y, z]")
+            task_id = self._bh_agent.move_to(
+                target=carb.Float3(
+                    float(target_position[0]),
+                    float(target_position[1]),
+                    float(target_position[2]),
+                )
+            )
+            task_name = base
+        elif require_task:
+            raise ValueError(f"BehaviorAgent task API is not available for {variant}")
+
+        if task_id is None:
+            return {
+                "dispatch_mode": "graph",
+                "behavior_task_id": None,
+                "behavior_task_name": None,
+                "behavior_task_status": None,
+                "behavior_task_running": None,
+                "task_error": None,
+            }
+
+        info = _read_behavior_task_info(self._bh_agent, task_id, fallback_name=task_name)
+        info["dispatch_mode"] = "task"
+        return info
+
     def get_variable(self, name: str) -> Any:
         if name != "Action":
             return None
@@ -795,6 +914,225 @@ def _call_behavior_custom_action(bh_agent: Any, action_name: str) -> None:
         bh_agent.custom_action(str(action_name))
     except TypeError:
         bh_agent.custom_action(action_name=str(action_name))
+
+
+def _call_behavior_method(bh_agent: Any, method_name: str, style: str | None = None) -> Any:
+    """Call a BehaviorAgent task method across binding signature variations."""
+    method = getattr(bh_agent, method_name)
+    candidates: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    if style:
+        candidates.extend([
+            ((style,), {}),
+            ((), {"direction": style}),
+            ((), {"style": style}),
+        ])
+    candidates.append(((), {}))
+
+    last_error: Exception | None = None
+    for args, kwargs in candidates:
+        try:
+            return method(*args, **kwargs)
+        except TypeError as exc:
+            last_error = exc
+            continue
+    if last_error is not None:
+        raise last_error
+    return method()
+
+
+def _read_behavior_task_info(
+    bh_agent: Any,
+    task_id: Any,
+    *,
+    fallback_name: str,
+) -> dict[str, Any]:
+    """Best-effort readback for BehaviorAgent task observability."""
+    task_id_int: int | None
+    try:
+        task_id_int = int(task_id)
+    except Exception:
+        task_id_int = None
+
+    task_name: str | None = fallback_name
+    task_status: str | None = None
+    task_running: bool | None = None
+    if task_id_int is not None:
+        try:
+            task_name = str(bh_agent.get_task_name(task_id_int))
+        except Exception as exc:
+            logger.debug("BehaviorAgent task-name read failed: %s", exc)
+        try:
+            task_status = str(bh_agent.get_task_status(task_id_int))
+        except Exception as exc:
+            logger.debug("BehaviorAgent task-status read failed: %s", exc)
+        try:
+            task_running = bool(bh_agent.is_task_running(task_id_int))
+        except Exception as exc:
+            logger.debug("BehaviorAgent task-running read failed: %s", exc)
+
+    return {
+        "behavior_task_id": task_id_int,
+        "behavior_task_name": task_name,
+        "behavior_task_status": task_status,
+        "behavior_task_running": task_running,
+        "task_error": None,
+    }
+
+
+def _bind_skel_animation_variant(
+    skel_root_path: str,
+    variant: str,
+    base: str,
+) -> dict[str, Any]:
+    """Bind a built-in SkelAnimation clip directly to a SkelRoot and seek it."""
+    import omni.timeline  # lazy
+    import omni.usd  # lazy
+    from pxr import Sdf, UsdSkel
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+    skel_root = stage.GetPrimAtPath(skel_root_path)
+    if not skel_root.IsValid():
+        raise ValueError(f"SkelRoot prim is invalid: {skel_root_path}")
+
+    animation_path, annotation_path, start, end = _resolve_builtin_skel_animation(
+        stage, variant, base,
+    )
+    animation_target = Sdf.Path(animation_path)
+    UsdSkel.BindingAPI.Apply(skel_root).CreateAnimationSourceRel().SetTargets(
+        [animation_target],
+    )
+
+    # Some menu-created humans expose the concrete skeleton-ish hierarchy under
+    # /Root, so bind there too. It is harmless when the relation is unused.
+    root_prim = stage.GetPrimAtPath(f"{skel_root_path}/Root")
+    if root_prim.IsValid():
+        UsdSkel.BindingAPI.Apply(root_prim).CreateAnimationSourceRel().SetTargets(
+            [animation_target],
+        )
+
+    time_codes_per_second = float(stage.GetTimeCodesPerSecond() or 60.0)
+    seek_frame = _select_skel_seek_frame(
+        variant=variant,
+        base=base,
+        annotation_path=annotation_path,
+        start=start,
+        end=end,
+    )
+    seek_time_seconds = seek_frame / time_codes_per_second
+    omni.timeline.get_timeline_interface().set_current_time(seek_time_seconds)
+
+    return {
+        "skel_animation_path": animation_path,
+        "skel_annotation_path": annotation_path,
+        "skel_animation_start": float(start),
+        "skel_animation_end": float(end),
+        "skel_seek_time_seconds": float(seek_time_seconds),
+    }
+
+
+def _resolve_builtin_skel_animation(
+    stage: Any,
+    variant: str,
+    base: str,
+) -> tuple[str, str | None, float, float]:
+    """Find a SkelAnimation and optional annotation for a BuiltinActions variant."""
+    builtin_root = stage.GetPrimAtPath("/World/Humans/HumanMotionLibrary/BuiltinActions")
+    if not builtin_root.IsValid():
+        raise ValueError("BuiltinActions motion library not found under /World/Humans")
+
+    fallback_animation: str | None = None
+    fallback_start = 0.0
+    fallback_end = 0.0
+    candidates: list[tuple[int, str, str, float, float]] = []
+    builtin_root_path = builtin_root.GetPath().pathString
+    for prim in stage.Traverse():
+        if not prim.GetPath().pathString.startswith(builtin_root_path):
+            continue
+        if prim.GetTypeName() != "SkelAnimation":
+            continue
+        path = prim.GetPath().pathString
+        if fallback_animation is None and (variant in path or base in path):
+            fallback_animation = path
+        for child in prim.GetChildren():
+            if child.GetTypeName() != "SkelAnimationAnnotation":
+                continue
+            tag_attr = child.GetAttribute("tag")
+            tag = str(tag_attr.Get()) if tag_attr.IsValid() else child.GetName()
+            score = _score_skel_animation_annotation(
+                variant=variant,
+                base=base,
+                animation_path=path,
+                tag=tag,
+                child_name=child.GetName(),
+            )
+            if score is None:
+                continue
+            start = _read_numeric_attr(child, "start", fallback_start)
+            end = _read_numeric_attr(child, "end", start)
+            candidates.append((score, path, child.GetPath().pathString, start, end))
+
+    if candidates:
+        _, path, annotation_path, start, end = sorted(candidates, key=lambda c: c[0])[0]
+        return (path, annotation_path, start, end)
+
+    if fallback_animation is not None:
+        return (fallback_animation, None, fallback_start, fallback_end)
+    raise ValueError(f"No built-in SkelAnimation found for variant {variant}")
+
+
+def _select_skel_seek_frame(
+    *,
+    variant: str,
+    base: str,
+    annotation_path: str | None,
+    start: float,
+    end: float,
+) -> float:
+    """Choose a representative frame inside a built-in animation annotation."""
+    if end <= start:
+        return float(start)
+
+    if variant == "Sit" and base == "Sit" and annotation_path is not None:
+        if annotation_path.endswith("/SitLoop"):
+            return float(start + ((end - start) * 0.375))
+
+    return float((start + end) / 2.0)
+
+
+def _score_skel_animation_annotation(
+    *,
+    variant: str,
+    base: str,
+    animation_path: str,
+    tag: str,
+    child_name: str,
+) -> int | None:
+    token = tag or child_name
+    if variant == "Sit" and base == "Sit":
+        if "SitAndStandGround" in animation_path and token == "SitLoop":
+            return 0
+        if token == "SitLoop":
+            return 1
+        if "SitAndStandGround" in animation_path and token == "SitDown":
+            return 2
+        if token == "SitDown":
+            return 3
+        return None
+    if token == variant or child_name == variant:
+        return 0
+    if variant in animation_path and (token == base or child_name == base):
+        return 1
+    return None
+
+
+def _read_numeric_attr(prim: Any, name: str, default: float) -> float:
+    attr = prim.GetAttribute(name)
+    if not attr.IsValid():
+        return default
+    value = attr.Get()
+    return float(value) if value is not None else default
 
 
 async def _ensure_behavior_agent_ready(
@@ -843,7 +1181,7 @@ def _parse_variant(variant: str) -> tuple[str, str | None, str]:
         ``WalkFast``   → (``"Walk"``, ``"walk_style"``, ``"fast"``)
         ``Idle``       → (``"Idle"``, None, "")
     """
-    for base in ("Sit", "Walk", "Run", "Idle"):
+    for base in ("Sit", "Walk", "Run", "Idle", "Dodge"):
         if variant == base:
             return (base, None, "")
         if variant.startswith(base):

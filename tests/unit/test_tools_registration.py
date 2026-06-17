@@ -69,6 +69,10 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "asset_list",
     # Asset discovery — offline curated-catalog semantic search (no REST)
     "asset_search",
+    # External free asset prepare-only ingest (download + convert, no stage placement)
+    "external_asset_search",
+    "external_asset_download",
+    "external_asset_convert",
     # Phase B+ — File / Selection / Camera (GUI File menu + Stage panel)
     "stage_save",
     "stage_open",

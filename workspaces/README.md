@@ -17,6 +17,10 @@ and run `kit_app_start` inside that workspace. Do not launch from the repo root:
 standalone process scripts can inherit root `.env` overrides and boot the wrong
 `.kit` profile.
 
+For Codex live MCP work, continue an active worker only for the same delegated
+task, app, and instance. Start fresh for new tasks, ambiguous prior context,
+recovery, or stale state.
+
 ```
 cd workspaces/isaac/instance-1   # Isaac Sim instance 1 (port 8111)
 claude                            # Claude Code entry

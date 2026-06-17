@@ -21,6 +21,10 @@ Shorten it to Quiet Parent Contract.
 - If the user asks to launch/open/start an Omniverse app, this is live MCP work:
   create or continue the matching `workspaces/<app>/instance-N` Codex thread and call
   `kit_app_start` there. Do not start the app from the repo-root parent thread.
+- For Codex live MCP work, continue the active worker thread only when it is
+  clearly the same delegated task, app, and instance. Start a fresh workspace
+  thread for new tasks, ambiguous prior context, recovery boundaries, or
+  stale-state boundaries.
 - If only code/document/static test/diff cleanup is needed, parent handles it.
 - A new worktree is not created unless the user specifies it.
 
@@ -28,10 +32,11 @@ Shorten it to Quiet Parent Contract.
 
 The parent thread must not use `scripts/run_process_module_standalone.py start` as
 the normal answer to "start Isaac/Composer". That bypasses the workspace-local MCP
-entry and can inherit repo-root `.env` legacy overrides (`ISAAC_SIM_KIT_EXE` /
-`ISAAC_SIM_KIT_FILE`), causing a `usd-composer` profile request to boot the Isaac
-Sim `.kit` file. Use the workspace worker MCP instead; reserve standalone process
-scripts for documented import-cache bypass, recovery, or explicit low-level diagnosis.
+entry and can miss host-specific worker context. Use the workspace worker MCP
+instead; reserve standalone process scripts for documented import-cache bypass,
+recovery, or explicit low-level diagnosis. Composer paths are configured with
+`USD_COMPOSER_KIT_EXE` / `USD_COMPOSER_KIT_FILE`; Isaac legacy path overrides
+must not drive the Composer profile.
 
 ## Parent Responsibilities
 
@@ -50,6 +55,10 @@ scripts for documented import-cache bypass, recovery, or explicit low-level diag
 - The live-validation worker does not modify files by default.
 - Live validation results and artifacts without continuously reporting long logs/intermediate states
   Focus on collecting.
+- After changing any user-visible Stage state, finish with viewport visual
+  acceptance per `visual-validation.md`: frame, capture with stats, inspect the
+  PNG, and report the artifact path. Do not claim setup completion from prim/API
+  assertions alone.
 - Do not call `kit_app_restart` with routine setup. The basic order is
   attach/start/reload-first and the conditions for restart are:
   Follows `process-lifecycle.md`.

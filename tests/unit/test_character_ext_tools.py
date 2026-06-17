@@ -48,6 +48,45 @@ def test_behavior_agent_custom_action_uses_isaac6_positional_signature():
     assert "custom_action(action_name=self._action)" not in adapter_source
 
 
+def test_behavior_agent_adapter_prefers_idle_task_api():
+    class FakeAgent:
+        def __init__(self) -> None:
+            self.speed = None
+
+        def set_speed(self, value):
+            self.speed = value
+
+        def idle(self):
+            return 42
+
+        def get_task_name(self, task_id):
+            assert task_id == 42
+            return "Idle"
+
+        def get_task_status(self, task_id):
+            assert task_id == 42
+            return "BehaviorTaskStatus.RUNNING"
+
+        def is_task_running(self, task_id):
+            assert task_id == 42
+            return True
+
+    adapter = _BehaviorAgentAdapter(FakeAgent())
+    result = adapter.play_behavior_task(
+        variant="Idle",
+        base="Idle",
+        style_value="",
+        speed=1.25,
+        target_position=None,
+        require_task=True,
+    )
+
+    assert result["dispatch_mode"] == "task"
+    assert result["behavior_task_id"] == 42
+    assert result["behavior_task_name"] == "Idle"
+    assert result["behavior_task_running"] is True
+
+
 @pytest.mark.asyncio
 async def test_play_animation_variant_sit_reading():
     from tests.conftest import MockIsaacRestClient
@@ -66,6 +105,53 @@ async def test_play_animation_variant_sit_reading():
     assert result.data.variant == "SitReading"
     assert result.data.base_action == "Sit"
     assert "sit_style" in result.data.variables_set or "Action" in result.data.variables_set
+    assert result.data.dispatch_mode == "auto"
+    assert result.data.behavior_task_name == "Sit"
+
+
+@pytest.mark.asyncio
+async def test_play_animation_variant_passes_dispatch_mode():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = CharacterModule(client)
+    result = await module.play_animation_variant(
+        _meta(),
+        CharacterPlayAnimationVariantRequest(
+            prim_path="/World/Characters/Biped",
+            variant="DodgeLeft",
+            dispatch_mode="task",
+        ),
+    )
+
+    assert result.status is ExecutionStatus.PASSED
+    assert result.data.base_action == "Dodge"
+    assert result.data.dispatch_mode == "task"
+    assert result.data.behavior_task_status == "RUNNING"
+    call = [c for c in client.calls if c[0] == "character_play_animation_variant"][0]
+    assert call[1]["dispatch_mode"] == "task"
+
+
+@pytest.mark.asyncio
+async def test_play_animation_variant_skel_mode_returns_clip_binding():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = CharacterModule(client)
+    result = await module.play_animation_variant(
+        _meta(),
+        CharacterPlayAnimationVariantRequest(
+            prim_path="/World/Humans/Human/SkelRoot",
+            variant="Sit",
+            dispatch_mode="skel",
+        ),
+    )
+
+    assert result.status is ExecutionStatus.PASSED
+    assert result.data.dispatch_mode == "skel"
+    assert result.data.skel_animation_path
+    assert result.data.skel_seek_time_seconds == pytest.approx(0.25)
+    assert result.data.behavior_task_id is None
 
 
 @pytest.mark.asyncio

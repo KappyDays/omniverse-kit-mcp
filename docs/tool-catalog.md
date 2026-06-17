@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 143
+**Tool count**: 146
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)](#character--behavioragent--ira--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (47)
+- Unclassified (50)
 
 ## Process — MCP / Kit app lifecycle
 
@@ -74,8 +74,9 @@ process_list_kit_instances() -> 'str'
 
 Enumerate ALL running kit.exe processes (read-only). Includes MCP-spawned, other MCP servers,
 and user GUI launches. Per-instance: pid, command_line, start_time_utc, ext_port, app_profile,
-is_this_mcp_instance. Use BEFORE destructive ops (Kit user.config.json edit, settings reset,
-force reload) — external instances overwrite settings on shutdown. Windows-only.
+kit_file, profile_matches, is_this_mcp_instance. Use BEFORE destructive ops (Kit
+user.config.json edit, settings reset, force reload) — external instances overwrite settings on
+shutdown. Windows-only.
 
 ## Stage — READ / ASSERT / file & selection
 
@@ -1511,12 +1512,12 @@ target_position [x,y,z] for path-following.
 ### `character_play_animation_variant`
 
 ```python
-character_play_animation_variant(prim_path: 'str', variant: 'str', speed: 'float' = 1.0, target_position: 'list[float] | None' = None) -> 'str'
+character_play_animation_variant(prim_path: 'str', variant: 'str', speed: 'float' = 1.0, target_position: 'list[float] | None' = None, dispatch_mode: 'str' = 'auto') -> 'str'
 ```
 
-Play a BehaviorAgent/legacy-compatible variant
-(SitIdle/SitTalk/SitReading/WalkFast/WalkSlow/RunLow/RunHigh or plain Sit/Walk/Run/Idle).
-response.variables_set lists applied keys.
+Play a BehaviorAgent/legacy-compatible variant. dispatch_mode auto/task prefers BehaviorAgent
+task APIs, graph forces Action variable writes, skel directly binds a built-in SkelAnimation
+clip.
 
 **Parameters**
 
@@ -1526,6 +1527,7 @@ response.variables_set lists applied keys.
 | `variant` | `string` | `'—'` | ✓ |
 | `speed` | `number` | `1.0` |  |
 | `target_position` | `list[number] \| None` | `None` |  |
+| `dispatch_mode` | `string` | `'auto'` |  |
 
 ### `character_set_position`
 
@@ -1765,6 +1767,57 @@ Nucleus prefix.
 | name | type | default | required |
 |------|------|---------|----------|
 | `url` | `string` | `'—'` | ✓ |
+
+### `external_asset_convert`
+
+```python
+external_asset_convert(manifest_path: 'str', output_format: 'str' = 'usd', timeout_s: 'float' = 180.0) -> 'str'
+```
+
+Convert a downloaded external asset manifest to local USD through live Kit's
+omni.kit.asset_converter. Prepare-only: no stage_load_usd/file:// placement.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `manifest_path` | `string` | `'—'` | ✓ |
+| `output_format` | `string` | `'usd'` |  |
+| `timeout_s` | `number` | `180.0` |  |
+
+### `external_asset_download`
+
+```python
+external_asset_download(provider: 'str', asset_id: 'str', format_preference: 'list[str] | None' = None) -> 'str'
+```
+
+Download one selected external free asset into ignored .omniverse-kit-mcp/external_assets and
+write manifest.json. Does not place the asset in the stage.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `provider` | `string` | `'—'` | ✓ |
+| `asset_id` | `string` | `'—'` | ✓ |
+| `format_preference` | `list[string] \| None` | `None` |  |
+
+### `external_asset_search`
+
+```python
+external_asset_search(query: 'str', providers: 'list[str] | None' = None, limit: 'int' = 10) -> 'str'
+```
+
+Search external free asset providers after asset_search misses. Default provider order is Poly
+Haven then token-gated Sketchfab; returns normalized candidates and provider_status.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `query` | `string` | `'—'` | ✓ |
+| `providers` | `list[string] \| None` | `None` |  |
+| `limit` | `integer` | `10` |  |
 
 ### `kit_command_execute`
 

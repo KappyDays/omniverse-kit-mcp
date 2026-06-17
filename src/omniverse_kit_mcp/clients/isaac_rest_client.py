@@ -624,6 +624,11 @@ class IsaacRestClient:
             "GET", f"{BASE_PATH}/assets/list", params=params
         )
 
+    async def external_asset_convert(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(
+            f"{BASE_PATH}/assets/external/convert", json=request
+        )
+
     # --- Simulation ---
 
     async def simulation_play(self) -> dict[str, Any]:

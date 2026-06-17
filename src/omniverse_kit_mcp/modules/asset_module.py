@@ -16,6 +16,7 @@ from typing import Any
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.modules.base import error_result, ok_result
+from omniverse_kit_mcp.modules.external_asset import ExternalAssetRegistry
 from omniverse_kit_mcp.types.asset import AssetCategory, AssetItem, AssetListResult
 from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
 
@@ -44,10 +45,14 @@ _SIMREADY_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*[a-z0-9_~/,. ]*$")
 
 class AssetModule:
     def __init__(
-        self, client: IsaacRestClient, catalog_dir: Path | None = None
+        self,
+        client: IsaacRestClient,
+        catalog_dir: Path | None = None,
+        external_assets: ExternalAssetRegistry | None = None,
     ) -> None:
         self._client = client
         self._catalog_dir = catalog_dir or _DEFAULT_CATALOG_DIR
+        self._external_assets = external_assets
         self._index: list[dict[str, Any]] | None = None
 
     async def list(
@@ -132,6 +137,108 @@ class AssetModule:
                 exc=exc,
                 error_code="ASSET_SEARCH_ERROR",
             )
+
+    async def external_search(
+        self,
+        meta: OperationMeta,
+        query: str,
+        providers: list[str] | None = None,
+        limit: int = 10,
+    ) -> ModuleResult[dict[str, Any]]:
+        """Search external free asset providers after catalog search misses."""
+        started = int(time.time() * 1000)
+        try:
+            data = await self._external_registry().search(
+                query=query,
+                providers=providers,
+                limit=limit,
+            )
+            return ok_result(data, started_ms=started)
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="EXTERNAL_ASSET_SEARCH_ERROR",
+            )
+
+    async def external_download(
+        self,
+        meta: OperationMeta,
+        provider: str,
+        asset_id: str,
+        format_preference: list[str] | None = None,
+    ) -> ModuleResult[dict[str, Any]]:
+        """Download one selected external asset into the ignored local cache."""
+        started = int(time.time() * 1000)
+        try:
+            result = await self._external_registry().download(
+                provider_name=provider,
+                asset_id=asset_id,
+                format_preference=format_preference,
+            )
+            data = result.to_dict()
+            return ok_result(
+                data,
+                started_ms=started,
+                artifacts={"manifest": result.manifest_path},
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="EXTERNAL_ASSET_DOWNLOAD_ERROR",
+            )
+
+    async def external_convert(
+        self,
+        meta: OperationMeta,
+        manifest_path: str,
+        output_format: str = "usd",
+        timeout_s: float = 180.0,
+    ) -> ModuleResult[dict[str, Any]]:
+        """Convert a downloaded external asset through the live Kit converter."""
+        started = int(time.time() * 1000)
+        try:
+            registry = self._external_registry()
+            manifest = registry.read_manifest(manifest_path)
+            output_path = _conversion_output_path(
+                manifest["cache_dir"],
+                manifest["asset_id"],
+                output_format,
+            )
+            raw = await self._client.external_asset_convert(
+                {
+                    "input_path": manifest["primary_file"],
+                    "output_path": output_path,
+                    "output_format": output_format,
+                    "timeout_s": timeout_s,
+                }
+            )
+            updated = registry.update_conversion(manifest_path, raw)
+            data = {
+                "manifest_path": manifest_path,
+                "converted_path": updated["conversion"].get("output_path"),
+                "conversion": updated["conversion"],
+                "manifest": updated,
+            }
+            artifacts = {"manifest": manifest_path}
+            if data["converted_path"]:
+                artifacts["converted_asset"] = str(data["converted_path"])
+            return ok_result(data, started_ms=started, artifacts=artifacts)
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="EXTERNAL_ASSET_CONVERT_ERROR",
+            )
+
+    def _external_registry(self) -> ExternalAssetRegistry:
+        if self._external_assets is None:
+            self._external_assets = ExternalAssetRegistry()
+        return self._external_assets
 
 
 # ----------------------------------------------------------------------
@@ -416,3 +523,9 @@ def _parse_list(raw: dict) -> AssetListResult:
         items=items,
         count=int(raw.get("count", len(items))),
     )
+
+
+def _conversion_output_path(cache_dir: str, asset_id: str, output_format: str) -> str:
+    ext = output_format.strip().lower().lstrip(".") or "usd"
+    safe_id = re.sub(r"[^A-Za-z0-9._-]+", "_", asset_id).strip("._") or "asset"
+    return str(Path(cache_dir) / f"{safe_id}.{ext}")

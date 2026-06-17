@@ -178,6 +178,30 @@ def _build_viewport_capture(args: dict[str, Any]) -> ViewportCaptureRequest:
     )
 
 
+def _build_external_asset_search(args: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "query": args["query"],
+        "providers": args.get("providers"),
+        "limit": args.get("limit", 10),
+    }
+
+
+def _build_external_asset_download(args: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "provider": args["provider"],
+        "asset_id": args["asset_id"],
+        "format_preference": args.get("format_preference"),
+    }
+
+
+def _build_external_asset_convert(args: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "manifest_path": args["manifest_path"],
+        "output_format": args.get("output_format", "usd"),
+        "timeout_s": args.get("timeout_s", 180.0),
+    }
+
+
 def _build_ssim_request(args: dict[str, Any]) -> SSIMComparisonRequest:
     crop = args.get("crop")
     return SSIMComparisonRequest(
@@ -829,6 +853,7 @@ def _build_character_play_animation_variant(
         target_position=(
             tuple(float(v) for v in target) if target else None  # type: ignore[arg-type]
         ),
+        dispatch_mode=str(args.get("dispatch_mode", "auto")),
     )
 
 
@@ -1089,6 +1114,9 @@ _REGISTRY: dict[tuple[ModuleName, str], Any] = {
     (ModuleName.LAKEHOUSE, "query"): _build_lakehouse_query,
     (ModuleName.EXTENSION, "trigger"): _build_extension_trigger,
     (ModuleName.EXTENSION, "reset"): _build_extension_reset,
+    (ModuleName.ASSET, "external_search"): _build_external_asset_search,
+    (ModuleName.ASSET, "external_download"): _build_external_asset_download,
+    (ModuleName.ASSET, "external_convert"): _build_external_asset_convert,
     # WRITE — Stage mutations are implemented on SimulationModule
     (ModuleName.SIMULATION, "stage_load_usd"): _build_stage_load_usd,
     (ModuleName.SIMULATION, "stage_set_property"): _build_stage_set_property,

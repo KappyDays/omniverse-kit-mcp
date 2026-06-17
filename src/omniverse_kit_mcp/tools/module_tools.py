@@ -224,7 +224,7 @@ def register_module_tools(
 
     @mcp.tool()
     async def process_list_kit_instances() -> str:
-        """Enumerate ALL running kit.exe processes (read-only). Includes MCP-spawned, other MCP servers, and user GUI launches. Per-instance: pid, command_line, start_time_utc, ext_port, app_profile, is_this_mcp_instance. Use BEFORE destructive ops (Kit user.config.json edit, settings reset, force reload) — external instances overwrite settings on shutdown. Windows-only."""
+        """Enumerate ALL running kit.exe processes (read-only). Includes MCP-spawned, other MCP servers, and user GUI launches. Per-instance: pid, command_line, start_time_utc, ext_port, app_profile, kit_file, profile_matches, is_this_mcp_instance. Use BEFORE destructive ops (Kit user.config.json edit, settings reset, force reload) — external instances overwrite settings on shutdown. Windows-only."""
         result = await process.list_kit_instances()
         return json.dumps(result, indent=2)
 
@@ -1187,6 +1187,51 @@ def register_module_tools(
         )
         return _serialize(result)
 
+    @mcp.tool()
+    async def external_asset_search(
+        query: str,
+        providers: list[str] | None = None,
+        limit: int = 10,
+    ) -> str:
+        """Search external free asset providers after asset_search misses. Default provider order is Poly Haven then token-gated Sketchfab; returns normalized candidates and provider_status."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.external_search(
+            meta, query=query, providers=providers, limit=limit
+        )
+        return _serialize(result)
+
+    @mcp.tool()
+    async def external_asset_download(
+        provider: str,
+        asset_id: str,
+        format_preference: list[str] | None = None,
+    ) -> str:
+        """Download one selected external free asset into ignored .omniverse-kit-mcp/external_assets and write manifest.json. Does not place the asset in the stage."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.external_download(
+            meta,
+            provider=provider,
+            asset_id=asset_id,
+            format_preference=format_preference,
+        )
+        return _serialize(result)
+
+    @mcp.tool()
+    async def external_asset_convert(
+        manifest_path: str,
+        output_format: str = "usd",
+        timeout_s: float = 180.0,
+    ) -> str:
+        """Convert a downloaded external asset manifest to local USD through live Kit's omni.kit.asset_converter. Prepare-only: no stage_load_usd/file:// placement."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.external_convert(
+            meta,
+            manifest_path=manifest_path,
+            output_format=output_format,
+            timeout_s=timeout_s,
+        )
+        return _serialize(result)
+
     # ------------------------------------------------------------------
     # Character
     # ------------------------------------------------------------------
@@ -1280,8 +1325,9 @@ def register_module_tools(
         variant: str,
         speed: float = 1.0,
         target_position: list[float] | None = None,
+        dispatch_mode: str = "auto",
     ) -> str:
-        """Play a BehaviorAgent/legacy-compatible variant (SitIdle/SitTalk/SitReading/WalkFast/WalkSlow/RunLow/RunHigh or plain Sit/Walk/Run/Idle). response.variables_set lists applied keys."""
+        """Play a BehaviorAgent/legacy-compatible variant. dispatch_mode auto/task prefers BehaviorAgent task APIs, graph forces Action variable writes, skel directly binds a built-in SkelAnimation clip."""
         meta = make_meta(ModuleName.CHARACTER)
         request = CharacterPlayAnimationVariantRequest(
             prim_path=prim_path,
@@ -1291,6 +1337,7 @@ def register_module_tools(
                 tuple(float(v) for v in target_position)  # type: ignore[arg-type]
                 if target_position else None
             ),
+            dispatch_mode=dispatch_mode,
         )
         result = await character.play_animation_variant(meta, request)
         return _serialize(result)

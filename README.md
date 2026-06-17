@@ -83,6 +83,24 @@ omniverse-kit-mcp does **not auto-detect** the Isaac Sim install location. Defau
 
 Sanity check after first startup: `curl http://127.0.0.1:8111/validation/v1/health` → `{"ok": true, "extension_enabled": true, …}`.
 
+### USD Composer Setup
+
+The `usd-composer` profile uses its own Kit paths. It does not reuse
+`ISAAC_SIM_KIT_EXE` / `ISAAC_SIM_KIT_FILE`.
+
+```dotenv
+USD_COMPOSER_KIT_EXE=C:/path/to/kit-app-template/_build/windows-x86_64/release/kit/kit.exe
+USD_COMPOSER_KIT_FILE=C:/path/to/kit-app-template/_build/windows-x86_64/release/apps/kkr_usd_composer.kit
+```
+
+USD Composer instance ports are `8114` and `8115`.
+
+### External Free Asset Setup
+
+`external_asset_search` uses Poly Haven by default. Sketchfab is optional and
+requires `SKETCHFAB_API_TOKEN` in the process environment. Keep real tokens out
+of tracked files; use a session environment variable or ignored `.env`.
+
 ### Manual MCP-Safe Launchers
 
 `setup/launchers/` stores the launcher source of truth. `setup/setup_omniverse_kit_mcp.ps1` copies them into the local app folders:

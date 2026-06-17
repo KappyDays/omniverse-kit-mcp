@@ -81,6 +81,7 @@ async def test_isaac_instance_1_cmd_has_port_8111_and_ext_folder(monkeypatch):
     monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", fake_alive)
     monkeypatch.setattr(ProcessModule, "_check_health", fake_health)
+    monkeypatch.setattr(ProcessModule, "_resolve_port_process_info", lambda self: _async_none())
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
 
     await module.start()
@@ -111,6 +112,7 @@ async def test_usd_composer_instance_1_cmd_has_port_8114(monkeypatch):
     monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.Popen", fake_popen)
     monkeypatch.setattr(ProcessModule, "_is_process_alive", fake_alive)
     monkeypatch.setattr(ProcessModule, "_check_health", fake_health)
+    monkeypatch.setattr(ProcessModule, "_resolve_port_process_info", lambda self: _async_none())
     monkeypatch.setattr(ProcessModule, "_cleanup_orphan_hub", lambda self: _async_none())
 
     await module.start()
@@ -212,16 +214,66 @@ async def test_usd_composer_profile_skips_ros_env(monkeypatch):
 @pytest.mark.asyncio
 async def test_resolve_instance_pid_matches_port_string(monkeypatch):
     module = _module_for("isaac-sim", 2)
+    isaac_cmd = (
+        "C:/IsaacSim/kit/kit.exe "
+        "C:/IsaacSim/apps/isaacsim.exp.full.kit "
+        "--/exts/omni.services.transport.server.http/port=8112"
+    )
 
     def fake_run(cmd, **kwargs):
         r = MagicMock()
-        r.stdout = "33344\n"
+        r.stdout = (
+            '{"ProcessId":33344,"CommandLine":"'
+            + isaac_cmd.replace("\\", "\\\\").replace('"', '\\"')
+            + '"}'
+        )
         r.returncode = 0
         return r
 
     monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
     pid = await module._resolve_instance_pid()
     assert pid == 33344
+
+
+@pytest.mark.asyncio
+async def test_usd_composer_does_not_attach_to_isaac_process_on_same_port(monkeypatch):
+    module = _module_for("usd-composer", 2)
+    isaac_cmd = (
+        "C:/IsaacSim/kit/kit.exe "
+        "C:/IsaacSim/apps/isaacsim.exp.full.kit "
+        "--/exts/omni.services.transport.server.http/port=8115"
+    )
+    runs: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):
+        runs.append(cmd)
+        r = MagicMock()
+        r.returncode = 0
+        joined = " ".join(cmd)
+        if "ConvertTo-Json" in joined:
+            r.stdout = (
+                '{"ProcessId":44455,"CommandLine":"'
+                + isaac_cmd.replace("\\", "\\\\").replace('"', '\\"')
+                + '"}'
+            )
+        else:
+            r.stdout = ""
+        return r
+
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
+    monkeypatch.setattr(ProcessModule, "_check_health", lambda self: _async_true())
+    monkeypatch.setattr(
+        "omniverse_kit_mcp.modules.process_module.subprocess.Popen",
+        lambda *args, **kwargs: pytest.fail("must not spawn on app profile mismatch"),
+    )
+
+    result = await module.start()
+
+    assert result["ok"] is False
+    assert result["status"] == "app_profile_mismatch"
+    assert result["error_code"] == "APP_PROFILE_MISMATCH"
+    assert result["pid"] == 44455
+    assert "isaacsim.exp.full.kit" in result["actual_kit_file"]
 
 
 @pytest.mark.asyncio
@@ -237,6 +289,38 @@ async def test_resolve_instance_pid_returns_none_when_empty(monkeypatch):
     monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
     pid = await module._resolve_instance_pid()
     assert pid is None
+
+
+@pytest.mark.asyncio
+async def test_list_kit_instances_requires_matching_profile_for_this_instance(monkeypatch):
+    module = _module_for("usd-composer", 2)
+    payload = (
+        '[{"ProcessId":44455,"CommandLine":"'
+        'C:/IsaacSim/kit/kit.exe C:/IsaacSim/apps/isaacsim.exp.full.kit '
+        '--/exts/omni.services.transport.server.http/port=8115",'
+        '"StartTimeUtc":"2026-06-17T00:00:00.0000000Z"},'
+        '{"ProcessId":44456,"CommandLine":"'
+        'C:/USDComposer/kit/kit.exe C:/USDComposer/apps/kkr_usd_composer.kit '
+        '--/exts/omni.services.transport.server.http/port=8115",'
+        '"StartTimeUtc":"2026-06-17T00:00:01.0000000Z"}]'
+    )
+
+    def fake_run(cmd, **kwargs):
+        r = MagicMock()
+        r.returncode = 0
+        r.stdout = payload
+        return r
+
+    monkeypatch.setattr("omniverse_kit_mcp.modules.process_module.subprocess.run", fake_run)
+
+    result = await module.list_kit_instances()
+
+    assert result["ok"] is True
+    by_pid = {item["pid"]: item for item in result["instances"]}
+    assert by_pid[44455]["is_this_mcp_instance"] is False
+    assert by_pid[44455]["profile_matches"] is False
+    assert by_pid[44456]["is_this_mcp_instance"] is True
+    assert by_pid[44456]["profile_matches"] is True
 
 
 @pytest.mark.asyncio

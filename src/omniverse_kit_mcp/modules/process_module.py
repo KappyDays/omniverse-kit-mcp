@@ -31,8 +31,10 @@ and other ``ros_env_required=False`` profiles skip ROS env injection entirely.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -49,6 +51,8 @@ logger = logging.getLogger(__name__)
 # Redirect kit.exe stdout/stderr here so the OS pipe buffer never blocks startup.
 _STARTUP_LOG_DIR = Path(tempfile.gettempdir()) / "omniverse_kit_mcp"
 _STARTUP_LOG_TTL_SECONDS = 7 * 24 * 3600  # 7 days
+_PORT_RE = re.compile(r"port=(\d+)")
+_APP_RE = re.compile(r"apps[\\/]([\w.\-]+)\.kit", re.IGNORECASE)
 
 # Mirrors isaac-sim.bat + setup_ros_env.bat (see module docstring).
 _DEFAULT_ROS_DISTRO = "humble"
@@ -95,6 +99,26 @@ class ProcessModule:
                 "message": (
                     f"{cfg.app_profile.name} instance {cfg.instance_id} already "
                     f"running and healthy on port {cfg.ext_port} (pid={pid})"
+                ),
+            }
+
+        port_process = await self._resolve_port_process_info()
+        if port_process is not None and not self._profile_matches_command_line(port_process["command_line"]):
+            return {
+                "ok": False,
+                "status": "app_profile_mismatch",
+                "error_code": "APP_PROFILE_MISMATCH",
+                "app_profile": cfg.app_profile.name,
+                "instance_id": cfg.instance_id,
+                "ext_port": cfg.ext_port,
+                "pid": port_process["pid"],
+                "expected_kit_file": self._expected_kit_file_name(),
+                "actual_kit_file": port_process.get("kit_file"),
+                "message": (
+                    f"Port {cfg.ext_port} is occupied by a different Kit app "
+                    f"(pid={port_process['pid']}, kit={port_process.get('kit_file')}). "
+                    f"Expected {cfg.app_profile.name} ({self._expected_kit_file_name()}). "
+                    "Stop the mismatched process or choose the correct workspace/instance."
                 ),
             }
 
@@ -313,9 +337,6 @@ class ProcessModule:
         Windows-only (PowerShell + Win32_Process). On non-Windows hosts
         returns ``{ok: false, status: "unsupported_platform"}``.
         """
-        import json as _json
-        import re as _re
-
         if os.name != "nt":
             return {
                 "ok": False,
@@ -325,16 +346,7 @@ class ProcessModule:
             }
 
         try:
-            ps_script = (
-                "Get-CimInstance Win32_Process -Filter \"Name='kit.exe'\" "
-                "| Select-Object ProcessId, CommandLine, "
-                "@{N='StartTimeUtc';E={$_.CreationDate.ToUniversalTime().ToString('o')}} "
-                "| ConvertTo-Json -Depth 2 -Compress"
-            )
-            result = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-Command", ps_script],
-                capture_output=True, text=True, timeout=10,
-            )
+            rows = self._query_kit_process_rows(timeout=10)
         except subprocess.TimeoutExpired:
             return {"ok": False, "status": "timeout",
                     "message": "PowerShell Win32_Process query exceeded 10s",
@@ -342,39 +354,25 @@ class ProcessModule:
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "status": "error", "message": str(e),
                     "instances": []}
-
-        out = (result.stdout or "").strip()
-        if not out:
-            return {"ok": True, "status": "ok", "instances": []}
-
-        try:
-            raw = _json.loads(out)
-        except _json.JSONDecodeError as e:
-            return {"ok": False, "status": "parse_error",
-                    "message": f"PowerShell JSON parse failed: {e}",
-                    "instances": []}
-
-        # Single-row result is a dict, multi-row is a list — normalize.
-        rows = raw if isinstance(raw, list) else [raw]
-
-        port_re = _re.compile(r"port=(\d+)")
-        app_re = _re.compile(r"apps[\\/]([\w.\-]+)\.kit", _re.IGNORECASE)
         my_port = self._config.ext_port
 
         instances: list[dict[str, Any]] = []
         for row in rows:
             cmd = row.get("CommandLine") or ""
-            port_m = port_re.search(cmd)
-            app_m = app_re.search(cmd)
+            port_m = _PORT_RE.search(cmd)
+            app_m = _APP_RE.search(cmd)
             ext_port = int(port_m.group(1)) if port_m else None
             app_profile = app_m.group(1) if app_m else None
+            profile_matches = self._profile_matches_command_line(cmd)
             instances.append({
                 "pid": int(row.get("ProcessId")) if row.get("ProcessId") is not None else None,
                 "command_line": cmd,
                 "start_time_utc": row.get("StartTimeUtc"),
                 "ext_port": ext_port,
                 "app_profile": app_profile,
-                "is_this_mcp_instance": ext_port == my_port,
+                "kit_file": f"{app_profile}.kit" if app_profile else None,
+                "profile_matches": profile_matches,
+                "is_this_mcp_instance": ext_port == my_port and profile_matches,
             })
 
         return {
@@ -411,31 +409,67 @@ class ProcessModule:
     async def _resolve_instance_pid(self) -> int | None:
         """Locate the kit.exe PID for THIS instance by CommandLine match.
 
-        Uses PowerShell CIM query filtered on the unique port=<N> substring
-        injected during launch. Since each instance has a different port,
-        this uniquely identifies our kit.exe even if MCP server restarted
-        and lost self._process.pid.
+        Uses PowerShell CIM query filtered on both the unique port=<N>
+        substring and the configured app profile's .kit file. The profile
+        check prevents a usd-composer workspace from attaching to an Isaac Sim
+        process that accidentally owns the Composer port, and vice versa.
 
         Returns None if no match (kit died or was never spawned for this
         profile/instance combo).
         """
-        port_needle = f"port={self._config.ext_port}"
-        try:
-            ps_script = (
-                "Get-CimInstance Win32_Process -Filter \"Name='kit.exe'\" "
-                f"| Where-Object {{ $_.CommandLine -like '*{port_needle}*' }} "
-                "| Select-Object -First 1 -ExpandProperty ProcessId"
-            )
-            result = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-Command", ps_script],
-                capture_output=True, text=True, timeout=5,
-            )
-            out = result.stdout.strip()
-            if not out:
-                return None
-            return int(out.splitlines()[0])
-        except (ValueError, Exception):  # noqa: BLE001 — best-effort probe
+        info = await self._resolve_instance_process_info()
+        return int(info["pid"]) if info is not None else None
+
+    async def _resolve_instance_process_info(self) -> dict[str, Any] | None:
+        port_process = await self._resolve_port_process_info()
+        if port_process is None:
             return None
+        if not self._profile_matches_command_line(port_process["command_line"]):
+            return None
+        return port_process
+
+    async def _resolve_port_process_info(self) -> dict[str, Any] | None:
+        try:
+            rows = self._query_kit_process_rows(timeout=5)
+            for row in rows:
+                cmd = row.get("CommandLine") or ""
+                port_m = _PORT_RE.search(cmd)
+                if not port_m or int(port_m.group(1)) != self._config.ext_port:
+                    continue
+                app_m = _APP_RE.search(cmd)
+                kit_stem = app_m.group(1) if app_m else None
+                return {
+                    "pid": int(row["ProcessId"]),
+                    "command_line": cmd,
+                    "kit_file": f"{kit_stem}.kit" if kit_stem else None,
+                }
+            return None
+        except Exception:  # noqa: BLE001 — best-effort probe
+            return None
+
+    def _query_kit_process_rows(self, *, timeout: float) -> list[dict[str, Any]]:
+        ps_script = (
+            "Get-CimInstance Win32_Process -Filter \"Name='kit.exe'\" "
+            "| Select-Object ProcessId, CommandLine, "
+            "@{N='StartTimeUtc';E={$_.CreationDate.ToUniversalTime().ToString('o')}} "
+            "| ConvertTo-Json -Depth 2 -Compress"
+        )
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command", ps_script],
+            capture_output=True, text=True, timeout=timeout,
+        )
+        out = (result.stdout or "").strip()
+        if not out:
+            return []
+        raw = json.loads(out)
+        return raw if isinstance(raw, list) else [raw]
+
+    def _expected_kit_file_name(self) -> str:
+        return Path(self._config.effective_kit_file.replace("\\", "/")).name
+
+    def _profile_matches_command_line(self, command_line: str) -> bool:
+        expected = self._expected_kit_file_name().lower()
+        return expected in command_line.replace("\\", "/").lower()
 
     async def _is_process_alive(self) -> bool:
         """True iff THIS instance's kit.exe is running.

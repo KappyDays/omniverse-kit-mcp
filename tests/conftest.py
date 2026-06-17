@@ -841,7 +841,7 @@ class MockIsaacRestClient:
         self.calls.append(("character_play_animation_variant", request))
         variant = request.get("variant", "Idle")
         # Derive the base action from the variant prefix (same logic as Extension)
-        for base in ("Sit", "Walk", "Run", "Idle"):
+        for base in ("Sit", "Walk", "Run", "Idle", "Dodge"):
             if variant == base or variant.startswith(base):
                 base_action = base
                 tail = variant[len(base):].lower() or ""
@@ -854,6 +854,16 @@ class MockIsaacRestClient:
             variables_set[f"{base_action.lower()}_style"] = tail
         if base_action in ("Walk", "Run"):
             variables_set["Walk"] = float(request.get("speed", 1.0))
+        dispatch_mode = request.get("dispatch_mode", "auto")
+        skel_fields = {}
+        if dispatch_mode == "skel":
+            skel_fields = {
+                "skel_animation_path": f"/World/Humans/HumanMotionLibrary/BuiltinActions/{base_action}/{variant}",
+                "skel_annotation_path": f"/World/Humans/HumanMotionLibrary/BuiltinActions/{base_action}/{variant}/{variant}",
+                "skel_animation_start": 10.0,
+                "skel_animation_end": 20.0,
+                "skel_seek_time_seconds": 0.25,
+            }
         return self.responses.get(
             "character_play_animation_variant",
             {
@@ -864,6 +874,12 @@ class MockIsaacRestClient:
                 "speed": float(request.get("speed", 1.0)),
                 "variables_set": variables_set,
                 "bound_graph": request.get("prim_path", "") + "/SkelRoot",
+                "dispatch_mode": dispatch_mode,
+                "behavior_task_id": 6 if dispatch_mode in ("auto", "task") else None,
+                "behavior_task_name": base_action if dispatch_mode in ("auto", "task") else None,
+                "behavior_task_status": "RUNNING" if dispatch_mode in ("auto", "task") else None,
+                "behavior_task_running": True if dispatch_mode in ("auto", "task") else None,
+                **skel_fields,
             },
         )
 
@@ -1675,6 +1691,18 @@ class MockIsaacRestClient:
                 {"name": "franka.usd", "url": "https://example/.../franka.usd", "is_folder": False, "size": 1024},
             ],
             "count": 2,
+        })
+
+    async def external_asset_convert(self, request: dict) -> dict:
+        self.calls.append(("external_asset_convert", request))
+        return self.responses.get("external_asset_convert", {
+            "ok": True,
+            "status": "converted",
+            "input_path": request.get("input_path", ""),
+            "output_path": request.get("output_path", ""),
+            "output_exists": True,
+            "elapsed_s": 0.1,
+            "progress": [],
         })
 
     # --- Phase H — Replicator ---

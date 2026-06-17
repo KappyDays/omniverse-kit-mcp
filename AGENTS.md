@@ -66,12 +66,10 @@ Workspace matrix and ports live in `workspaces/README.md`.
   config; use CodeGraph only after reading applicable `CLAUDE.md` and pull-docs.
 - If a root-folder Codex thread receives live MCP work, follow
   `docs/invariants/live-worker-coordination.md`: keep the root thread as
-  coordinator and create/continue work in matching
-  `workspaces/<app>/instance-N` so the workspace-local MCP entry loads.
+  coordinator and follow worker thread creation/reuse rules for
+  `workspaces/<app>/instance-N`.
 - Requests to launch/open/start Isaac Sim, USD Composer, or another Omniverse
-  app are live MCP work. Treat that wording as explicit permission to create or
-  continue the matching workspace Codex thread and run `kit_app_start` there.
-  See `docs/invariants/live-worker-coordination.md`.
+  app are live MCP work. See `docs/invariants/live-worker-coordination.md`.
 - Global Codex MCP entries may appear alongside the workspace entry.
 - Runtime details and first-session checks live in `workspaces/README.md`.
 

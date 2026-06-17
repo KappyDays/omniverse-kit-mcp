@@ -97,6 +97,7 @@ class CharacterPlayAnimationVariantRequest:
     variant: str
     speed: float = 1.0
     target_position: tuple[float, float, float] | None = None
+    dispatch_mode: str = "auto"
 
 
 @dataclass(slots=True, frozen=True)
@@ -107,6 +108,17 @@ class CharacterPlayAnimationVariantResult:
     speed: float
     variables_set: tuple[str, ...]
     bound_graph: str
+    dispatch_mode: str = "auto"
+    behavior_task_id: int | None = None
+    behavior_task_name: str | None = None
+    behavior_task_status: str | None = None
+    behavior_task_running: bool | None = None
+    task_error: str | None = None
+    skel_animation_path: str | None = None
+    skel_annotation_path: str | None = None
+    skel_animation_start: float | None = None
+    skel_animation_end: float | None = None
+    skel_seek_time_seconds: float | None = None
 
 
 @dataclass(slots=True, frozen=True)

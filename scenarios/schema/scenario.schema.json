@@ -61,6 +61,68 @@
             "maxBackoffSeconds": { "type": "number", "minimum": 0 }
           }
         }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "module": { "const": "asset" },
+              "action": { "const": "external_search" }
+            },
+            "required": ["module", "action"]
+          },
+          "then": { "properties": { "args": { "$ref": "#/$defs/externalAssetSearchArgs" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "module": { "const": "asset" },
+              "action": { "const": "external_download" }
+            },
+            "required": ["module", "action"]
+          },
+          "then": { "properties": { "args": { "$ref": "#/$defs/externalAssetDownloadArgs" } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "module": { "const": "asset" },
+              "action": { "const": "external_convert" }
+            },
+            "required": ["module", "action"]
+          },
+          "then": { "properties": { "args": { "$ref": "#/$defs/externalAssetConvertArgs" } } }
+        }
+      ]
+    },
+    "externalAssetSearchArgs": {
+      "type": "object",
+      "required": ["query"],
+      "additionalProperties": false,
+      "properties": {
+        "query": { "type": "string", "minLength": 1 },
+        "providers": { "type": "array", "items": { "type": "string" } },
+        "limit": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "externalAssetDownloadArgs": {
+      "type": "object",
+      "required": ["provider", "asset_id"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "asset_id": { "type": "string", "minLength": 1 },
+        "format_preference": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "externalAssetConvertArgs": {
+      "type": "object",
+      "required": ["manifest_path"],
+      "additionalProperties": false,
+      "properties": {
+        "manifest_path": { "type": "string", "minLength": 1 },
+        "output_format": { "type": "string", "enum": ["usd"] },
+        "timeout_s": { "type": "number", "minimum": 1 }
       }
     }
   }
