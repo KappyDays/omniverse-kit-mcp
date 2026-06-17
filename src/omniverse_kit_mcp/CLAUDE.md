@@ -60,6 +60,9 @@ uv run omniverse-kit-mcp
 
 MCP host (Claude Code / Codex CLI) spawns the `omniverse-kit-mcp` server once in stdio when the session starts and caches the Python import. Modifications inside this package (`src/omniverse_kit_mcp/`) **will not be reflected in MCP tool calls until host restart**. Use standalone script for in-session verification:- `scripts/run_scenario_standalone.py <scenario_path>` — Run compiler/runner/modules with the latest code. Relative paths are resolved in the following order: `config.scenario.scenarios_dir` → project root.
 - `scripts/run_process_module_standalone.py <start|stop|restart>` — Only ProcessModule runs separately
+- `mcp_runtime_info` — In-band read-only MCP freshness check. If the tool is absent,
+  expected result fields are absent, or source files are newer than the reported
+  import time, restart the MCP host before live result-shape validation.
 
 Since the extension code (`kkr-extensions/`) is a separate process from the MCP server, it is immediately reflected by deleting `kit_app_restart` / `__pycache__`.
 

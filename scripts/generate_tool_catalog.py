@@ -33,7 +33,7 @@ OUTPUT = PROJECT_ROOT / "docs" / "tool-catalog.md"
 
 # Prefix → (group title, order key)
 _GROUPS: list[tuple[str, tuple[str, ...]]] = [
-    ("Process — Kit app lifecycle", ("kit_app_",)),
+    ("Process — MCP / Kit app lifecycle", ("mcp_runtime_info", "kit_app_", "process_")),
     ("Stage — READ / ASSERT / file & selection", (
         "stage_capture_snapshot", "stage_diff_snapshots",
         "stage_assert_prim_exists", "stage_assert_property",

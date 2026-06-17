@@ -6,14 +6,22 @@ additions only need to update these lists, no count literal to chase.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
 import pytest
+from mcp.server.fastmcp import FastMCP
 
 from omniverse_kit_mcp.config import AppConfig
 from omniverse_kit_mcp.mcp.server import create_mcp_server
+from omniverse_kit_mcp.modules.robot_module import RobotModule
+from omniverse_kit_mcp.tools.module_tools import register_module_tools
 
 
 EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Process
+    "mcp_runtime_info",
     "kit_app_start",
     "kit_app_stop",
     "kit_app_restart",
@@ -47,8 +55,11 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     # Phase B — Robot
     "robot_load",
     "robot_list_arm_profiles",
+    "robot_probe_arm_profile",
+    "robot_probe_arm_profiles",
     "robot_get_joint_positions",
     "robot_get_joint_config",
+    "robot_get_joint_config_static",
     "robot_set_joint_positions",
     "robot_navigate_to",
     # Phase B — Job
@@ -236,3 +247,254 @@ def test_no_inject_cleanup_tools(mcp_server):
     assert "lakehouse_inject" not in tools
     assert "lakehouse_cleanup" not in tools
     assert "extension_reset" not in tools  # reset is internal only
+
+
+@pytest.mark.asyncio
+async def test_mcp_runtime_info_reports_probe_result_freshness(mcp_server):
+    tool = mcp_server._tool_manager._tools["mcp_runtime_info"]
+
+    payload = json.loads(await tool.fn())
+
+    assert payload["ok"] is True
+    assert payload["has_mcp_runtime_info_tool"] is True
+    assert payload["tool_count"] == len(EXPECTED_ALL_TOOLS)
+    assert payload["robot_probe_result_has_mcp_controllability"] is True
+    assert payload["robot_probe_result_has_probe_capability_level"] is True
+    assert payload["robot_probe_result_has_pick_place_validation_boundary"] is True
+    assert payload["robot_probe_batch_result_has_summary"] is True
+    assert payload["robot_probe_arm_profile_timeout_default_s"] == pytest.approx(90.0)
+    assert payload["robot_probe_arm_profiles_per_profile_timeout_default_s"] == (
+        pytest.approx(90.0)
+    )
+    assert payload["robot_probe_arm_profiles_batch_timeout_default_s"] == (
+        pytest.approx(105.0)
+    )
+    assert "mcp_controllability" in payload["robot_probe_result_fields"]
+    assert "mcp_controllability_reason" in payload["robot_probe_result_fields"]
+    assert "probe_capability_level" in payload["robot_probe_result_fields"]
+    assert "probe_capability_level_name" in payload["robot_probe_result_fields"]
+    assert "probe_capability_level_reason" in payload["robot_probe_result_fields"]
+    assert "probe_proves_pick_place" in payload["robot_probe_result_fields"]
+    assert "pick_place_validation_status" in payload["robot_probe_result_fields"]
+    assert "pick_place_validation_reason" in payload["robot_probe_result_fields"]
+    assert "mcp_controllability_counts" in payload["robot_probe_batch_result_fields"]
+    assert "mcp_controllability_profiles" in payload["robot_probe_batch_result_fields"]
+    assert "probe_capability_level_name_counts" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "probe_capability_level_name_profiles" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "pick_place_validation_status_counts" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "pick_place_validation_status_profiles" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "unsupported_capability_counts" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "timed_out_profiles" in payload["robot_probe_batch_result_fields"]
+    assert "batch_timeout_profiles" in payload["robot_probe_batch_result_fields"]
+    assert "batch_aborted_profiles" in payload["robot_probe_batch_result_fields"]
+    assert "blocked_profiles" in payload["robot_probe_batch_result_fields"]
+    assert "hard_failure_profiles" in payload["robot_probe_batch_result_fields"]
+    assert "lifecycle_recovery_profiles" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "unsupported_capability_profiles" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "ik_target_failure_profiles" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "static_metadata_profiles" in payload["robot_probe_batch_result_fields"]
+    assert "known_dynamic_timeout_routed_profiles" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "dynamic_joint_control_profiles" in payload[
+        "robot_probe_batch_result_fields"
+    ]
+    assert "dynamic_probe_recommended_profiles" in payload[
+        "robot_arm_profiles_result_fields"
+    ]
+    assert "static_only_probe_recommended_profiles" in payload[
+        "robot_arm_profiles_result_fields"
+    ]
+    assert "recommended_probe_mode_by_profile" in payload[
+        "robot_arm_profiles_result_fields"
+    ]
+    assert "recommended_probe_mode_reasons" in payload[
+        "robot_arm_profiles_result_fields"
+    ]
+    assert "profile_names" in payload["robot_probe_batch_request_fields"]
+    assert "profile_names" in payload["robot_probe_batch_result_fields"]
+    assert payload["source_modules"]
+    source_module_names = {entry["module"] for entry in payload["source_modules"]}
+    assert "omniverse_kit_mcp.robot_arm_profiles" in source_module_names
+    assert "process_id" not in payload
+    assert "cwd" not in payload
+    assert "python_executable" not in payload
+    assert all("file" not in entry for entry in payload["source_modules"])
+    assert all(
+        entry["source"] is None or not Path(entry["source"]).is_absolute()
+        for entry in payload["source_modules"]
+    )
+    assert isinstance(payload["restart_required_for_latest_mcp_code"], bool)
+
+
+@pytest.mark.asyncio
+async def test_robot_list_arm_profiles_tool_serializes_pick_place_blockers():
+    from tests.conftest import MockIsaacRestClient
+
+    mcp = FastMCP(name="test")
+    dummy = SimpleNamespace()
+    robot = RobotModule(MockIsaacRestClient())
+    register_module_tools(
+        mcp,
+        *[dummy] * 6,
+        robot,
+        *[dummy] * 14,
+    )
+    tool = mcp._tool_manager._tools["robot_list_arm_profiles"]
+
+    payload = json.loads(await tool.fn())
+
+    assert payload["ok"] is True
+    data = payload["data"]
+    assert data["known_pick_place_blocker_profiles"] == [
+        "franka_panda",
+        "factory_franka",
+    ]
+    assert "insufficient lift" in (
+        data["known_pick_place_blocker_profile_reasons"]["franka_panda"]
+    )
+    assert "deeper combined-Z offset trial" in (
+        data["known_pick_place_blocker_profile_reasons"]["factory_franka"]
+    )
+    assert data["static_only_probe_recommended_profiles"] == (
+        data["known_dynamic_timeout_profiles"]
+    )
+    assert "ur20" in data["static_only_probe_recommended_profiles"]
+    assert "ur30" in data["dynamic_probe_recommended_profiles"]
+    assert not set(data["dynamic_probe_recommended_profiles"]) & set(
+        data["static_only_probe_recommended_profiles"]
+    )
+    assert data["recommended_probe_mode_by_profile"]["ur20"] == (
+        "static_only_known_dynamic_timeout"
+    )
+    assert data["recommended_probe_mode_by_profile"]["ur30"] == (
+        "dynamic_with_bounded_timeouts"
+    )
+    assert "timed out" in data["recommended_probe_mode_reasons"]["ur20"]
+    assert "factory_franka" in {
+        profile["profile_name"] for profile in data["profiles"]
+    }
+
+
+@pytest.mark.asyncio
+async def test_robot_probe_arm_profiles_tool_serializes_batch_summary_fields():
+    from tests.conftest import MockIsaacRestClient
+
+    class UnsupportedCapabilityClient(MockIsaacRestClient):
+        async def robot_gripper_control(self, request):  # type: ignore[override]
+            self.calls.append(("robot_gripper_control", request))
+            raise ValueError("No gripper joints found")
+
+        async def robot_get_ee_pose(  # type: ignore[override]
+            self,
+            prim_path: str,
+            end_effector_frame: str | None = None,
+        ):
+            self.calls.append((
+                "robot_get_ee_pose",
+                {"prim_path": prim_path, "end_effector_frame": end_effector_frame},
+            ))
+            raise ValueError("End-effector frame panda_hand not found")
+
+    mcp = FastMCP(name="test")
+    dummy = SimpleNamespace()
+    robot = RobotModule(UnsupportedCapabilityClient())
+    register_module_tools(
+        mcp,
+        *[dummy] * 6,
+        robot,
+        *[dummy] * 14,
+    )
+    tool = mcp._tool_manager._tools["robot_probe_arm_profiles"]
+
+    payload = json.loads(
+        await tool.fn(
+            profile_names=["franka_panda"],
+            family_filter=["franka"],
+            limit=1,
+            safe_nudge=False,
+        )
+    )
+
+    assert payload["ok"] is True
+    data = payload["data"]
+    assert data["profile_names"] == ["franka_panda"]
+    assert data["mcp_controllability_counts"] == {"dynamic_joint_read_only": 1}
+    assert data["mcp_controllability_profiles"] == {
+        "dynamic_joint_read_only": ["franka_panda"]
+    }
+    assert data["probe_capability_level_name_counts"] == {
+        "dynamic_joint_read": 1
+    }
+    assert data["probe_capability_level_name_profiles"] == {
+        "dynamic_joint_read": ["franka_panda"]
+    }
+    assert data["pick_place_validation_status_counts"] == {
+        "known_pick_place_blocker": 1
+    }
+    assert data["pick_place_validation_status_profiles"] == {
+        "known_pick_place_blocker": ["franka_panda"]
+    }
+    assert data["unsupported_capability_counts"] == {
+        "gripper": 1,
+        "ee_pose": 1,
+    }
+    assert data["unsupported_capability_profiles"] == ["franka_panda"]
+    assert data["ik_target_failure_profiles"] == []
+    assert data["timed_out_profiles"] == []
+    assert data["batch_timeout_profiles"] == []
+    assert data["batch_aborted_profiles"] == []
+    assert data["blocked_profiles"] == []
+    assert data["hard_failure_profiles"] == []
+    assert data["lifecycle_recovery_profiles"] == []
+    assert data["known_dynamic_timeout_routed_profiles"] == []
+    assert data["results"][0]["mcp_controllability"] == "dynamic_joint_read_only"
+    assert data["results"][0]["probe_proves_pick_place"] is False
+    assert (
+        data["results"][0]["pick_place_validation_status"]
+        == "known_pick_place_blocker"
+    )
+
+
+@pytest.mark.asyncio
+async def test_robot_probe_arm_profiles_tool_preserves_empty_profile_names():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    mcp = FastMCP(name="test")
+    dummy = SimpleNamespace()
+    robot = RobotModule(client)
+    register_module_tools(
+        mcp,
+        *[dummy] * 6,
+        robot,
+        *[dummy] * 14,
+    )
+    tool = mcp._tool_manager._tools["robot_probe_arm_profiles"]
+
+    payload = json.loads(await tool.fn(profile_names=[]))
+
+    assert payload["ok"] is True
+    data = payload["data"]
+    assert data["profile_names"] == []
+    assert data["requested_count"] == 0
+    assert data["count"] == 0
+    assert data["results"] == []
+    assert data["mcp_controllability_counts"] == {}
+    assert client.calls == []

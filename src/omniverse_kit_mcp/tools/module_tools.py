@@ -8,7 +8,10 @@ Source of truth for the tool name set is
 from __future__ import annotations
 
 import json
+import sys
+import time
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -72,6 +75,11 @@ from omniverse_kit_mcp.types.kit_command import (
 from omniverse_kit_mcp.types.lakehouse import LakehouseDatasetRef, LakehouseQueryRequest
 from omniverse_kit_mcp.types.robot import (
     JointPositionsSetRequest,
+    RobotArmProfileProbeRequest,
+    RobotArmProfileProbeResult,
+    RobotArmProfilesProbeRequest,
+    RobotArmProfilesProbeResult,
+    RobotArmProfilesResult,
     RobotDrivePhysicsRequest,
     RobotFrankaPickPlaceDemoRequest,
     RobotFrankaPickPlaceRequest,
@@ -151,6 +159,15 @@ from omniverse_kit_mcp.types.viewport import (
 )
 from omniverse_kit_mcp.types.window import WindowCaptureRequest
 
+_MCP_SERVER_IMPORT_EPOCH_MS = int(time.time() * 1000)
+_MCP_FRESHNESS_MODULES = (
+    "omniverse_kit_mcp.tools.module_tools",
+    "omniverse_kit_mcp.modules.robot_module",
+    "omniverse_kit_mcp.robot_arm_profiles",
+    "omniverse_kit_mcp.types.robot",
+    "omniverse_kit_mcp.mcp.prompts",
+)
+
 
 def register_module_tools(
     mcp: FastMCP,
@@ -181,6 +198,11 @@ def register_module_tools(
     # ------------------------------------------------------------------
     # Process control — Kit application lifecycle (Isaac Sim / USD Composer)
     # ------------------------------------------------------------------
+
+    @mcp.tool()
+    async def mcp_runtime_info() -> str:
+        """Report MCP import freshness without host-local paths or process identifiers: source mtimes, registered tool count, robot probe timeout defaults, whether robot probe result fields include mcp_controllability/probe_capability_level/pick-place boundary fields, and whether batch probe results include summary fields. If this tool is absent or reports stale source files, restart the MCP host before live result-shape validation."""
+        return json.dumps(_mcp_runtime_info_payload(mcp), indent=2, ensure_ascii=False, default=str)
 
     @mcp.tool()
     async def kit_app_start() -> str:
@@ -587,9 +609,69 @@ def register_module_tools(
 
     @mcp.tool()
     async def robot_list_arm_profiles() -> str:
-        """List curated built-in Isaac Sim 6.0 robot arm profiles with asset URL, controller strategy, support status, and evidence. Use before multi-arm pick/place work."""
+        """List curated built-in Isaac Sim 6.0 robot arm profiles with asset URL, controller strategy, support status, evidence, recommended dynamic-vs-static probe groups and per-profile probe-mode reasons, known dynamic-timeout probe hazards, and known pick/place playback blockers. Use before multi-arm pick/place or batch probe work."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.list_arm_profiles(meta)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_probe_arm_profile(
+        profile_name: str,
+        prim_path: str | None = None,
+        reset_stage: bool = True,
+        safe_nudge: bool = True,
+        cleanup: bool = True,
+        dynamic_checks: bool = True,
+        static_only_for_known_dynamic_timeouts: bool = False,
+        timeout_s: float | None = 90.0,
+    ) -> str:
+        """Probe one built-in arm profile for MCP manipulation readiness: load, articulation, joint config/read, safe joint nudge, gripper, IK, and EE pose. Returns mcp_controllability plus probe_capability_level/probe_capability_level_name so callers can distinguish dynamic joint-control proof from read-only, static-metadata, or blocked evidence. Probe rows also return probe_proves_pick_place=false plus pick_place_validation_status/reason; probe levels are capped below pick/place validation. timeout_s defaults to 90 seconds to record slow profiles instead of hanging the MCP caller; pass null only for deliberate unbounded diagnostics. Set dynamic_checks=false for load/articulation/static-metadata hazard triage. Set static_only_for_known_dynamic_timeouts=true to route profiles with durable live dynamic-timeout evidence to static-only hazard rows; this does not prove joint control or pick/place."""
+        meta = make_meta(ModuleName.ROBOT)
+        request = RobotArmProfileProbeRequest(
+            profile_name=profile_name,
+            prim_path=prim_path,
+            reset_stage=reset_stage,
+            safe_nudge=safe_nudge,
+            cleanup=cleanup,
+            dynamic_checks=dynamic_checks,
+            static_only_for_known_dynamic_timeouts=(
+                static_only_for_known_dynamic_timeouts
+            ),
+            timeout_s=timeout_s,
+        )
+        result = await robot.probe_arm_profile(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_probe_arm_profiles(
+        profile_names: list[str] | None = None,
+        status_filter: list[str] | None = None,
+        family_filter: list[str] | None = None,
+        limit: int | None = None,
+        reset_stage_per_profile: bool = True,
+        safe_nudge: bool = True,
+        cleanup: bool = True,
+        dynamic_checks: bool = True,
+        static_only_for_known_dynamic_timeouts: bool = False,
+        per_profile_timeout_s: float | None = 90.0,
+        batch_timeout_s: float | None = 105.0,
+    ) -> str:
+        """Probe multiple built-in arm profiles sequentially to build a capability matrix. Omit profile_names to probe the catalog; pass profile_names to probe exact profiles in order, where an explicit empty list selects no profiles and unknown names are recorded as row-level hard errors instead of failing the whole batch. Each row returns mcp_controllability plus probe_capability_level/probe_capability_level_name so callers can distinguish dynamic joint-control proof from read-only, static-metadata, timeout, or batch-aborted evidence; each row also returns probe_proves_pick_place=false plus pick_place_validation_status/reason. The batch result includes triage summary counts/profile lists, including mcp_controllability_counts, mcp_controllability_profiles, probe_capability_level_name_counts, probe_capability_level_name_profiles, pick_place_validation_status_counts, pick_place_validation_status_profiles, unsupported_capability_counts, ik_target_failure_profiles, batch_timeout_profiles, batch_aborted_profiles, and lifecycle_recovery_profiles for rows that require host recovery before more live probes. Probe levels are capped below pick/place validation. Filters accept support_status and family values; dynamic_checks=false records load/articulation/static-metadata rows. static_only_for_known_dynamic_timeouts routes profiles with durable live dynamic-timeout evidence to static-only rows and reports them in known_dynamic_timeout_routed_profiles; full dynamic probes remain bounded per profile/batch."""
+        meta = make_meta(ModuleName.ROBOT)
+        request = RobotArmProfilesProbeRequest(
+            profile_names=tuple(profile_names) if profile_names is not None else None,
+            status_filter=tuple(status_filter) if status_filter else None,
+            family_filter=tuple(family_filter) if family_filter else None,
+            limit=limit,
+            reset_stage_per_profile=reset_stage_per_profile,
+            safe_nudge=safe_nudge,
+            cleanup=cleanup,
+            dynamic_checks=dynamic_checks,
+            static_only_for_known_dynamic_timeouts=static_only_for_known_dynamic_timeouts,
+            per_profile_timeout_s=per_profile_timeout_s,
+            batch_timeout_s=batch_timeout_s,
+        )
+        result = await robot.probe_arm_profiles(meta, request)
         return _serialize(result)
 
     @mcp.tool()
@@ -622,6 +704,13 @@ def register_module_tools(
         """Read drive stiffness/damping/max_force + position lower/upper limits + max joint velocity per DOF. Symmetric readback for set_joint_positions — diagnose IK / drive_physics anomalies (drive too soft, target outside limits, velocity capped). Source field reports backend (dof_properties / usd_drive_api fallback)."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_joint_config(meta, prim_path)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def robot_get_joint_config_static(prim_path: str) -> str:
+        """Read static UsdPhysics joint metadata without simulation_play. Diagnostic only: USD prim traversal order is not write-order proof for set_joint_positions."""
+        meta = make_meta(ModuleName.ROBOT)
+        result = await robot.get_joint_config_static(meta, prim_path)
         return _serialize(result)
 
     @mcp.tool()
@@ -694,7 +783,7 @@ def register_module_tools(
         robot_description: str = "Franka",
         end_effector_frame: str | None = None,
     ) -> str:
-        """Solve Lula IK for end-effector pose [x,y,z,qw,qx,qy,qz]; write joint positions. Franka-only; other robot_description → 400. end_effector_frame overrides URDF frame."""
+        """Solve Lula IK for a shipped robot description and end-effector pose [x,y,z,qw,qx,qy,qz]; write joint positions. Use robot_list_arm_profiles for supported robot_description values and frame hints."""
         meta = make_meta(ModuleName.ROBOT)
         pose = tuple(float(v) for v in target_pose)
         if len(pose) != 7:
@@ -779,6 +868,9 @@ def register_module_tools(
         object_size: float = 0.04,
         object_asset_url: str | None = None,
         grid_asset_url: str | None = None,
+        max_grasp_width_m: float | None = 0.08,
+        fit_clearance_m: float = 0.005,
+        robot_description: str = "Franka",
         max_steps: int = 1800,
         position_tolerance: float = 0.05,
         lift_height_tolerance: float = 0.03,
@@ -790,7 +882,7 @@ def register_module_tools(
         create_demo_scene: bool = True,
         reset_on_play: bool = True,
     ) -> str:
-        """Install a persistent Franka pick/place demo that advances from Isaac Sim GUI Play or simulation_play. Uses official PickPlaceController/RMPflow/ParallelGripper; no kinematic object carry."""
+        """Install a low-level Franka-family pick/place playback demo for intentional proof diagnostics. The robot must already be loaded; this bypasses profile support-status routing, uses official PickPlaceController/RMPflow/ParallelGripper, and never promotes a profile by itself. Stop and recover the live host if playback step/status/log calls time out."""
         meta = make_meta(ModuleName.ROBOT)
         target = target_position or [0.45, -0.35, 0.02575]
         initial = object_initial_position or [0.3, 0.35, 0.02575]
@@ -812,6 +904,9 @@ def register_module_tools(
             object_size=float(object_size),
             object_asset_url=object_asset_url,
             grid_asset_url=grid_asset_url,
+            max_grasp_width_m=max_grasp_width_m,
+            fit_clearance_m=float(fit_clearance_m),
+            robot_description=robot_description,
             picking_position=(
                 tuple(float(v) for v in picking_position)
                 if picking_position is not None
@@ -840,7 +935,7 @@ def register_module_tools(
 
     @mcp.tool()
     async def robot_install_pick_place_playback_demo(
-        profile_name: str = "franka_panda",
+        profile_name: str = "franka_fr3",
         robot_prim_path: str = "/World/Franka",
         object_prim_path: str = "/World/PickCube",
         target_position: list[float] | None = None,
@@ -859,7 +954,7 @@ def register_module_tools(
         create_demo_scene: bool = True,
         reset_on_play: bool = True,
     ) -> str:
-        """Install a profile-selected pick/place playback demo. franka_panda is validated; Franka-family candidates may run for live proof but remain candidate_pick_place; other unsupported arms return status='unsupported'."""
+        """Install a profile-selected pick/place playback demo. Only validated_pick_place profiles route to playback; candidate/IK/profile-only arms return status='unsupported' with blocker diagnostics until durable live proof exists."""
         meta = make_meta(ModuleName.ROBOT)
         target = target_position or [0.45, -0.35, 0.02575]
         initial = object_initial_position or [0.3, 0.35, 0.02575]
@@ -916,10 +1011,10 @@ def register_module_tools(
         return _serialize(result)
 
     @mcp.tool()
-    async def robot_get_pick_place_demo_status() -> str:
-        """Return installed Franka pick/place playback demo status: idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event, and last_error."""
+    async def robot_get_pick_place_demo_status(timeout_s: float | None = 10.0) -> str:
+        """Return installed Franka pick/place playback demo status with a caller-side timeout; includes idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event, diagnostics.playback_progress with approach/contact windows, diagnostic end-effector offset deltas, bounded next-offset recommendations, and last_error."""
         meta = make_meta(ModuleName.ROBOT)
-        result = await robot.get_pick_place_demo_status(meta)
+        result = await robot.get_pick_place_demo_status(meta, timeout_s=timeout_s)
         return _serialize(result)
 
     @mcp.tool()
@@ -2512,3 +2607,108 @@ def _serialize(result: Any) -> str:
     if hasattr(result, "__dataclass_fields__"):
         return json.dumps(asdict(result), indent=2, ensure_ascii=False, default=str)
     return json.dumps(result, indent=2, ensure_ascii=False, default=str)
+
+
+def _mcp_runtime_info_payload(mcp: FastMCP) -> dict[str, Any]:
+    project_root = Path(__file__).resolve().parents[3]
+    module_infos = []
+    stale_modules: list[str] = []
+    for module_name in _MCP_FRESHNESS_MODULES:
+        module = sys.modules.get(module_name)
+        path_raw = getattr(module, "__file__", None) if module is not None else None
+        path = Path(path_raw).resolve() if path_raw else None
+        mtime_ms = int(path.stat().st_mtime * 1000) if path and path.exists() else None
+        newer_than_import = (
+            mtime_ms is not None and mtime_ms > _MCP_SERVER_IMPORT_EPOCH_MS
+        )
+        relative_path = None
+        if path is not None:
+            try:
+                relative_path = path.relative_to(project_root).as_posix()
+            except ValueError:
+                relative_path = path.name
+        if newer_than_import:
+            stale_modules.append(module_name)
+        module_infos.append({
+            "module": module_name,
+            "loaded": module is not None,
+            "source": relative_path,
+            "file_mtime_epoch_ms": mtime_ms,
+            "newer_than_mcp_import": newer_than_import,
+        })
+
+    robot_probe_result_fields = tuple(RobotArmProfileProbeResult.__dataclass_fields__)
+    robot_probe_batch_result_fields = tuple(
+        RobotArmProfilesProbeResult.__dataclass_fields__
+    )
+    robot_arm_profiles_result_fields = tuple(
+        RobotArmProfilesResult.__dataclass_fields__
+    )
+    robot_probe_request_fields = RobotArmProfileProbeRequest.__dataclass_fields__
+    robot_probe_batch_request_fields = RobotArmProfilesProbeRequest.__dataclass_fields__
+    robot_probe_batch_summary_fields = {
+        "mcp_controllability_counts",
+        "mcp_controllability_profiles",
+        "probe_capability_level_name_counts",
+        "probe_capability_level_name_profiles",
+        "pick_place_validation_status_counts",
+        "pick_place_validation_status_profiles",
+        "unsupported_capability_counts",
+        "timed_out_profiles",
+        "batch_timeout_profiles",
+        "batch_aborted_profiles",
+        "blocked_profiles",
+        "hard_failure_profiles",
+        "lifecycle_recovery_profiles",
+        "unsupported_capability_profiles",
+        "ik_target_failure_profiles",
+        "static_metadata_profiles",
+        "known_dynamic_timeout_routed_profiles",
+        "dynamic_joint_control_profiles",
+    }
+    return {
+        "ok": True,
+        "module_tools_import_epoch_ms": _MCP_SERVER_IMPORT_EPOCH_MS,
+        "tool_count": len(getattr(mcp, "_tool_manager")._tools),
+        "has_mcp_runtime_info_tool": "mcp_runtime_info" in getattr(mcp, "_tool_manager")._tools,
+        "robot_probe_result_fields": list(robot_probe_result_fields),
+        "robot_probe_batch_result_fields": list(robot_probe_batch_result_fields),
+        "robot_arm_profiles_result_fields": list(robot_arm_profiles_result_fields),
+        "robot_probe_request_fields": list(robot_probe_request_fields),
+        "robot_probe_batch_request_fields": list(robot_probe_batch_request_fields),
+        "robot_probe_arm_profile_timeout_default_s": (
+            robot_probe_request_fields["timeout_s"].default
+        ),
+        "robot_probe_arm_profiles_per_profile_timeout_default_s": (
+            robot_probe_batch_request_fields["per_profile_timeout_s"].default
+        ),
+        "robot_probe_arm_profiles_batch_timeout_default_s": (
+            robot_probe_batch_request_fields["batch_timeout_s"].default
+        ),
+        "robot_probe_result_has_mcp_controllability": (
+            "mcp_controllability" in robot_probe_result_fields
+            and "mcp_controllability_reason" in robot_probe_result_fields
+        ),
+        "robot_probe_result_has_probe_capability_level": (
+            "probe_capability_level" in robot_probe_result_fields
+            and "probe_capability_level_name" in robot_probe_result_fields
+            and "probe_capability_level_reason" in robot_probe_result_fields
+        ),
+        "robot_probe_result_has_pick_place_validation_boundary": (
+            "probe_proves_pick_place" in robot_probe_result_fields
+            and "pick_place_validation_status" in robot_probe_result_fields
+            and "pick_place_validation_reason" in robot_probe_result_fields
+        ),
+        "robot_probe_batch_result_has_summary": (
+            robot_probe_batch_summary_fields <= set(robot_probe_batch_result_fields)
+        ),
+        "source_modules": module_infos,
+        "source_newer_than_import": bool(stale_modules),
+        "stale_source_modules": stale_modules,
+        "restart_required_for_latest_mcp_code": bool(stale_modules),
+        "note": (
+            "MCP hosts cache omniverse_kit_mcp imports; restart the MCP host "
+            "when source files are newer than module_tools_import_epoch_ms or "
+            "when expected tools/result fields are absent."
+        ),
+    }

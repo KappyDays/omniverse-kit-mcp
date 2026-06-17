@@ -360,6 +360,9 @@ class MockIsaacRestClient:
 
     async def robot_get_joint_positions(self, prim_path: str) -> dict:
         self.calls.append(("robot_get_joint_positions", {"prim_path": prim_path}))
+        sequence = self.responses.get("robot_get_joint_positions_sequence")
+        if sequence:
+            return sequence.pop(0)
         return self.responses.get(
             "robot_get_joint_positions",
             {"ok": True, "prim_path": prim_path, "positions": [0.0] * 7},
@@ -373,6 +376,28 @@ class MockIsaacRestClient:
                 "ok": True,
                 "prim_path": prim_path,
                 "source": "dof_properties",
+                "dof_count": 7,
+                "dof_names": [f"panda_joint{i + 1}" for i in range(7)],
+                "joint_types": ["RevoluteJoint"] * 7,
+                "stiffness": [400.0] * 7,
+                "damping": [40.0] * 7,
+                "max_force": [87.0] * 7,
+                "lower_limits": [-2.9, -1.8, -2.9, -3.0, -2.9, -0.1, -2.9],
+                "upper_limits": [2.9, 1.8, 2.9, 0.0, 2.9, 3.7, 2.9],
+                "max_velocity": [2.0] * 7,
+            },
+        )
+
+    async def robot_get_joint_config_static(self, prim_path: str) -> dict:
+        self.calls.append(("robot_get_joint_config_static", {"prim_path": prim_path}))
+        return self.responses.get(
+            "robot_get_joint_config_static",
+            {
+                "ok": True,
+                "prim_path": prim_path,
+                "source": "usd_joint_prims_static",
+                "static_only": True,
+                "order_reliable": False,
                 "dof_count": 7,
                 "dof_names": [f"panda_joint{i + 1}" for i in range(7)],
                 "joint_types": ["RevoluteJoint"] * 7,
@@ -612,6 +637,16 @@ class MockIsaacRestClient:
                         "limit_m": 0.075,
                         "measured_m": 0.04,
                     },
+                    "playback_progress": {
+                        "current_event": 0,
+                        "current_event_ticks": 0,
+                        "event_tick_counts": {},
+                        "event_first_steps": {},
+                        "event_last_steps": {},
+                        "sample_interval_steps": 30,
+                        "sample_limit": 32,
+                        "samples": [],
+                    },
                 },
                 "last_error": None,
             },
@@ -653,6 +688,35 @@ class MockIsaacRestClient:
                         "axis": "x",
                         "limit_m": 0.075,
                         "measured_m": 0.04,
+                    },
+                    "playback_progress": {
+                        "current_event": 9,
+                        "current_event_ticks": 12,
+                        "event_tick_counts": {"0": 60, "4": 80, "9": 12},
+                        "event_first_steps": {"0": 1, "4": 260, "9": 609},
+                        "event_last_steps": {"0": 60, "4": 339, "9": 620},
+                        "sample_interval_steps": 30,
+                        "sample_limit": 32,
+                        "samples": [
+                            {
+                                "step": 1,
+                                "controller_event": 0,
+                                "timeline_time": 0.01,
+                                "status": "picking",
+                                "object_center": [0.3, 0.35, 0.02575],
+                                "lift_delta": 0.0,
+                                "distance_to_target": 0.716,
+                            },
+                            {
+                                "step": 620,
+                                "controller_event": 9,
+                                "timeline_time": 10.33,
+                                "status": "placing",
+                                "object_center": [0.45, -0.35, 0.02575],
+                                "lift_delta": 0.08,
+                                "distance_to_target": 0.01,
+                            },
+                        ],
                     },
                 },
                 "last_error": None,

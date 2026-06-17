@@ -504,6 +504,11 @@ class IsaacRestClient:
             "GET", f"{BASE_PATH}/robot/joint_config", params={"prim_path": prim_path}
         )
 
+    async def robot_get_joint_config_static(self, prim_path: str) -> dict[str, Any]:
+        return await self._request(
+            "GET", f"{BASE_PATH}/robot/joint_config_static", params={"prim_path": prim_path}
+        )
+
     async def robot_set_joint_positions(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/robot/joint_positions", json=request)
 

@@ -2,11 +2,11 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 139
+**Tool count**: 143
 
 ## Table of contents
 
-- [Process — Kit app lifecycle](#process--kit-app-lifecycle) — 3 tools
+- [Process — MCP / Kit app lifecycle](#process--mcp--kit-app-lifecycle) — 5 tools
 - [Stage — READ / ASSERT / file & selection](#stage--read--assert--file--selection) — 6 tools
 - [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
 - [Simulation — timeline](#simulation--timeline) — 4 tools
@@ -14,15 +14,15 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
 - [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 13 tools
 - [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
-- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 16 tools
+- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 19 tools
 - [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
 - [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 2 tools
 - [Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)](#character--behavioragent--ira--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (48)
+- Unclassified (47)
 
-## Process — Kit app lifecycle
+## Process — MCP / Kit app lifecycle
 
 ### `kit_app_restart`
 
@@ -53,6 +53,29 @@ kit_app_stop() -> 'str'
 
 Stop the Kit application (kit.exe) of this MCP instance only — other instances and other app
 profiles are unaffected.
+
+### `mcp_runtime_info`
+
+```python
+mcp_runtime_info() -> 'str'
+```
+
+Report MCP import freshness without host-local paths or process identifiers: source mtimes,
+registered tool count, robot probe timeout defaults, whether robot probe result fields include
+mcp_controllability/probe_capability_level/pick-place boundary fields, and whether batch probe
+results include summary fields. If this tool is absent or reports stale source files, restart
+the MCP host before live result-shape validation.
+
+### `process_list_kit_instances`
+
+```python
+process_list_kit_instances() -> 'str'
+```
+
+Enumerate ALL running kit.exe processes (read-only). Includes MCP-spawned, other MCP servers,
+and user GUI launches. Per-instance: pid, command_line, start_time_utc, ext_port, app_profile,
+is_this_mcp_instance. Use BEFORE destructive ops (Kit user.config.json edit, settings reset,
+force reload) — external instances overwrite settings on shutdown. Windows-only.
 
 ## Stage — READ / ASSERT / file & selection
 
@@ -982,6 +1005,21 @@ too soft, target outside limits, velocity capped). Source field reports backend 
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
 
+### `robot_get_joint_config_static`
+
+```python
+robot_get_joint_config_static(prim_path: 'str') -> 'str'
+```
+
+Read static UsdPhysics joint metadata without simulation_play. Diagnostic only: USD prim
+traversal order is not write-order proof for set_joint_positions.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+
 ### `robot_get_joint_positions`
 
 ```python
@@ -999,12 +1037,19 @@ Get joint positions of an articulation (via SingleArticulation).
 ### `robot_get_pick_place_demo_status`
 
 ```python
-robot_get_pick_place_demo_status() -> 'str'
+robot_get_pick_place_demo_status(timeout_s: 'float | None' = 10.0) -> 'str'
 ```
 
-Return installed Franka pick/place playback demo status:
-idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event, and
-last_error.
+Return installed Franka pick/place playback demo status with a caller-side timeout; includes
+idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event,
+diagnostics.playback_progress with approach/contact windows, diagnostic end-effector offset
+deltas, bounded next-offset recommendations, and last_error.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `timeout_s` | `number \| None` | `10.0` |  |
 
 ### `robot_gripper_control`
 
@@ -1026,12 +1071,13 @@ names. Requires simulation playing.
 ### `robot_install_franka_pick_place_playback_demo`
 
 ```python
-robot_install_franka_pick_place_playback_demo(robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.04, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+robot_install_franka_pick_place_playback_demo(robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.04, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_grasp_width_m: 'float | None' = 0.08, fit_clearance_m: 'float' = 0.005, robot_description: 'str' = 'Franka', max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
 ```
 
-Install a persistent Franka pick/place demo that advances from Isaac Sim GUI Play or
-simulation_play. Uses official PickPlaceController/RMPflow/ParallelGripper; no kinematic object
-carry.
+Install a low-level Franka-family pick/place playback demo for intentional proof diagnostics.
+The robot must already be loaded; this bypasses profile support-status routing, uses official
+PickPlaceController/RMPflow/ParallelGripper, and never promotes a profile by itself. Stop and
+recover the live host if playback step/status/log calls time out.
 
 **Parameters**
 
@@ -1044,6 +1090,9 @@ carry.
 | `object_size` | `number` | `0.04` |  |
 | `object_asset_url` | `string \| None` | `None` |  |
 | `grid_asset_url` | `string \| None` | `None` |  |
+| `max_grasp_width_m` | `number \| None` | `0.08` |  |
+| `fit_clearance_m` | `number` | `0.005` |  |
+| `robot_description` | `string` | `'Franka'` |  |
 | `max_steps` | `integer` | `1800` |  |
 | `position_tolerance` | `number` | `0.05` |  |
 | `lift_height_tolerance` | `number` | `0.03` |  |
@@ -1058,18 +1107,18 @@ carry.
 ### `robot_install_pick_place_playback_demo`
 
 ```python
-robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_panda', robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.04, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
+robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_fr3', robot_prim_path: 'str' = '/World/Franka', object_prim_path: 'str' = '/World/PickCube', target_position: 'list[float] | None' = None, object_initial_position: 'list[float] | None' = None, object_size: 'float' = 0.04, object_asset_url: 'str | None' = None, grid_asset_url: 'str | None' = None, max_steps: 'int' = 1800, position_tolerance: 'float' = 0.05, lift_height_tolerance: 'float' = 0.03, picking_position: 'list[float] | None' = None, end_effector_initial_height: 'float | None' = None, end_effector_offset: 'list[float] | None' = None, end_effector_orientation: 'list[float] | None' = None, events_dt: 'list[float] | None' = None, create_demo_scene: 'bool' = True, reset_on_play: 'bool' = True) -> 'str'
 ```
 
-Install a profile-selected pick/place playback demo. franka_panda is validated; Franka-family
-candidates may run for live proof but remain candidate_pick_place; other unsupported arms
-return status='unsupported'.
+Install a profile-selected pick/place playback demo. Only validated_pick_place profiles route
+to playback; candidate/IK/profile-only arms return status='unsupported' with blocker
+diagnostics until durable live proof exists.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
-| `profile_name` | `string` | `'franka_panda'` |  |
+| `profile_name` | `string` | `'franka_fr3'` |  |
 | `robot_prim_path` | `string` | `'/World/Franka'` |  |
 | `object_prim_path` | `string` | `'/World/PickCube'` |  |
 | `target_position` | `list[number] \| None` | `None` |  |
@@ -1095,7 +1144,9 @@ robot_list_arm_profiles() -> 'str'
 ```
 
 List curated built-in Isaac Sim 6.0 robot arm profiles with asset URL, controller strategy,
-support status, and evidence. Use before multi-arm pick/place work.
+support status, evidence, recommended dynamic-vs-static probe groups and per-profile probe-mode
+reasons, known dynamic-timeout probe hazards, and known pick/place playback blockers. Use
+before multi-arm pick/place or batch probe work.
 
 ### `robot_load`
 
@@ -1149,6 +1200,77 @@ job_status(job_id) until status='done'.
 | `target` | `list[number]` | `'—'` | ✓ |
 | `duration_s` | `number` | `1.0` |  |
 
+### `robot_probe_arm_profile`
+
+```python
+robot_probe_arm_profile(profile_name: 'str', prim_path: 'str | None' = None, reset_stage: 'bool' = True, safe_nudge: 'bool' = True, cleanup: 'bool' = True, dynamic_checks: 'bool' = True, static_only_for_known_dynamic_timeouts: 'bool' = False, timeout_s: 'float | None' = 90.0) -> 'str'
+```
+
+Probe one built-in arm profile for MCP manipulation readiness: load, articulation, joint
+config/read, safe joint nudge, gripper, IK, and EE pose. Returns mcp_controllability plus
+probe_capability_level/probe_capability_level_name so callers can distinguish dynamic joint-
+control proof from read-only, static-metadata, or blocked evidence. Probe rows also return
+probe_proves_pick_place=false plus pick_place_validation_status/reason; probe levels are capped
+below pick/place validation. timeout_s defaults to 90 seconds to record slow profiles instead
+of hanging the MCP caller; pass null only for deliberate unbounded diagnostics. Set
+dynamic_checks=false for load/articulation/static-metadata hazard triage. Set
+static_only_for_known_dynamic_timeouts=true to route profiles with durable live dynamic-timeout
+evidence to static-only hazard rows; this does not prove joint control or pick/place.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `profile_name` | `string` | `'—'` | ✓ |
+| `prim_path` | `string \| None` | `None` |  |
+| `reset_stage` | `boolean` | `True` |  |
+| `safe_nudge` | `boolean` | `True` |  |
+| `cleanup` | `boolean` | `True` |  |
+| `dynamic_checks` | `boolean` | `True` |  |
+| `static_only_for_known_dynamic_timeouts` | `boolean` | `False` |  |
+| `timeout_s` | `number \| None` | `90.0` |  |
+
+### `robot_probe_arm_profiles`
+
+```python
+robot_probe_arm_profiles(profile_names: 'list[str] | None' = None, status_filter: 'list[str] | None' = None, family_filter: 'list[str] | None' = None, limit: 'int | None' = None, reset_stage_per_profile: 'bool' = True, safe_nudge: 'bool' = True, cleanup: 'bool' = True, dynamic_checks: 'bool' = True, static_only_for_known_dynamic_timeouts: 'bool' = False, per_profile_timeout_s: 'float | None' = 90.0, batch_timeout_s: 'float | None' = 105.0) -> 'str'
+```
+
+Probe multiple built-in arm profiles sequentially to build a capability matrix. Omit
+profile_names to probe the catalog; pass profile_names to probe exact profiles in order, where
+an explicit empty list selects no profiles and unknown names are recorded as row-level hard
+errors instead of failing the whole batch. Each row returns mcp_controllability plus
+probe_capability_level/probe_capability_level_name so callers can distinguish dynamic joint-
+control proof from read-only, static-metadata, timeout, or batch-aborted evidence; each row
+also returns probe_proves_pick_place=false plus pick_place_validation_status/reason. The batch
+result includes triage summary counts/profile lists, including mcp_controllability_counts,
+mcp_controllability_profiles, probe_capability_level_name_counts,
+probe_capability_level_name_profiles, pick_place_validation_status_counts,
+pick_place_validation_status_profiles, unsupported_capability_counts,
+ik_target_failure_profiles, batch_timeout_profiles, batch_aborted_profiles, and
+lifecycle_recovery_profiles for rows that require host recovery before more live probes. Probe
+levels are capped below pick/place validation. Filters accept support_status and family values;
+dynamic_checks=false records load/articulation/static-metadata rows.
+static_only_for_known_dynamic_timeouts routes profiles with durable live dynamic-timeout
+evidence to static-only rows and reports them in known_dynamic_timeout_routed_profiles; full
+dynamic probes remain bounded per profile/batch.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `profile_names` | `list[string] \| None` | `None` |  |
+| `status_filter` | `list[string] \| None` | `None` |  |
+| `family_filter` | `list[string] \| None` | `None` |  |
+| `limit` | `integer \| None` | `None` |  |
+| `reset_stage_per_profile` | `boolean` | `True` |  |
+| `safe_nudge` | `boolean` | `True` |  |
+| `cleanup` | `boolean` | `True` |  |
+| `dynamic_checks` | `boolean` | `True` |  |
+| `static_only_for_known_dynamic_timeouts` | `boolean` | `False` |  |
+| `per_profile_timeout_s` | `number \| None` | `90.0` |  |
+| `batch_timeout_s` | `number \| None` | `105.0` |  |
+
 ### `robot_reset_pick_place_demo`
 
 ```python
@@ -1190,8 +1312,9 @@ requires physical lift plus final bbox/position validation.
 robot_set_ee_target(prim_path: 'str', target_pose: 'list[float]', robot_description: 'str' = 'Franka', end_effector_frame: 'str | None' = None) -> 'str'
 ```
 
-Solve Lula IK for end-effector pose [x,y,z,qw,qx,qy,qz]; write joint positions. Franka-only;
-other robot_description → 400. end_effector_frame overrides URDF frame.
+Solve Lula IK for a shipped robot description and end-effector pose [x,y,z,qw,qx,qy,qz]; write
+joint positions. Use robot_list_arm_profiles for supported robot_description values and frame
+hints.
 
 **Parameters**
 
@@ -2070,17 +2193,6 @@ Toggle PhysX debug visualization. mode ∈ {collision, joint, mass, off}; clears
 | name | type | default | required |
 |------|------|---------|----------|
 | `mode` | `string` | `'—'` | ✓ |
-
-### `process_list_kit_instances`
-
-```python
-process_list_kit_instances() -> 'str'
-```
-
-Enumerate ALL running kit.exe processes (read-only). Includes MCP-spawned, other MCP servers,
-and user GUI launches. Per-instance: pid, command_line, start_time_utc, ext_port, app_profile,
-is_this_mcp_instance. Use BEFORE destructive ops (Kit user.config.json edit, settings reset,
-force reload) — external instances overwrite settings on shutdown. Windows-only.
 
 ### `replicator_create_writer`
 

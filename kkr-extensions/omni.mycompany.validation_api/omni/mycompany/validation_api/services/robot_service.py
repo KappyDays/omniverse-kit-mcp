@@ -6,7 +6,7 @@ per Extension API rule #7 so the module is safe to import outside Kit.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import importlib
 import logging
 import math
@@ -14,6 +14,11 @@ import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+_PICK_PLACE_PROGRESS_SAMPLE_INTERVAL_STEPS = 30
+_PICK_PLACE_PROGRESS_SAMPLE_LIMIT = 32
+_PICK_PLACE_FAR_CONTACT_BBOX_WIDTH_MULTIPLIER = 1.0
+_PICK_PLACE_DIAGNOSTIC_OFFSET_STEP_LIMIT_M = 0.05
 
 
 @dataclass(frozen=True)
@@ -41,6 +46,7 @@ class _FrankaPickPlaceDemoState:
     object_prim_path: str
     target_position: list[float]
     object_initial_position: list[float]
+    object_bbox_size: list[float]
     initial_joint_positions: Any
     picking_position: list[float]
     explicit_picking_position: bool
@@ -60,11 +66,48 @@ class _FrankaPickPlaceDemoState:
     lifted: bool = False
     initial_object_position: list[float] | None = None
     final_object_position: list[float] | None = None
+    last_object_bbox_center: list[float] | None = None
     final_distance: float = 0.0
     max_lift_delta: float = 0.0
     max_center_z: float = 0.0
     last_error: str | None = None
     last_timeline_time: float = 0.0
+    event_tick_counts: dict[int, int] = field(default_factory=dict)
+    event_first_steps: dict[int, int] = field(default_factory=dict)
+    event_last_steps: dict[int, int] = field(default_factory=dict)
+    progress_samples: list[dict[str, Any]] = field(default_factory=list)
+    max_joint_delta_from_initial: float = 0.0
+    max_action_joint_position_delta: float = 0.0
+    action_joint_positions_seen: bool = False
+    min_end_effector_distance_to_pick: float | None = None
+    min_end_effector_distance_to_target: float | None = None
+    min_end_effector_distance_to_object: float | None = None
+    min_end_effector_xy_distance_to_object: float | None = None
+    min_abs_end_effector_z_distance_to_object: float | None = None
+    signed_end_effector_z_distance_at_min_abs_to_object: float | None = None
+    end_effector_object_delta_at_min_distance: list[float] | None = None
+    end_effector_object_delta_at_min_xy_distance: list[float] | None = None
+    end_effector_object_delta_at_min_abs_z: list[float] | None = None
+    min_end_effector_distance_to_object_during_closed_gripper: float | None = None
+    min_end_effector_xy_distance_to_object_during_closed_gripper: float | None = None
+    min_abs_end_effector_z_distance_to_object_during_closed_gripper: float | None = None
+    signed_end_effector_z_distance_at_min_abs_during_closed_gripper: float | None = None
+    end_effector_object_delta_at_min_distance_during_closed_gripper: list[float] | None = None
+    end_effector_object_delta_at_min_xy_distance_during_closed_gripper: list[float] | None = None
+    end_effector_object_delta_at_min_abs_z_during_closed_gripper: list[float] | None = None
+    max_object_lift_delta_during_closed_gripper: float | None = None
+    max_object_xy_motion_during_closed_gripper: float | None = None
+    end_effector_pose_seen: bool = False
+    gripper_aperture_seen: bool = False
+    action_gripper_aperture_seen: bool = False
+    gripper_closed_on_object_width_seen: bool = False
+    min_gripper_aperture_m: float | None = None
+    max_gripper_aperture_m: float | None = None
+    min_action_gripper_aperture_m: float | None = None
+    max_action_gripper_aperture_m: float | None = None
+    min_gripper_object_width_margin_m: float | None = None
+    min_action_gripper_object_width_margin_m: float | None = None
+    playback_wrapper_refresh_count: int = 0
 
 
 class RobotService:
@@ -276,6 +319,32 @@ class RobotService:
             "max_velocity": max_velocity,
         }
 
+    async def get_joint_config_static(self, prim_path: str) -> dict[str, Any]:
+        """Read USD-authored joint metadata without touching SingleArticulation.
+
+        This is a diagnostic fallback for hazardous profile triage. The returned
+        joint order is USD traversal order, not guaranteed articulation DOF order,
+        so callers must not feed these arrays into joint-position writes.
+        """
+        _assert_articulation(prim_path)
+        usd_data = _read_static_usd_joint_config(prim_path)
+        return {
+            "ok": True,
+            "prim_path": prim_path,
+            "source": "usd_joint_prims_static",
+            "static_only": True,
+            "order_reliable": False,
+            "dof_count": len(usd_data["dof_names"]),
+            "dof_names": usd_data["dof_names"],
+            "joint_types": usd_data["joint_types"],
+            "stiffness": usd_data["stiffness"],
+            "damping": usd_data["damping"],
+            "max_force": usd_data["max_force"],
+            "lower_limits": usd_data["lower_limits"],
+            "upper_limits": usd_data["upper_limits"],
+            "max_velocity": usd_data["max_velocity"],
+        }
+
     async def set_joint_positions(
         self, prim_path: str, positions: list[float]
     ) -> dict[str, Any]:
@@ -456,8 +525,16 @@ class RobotService:
                 f"IK warm-start failed — {prim_path} returned no joint positions"
             )
 
-        # Lula's Franka solver expects 7 arm DOFs (no gripper). Trim warm state.
-        arm_warm = np.array(warm, dtype=np.float32)[:7]
+        solver_joint_names = _lula_solver_joint_names(solver)
+        dof_names = tuple(str(v) for v in (getattr(art, "dof_names", None) or ()))
+        arm_indices = _select_lula_articulation_joint_indices(
+            dof_names=dof_names,
+            solver_joint_names=solver_joint_names,
+            robot_description=robot_description,
+            warm_count=len(warm),
+        )
+        warm_arr = np.array(warm, dtype=np.float32)
+        arm_warm = np.array([warm_arr[i] for i in arm_indices], dtype=np.float32)
 
         target_pos = np.array(target_pose[:3], dtype=np.float32)
         target_quat = np.array(target_pose[3:], dtype=np.float32)
@@ -481,10 +558,11 @@ class RobotService:
             )
 
         # Merge solution (arm DOFs) with current gripper values
-        new_positions = np.array(warm, dtype=np.float32).copy()
+        new_positions = warm_arr.copy()
         sol_arr = np.asarray(sol, dtype=np.float32).reshape(-1)
-        for i in range(min(len(sol_arr), len(new_positions))):
-            new_positions[i] = sol_arr[i]
+        for i, articulation_index in enumerate(arm_indices[: len(sol_arr)]):
+            if articulation_index < len(new_positions):
+                new_positions[articulation_index] = sol_arr[i]
         _apply_joint_positions(art, new_positions)
 
         return {
@@ -496,6 +574,8 @@ class RobotService:
             "lula_import_path": import_path,
             "ik_success": True,
             "solution": [float(v) for v in sol_arr.tolist()],
+            "lula_joint_names": list(solver_joint_names),
+            "articulation_joint_indices": [int(v) for v in arm_indices],
         }
 
     async def get_ee_pose(
@@ -608,6 +688,18 @@ class RobotService:
         )
         diagnostics["end_effector_initial_height"] = resolved_hover_height
         diagnostics["end_effector_initial_height_source"] = hover_height_source
+        diagnostics["requested_pick_strategy"] = _franka_pick_place_strategy_diagnostics(
+            picking_position_source=picking_position_source,
+            picking_position=picking_position,
+            object_initial_position=list(initial_center),
+            target_position=target_position,
+            end_effector_initial_height=resolved_hover_height,
+            end_effector_initial_height_source=hover_height_source,
+            end_effector_offset=end_effector_offset,
+            end_effector_orientation=end_effector_orientation,
+            events_dt=events_dt,
+            max_steps=max_steps,
+        )
 
         controller = _create_franka_pick_place_controller(
             classes=classes,
@@ -807,6 +899,15 @@ class RobotService:
             picking_position_source="explicit" if explicit_picking_position else "bbox_center",
         )
         diagnostics["end_effector_initial_height"] = resolved_hover_height
+        diagnostics["end_effector_initial_height_source"] = (
+            "explicit"
+            if request.get("end_effector_initial_height") is not None
+            else (
+                "official_default"
+                if math.isclose(resolved_hover_height, 0.3, rel_tol=0.0, abs_tol=1e-9)
+                else "auto_above_pick_place"
+            )
+        )
         diagnostics["playback_mode"] = "app_update_subscription"
 
         end_effector_offset_raw = request.get("end_effector_offset")
@@ -824,6 +925,19 @@ class RobotService:
         events_dt = request.get("events_dt")
         if events_dt is not None:
             events_dt = [float(v) for v in events_dt]
+        diagnostics["requested_pick_strategy"] = _franka_pick_place_strategy_diagnostics(
+            picking_position_source="explicit" if explicit_picking_position else "bbox_center",
+            picking_position=picking_position,
+            object_initial_position=object_initial_position,
+            target_position=target_position,
+            end_effector_initial_height=resolved_hover_height,
+            end_effector_initial_height_source=diagnostics["end_effector_initial_height_source"],
+            end_effector_offset=end_effector_offset,
+            end_effector_orientation=end_effector_orientation,
+            events_dt=events_dt,
+            max_steps=int(request.get("max_steps", 1800)),
+            reset_on_play=bool(request.get("reset_on_play", True)),
+        )
 
         controller = _create_franka_pick_place_controller(
             classes=classes,
@@ -859,6 +973,7 @@ class RobotService:
             object_prim_path=object_prim_path,
             target_position=target_position,
             object_initial_position=object_initial_position,
+            object_bbox_size=[float(v) for v in object_bbox_size],
             initial_joint_positions=initial_joints,
             picking_position=picking_position,
             explicit_picking_position=explicit_picking_position,
@@ -872,6 +987,7 @@ class RobotService:
             reset_on_play=bool(request.get("reset_on_play", True)),
             initial_object_position=list(initial_bbox["center"]),
             final_object_position=list(initial_bbox["center"]),
+            last_object_bbox_center=list(initial_bbox["center"]),
             max_center_z=float(initial_bbox["center"][2]),
         )
         return _franka_pick_place_demo_status(self._pick_place_demo)
@@ -1373,6 +1489,53 @@ def _build_franka_pick_place_diagnostics(
     }
 
 
+def _franka_pick_place_strategy_diagnostics(
+    *,
+    picking_position_source: str,
+    picking_position: object,
+    object_initial_position: object,
+    target_position: object,
+    end_effector_initial_height: float,
+    end_effector_initial_height_source: str,
+    end_effector_offset: object | None,
+    end_effector_orientation: object | None,
+    events_dt: object | None,
+    max_steps: int,
+    reset_on_play: bool | None = None,
+) -> dict[str, Any]:
+    diagnostics: dict[str, Any] = {
+        "picking_position_source": str(picking_position_source),
+        "picking_position": _float_list_or_none(picking_position),
+        "object_initial_position": _float_list_or_none(object_initial_position),
+        "target_position": _float_list_or_none(target_position),
+        "end_effector_initial_height": float(end_effector_initial_height),
+        "end_effector_initial_height_source": str(end_effector_initial_height_source),
+        "end_effector_offset": _float_list_or_none(end_effector_offset),
+        "end_effector_orientation": _float_list_or_none(end_effector_orientation),
+        "events_dt": _float_list_or_none(events_dt),
+        "max_steps": int(max_steps),
+    }
+    if reset_on_play is not None:
+        diagnostics["reset_on_play"] = bool(reset_on_play)
+    return diagnostics
+
+
+def _float_list_or_none(value: object | None) -> list[float] | None:
+    if value is None:
+        return None
+    return [float(v) for v in value]  # type: ignore[union-attr]
+
+
+def _finite_float_triplet_or_none(value: object | None) -> list[float] | None:
+    values = _float_list_or_none(value)
+    if values is None or len(values) < 3:
+        return None
+    triplet = [float(v) for v in values[:3]]
+    if not all(math.isfinite(v) for v in triplet):
+        return None
+    return triplet
+
+
 def _resolve_franka_pick_place_hover_height(
     *,
     explicit_height: float | None,
@@ -1476,13 +1639,106 @@ def _create_franka_parallel_gripper(
         joint_closed_positions=np.array([0.0, 0.0], dtype=np.float32),
         action_deltas=None if use_absolute_targets else np.array([0.05, 0.05], dtype=np.float32),
     )
+    _initialize_franka_parallel_gripper(gripper, robot)
+    return gripper
+
+
+def _initialize_franka_parallel_gripper(gripper: Any, robot: Any) -> None:
+    cached_positions = robot.get_joint_positions()
+    if cached_positions is not None:
+        setattr(gripper, "_mcp_last_joint_positions", cached_positions)
+
+    def _get_joint_positions_with_cache() -> Any:
+        positions = robot.get_joint_positions()
+        if positions is not None:
+            setattr(gripper, "_mcp_last_joint_positions", positions)
+            return positions
+        return getattr(gripper, "_mcp_last_joint_positions", None)
+
     gripper.initialize(
         articulation_apply_action_func=robot.apply_action,
-        get_joint_positions_func=robot.get_joint_positions,
+        get_joint_positions_func=_get_joint_positions_with_cache,
         set_joint_positions_func=robot.set_joint_positions,
         dof_names=list(robot.dof_names or []),
     )
-    return gripper
+
+
+def _franka_parallel_gripper_has_joint_indices(gripper: Any) -> bool:
+    """Return whether Isaac's ParallelGripper has resolved articulation DOFs.
+
+    Isaac Sim stores these as a private field, with a misspelled
+    ``_joint_dof_indicies`` name in some releases. If the field is absent, treat
+    the gripper as ready so compatible releases without that private cache keep
+    working.
+    """
+    saw_index_cache = False
+    for attr_name in ("_joint_dof_indicies", "_joint_dof_indices"):
+        if not hasattr(gripper, attr_name):
+            continue
+        saw_index_cache = True
+        value = getattr(gripper, attr_name)
+        if value is None:
+            return False
+        try:
+            if len(value) == 0:
+                return False
+        except TypeError:
+            pass
+    return True
+
+
+def _ensure_franka_pick_place_demo_gripper_ready(
+    state: _FrankaPickPlaceDemoState,
+) -> bool:
+    """Refresh demo gripper/controller wrappers after physics initializes.
+
+    A Stop -> reset -> Play proof cycle can recreate the articulation/gripper
+    while the timeline is stopped. On some Isaac Sim builds, ParallelGripper then
+    keeps ``_joint_dof_indicies=None`` until physics is live, and the official
+    PickPlaceController later fails inside ``gripper.forward("close")``. Once
+    joint positions are available again, reinitializing the gripper is enough;
+    if not, rebuild the wrapper/controller on the now-live articulation.
+    """
+    if _franka_parallel_gripper_has_joint_indices(state.gripper):
+        return False
+
+    try:
+        _ensure_initialized(state.robot)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("demo articulation initialize before gripper refresh failed: %s", exc)
+    try:
+        _initialize_franka_parallel_gripper(state.gripper, state.robot)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("demo gripper reinitialize failed: %s", exc)
+
+    if not _franka_parallel_gripper_has_joint_indices(state.gripper):
+        classes = _resolve_official_franka_pick_place_classes()
+        state.robot = classes.single_articulation(state.robot_prim_path)
+        _ensure_initialized(state.robot)
+        state.gripper = _create_franka_parallel_gripper(
+            classes,
+            state.robot,
+            state.robot_prim_path,
+            robot_description=state.robot_description,
+        )
+        events_dt = state.request.get("events_dt")
+        if events_dt is not None:
+            events_dt = [float(v) for v in events_dt]
+        state.controller = _create_franka_pick_place_controller(
+            classes=classes,
+            robot=state.robot,
+            gripper=state.gripper,
+            hover_height=state.end_effector_initial_height,
+            events_dt=events_dt,
+            robot_description=state.robot_description,
+        )
+
+    if not _franka_parallel_gripper_has_joint_indices(state.gripper):
+        raise RuntimeError("Franka playback gripper DOF indices are unavailable")
+
+    state.playback_wrapper_refresh_count += 1
+    state.diagnostics["playback_wrapper_refresh_count"] = state.playback_wrapper_refresh_count
+    return True
 
 
 def _create_franka_pick_place_controller(
@@ -1554,6 +1810,9 @@ def _create_fr3_pick_place_controller(
 
 def _open_franka_gripper(robot: Any, gripper: Any) -> None:
     try:
+        positions = robot.get_joint_positions()
+        if positions is not None:
+            setattr(gripper, "_mcp_last_joint_positions", positions)
         robot.apply_action(gripper.forward(action="open"))
     except Exception as exc:  # noqa: BLE001
         logger.debug("demo gripper open failed: %s", exc)
@@ -1616,6 +1875,43 @@ def _reset_franka_pick_place_demo_state(state: _FrankaPickPlaceDemoState) -> Non
     state.max_lift_delta = 0.0
     state.max_center_z = float(state.object_initial_position[2])
     state.last_error = None
+    state.event_tick_counts.clear()
+    state.event_first_steps.clear()
+    state.event_last_steps.clear()
+    state.progress_samples.clear()
+    state.max_joint_delta_from_initial = 0.0
+    state.max_action_joint_position_delta = 0.0
+    state.action_joint_positions_seen = False
+    state.min_end_effector_distance_to_pick = None
+    state.min_end_effector_distance_to_target = None
+    state.min_end_effector_distance_to_object = None
+    state.min_end_effector_xy_distance_to_object = None
+    state.min_abs_end_effector_z_distance_to_object = None
+    state.signed_end_effector_z_distance_at_min_abs_to_object = None
+    state.end_effector_object_delta_at_min_distance = None
+    state.end_effector_object_delta_at_min_xy_distance = None
+    state.end_effector_object_delta_at_min_abs_z = None
+    state.min_end_effector_distance_to_object_during_closed_gripper = None
+    state.min_end_effector_xy_distance_to_object_during_closed_gripper = None
+    state.min_abs_end_effector_z_distance_to_object_during_closed_gripper = None
+    state.signed_end_effector_z_distance_at_min_abs_during_closed_gripper = None
+    state.end_effector_object_delta_at_min_distance_during_closed_gripper = None
+    state.end_effector_object_delta_at_min_xy_distance_during_closed_gripper = None
+    state.end_effector_object_delta_at_min_abs_z_during_closed_gripper = None
+    state.max_object_lift_delta_during_closed_gripper = None
+    state.max_object_xy_motion_during_closed_gripper = None
+    state.end_effector_pose_seen = False
+    state.gripper_aperture_seen = False
+    state.action_gripper_aperture_seen = False
+    state.gripper_closed_on_object_width_seen = False
+    state.min_gripper_aperture_m = None
+    state.max_gripper_aperture_m = None
+    state.min_action_gripper_aperture_m = None
+    state.max_action_gripper_aperture_m = None
+    state.min_gripper_object_width_margin_m = None
+    state.min_action_gripper_object_width_margin_m = None
+    state.playback_wrapper_refresh_count = 0
+    state.diagnostics.pop("playback_wrapper_refresh_count", None)
     _set_prim_world_translate(state.object_prim_path, state.object_initial_position)
     _zero_rigid_body_velocity(state.object_prim_path)
     try:
@@ -1640,8 +1936,10 @@ def _reset_franka_pick_place_demo_state(state: _FrankaPickPlaceDemoState) -> Non
         robot_description=state.robot_description,
     )
     bbox = _compute_world_bbox(state.object_prim_path)
+    state.object_bbox_size = [float(v) for v in bbox["size"]]
     state.initial_object_position = list(bbox["center"])
     state.final_object_position = list(bbox["center"])
+    state.last_object_bbox_center = list(bbox["center"])
     state.max_center_z = float(bbox["center"][2])
     if not state.explicit_picking_position:
         state.picking_position = list(bbox["center"])
@@ -1699,18 +1997,42 @@ def _tick_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
             if joints is None:
                 state.last_error = "Waiting for robot articulation after playback reset"
                 return
+        if _ensure_franka_pick_place_demo_gripper_ready(state):
+            joints = state.robot.get_joint_positions()
+            if joints is None:
+                state.last_error = "Waiting for robot articulation after playback gripper refresh"
+                return
         state.last_error = None
 
         bbox = _compute_world_bbox(state.object_prim_path)
         object_center = list(bbox["center"])
+        state.object_bbox_size = [float(v) for v in bbox["size"]]
+        state.last_object_bbox_center = object_center
         state.max_center_z = max(state.max_center_z, float(object_center[2]))
         current_pick = state.picking_position if state.explicit_picking_position else object_center
+        end_effector_position = _compute_franka_demo_end_effector_position(
+            state.robot_prim_path,
+            state.robot_description,
+        )
+        current_joints = np.asarray(joints, dtype=np.float32)
+        setattr(state.gripper, "_mcp_last_joint_positions", current_joints)
         actions = state.controller.forward(
             picking_position=np.array(current_pick, dtype=np.float32),
             placing_position=np.array(state.target_position, dtype=np.float32),
-            current_joint_positions=np.asarray(joints, dtype=np.float32),
+            current_joint_positions=current_joints,
             end_effector_offset=state.end_effector_offset,
             end_effector_orientation=state.end_effector_orientation,
+        )
+        joint_progress = _franka_pick_place_demo_joint_progress(
+            current_joint_positions=current_joints,
+            initial_joint_positions=state.initial_joint_positions,
+            actions=actions,
+        )
+        gripper_progress = _franka_pick_place_demo_gripper_progress(
+            robot=state.robot,
+            current_joint_positions=current_joints,
+            actions=actions,
+            robot_description=state.robot_description,
         )
         try:
             state.robot.apply_action(actions)
@@ -1720,6 +2042,17 @@ def _tick_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
         state.steps += 1
         state.controller_event = int(state.controller.get_current_event())
         state.status = "picking" if state.controller_event < 4 else "placing"
+        _record_franka_pick_place_demo_progress(
+            state,
+            event=state.controller_event,
+            step=state.steps,
+            timeline_time=current_time,
+            object_center=object_center,
+            joint_progress=joint_progress,
+            gripper_progress=gripper_progress,
+            current_pick=[float(v) for v in current_pick],
+            end_effector_position=end_effector_position,
+        )
 
         if state.controller.is_done():
             _finish_franka_pick_place_demo(state)
@@ -1756,6 +2089,8 @@ def _finish_franka_pick_place_demo(state: _FrankaPickPlaceDemoState) -> None:
 def _refresh_franka_pick_place_demo_metrics(state: _FrankaPickPlaceDemoState) -> None:
     bbox = _compute_world_bbox(state.object_prim_path)
     final_center = list(bbox["center"])
+    state.object_bbox_size = [float(v) for v in bbox["size"]]
+    state.last_object_bbox_center = final_center
     initial_center = state.initial_object_position or state.object_initial_position
     state.final_object_position = final_center
     state.final_distance = _distance3(final_center, state.target_position)
@@ -1764,10 +2099,1210 @@ def _refresh_franka_pick_place_demo_metrics(state: _FrankaPickPlaceDemoState) ->
     state.placed = state.final_distance <= state.position_tolerance
 
 
+def _record_franka_pick_place_demo_progress(
+    state: _FrankaPickPlaceDemoState,
+    *,
+    event: int,
+    step: int,
+    timeline_time: float,
+    object_center: list[float],
+    joint_progress: dict[str, Any] | None = None,
+    gripper_progress: dict[str, Any] | None = None,
+    current_pick: list[float] | None = None,
+    end_effector_position: list[float] | None = None,
+) -> None:
+    event = int(event)
+    step = int(step)
+    joint_progress = joint_progress or {}
+    gripper_progress = gripper_progress or {}
+    current_pick = current_pick or getattr(state, "picking_position", None) or object_center
+    state.event_tick_counts[event] = state.event_tick_counts.get(event, 0) + 1
+    state.event_first_steps.setdefault(event, step)
+    state.event_last_steps[event] = step
+    joint_delta = float(joint_progress.get("joint_delta_from_initial_max_abs", 0.0) or 0.0)
+    action_delta = float(joint_progress.get("action_joint_position_delta_max_abs", 0.0) or 0.0)
+    state.max_joint_delta_from_initial = max(
+        float(getattr(state, "max_joint_delta_from_initial", 0.0)),
+        joint_delta,
+    )
+    state.max_action_joint_position_delta = max(
+        float(getattr(state, "max_action_joint_position_delta", 0.0)),
+        action_delta,
+    )
+    if bool(joint_progress.get("action_joint_positions_present", False)):
+        state.action_joint_positions_seen = True
+    ee_distance_to_pick: float | None = None
+    ee_distance_to_target: float | None = None
+    ee_distance_to_object: float | None = None
+    ee_xy_distance_to_object: float | None = None
+    ee_z_delta_to_object: float | None = None
+    ee_abs_z_distance_to_object: float | None = None
+    ee_object_delta: list[float] | None = None
+    if end_effector_position is not None:
+        state.end_effector_pose_seen = True
+        ee_object_delta = [
+            float(end_effector_position[0]) - float(object_center[0]),
+            float(end_effector_position[1]) - float(object_center[1]),
+            float(end_effector_position[2]) - float(object_center[2]),
+        ]
+        ee_distance_to_pick = _distance3(end_effector_position, current_pick)
+        ee_distance_to_target = _distance3(end_effector_position, state.target_position)
+        ee_distance_to_object = _distance3(end_effector_position, object_center)
+        ee_xy_distance_to_object = math.sqrt(
+            (
+                float(end_effector_position[0])
+                - float(object_center[0])
+            ) ** 2
+            + (
+                float(end_effector_position[1])
+                - float(object_center[1])
+            ) ** 2
+        )
+        ee_z_delta_to_object = float(end_effector_position[2]) - float(object_center[2])
+        ee_abs_z_distance_to_object = abs(ee_z_delta_to_object)
+        state.min_end_effector_distance_to_pick = _min_optional_distance(
+            getattr(state, "min_end_effector_distance_to_pick", None),
+            ee_distance_to_pick,
+        )
+        state.min_end_effector_distance_to_target = _min_optional_distance(
+            getattr(state, "min_end_effector_distance_to_target", None),
+            ee_distance_to_target,
+        )
+        state.min_end_effector_distance_to_object = _min_optional_distance(
+            getattr(state, "min_end_effector_distance_to_object", None),
+            ee_distance_to_object,
+        )
+        current_min_distance = getattr(state, "min_end_effector_distance_to_object", None)
+        if current_min_distance is None or ee_distance_to_object <= float(current_min_distance):
+            state.end_effector_object_delta_at_min_distance = (
+                list(ee_object_delta) if ee_object_delta is not None else None
+            )
+        current_min_xy = getattr(state, "min_end_effector_xy_distance_to_object", None)
+        if current_min_xy is None or ee_xy_distance_to_object <= float(current_min_xy):
+            state.min_end_effector_xy_distance_to_object = ee_xy_distance_to_object
+            state.end_effector_object_delta_at_min_xy_distance = (
+                list(ee_object_delta) if ee_object_delta is not None else None
+            )
+        current_min_z = getattr(state, "min_abs_end_effector_z_distance_to_object", None)
+        if current_min_z is None or ee_abs_z_distance_to_object <= float(current_min_z):
+            state.min_abs_end_effector_z_distance_to_object = ee_abs_z_distance_to_object
+            state.signed_end_effector_z_distance_at_min_abs_to_object = (
+                ee_z_delta_to_object
+            )
+            state.end_effector_object_delta_at_min_abs_z = (
+                list(ee_object_delta) if ee_object_delta is not None else None
+            )
+    gripper_aperture = _optional_float(gripper_progress.get("gripper_aperture_m"))
+    action_gripper_aperture = _optional_float(
+        gripper_progress.get("action_gripper_aperture_m")
+    )
+    object_width = _franka_pick_place_object_grasp_width_m(
+        getattr(state, "object_bbox_size", [])
+    )
+    initial_center = state.initial_object_position or state.object_initial_position
+    gripper_object_width_margin: float | None = None
+    action_gripper_object_width_margin: float | None = None
+    if gripper_aperture is not None:
+        state.gripper_aperture_seen = True
+        state.min_gripper_aperture_m = _min_optional_distance(
+            getattr(state, "min_gripper_aperture_m", None),
+            gripper_aperture,
+        )
+        state.max_gripper_aperture_m = _max_optional_distance(
+            getattr(state, "max_gripper_aperture_m", None),
+            gripper_aperture,
+        )
+        if object_width is not None:
+            gripper_object_width_margin = gripper_aperture - object_width
+            state.min_gripper_object_width_margin_m = _min_optional_distance(
+                getattr(state, "min_gripper_object_width_margin_m", None),
+                gripper_object_width_margin,
+            )
+            if gripper_object_width_margin <= 0.0:
+                state.gripper_closed_on_object_width_seen = True
+                object_lift_delta = float(object_center[2]) - float(initial_center[2])
+                object_xy_motion = math.sqrt(
+                    (float(object_center[0]) - float(initial_center[0])) ** 2
+                    + (float(object_center[1]) - float(initial_center[1])) ** 2
+                )
+                state.max_object_lift_delta_during_closed_gripper = (
+                    _max_optional_distance(
+                        getattr(
+                            state,
+                            "max_object_lift_delta_during_closed_gripper",
+                            None,
+                        ),
+                        object_lift_delta,
+                    )
+                )
+                state.max_object_xy_motion_during_closed_gripper = (
+                    _max_optional_distance(
+                        getattr(
+                            state,
+                            "max_object_xy_motion_during_closed_gripper",
+                            None,
+                        ),
+                        object_xy_motion,
+                    )
+                )
+                if ee_distance_to_object is not None:
+                    current_min_distance = getattr(
+                        state,
+                        "min_end_effector_distance_to_object_during_closed_gripper",
+                        None,
+                    )
+                    if current_min_distance is None or ee_distance_to_object < float(
+                        current_min_distance
+                    ):
+                        state.min_end_effector_distance_to_object_during_closed_gripper = (
+                            ee_distance_to_object
+                        )
+                        state.end_effector_object_delta_at_min_distance_during_closed_gripper = (
+                            list(ee_object_delta) if ee_object_delta is not None else None
+                        )
+                if ee_xy_distance_to_object is not None:
+                    current_min_xy = getattr(
+                        state,
+                        "min_end_effector_xy_distance_to_object_during_closed_gripper",
+                        None,
+                    )
+                    if current_min_xy is None or ee_xy_distance_to_object < float(
+                        current_min_xy
+                    ):
+                        state.min_end_effector_xy_distance_to_object_during_closed_gripper = (
+                            ee_xy_distance_to_object
+                        )
+                        state.end_effector_object_delta_at_min_xy_distance_during_closed_gripper = (
+                            list(ee_object_delta) if ee_object_delta is not None else None
+                        )
+                if ee_abs_z_distance_to_object is not None:
+                    current_min_z = getattr(
+                        state,
+                        "min_abs_end_effector_z_distance_to_object_during_closed_gripper",
+                        None,
+                    )
+                    if current_min_z is None or ee_abs_z_distance_to_object < float(
+                        current_min_z
+                    ):
+                        state.min_abs_end_effector_z_distance_to_object_during_closed_gripper = (
+                            ee_abs_z_distance_to_object
+                        )
+                        state.signed_end_effector_z_distance_at_min_abs_during_closed_gripper = (
+                            ee_z_delta_to_object
+                        )
+                        state.end_effector_object_delta_at_min_abs_z_during_closed_gripper = (
+                            list(ee_object_delta) if ee_object_delta is not None else None
+                        )
+    if action_gripper_aperture is not None:
+        state.action_gripper_aperture_seen = True
+        state.min_action_gripper_aperture_m = _min_optional_distance(
+            getattr(state, "min_action_gripper_aperture_m", None),
+            action_gripper_aperture,
+        )
+        state.max_action_gripper_aperture_m = _max_optional_distance(
+            getattr(state, "max_action_gripper_aperture_m", None),
+            action_gripper_aperture,
+        )
+        if object_width is not None:
+            action_gripper_object_width_margin = action_gripper_aperture - object_width
+            state.min_action_gripper_object_width_margin_m = _min_optional_distance(
+                getattr(state, "min_action_gripper_object_width_margin_m", None),
+                action_gripper_object_width_margin,
+            )
+
+    last_sample = state.progress_samples[-1] if state.progress_samples else {}
+    should_sample = (
+        not state.progress_samples
+        or int(last_sample.get("controller_event", -1)) != event
+        or step % _PICK_PLACE_PROGRESS_SAMPLE_INTERVAL_STEPS == 0
+    )
+    if not should_sample:
+        return
+
+    sample = {
+        "step": step,
+        "controller_event": event,
+        "timeline_time": float(timeline_time),
+        "status": state.status,
+        "object_center": [float(v) for v in object_center],
+        "lift_delta": float(object_center[2]) - float(initial_center[2]),
+        "distance_to_target": _distance3(object_center, state.target_position),
+        "end_effector_position": (
+            [float(v) for v in end_effector_position]
+            if end_effector_position is not None
+            else None
+        ),
+        "end_effector_distance_to_pick": ee_distance_to_pick,
+        "end_effector_distance_to_target": ee_distance_to_target,
+        "end_effector_distance_to_object": ee_distance_to_object,
+        "end_effector_object_delta": ee_object_delta,
+        "end_effector_xy_distance_to_object": ee_xy_distance_to_object,
+        "end_effector_z_delta_to_object": ee_z_delta_to_object,
+        "end_effector_abs_z_distance_to_object": ee_abs_z_distance_to_object,
+        "gripper_joint_indices": [
+            int(v) for v in (gripper_progress.get("gripper_joint_indices") or [])
+        ],
+        "gripper_joint_names": [
+            str(v) for v in (gripper_progress.get("gripper_joint_names") or [])
+        ],
+        "gripper_joint_positions": [
+            float(v) for v in (gripper_progress.get("gripper_joint_positions") or [])
+        ],
+        "gripper_aperture_m": gripper_aperture,
+        "action_gripper_joint_positions": [
+            float(v)
+            for v in (gripper_progress.get("action_gripper_joint_positions") or [])
+        ],
+        "action_gripper_aperture_m": action_gripper_aperture,
+        "gripper_object_width_m": object_width,
+        "gripper_object_width_margin_m": gripper_object_width_margin,
+        "gripper_closed_on_object_width": (
+            gripper_object_width_margin is not None
+            and gripper_object_width_margin <= 0.0
+        ),
+        "action_gripper_object_width_margin_m": action_gripper_object_width_margin,
+        "joint_delta_from_initial_max_abs": joint_delta,
+        "joint_delta_from_initial_l2": float(
+            joint_progress.get("joint_delta_from_initial_l2", 0.0) or 0.0
+        ),
+        "action_joint_positions_present": bool(
+            joint_progress.get("action_joint_positions_present", False)
+        ),
+        "action_joint_position_delta_max_abs": action_delta,
+        "action_joint_position_delta_l2": float(
+            joint_progress.get("action_joint_position_delta_l2", 0.0) or 0.0
+        ),
+        "action_joint_position_count": int(
+            joint_progress.get("action_joint_position_count", 0) or 0
+        ),
+    }
+    state.progress_samples.append(sample)
+    if len(state.progress_samples) > _PICK_PLACE_PROGRESS_SAMPLE_LIMIT:
+        del state.progress_samples[:-_PICK_PLACE_PROGRESS_SAMPLE_LIMIT]
+
+
+def _franka_pick_place_demo_joint_progress(
+    *,
+    current_joint_positions: Any,
+    initial_joint_positions: Any,
+    actions: Any,
+) -> dict[str, Any]:
+    current = _float_sequence(current_joint_positions)
+    initial = _float_sequence(initial_joint_positions)
+    joint_deltas = _finite_abs_deltas(current, initial)
+    joint_delta_max = max(joint_deltas) if joint_deltas else 0.0
+    joint_delta_l2 = math.sqrt(sum(delta * delta for delta in joint_deltas))
+
+    action_positions = _float_sequence(getattr(actions, "joint_positions", None))
+    action_indices = _int_sequence(getattr(actions, "joint_indices", None))
+    action_current = current
+    if action_positions and action_indices and len(action_positions) == len(action_indices):
+        action_current = [
+            current[index]
+            for index in action_indices
+            if 0 <= index < len(current)
+        ]
+    action_deltas = _finite_abs_deltas(action_positions, action_current)
+    action_delta_max = max(action_deltas) if action_deltas else 0.0
+    action_delta_l2 = math.sqrt(sum(delta * delta for delta in action_deltas))
+
+    return {
+        "joint_delta_from_initial_max_abs": float(joint_delta_max),
+        "joint_delta_from_initial_l2": float(joint_delta_l2),
+        "joint_position_count": len(current),
+        "action_joint_positions_present": bool(action_positions),
+        "action_joint_position_count": len(action_positions),
+        "action_joint_position_delta_max_abs": float(action_delta_max),
+        "action_joint_position_delta_l2": float(action_delta_l2),
+        "action_joint_indices_present": bool(action_indices),
+    }
+
+
+def _franka_pick_place_demo_gripper_progress(
+    *,
+    robot: Any,
+    current_joint_positions: Any,
+    actions: Any,
+    robot_description: object,
+) -> dict[str, Any]:
+    try:
+        current = _float_sequence(current_joint_positions)
+        gripper_indices, gripper_names, index_source = _franka_gripper_joint_indices(
+            robot=robot,
+            robot_description=robot_description,
+            joint_count=len(current),
+        )
+        gripper_positions = [
+            current[index] for index in gripper_indices if 0 <= index < len(current)
+        ]
+        action_gripper_positions = _franka_action_gripper_positions(
+            actions=actions,
+            gripper_indices=gripper_indices,
+            current_count=len(current),
+        )
+        gripper_aperture = _franka_gripper_aperture_m(gripper_positions)
+        action_gripper_aperture = _franka_gripper_aperture_m(action_gripper_positions)
+        return {
+            "gripper_joint_indices": [int(v) for v in gripper_indices],
+            "gripper_joint_names": [str(v) for v in gripper_names],
+            "gripper_joint_index_source": index_source,
+            "gripper_joint_positions": [float(v) for v in gripper_positions],
+            "gripper_aperture_m": gripper_aperture,
+            "action_gripper_joint_positions": [
+                float(v) for v in action_gripper_positions
+            ],
+            "action_gripper_aperture_m": action_gripper_aperture,
+        }
+    except Exception:  # noqa: BLE001
+        logger.debug("Franka pick/place gripper telemetry unavailable", exc_info=True)
+        return {}
+
+
+def _franka_gripper_joint_indices(
+    *,
+    robot: Any,
+    robot_description: object,
+    joint_count: int,
+) -> tuple[list[int], list[str], str]:
+    dof_names = tuple(str(v) for v in (getattr(robot, "dof_names", None) or ()))
+    if dof_names:
+        spec = _franka_parallel_gripper_spec(robot_description)
+        indices: list[int] = []
+        for wanted_name in spec.joint_prim_names:
+            for index, dof_name in enumerate(dof_names):
+                if index in indices:
+                    continue
+                if (
+                    dof_name == wanted_name
+                    or dof_name.endswith(f"/{wanted_name}")
+                    or dof_name.endswith(f".{wanted_name}")
+                    or wanted_name in dof_name
+                ):
+                    indices.append(index)
+                    break
+        if indices:
+            return indices, [dof_names[index] for index in indices], "spec_dof_name"
+
+        fallback_indices = [
+            index
+            for index, dof_name in enumerate(dof_names)
+            if "finger" in dof_name.lower() or "gripper" in dof_name.lower()
+        ]
+        if fallback_indices:
+            return (
+                fallback_indices,
+                [dof_names[index] for index in fallback_indices],
+                "name_contains_gripper",
+            )
+
+    if joint_count >= 9:
+        indices = [joint_count - 2, joint_count - 1]
+        names = [
+            dof_names[index] if index < len(dof_names) else f"joint_{index}"
+            for index in indices
+        ]
+        return indices, names, "tail_pair_fallback"
+    return [], [], "unavailable"
+
+
+def _franka_action_gripper_positions(
+    *,
+    actions: Any,
+    gripper_indices: list[int],
+    current_count: int,
+) -> list[float]:
+    action_positions = _float_sequence(getattr(actions, "joint_positions", None))
+    if not action_positions or not gripper_indices:
+        return []
+    action_indices = _int_sequence(getattr(actions, "joint_indices", None))
+    if action_indices and len(action_indices) == len(action_positions):
+        by_index = {
+            index: action_positions[position_index]
+            for position_index, index in enumerate(action_indices)
+        }
+        return [
+            by_index[index]
+            for index in gripper_indices
+            if index in by_index
+        ]
+    if len(action_positions) == current_count:
+        return [
+            action_positions[index]
+            for index in gripper_indices
+            if 0 <= index < len(action_positions)
+        ]
+    return []
+
+
+def _franka_gripper_aperture_m(joint_positions: list[float]) -> float | None:
+    if not joint_positions:
+        return None
+    return float(sum(max(0.0, float(value)) for value in joint_positions))
+
+
+def _franka_pick_place_object_grasp_width_m(
+    object_bbox_size: list[float],
+) -> float | None:
+    if len(object_bbox_size) < 2:
+        return None
+    return max(float(object_bbox_size[0]), float(object_bbox_size[1]))
+
+
+def _optional_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(result):
+        return None
+    return result
+
+
+def _min_optional_distance(current: float | None, candidate: float) -> float:
+    if current is None:
+        return float(candidate)
+    return min(float(current), float(candidate))
+
+
+def _max_optional_distance(current: float | None, candidate: float) -> float:
+    if current is None:
+        return float(candidate)
+    return max(float(current), float(candidate))
+
+
+def _franka_pick_place_contact_window_diagnostics(
+    state: _FrankaPickPlaceDemoState,
+) -> dict[str, Any]:
+    object_width = _franka_pick_place_object_grasp_width_m(
+        getattr(state, "object_bbox_size", [])
+    )
+    object_bbox_size = [float(v) for v in getattr(state, "object_bbox_size", [])]
+    object_bbox_half_diagonal = (
+        math.sqrt(sum(float(v) ** 2 for v in object_bbox_size[:3])) / 2.0
+        if len(object_bbox_size) >= 3
+        else None
+    )
+    closed_seen = bool(getattr(state, "gripper_closed_on_object_width_seen", False))
+    min_distance = getattr(
+        state,
+        "min_end_effector_distance_to_object_during_closed_gripper",
+        None,
+    )
+    min_xy_distance = getattr(
+        state,
+        "min_end_effector_xy_distance_to_object_during_closed_gripper",
+        None,
+    )
+    object_half_width = object_width / 2.0 if object_width is not None else None
+    object_half_height = (
+        float(object_bbox_size[2]) / 2.0 if len(object_bbox_size) >= 3 else None
+    )
+    xy_margin = (
+        float(min_xy_distance) - float(object_half_width)
+        if min_xy_distance is not None and object_half_width is not None
+        else None
+    )
+    min_abs_z_distance = getattr(
+        state,
+        "min_abs_end_effector_z_distance_to_object_during_closed_gripper",
+        None,
+    )
+    if (
+        min_abs_z_distance is None
+        and min_distance is not None
+        and min_xy_distance is not None
+    ):
+        min_abs_z_distance = math.sqrt(
+            max(float(min_distance) ** 2 - float(min_xy_distance) ** 2, 0.0)
+        )
+    signed_z_distance = getattr(
+        state,
+        "signed_end_effector_z_distance_at_min_abs_during_closed_gripper",
+        None,
+    )
+    min_distance_delta = getattr(
+        state,
+        "end_effector_object_delta_at_min_distance_during_closed_gripper",
+        None,
+    )
+    min_xy_delta = getattr(
+        state,
+        "end_effector_object_delta_at_min_xy_distance_during_closed_gripper",
+        None,
+    )
+    min_abs_z_delta = getattr(
+        state,
+        "end_effector_object_delta_at_min_abs_z_during_closed_gripper",
+        None,
+    )
+    z_margin = (
+        float(min_abs_z_distance) - float(object_half_height)
+        if min_abs_z_distance is not None and object_half_height is not None
+        else None
+    )
+    bbox_sphere_margin = (
+        float(min_distance) - float(object_bbox_half_diagonal)
+        if min_distance is not None and object_bbox_half_diagonal is not None
+        else None
+    )
+    far_distance_threshold = _franka_pick_place_far_contact_threshold(
+        object_bbox_half_diagonal=object_bbox_half_diagonal,
+        object_width=object_width,
+    )
+    distance_over_far_threshold = (
+        float(min_distance) - float(far_distance_threshold)
+        if min_distance is not None and far_distance_threshold is not None
+        else None
+    )
+    closed_window_lift_delta = getattr(
+        state,
+        "max_object_lift_delta_during_closed_gripper",
+        None,
+    )
+    closed_window_xy_motion = getattr(
+        state,
+        "max_object_xy_motion_during_closed_gripper",
+        None,
+    )
+    lift_threshold = float(getattr(state, "lift_height_tolerance", 0.0) or 0.0)
+    lift_threshold_met = (
+        closed_window_lift_delta is not None
+        and float(closed_window_lift_delta) >= lift_threshold
+    )
+    xy_aligned = xy_margin is not None and xy_margin <= 0.0
+    z_aligned = z_margin is not None and z_margin <= 0.0
+    inside_bbox_sphere = bbox_sphere_margin is not None and bbox_sphere_margin <= 0.0
+    far_from_object = (
+        closed_seen
+        and distance_over_far_threshold is not None
+        and distance_over_far_threshold > 0.0
+    )
+    dominant_far_axis = _dominant_axis_label(min_distance_delta)
+    if not closed_seen:
+        classification = "no_closed_gripper_width_window"
+    elif min_distance is None or min_xy_distance is None:
+        classification = "closed_gripper_width_window_missing_ee_distance"
+    elif far_from_object:
+        classification = "closed_gripper_width_window_far_from_object"
+    elif not xy_aligned:
+        classification = "closed_gripper_width_window_not_xy_aligned"
+    elif inside_bbox_sphere:
+        classification = "closed_gripper_width_window_inside_bbox_sphere"
+    else:
+        classification = "closed_gripper_width_window_xy_aligned_outside_bbox_sphere"
+    if not closed_seen:
+        axis_hint = "no_closed_gripper_width_window"
+    elif min_distance is None or min_xy_distance is None:
+        axis_hint = "missing_ee_distance"
+    elif far_from_object:
+        axis_hint = (
+            f"{dominant_far_axis}_offset_far_from_object"
+            if dominant_far_axis is not None
+            else "far_from_object"
+        )
+    elif not xy_aligned:
+        axis_hint = "xy_offset_outside_object_width"
+    elif z_margin is not None and not z_aligned:
+        axis_hint = "z_offset_outside_object_height"
+    elif inside_bbox_sphere:
+        axis_hint = "inside_object_bbox_sphere"
+    else:
+        axis_hint = "outside_object_bbox_sphere"
+    correction_delta, correction_source = _franka_pick_place_alignment_correction(
+        axis_hint=axis_hint,
+        delta=min_distance_delta,
+        xy_delta=min_xy_delta,
+        z_delta=min_abs_z_delta,
+        xy_margin=xy_margin,
+        z_margin=z_margin,
+        bbox_sphere_margin=bbox_sphere_margin,
+    )
+    offset_recommendation = _franka_pick_place_offset_recommendation(
+        base_offset=getattr(state, "end_effector_offset", None),
+        delta=correction_delta,
+    )
+    return {
+        "classification": classification,
+        "axis_hint": axis_hint,
+        "diagnostic_end_effector_offset_delta_m": correction_delta,
+        "diagnostic_end_effector_offset_delta_source": correction_source,
+        **offset_recommendation,
+        "gripper_closed_on_object_width_seen": closed_seen,
+        "object_grasp_width_m": object_width,
+        "object_half_height_m": object_half_height,
+        "object_bbox_half_diagonal_m": object_bbox_half_diagonal,
+        "min_end_effector_distance_to_object_during_closed_gripper": min_distance,
+        "min_end_effector_xy_distance_to_object_during_closed_gripper": min_xy_distance,
+        "min_abs_end_effector_z_distance_to_object_during_closed_gripper": (
+            min_abs_z_distance
+        ),
+        "signed_end_effector_z_distance_at_min_abs_during_closed_gripper": (
+            signed_z_distance
+        ),
+        "end_effector_object_delta_at_min_distance_during_closed_gripper": (
+            _float_list_or_none(min_distance_delta)
+        ),
+        "end_effector_object_delta_at_min_xy_distance_during_closed_gripper": (
+            _float_list_or_none(min_xy_delta)
+        ),
+        "end_effector_object_delta_at_min_abs_z_during_closed_gripper": (
+            _float_list_or_none(min_abs_z_delta)
+        ),
+        "xy_aligned_during_closed_gripper": bool(xy_aligned),
+        "z_aligned_during_closed_gripper": bool(z_aligned),
+        "inside_object_bbox_sphere_during_closed_gripper": bool(inside_bbox_sphere),
+        "far_from_object_during_closed_gripper": bool(far_from_object),
+        "closed_gripper_far_distance_threshold_m": far_distance_threshold,
+        "closed_gripper_distance_over_far_threshold_m": distance_over_far_threshold,
+        "closed_gripper_xy_margin_to_object_half_width_m": xy_margin,
+        "closed_gripper_z_margin_to_object_half_height_m": z_margin,
+        "closed_gripper_distance_margin_to_object_bbox_sphere_m": bbox_sphere_margin,
+        "max_object_lift_delta_during_closed_gripper": closed_window_lift_delta,
+        "max_object_xy_motion_during_closed_gripper": closed_window_xy_motion,
+        "lift_height_tolerance_m": lift_threshold,
+        "lift_threshold_met_during_closed_gripper": bool(lift_threshold_met),
+    }
+
+
+def _franka_pick_place_approach_window_diagnostics(
+    state: _FrankaPickPlaceDemoState,
+) -> dict[str, Any]:
+    object_width = _franka_pick_place_object_grasp_width_m(
+        getattr(state, "object_bbox_size", [])
+    )
+    object_bbox_size = [float(v) for v in getattr(state, "object_bbox_size", [])]
+    object_bbox_half_diagonal = (
+        math.sqrt(sum(float(v) ** 2 for v in object_bbox_size[:3])) / 2.0
+        if len(object_bbox_size) >= 3
+        else None
+    )
+    object_half_width = object_width / 2.0 if object_width is not None else None
+    object_half_height = (
+        float(object_bbox_size[2]) / 2.0 if len(object_bbox_size) >= 3 else None
+    )
+    min_distance = getattr(state, "min_end_effector_distance_to_object", None)
+    min_xy_distance = getattr(state, "min_end_effector_xy_distance_to_object", None)
+    min_abs_z_distance = getattr(
+        state,
+        "min_abs_end_effector_z_distance_to_object",
+        None,
+    )
+    signed_z_distance = getattr(
+        state,
+        "signed_end_effector_z_distance_at_min_abs_to_object",
+        None,
+    )
+    min_distance_delta = getattr(
+        state,
+        "end_effector_object_delta_at_min_distance",
+        None,
+    )
+    min_xy_delta = getattr(
+        state,
+        "end_effector_object_delta_at_min_xy_distance",
+        None,
+    )
+    min_abs_z_delta = getattr(
+        state,
+        "end_effector_object_delta_at_min_abs_z",
+        None,
+    )
+    xy_margin = (
+        float(min_xy_distance) - float(object_half_width)
+        if min_xy_distance is not None and object_half_width is not None
+        else None
+    )
+    z_margin = (
+        float(min_abs_z_distance) - float(object_half_height)
+        if min_abs_z_distance is not None and object_half_height is not None
+        else None
+    )
+    bbox_sphere_margin = (
+        float(min_distance) - float(object_bbox_half_diagonal)
+        if min_distance is not None and object_bbox_half_diagonal is not None
+        else None
+    )
+    far_distance_threshold = _franka_pick_place_far_contact_threshold(
+        object_bbox_half_diagonal=object_bbox_half_diagonal,
+        object_width=object_width,
+    )
+    distance_over_far_threshold = (
+        float(min_distance) - float(far_distance_threshold)
+        if min_distance is not None and far_distance_threshold is not None
+        else None
+    )
+    pose_seen = bool(getattr(state, "end_effector_pose_seen", False))
+    xy_aligned = xy_margin is not None and xy_margin <= 0.0
+    z_aligned = z_margin is not None and z_margin <= 0.0
+    inside_bbox_sphere = bbox_sphere_margin is not None and bbox_sphere_margin <= 0.0
+    far_from_object = (
+        pose_seen
+        and distance_over_far_threshold is not None
+        and distance_over_far_threshold > 0.0
+    )
+    dominant_far_axis = _dominant_axis_label(min_distance_delta)
+    if not pose_seen:
+        classification = "no_end_effector_pose_samples"
+    elif min_distance is None or min_xy_distance is None:
+        classification = "approach_window_missing_ee_distance"
+    elif far_from_object:
+        classification = "approach_window_far_from_object"
+    elif not xy_aligned:
+        classification = "approach_window_not_xy_aligned"
+    elif inside_bbox_sphere:
+        classification = "approach_window_inside_bbox_sphere"
+    else:
+        classification = "approach_window_xy_aligned_outside_bbox_sphere"
+    if not pose_seen:
+        axis_hint = "no_end_effector_pose_samples"
+    elif min_distance is None or min_xy_distance is None:
+        axis_hint = "missing_ee_distance"
+    elif far_from_object:
+        axis_hint = (
+            f"{dominant_far_axis}_offset_far_from_object"
+            if dominant_far_axis is not None
+            else "far_from_object"
+        )
+    elif not xy_aligned:
+        axis_hint = "xy_offset_outside_object_width"
+    elif z_margin is not None and not z_aligned:
+        axis_hint = "z_offset_outside_object_height"
+    elif inside_bbox_sphere:
+        axis_hint = "inside_object_bbox_sphere"
+    else:
+        axis_hint = "outside_object_bbox_sphere"
+    correction_delta, correction_source = _franka_pick_place_alignment_correction(
+        axis_hint=axis_hint,
+        delta=min_distance_delta,
+        xy_delta=min_xy_delta,
+        z_delta=min_abs_z_delta,
+        xy_margin=xy_margin,
+        z_margin=z_margin,
+        bbox_sphere_margin=bbox_sphere_margin,
+    )
+    offset_recommendation = _franka_pick_place_offset_recommendation(
+        base_offset=getattr(state, "end_effector_offset", None),
+        delta=correction_delta,
+    )
+    return {
+        "classification": classification,
+        "axis_hint": axis_hint,
+        "diagnostic_end_effector_offset_delta_m": correction_delta,
+        "diagnostic_end_effector_offset_delta_source": correction_source,
+        **offset_recommendation,
+        "end_effector_pose_seen": pose_seen,
+        "object_grasp_width_m": object_width,
+        "object_half_height_m": object_half_height,
+        "object_bbox_half_diagonal_m": object_bbox_half_diagonal,
+        "min_end_effector_distance_to_object": min_distance,
+        "min_end_effector_xy_distance_to_object": min_xy_distance,
+        "min_abs_end_effector_z_distance_to_object": min_abs_z_distance,
+        "signed_end_effector_z_distance_at_min_abs_to_object": signed_z_distance,
+        "end_effector_object_delta_at_min_distance": _float_list_or_none(
+            min_distance_delta
+        ),
+        "end_effector_object_delta_at_min_xy_distance": _float_list_or_none(
+            min_xy_delta
+        ),
+        "end_effector_object_delta_at_min_abs_z": _float_list_or_none(
+            min_abs_z_delta
+        ),
+        "xy_aligned_during_approach": bool(xy_aligned),
+        "z_aligned_during_approach": bool(z_aligned),
+        "inside_object_bbox_sphere_during_approach": bool(inside_bbox_sphere),
+        "far_from_object_during_approach": bool(far_from_object),
+        "approach_far_distance_threshold_m": far_distance_threshold,
+        "approach_distance_over_far_threshold_m": distance_over_far_threshold,
+        "approach_xy_margin_to_object_half_width_m": xy_margin,
+        "approach_z_margin_to_object_half_height_m": z_margin,
+        "approach_distance_margin_to_object_bbox_sphere_m": bbox_sphere_margin,
+    }
+
+
+def _franka_pick_place_far_contact_threshold(
+    *,
+    object_bbox_half_diagonal: float | None,
+    object_width: float | None,
+) -> float | None:
+    if object_bbox_half_diagonal is None:
+        return None
+    width_margin = (
+        _PICK_PLACE_FAR_CONTACT_BBOX_WIDTH_MULTIPLIER * float(object_width)
+        if object_width is not None
+        else 0.0
+    )
+    return float(object_bbox_half_diagonal) + width_margin
+
+
+def _dominant_axis_label(delta: object | None) -> str | None:
+    values = _float_list_or_none(delta)
+    if values is None or len(values) < 3:
+        return None
+    axes = ("x", "y", "z")
+    return axes[max(range(3), key=lambda index: abs(float(values[index])))]
+
+
+def _franka_pick_place_alignment_correction(
+    *,
+    axis_hint: str,
+    delta: object | None,
+    xy_delta: object | None,
+    z_delta: object | None,
+    xy_margin: float | None,
+    z_margin: float | None,
+    bbox_sphere_margin: float | None,
+) -> tuple[list[float] | None, str | None]:
+    """Return minimal EE offset delta toward the observed object envelope."""
+    delta_values = _float_list_or_none(delta)
+    xy_values = _float_list_or_none(xy_delta) or delta_values
+    z_values = _float_list_or_none(z_delta) or delta_values
+
+    if axis_hint.startswith(("no_", "missing_")):
+        return None, None
+    if axis_hint == "inside_object_bbox_sphere":
+        return None, None
+
+    if axis_hint.startswith("z_offset") and z_margin is not None and z_margin > 0:
+        if z_values is None or len(z_values) < 3:
+            return None, None
+        z_value = float(z_values[2])
+        if not math.isfinite(z_value) or abs(z_value) <= 1e-12:
+            return None, None
+        return (
+            [0.0, 0.0, -math.copysign(float(z_margin), z_value)],
+            "z_margin_to_object_half_height",
+        )
+
+    if xy_margin is not None and xy_margin > 0 and xy_values is not None and len(xy_values) >= 2:
+        x_value = float(xy_values[0])
+        y_value = float(xy_values[1])
+        xy_norm = math.hypot(x_value, y_value)
+        if math.isfinite(xy_norm) and xy_norm > 1e-12:
+            return (
+                [
+                    -(x_value / xy_norm) * float(xy_margin),
+                    -(y_value / xy_norm) * float(xy_margin),
+                    0.0,
+                ],
+                "xy_margin_to_object_half_width",
+            )
+
+    if z_margin is not None and z_margin > 0 and z_values is not None and len(z_values) >= 3:
+        z_value = float(z_values[2])
+        if math.isfinite(z_value) and abs(z_value) > 1e-12:
+            return (
+                [0.0, 0.0, -math.copysign(float(z_margin), z_value)],
+                "z_margin_to_object_half_height",
+            )
+
+    if (
+        bbox_sphere_margin is not None
+        and bbox_sphere_margin > 0
+        and delta_values is not None
+        and len(delta_values) >= 3
+    ):
+        norm = math.sqrt(sum(float(value) ** 2 for value in delta_values[:3]))
+        if math.isfinite(norm) and norm > 1e-12:
+            return (
+                [
+                    -(float(value) / norm) * float(bbox_sphere_margin)
+                    for value in delta_values[:3]
+                ],
+                "distance_margin_to_object_bbox_sphere",
+            )
+
+    return None, None
+
+
+def _franka_pick_place_offset_recommendation(
+    *,
+    base_offset: object | None,
+    delta: object | None,
+) -> dict[str, Any]:
+    """Build a bounded next-trial EE offset recommendation from diagnostics."""
+    base_values = _finite_float_triplet_or_none(base_offset)
+    delta_values = _finite_float_triplet_or_none(delta)
+    if delta_values is None:
+        return {
+            "diagnostic_end_effector_offset_base_m": base_values,
+            "diagnostic_end_effector_offset_applied_delta_m": None,
+            "diagnostic_end_effector_offset_next_m": None,
+            "diagnostic_end_effector_offset_delta_limited": False,
+            "diagnostic_end_effector_offset_delta_limit_m": (
+                _PICK_PLACE_DIAGNOSTIC_OFFSET_STEP_LIMIT_M
+            ),
+        }
+
+    base_values = base_values or [0.0, 0.0, 0.0]
+
+    raw_delta = [float(v) for v in delta_values]
+    norm = math.sqrt(sum(v ** 2 for v in raw_delta))
+    limited = False
+    applied_delta = raw_delta
+    if math.isfinite(norm) and norm > _PICK_PLACE_DIAGNOSTIC_OFFSET_STEP_LIMIT_M:
+        scale = _PICK_PLACE_DIAGNOSTIC_OFFSET_STEP_LIMIT_M / norm
+        applied_delta = [v * scale for v in raw_delta]
+        limited = True
+
+    return {
+        "diagnostic_end_effector_offset_base_m": [float(v) for v in base_values],
+        "diagnostic_end_effector_offset_applied_delta_m": applied_delta,
+        "diagnostic_end_effector_offset_next_m": [
+            float(base_values[index]) + float(applied_delta[index])
+            for index in range(3)
+        ],
+        "diagnostic_end_effector_offset_delta_limited": limited,
+        "diagnostic_end_effector_offset_delta_limit_m": (
+            _PICK_PLACE_DIAGNOSTIC_OFFSET_STEP_LIMIT_M
+        ),
+    }
+
+
+def _compute_franka_demo_end_effector_position(
+    robot_prim_path: str,
+    robot_description: object,
+) -> list[float] | None:
+    """Best-effort gripper-link position for pick/place playback diagnostics."""
+    try:
+        import omni.usd
+        from pxr import Usd, UsdGeom
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            return None
+        robot_prim = stage.GetPrimAtPath(robot_prim_path)
+        if not robot_prim.IsValid():
+            return None
+
+        ee_name = _franka_parallel_gripper_spec(robot_description).end_effector_prim_name
+        ee_prim = stage.GetPrimAtPath(f"{robot_prim_path}/{ee_name}")
+        if not ee_prim.IsValid():
+            ee_prim = None
+            for prim in Usd.PrimRange(robot_prim):
+                if prim.GetName() == ee_name:
+                    ee_prim = prim
+                    break
+        if ee_prim is None or not ee_prim.IsValid():
+            return None
+
+        matrix = UsdGeom.Xformable(ee_prim).ComputeLocalToWorldTransform(
+            Usd.TimeCode.Default(),
+        )
+        translate = matrix.ExtractTranslation()
+        return [float(translate[0]), float(translate[1]), float(translate[2])]
+    except Exception:  # noqa: BLE001
+        logger.debug("Franka pick/place EE telemetry unavailable", exc_info=True)
+        return None
+
+
+def _float_sequence(value: Any) -> list[float]:
+    return [float(v) for v in _flatten_sequence(value)]
+
+
+def _int_sequence(value: Any) -> list[int]:
+    return [int(v) for v in _flatten_sequence(value)]
+
+
+def _flatten_sequence(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if hasattr(value, "tolist"):
+        value = value.tolist()
+    if isinstance(value, (str, bytes)):
+        return [value]
+    try:
+        iterator = iter(value)
+    except TypeError:
+        return [value]
+
+    flattened: list[Any] = []
+    for item in iterator:
+        flattened.extend(_flatten_sequence(item))
+    return flattened
+
+
+def _finite_abs_deltas(left: list[float], right: list[float]) -> list[float]:
+    deltas: list[float] = []
+    for l_value, r_value in zip(left, right, strict=False):
+        if math.isfinite(l_value) and math.isfinite(r_value):
+            deltas.append(abs(l_value - r_value))
+    return deltas
+
+
+def _franka_pick_place_demo_progress_diagnostics(
+    state: _FrankaPickPlaceDemoState,
+) -> dict[str, Any]:
+    current_event = int(state.controller_event)
+    return {
+        "current_event": current_event,
+        "current_event_ticks": int(state.event_tick_counts.get(current_event, 0)),
+        "event_tick_counts": {
+            str(event): int(count)
+            for event, count in sorted(state.event_tick_counts.items())
+        },
+        "event_first_steps": {
+            str(event): int(step)
+            for event, step in sorted(state.event_first_steps.items())
+        },
+        "event_last_steps": {
+            str(event): int(step)
+            for event, step in sorted(state.event_last_steps.items())
+        },
+        "sample_interval_steps": _PICK_PLACE_PROGRESS_SAMPLE_INTERVAL_STEPS,
+        "sample_limit": _PICK_PLACE_PROGRESS_SAMPLE_LIMIT,
+        "max_joint_delta_from_initial": float(
+            getattr(state, "max_joint_delta_from_initial", 0.0)
+        ),
+        "max_action_joint_position_delta": float(
+            getattr(state, "max_action_joint_position_delta", 0.0)
+        ),
+        "action_joint_positions_seen": bool(
+            getattr(state, "action_joint_positions_seen", False)
+        ),
+        "end_effector_pose_seen": bool(getattr(state, "end_effector_pose_seen", False)),
+        "min_end_effector_distance_to_pick": getattr(
+            state,
+            "min_end_effector_distance_to_pick",
+            None,
+        ),
+        "min_end_effector_distance_to_target": getattr(
+            state,
+            "min_end_effector_distance_to_target",
+            None,
+        ),
+        "min_end_effector_distance_to_object": getattr(
+            state,
+            "min_end_effector_distance_to_object",
+            None,
+        ),
+        "min_end_effector_xy_distance_to_object": getattr(
+            state,
+            "min_end_effector_xy_distance_to_object",
+            None,
+        ),
+        "min_abs_end_effector_z_distance_to_object": getattr(
+            state,
+            "min_abs_end_effector_z_distance_to_object",
+            None,
+        ),
+        "signed_end_effector_z_distance_at_min_abs_to_object": getattr(
+            state,
+            "signed_end_effector_z_distance_at_min_abs_to_object",
+            None,
+        ),
+        "end_effector_object_delta_at_min_distance": getattr(
+            state,
+            "end_effector_object_delta_at_min_distance",
+            None,
+        ),
+        "end_effector_object_delta_at_min_xy_distance": getattr(
+            state,
+            "end_effector_object_delta_at_min_xy_distance",
+            None,
+        ),
+        "end_effector_object_delta_at_min_abs_z": getattr(
+            state,
+            "end_effector_object_delta_at_min_abs_z",
+            None,
+        ),
+        "gripper_closed_on_object_width_seen": bool(
+            getattr(state, "gripper_closed_on_object_width_seen", False)
+        ),
+        "min_end_effector_distance_to_object_during_closed_gripper": getattr(
+            state,
+            "min_end_effector_distance_to_object_during_closed_gripper",
+            None,
+        ),
+        "min_end_effector_xy_distance_to_object_during_closed_gripper": getattr(
+            state,
+            "min_end_effector_xy_distance_to_object_during_closed_gripper",
+            None,
+        ),
+        "min_abs_end_effector_z_distance_to_object_during_closed_gripper": getattr(
+            state,
+            "min_abs_end_effector_z_distance_to_object_during_closed_gripper",
+            None,
+        ),
+        "signed_end_effector_z_distance_at_min_abs_during_closed_gripper": getattr(
+            state,
+            "signed_end_effector_z_distance_at_min_abs_during_closed_gripper",
+            None,
+        ),
+        "end_effector_object_delta_at_min_distance_during_closed_gripper": getattr(
+            state,
+            "end_effector_object_delta_at_min_distance_during_closed_gripper",
+            None,
+        ),
+        "end_effector_object_delta_at_min_xy_distance_during_closed_gripper": getattr(
+            state,
+            "end_effector_object_delta_at_min_xy_distance_during_closed_gripper",
+            None,
+        ),
+        "end_effector_object_delta_at_min_abs_z_during_closed_gripper": getattr(
+            state,
+            "end_effector_object_delta_at_min_abs_z_during_closed_gripper",
+            None,
+        ),
+        "max_object_lift_delta_during_closed_gripper": getattr(
+            state,
+            "max_object_lift_delta_during_closed_gripper",
+            None,
+        ),
+        "max_object_xy_motion_during_closed_gripper": getattr(
+            state,
+            "max_object_xy_motion_during_closed_gripper",
+            None,
+        ),
+        "gripper_aperture_seen": bool(getattr(state, "gripper_aperture_seen", False)),
+        "action_gripper_aperture_seen": bool(
+            getattr(state, "action_gripper_aperture_seen", False)
+        ),
+        "min_gripper_aperture_m": getattr(
+            state,
+            "min_gripper_aperture_m",
+            None,
+        ),
+        "max_gripper_aperture_m": getattr(
+            state,
+            "max_gripper_aperture_m",
+            None,
+        ),
+        "min_action_gripper_aperture_m": getattr(
+            state,
+            "min_action_gripper_aperture_m",
+            None,
+        ),
+        "max_action_gripper_aperture_m": getattr(
+            state,
+            "max_action_gripper_aperture_m",
+            None,
+        ),
+        "min_gripper_object_width_margin_m": getattr(
+            state,
+            "min_gripper_object_width_margin_m",
+            None,
+        ),
+        "min_action_gripper_object_width_margin_m": getattr(
+            state,
+            "min_action_gripper_object_width_margin_m",
+            None,
+        ),
+        "approach_window": _franka_pick_place_approach_window_diagnostics(state),
+        "contact_window": _franka_pick_place_contact_window_diagnostics(state),
+        "samples": list(state.progress_samples),
+    }
+
+
 def _franka_pick_place_demo_status(state: _FrankaPickPlaceDemoState) -> dict[str, Any]:
-    bbox = _compute_world_bbox(state.object_prim_path)
-    bbox_center = list(bbox["center"])
-    bbox_size = [float(v) for v in bbox["size"]]
+    bbox_center = list(
+        state.last_object_bbox_center
+        or state.final_object_position
+        or state.initial_object_position
+        or state.object_initial_position
+    )
+    bbox_size = [float(v) for v in state.object_bbox_size]
     object_fit = _evaluate_pick_object_fit(
         bbox_size,
         max_grasp_width_m=state.request.get("max_grasp_width_m"),
@@ -1805,7 +3340,11 @@ def _franka_pick_place_demo_status(state: _FrankaPickPlaceDemoState) -> dict[str
         "object_fit_measured_m": object_fit["measured_m"],
         "picking_position": [float(v) for v in state.picking_position],
         "end_effector_initial_height": float(state.end_effector_initial_height),
-        "diagnostics": {**dict(state.diagnostics), "object_fit": object_fit},
+        "diagnostics": {
+            **dict(state.diagnostics),
+            "object_fit": object_fit,
+            "playback_progress": _franka_pick_place_demo_progress_diagnostics(state),
+        },
         "last_error": state.last_error,
     }
 
@@ -2008,6 +3547,50 @@ def _read_usd_joint_types(prim_path: str, dof_names: list[str]) -> list[str]:
     return out
 
 
+def _read_static_usd_joint_config(prim_path: str) -> dict[str, list]:
+    """Read movable USD joint prim metadata without runtime articulation state.
+
+    This intentionally excludes FixedJoint prims. The order follows
+    ``Usd.PrimRange`` traversal and is diagnostic only.
+    """
+    import omni.usd
+    from pxr import Usd
+
+    stage = omni.usd.get_context().get_stage()
+    if stage is None:
+        raise RuntimeError("No USD stage available")
+    root = stage.GetPrimAtPath(prim_path)
+    if not root.IsValid():
+        raise ValueError(f"Prim not found at {prim_path}")
+
+    out = {
+        "dof_names": [],
+        "joint_types": [],
+        "stiffness": [],
+        "damping": [],
+        "max_force": [],
+        "lower_limits": [],
+        "upper_limits": [],
+        "max_velocity": [],
+    }
+
+    for p in Usd.PrimRange(root):
+        type_name = str(p.GetTypeName())
+        if not _is_static_usd_dof_joint_type(type_name):
+            continue
+        values = _read_usd_joint_config_values(p, type_name)
+        out["dof_names"].append(str(p.GetName()))
+        out["joint_types"].append(type_name)
+        for key, value in values.items():
+            out[key].append(value)
+
+    return out
+
+
+def _is_static_usd_dof_joint_type(type_name: str) -> bool:
+    return type_name.endswith("Joint") and not type_name.endswith("FixedJoint")
+
+
 def _read_usd_drive_config(prim_path: str, dof_names: list[str]) -> dict[str, list]:
     """Walk the articulation prim subtree and pull DriveAPI / limit attributes.
 
@@ -2018,7 +3601,7 @@ def _read_usd_drive_config(prim_path: str, dof_names: list[str]) -> dict[str, li
     skipped; *dof_names* entries with no matching joint prim get zeros.
     """
     import omni.usd
-    from pxr import Usd, UsdPhysics
+    from pxr import Usd
 
     stage = omni.usd.get_context().get_stage()
     if stage is None:
@@ -2047,51 +3630,64 @@ def _read_usd_drive_config(prim_path: str, dof_names: list[str]) -> dict[str, li
         if idx is None:
             continue
         out["joint_types"][idx] = type_name
-
-        # Drive API — angular for revolute/spherical, linear for prismatic.
-        drive_token = "linear" if type_name == "PrismaticJoint" else "angular"
-        try:
-            drive = UsdPhysics.DriveAPI.Get(p, drive_token)
-            if drive:
-                stiff_attr = drive.GetStiffnessAttr()
-                damp_attr = drive.GetDampingAttr()
-                force_attr = drive.GetMaxForceAttr()
-                if stiff_attr and stiff_attr.IsValid():
-                    val = stiff_attr.Get()
-                    if val is not None:
-                        out["stiffness"][idx] = float(val)
-                if damp_attr and damp_attr.IsValid():
-                    val = damp_attr.Get()
-                    if val is not None:
-                        out["damping"][idx] = float(val)
-                if force_attr and force_attr.IsValid():
-                    val = force_attr.Get()
-                    if val is not None:
-                        out["max_force"][idx] = float(val)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("DriveAPI read failed for %s: %s", p.GetPath(), exc)
-
-        # Position limits live directly on the joint prim
-        for attr_name, key in (
-            ("physics:lowerLimit", "lower_limits"),
-            ("physics:upperLimit", "upper_limits"),
-        ):
-            attr = p.GetAttribute(attr_name)
-            if attr and attr.IsValid():
-                val = attr.Get()
-                if val is not None:
-                    out[key][idx] = float(val)
-
-        # Max joint velocity (PhysxJointAPI extension attribute)
-        for vel_attr_name in ("physxJoint:maxJointVelocity", "physics:maxJointVelocity"):
-            vel_attr = p.GetAttribute(vel_attr_name)
-            if vel_attr and vel_attr.IsValid():
-                val = vel_attr.Get()
-                if val is not None:
-                    out["max_velocity"][idx] = float(val)
-                    break
+        values = _read_usd_joint_config_values(p, type_name)
+        for key, value in values.items():
+            out[key][idx] = value
 
     return out
+
+
+def _read_usd_joint_config_values(joint_prim: Any, type_name: str) -> dict[str, float]:
+    from pxr import UsdPhysics
+
+    values = {
+        "stiffness": 0.0,
+        "damping": 0.0,
+        "max_force": 0.0,
+        "lower_limits": 0.0,
+        "upper_limits": 0.0,
+        "max_velocity": 0.0,
+    }
+
+    # Drive API — angular for revolute/spherical, linear for prismatic.
+    drive_token = "linear" if "Prismatic" in type_name else "angular"
+    try:
+        drive = UsdPhysics.DriveAPI.Get(joint_prim, drive_token)
+        if drive:
+            for attr_getter, key in (
+                (drive.GetStiffnessAttr, "stiffness"),
+                (drive.GetDampingAttr, "damping"),
+                (drive.GetMaxForceAttr, "max_force"),
+            ):
+                attr = attr_getter()
+                if attr and attr.IsValid():
+                    val = attr.Get()
+                    if val is not None:
+                        values[key] = float(val)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("DriveAPI read failed for %s: %s", joint_prim.GetPath(), exc)
+
+    # Position limits live directly on the joint prim.
+    for attr_name, key in (
+        ("physics:lowerLimit", "lower_limits"),
+        ("physics:upperLimit", "upper_limits"),
+    ):
+        attr = joint_prim.GetAttribute(attr_name)
+        if attr and attr.IsValid():
+            val = attr.Get()
+            if val is not None:
+                values[key] = float(val)
+
+    # Max joint velocity (PhysxJointAPI extension attribute).
+    for vel_attr_name in ("physxJoint:maxJointVelocity", "physics:maxJointVelocity"):
+        vel_attr = joint_prim.GetAttribute(vel_attr_name)
+        if vel_attr and vel_attr.IsValid():
+            val = vel_attr.Get()
+            if val is not None:
+                values["max_velocity"] = float(val)
+                break
+
+    return values
 
 
 def _read_dof_limits(art: Any, indices: list[int]) -> tuple[float | None, float | None]:
@@ -2192,6 +3788,194 @@ def _lula_robot_name_candidates(robot_description: str) -> tuple[str, ...]:
     return tuple(unique or ["Franka"])
 
 
+def _lula_solver_joint_names(solver: Any) -> tuple[str, ...]:
+    """Best-effort joint order expected by a Lula kinematics solver."""
+    for method_name in (
+        "get_joint_names",
+        "get_cspace_joint_names",
+        "get_c_space_joint_names",
+    ):
+        method = getattr(solver, method_name, None)
+        if method is None:
+            continue
+        try:
+            names = method()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Lula solver joint-name read failed via %s: %s", method_name, exc)
+            continue
+        if names:
+            return tuple(str(name) for name in names)
+    return ()
+
+
+def _select_lula_articulation_joint_indices(
+    *,
+    dof_names: tuple[str, ...],
+    solver_joint_names: tuple[str, ...],
+    robot_description: str,
+    warm_count: int,
+) -> tuple[int, ...]:
+    """Map Lula c-space order to articulation DOF indices.
+
+    Lula IK usually controls only the arm subset, while the live articulation can
+    also expose grippers or mobile-base dummy joints. Name matching is preferred;
+    family fallbacks preserve existing Franka behavior and keep hazardous
+    profile triage honest when names are unavailable.
+    """
+    if solver_joint_names and dof_names:
+        mapped = _map_lula_joint_names_to_articulation_indices(
+            dof_names,
+            solver_joint_names,
+        )
+        if len(mapped) == len(solver_joint_names):
+            return mapped
+
+    expected_count = _lula_expected_joint_count(
+        robot_description=robot_description,
+        solver_joint_names=solver_joint_names,
+        warm_count=warm_count,
+    )
+    candidates = _lula_family_joint_index_candidates(
+        dof_names=dof_names,
+        robot_description=robot_description,
+    )
+    if expected_count > 0 and len(candidates) >= expected_count:
+        return candidates[:expected_count]
+    if candidates:
+        return candidates
+    return tuple(range(min(max(expected_count, 0) or warm_count, warm_count)))
+
+
+def _map_lula_joint_names_to_articulation_indices(
+    dof_names: tuple[str, ...],
+    solver_joint_names: tuple[str, ...],
+) -> tuple[int, ...]:
+    exact = {_normalize_joint_name(name): i for i, name in enumerate(dof_names)}
+    canonical: dict[str, int] = {}
+    ambiguous: set[str] = set()
+    for i, name in enumerate(dof_names):
+        key = _canonical_lula_joint_name(name)
+        if key in canonical:
+            ambiguous.add(key)
+        else:
+            canonical[key] = i
+
+    out: list[int] = []
+    used: set[int] = set()
+    for solver_name in solver_joint_names:
+        exact_key = _normalize_joint_name(solver_name)
+        idx = exact.get(exact_key)
+        if idx is None:
+            canonical_key = _canonical_lula_joint_name(solver_name)
+            if canonical_key not in ambiguous:
+                idx = canonical.get(canonical_key)
+        if idx is None or idx in used:
+            return ()
+        out.append(idx)
+        used.add(idx)
+    return tuple(out)
+
+
+def _lula_expected_joint_count(
+    *,
+    robot_description: str,
+    solver_joint_names: tuple[str, ...],
+    warm_count: int,
+) -> int:
+    if solver_joint_names:
+        return len(solver_joint_names)
+    description = _canonical_lula_joint_name(robot_description)
+    if any(token in description for token in ("franka", "panda", "fr3", "rizon")):
+        return min(7, warm_count)
+    if any(
+        token in description
+        for token in (
+            "ur",
+            "rs007",
+            "rs013",
+            "rs025",
+            "rs080",
+            "kawasaki",
+            "cobotta",
+            "fanuc",
+            "kuka",
+            "techman",
+        )
+    ):
+        return min(6, warm_count)
+    return min(7, warm_count)
+
+
+def _lula_family_joint_index_candidates(
+    *,
+    dof_names: tuple[str, ...],
+    robot_description: str,
+) -> tuple[int, ...]:
+    if not dof_names:
+        return ()
+
+    description = _canonical_lula_joint_name(robot_description)
+    if "ur" in description:
+        ur_indices = tuple(
+            i for i, name in enumerate(dof_names)
+            if _canonical_lula_joint_name(name).startswith("urarm")
+            and not _is_lula_non_arm_dof_name(name)
+        )
+        if ur_indices:
+            return ur_indices
+
+    if any(token in description for token in ("franka", "panda", "fr3", "rizon")):
+        family_markers = ("panda", "fr3", "joint")
+        indices = tuple(
+            i for i, name in enumerate(dof_names)
+            if any(marker in _canonical_lula_joint_name(name) for marker in family_markers)
+            and not _is_lula_non_arm_dof_name(name)
+        )
+        if indices:
+            return indices
+
+    if any(token in description for token in ("rs007", "rs013", "rs025", "rs080", "kawasaki")):
+        joint_indices = tuple(
+            i for i, name in enumerate(dof_names)
+            if _canonical_lula_joint_name(name).startswith("joint")
+            and not _is_lula_non_arm_dof_name(name)
+        )
+        if joint_indices:
+            return joint_indices
+
+    return tuple(
+        i for i, name in enumerate(dof_names)
+        if not _is_lula_non_arm_dof_name(name)
+    )
+
+
+def _is_lula_non_arm_dof_name(name: str) -> bool:
+    normalized = _canonical_lula_joint_name(name)
+    markers = (
+        "finger",
+        "gripper",
+        "dummybase",
+        "mobilebase",
+        "baseprismatic",
+        "wheel",
+        "caster",
+    )
+    return any(marker in normalized for marker in markers)
+
+
+def _normalize_joint_name(name: str) -> str:
+    return str(name or "").strip().lower()
+
+
+def _canonical_lula_joint_name(name: str) -> str:
+    normalized = _normalize_joint_name(name)
+    for prefix in ("ur_arm_", "urarm_"):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix):]
+            break
+    return "".join(ch for ch in normalized if ch.isalnum())
+
+
 def _assert_franka_family_pick_place_robot(
     robot_description: object,
     *,
@@ -2258,22 +4042,19 @@ def _compute_ee_pose(
         if candidate.IsValid():
             ee_prim = candidate
     else:
-        for prim in Usd.PrimRange(robot_prim):
-            if prim.GetName() == frame_name:
-                ee_prim = prim
-                break
-        if ee_prim is None:
-            for fallback in ("panda_hand", "right_gripper", "tool0", "ee_link"):
-                for prim in Usd.PrimRange(robot_prim):
-                    if prim.GetName() == fallback:
-                        ee_prim = prim
-                        frame_name = fallback
-                        break
-                if ee_prim is not None:
+        for candidate_name in _ee_pose_frame_candidate_names(frame_name):
+            for prim in Usd.PrimRange(robot_prim):
+                if prim.GetName() == candidate_name:
+                    ee_prim = prim
+                    frame_name = candidate_name
                     break
+            if ee_prim is not None:
+                break
     if ee_prim is None or not ee_prim.IsValid():
+        tried = ", ".join(_ee_pose_frame_candidate_names(frame_name))
         raise ValueError(
-            f"End-effector frame {frame_name!r} not found under {prim_path}"
+            f"End-effector frame {frame_name!r} not found under {prim_path}; "
+            f"tried: {tried}"
         )
 
     matrix = UsdGeom.Xformable(ee_prim).ComputeLocalToWorldTransform(
@@ -2296,6 +4077,76 @@ def _compute_ee_pose(
         ],
         "source": "usd_world_transform",
     }
+
+
+def _ee_pose_frame_candidate_names(frame_name: str) -> tuple[str, ...]:
+    """Return USD prim names to try for an EE frame request.
+
+    Lula frame names are sometimes fixed URDF frames rather than authored USD
+    link prims. Keep this explicit and small so telemetry remains honest: the
+    response reports the actual USD prim name that was used.
+    """
+    default_names = ("panda_hand", "right_gripper", "tool0", "ee_link")
+    aliases = {
+        "panda_hand": ("panda_rightfinger", "right_gripper"),
+        "fr3_hand_tcp": ("fr3_rightfinger", "right_gripper"),
+        "right_gripper": (
+            "panda_rightfinger",
+            "fr3_rightfinger",
+            "onrobot_rg2_base_link",
+        ),
+        "tool0": (
+            "ee_link",
+            "wrist_3_link",
+            "ur_arm_tool0",
+            "ur_arm_ee_link",
+            "ur_arm_wrist_3_link",
+            "onrobot_rg2_base_link",
+            "link5",
+        ),
+        "ee_link": (
+            "tool0",
+            "wrist_3_link",
+            "ur_arm_tool0",
+            "ur_arm_ee_link",
+            "ur_arm_wrist_3_link",
+            "onrobot_rg2_base_link",
+            "link5",
+        ),
+        "ur_arm_tool0": (
+            "ur_arm_ee_link",
+            "ur_arm_wrist_3_link",
+            "tool0",
+            "ee_link",
+            "wrist_3_link",
+        ),
+        "ur_arm_ee_link": (
+            "ur_arm_tool0",
+            "ur_arm_wrist_3_link",
+            "tool0",
+            "ee_link",
+            "wrist_3_link",
+        ),
+        "ur_arm_wrist_3_link": (
+            "ur_arm_tool0",
+            "ur_arm_ee_link",
+            "wrist_3_link",
+            "tool0",
+            "ee_link",
+        ),
+    }
+    candidates: list[str] = []
+
+    def add(name: str) -> None:
+        if name and name not in candidates:
+            candidates.append(name)
+
+    add(frame_name)
+    for alias in aliases.get(frame_name, ()):
+        add(alias)
+    for fallback in default_names:
+        add(fallback)
+    return tuple(candidates)
 
 
 # ---------------------------------------------------------------------------

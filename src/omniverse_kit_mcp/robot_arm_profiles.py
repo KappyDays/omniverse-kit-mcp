@@ -7,6 +7,25 @@ from functools import lru_cache
 from omniverse_kit_mcp.modules.asset_module import resolve_catalog_asset_url
 from omniverse_kit_mcp.types.robot import RobotArmProfile
 
+_FRANKA_EE_FRAME_CANDIDATES = ("panda_rightfinger", "panda_hand", "right_gripper")
+_FR3_EE_FRAME_CANDIDATES = ("fr3_rightfinger", "fr3_hand_tcp", "right_gripper")
+_UR_EE_FRAME_CANDIDATES = ("tool0", "ee_link", "wrist_3_link")
+_MOBILE_UR_EE_FRAME_CANDIDATES = (
+    "tool0",
+    "ee_link",
+    "wrist_3_link",
+    "ur_arm_tool0",
+    "ur_arm_ee_link",
+    "ur_arm_wrist_3_link",
+)
+_KAWASAKI_EE_FRAME_CANDIDATES = (
+    "onrobot_rg2_base_link",
+    "tool0",
+    "ee_link",
+    "right_gripper",
+)
+_DENSO_EE_FRAME_CANDIDATES = ("onrobot_rg6_base_link", "J6", "joint_6")
+
 
 def _robot_usd(*parts: str) -> str:
     return resolve_catalog_asset_url("robots", f"Robots/{'/'.join(parts)}")
@@ -28,6 +47,7 @@ def _profile(
     evidence: tuple[str, ...],
     max_grasp_width_m: float | None = None,
     fit_clearance_m: float = 0.005,
+    end_effector_frame_candidates: tuple[str, ...] = (),
 ) -> RobotArmProfile:
     return RobotArmProfile(
         profile_name=profile_name,
@@ -45,6 +65,7 @@ def _profile(
         evidence=evidence,
         max_grasp_width_m=max_grasp_width_m,
         fit_clearance_m=fit_clearance_m,
+        end_effector_frame_candidates=end_effector_frame_candidates,
     )
 
 
@@ -63,19 +84,23 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "parallel_fingers",
             True,
             "official_franka_pick_place",
-            "validated_pick_place",
+            "candidate_pick_place",
             (
-                "Live MCP validation uses robot_run_franka_pick_place and "
-                "robot_install_franka_pick_place_playback_demo with Isaac Sim's "
-                "official Franka PickPlaceController, ParallelGripper, and bbox checks."
+                "Franka Panda has the official Franka PickPlaceController, "
+                "ParallelGripper, and bbox-check path, but 2026-06-16 live "
+                "MCP repeatability proof did not complete three Stop -> Play "
+                "cycles: the cache-fix rerun avoided the prior ParallelGripper "
+                "NoneType crash, then failed cycle 2 with insufficient lift."
             ),
             (
                 "live asset_list",
                 "robot_run_franka_pick_place",
                 "robot_install_franka_pick_place_playback_demo",
                 "isaacsim.robot.manipulators.examples.franka.controllers.pick_place_controller",
+                "docs/artifacts/robot-pickplace/franka-panda-pickplace-nonproof-2026-06-16.md",
             ),
             max_grasp_width_m=0.08,
+            end_effector_frame_candidates=_FRANKA_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "franka_fr3",
@@ -88,10 +113,16 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "parallel_fingers",
             True,
             "same_family_franka_candidate",
-            "candidate_pick_place",
-            "Isaac Sim ships an FR3 Lula motion-policy config and a Franka-family gripper, but this repo has not completed live pick/place proof for FR3.",
-            ("live asset_list", "policy_map.json", "load_supported_motion_policy_config"),
+            "validated_pick_place",
+            "Live MCP validation on 2026-06-15 proved FR3 pick/place with the Franka-family playback adapter: object fit passed, 3 Stop -> Play cycles reached done/lifted/placed, and no kinematic carry was used.",
+            (
+                "live asset_list",
+                "policy_map.json",
+                "load_supported_motion_policy_config",
+                "docs/artifacts/robot-pickplace/franka-fr3-pickplace-live-proof-2026-06-15.md",
+            ),
             max_grasp_width_m=0.08,
+            end_effector_frame_candidates=_FR3_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "factory_franka",
@@ -105,9 +136,22 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             True,
             "same_family_franka_candidate",
             "candidate_pick_place",
-            "The asset is a Franka-family manipulator with compatible motion-policy data, but it lacks live bbox-backed pick/place evidence in this repo.",
-            ("live asset_list", "policy_map.json"),
+            (
+                "The asset is a Franka-family manipulator with compatible "
+                "motion-policy data, but 2026-06-15 live proof attempts showed "
+                "the same-family playback path can time out and degrade Kit, "
+                "including a deeper combined-Z offset trial that wedged "
+                "simulation/status/log calls before progress metrics could be read; "
+                "keep it candidate until a family-specific adapter has durable "
+                "bbox-backed pick/place evidence."
+            ),
+            (
+                "live asset_list",
+                "policy_map.json",
+                "docs/artifacts/robot-pickplace/robot-arm-mcp-probe-matrix-2026-06-15.md",
+            ),
             max_grasp_width_m=0.08,
+            end_effector_frame_candidates=_FRANKA_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur3",
@@ -123,6 +167,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "ik_only",
             "UR3 has shipped RMPflow/Lula support, but no repo-validated gripper or pick/place controller path.",
             ("live asset_list", "policy_map.json"),
+            end_effector_frame_candidates=_UR_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur3e",
@@ -138,6 +183,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "ik_only",
             "UR3e has shipped Lula support, but no validated pick/place stack in this repo.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_UR_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur5",
@@ -153,6 +199,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "ik_only",
             "UR5 has shipped Lula support, but no validated pick/place stack in this repo.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_UR_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur5e",
@@ -168,6 +215,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "ik_only",
             "UR5e has shipped Lula support, but no validated pick/place stack in this repo.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_UR_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur10",
@@ -188,6 +236,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
                 "isaacsim.robot.manipulators.examples.universal_robots.controllers.pick_place_controller",
                 "isaacsim.robot.experimental.manipulators.examples.universal_robots.stacking",
             ),
+            end_effector_frame_candidates=_UR_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur10e",
@@ -203,6 +252,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "Isaac Sim 6.0 ships official UR10e pick/place tutorials via cuMotion and built-in gripper configuration USDs, but this repo has not wrapped them as an MCP tool.",
             ("live asset_list", "policy_map.json", "tutorial_9_pick_place_cumotion.py"),
+            end_effector_frame_candidates=_UR_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur16e",
@@ -218,6 +268,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "ik_only",
             "UR16e has shipped Lula support, but no validated pick/place stack in this repo.",
             ("live asset_list", "policy_map.json"),
+            end_effector_frame_candidates=_UR_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "ur20",
@@ -263,6 +314,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "The primary asset includes an RG2 gripper and Isaac Sim ships an RS007L motion-policy config, but no official pick/place controller was validated in this repo.",
             ("live asset_list", "policy_map.json"),
+            end_effector_frame_candidates=_KAWASAKI_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "kawasaki_rs007n",
@@ -278,6 +330,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "RS007N includes an RG2 gripper and a shipped motion-policy config, but lacks repo-validated pick/place proof.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_KAWASAKI_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "kawasaki_rs013n",
@@ -293,6 +346,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "RS013N includes an RG2 gripper and a shipped motion-policy config, but lacks repo-validated pick/place proof.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_KAWASAKI_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "kawasaki_rs025n",
@@ -308,6 +362,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "RS025N includes an RG2 gripper and a shipped motion-policy config, but lacks repo-validated pick/place proof.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_KAWASAKI_EE_FRAME_CANDIDATES,
         ),
         _profile(
             "kawasaki_rs080n",
@@ -323,13 +378,14 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "candidate_pick_place",
             "RS080N includes an RG2 gripper and a shipped motion-policy config, but lacks repo-validated pick/place proof.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_KAWASAKI_EE_FRAME_CANDIDATES,
         ),
         _profile("kinova_gen3", "Kinova Gen3", "Kinova", "kinova", _robot_usd("Kinova", "Gen3", "gen3n7_instanceable.usd"), None, (), "unknown", False, "asset_only", "profile_only", "Gen3 is present, but no shipped Lula key or official pick/place controller was found.", ("docs asset inventory", "live asset_list")),
         _profile("kinova_j2n6s300", "Kinova Jaco2 J2N6S300", "Kinova", "kinova", _robot_usd("Kinova", "Jaco2", "J2N6S300", "j2n6s300_instanceable.usd"), None, (), "unknown", False, "asset_only", "profile_only", "Jaco2 assets were identified, but no official motion-policy or pick/place controller evidence was found.", ("docs asset inventory",)),
         _profile("kinova_j2n7s300", "Kinova Jaco2 J2N7S300", "Kinova", "kinova", _robot_usd("Kinova", "Jaco2", "J2N7S300", "j2n7s300_instanceable.usd"), None, (), "unknown", False, "asset_only", "profile_only", "Jaco2 assets were identified, but no official motion-policy or pick/place controller evidence was found.", ("docs asset inventory",)),
         _profile("kuka_kr210_l150", "Kuka KR210 L150", "Kuka", "kuka", _robot_usd("Kuka", "KR210_L150", "kr210_l150.usd"), "Kuka_KR210", ("Kuka_KR210", "kr210", "kr210_l150"), "none", False, "motion_policy_only", "ik_only", "Kuka KR210 has a shipped motion-policy config, but no built-in gripper or validated pick/place controller path was found.", ("docs asset inventory", "policy_map.json")),
-        _profile("cobotta_pro_900", "Denso Cobotta Pro 900", "Denso", "denso", _robot_usd("Denso", "CobottaPro900", "cobotta_pro_900.usd"), "Cobotta_Pro_900", ("Cobotta_Pro_900", "cobotta_pro_900", "cobottapro900"), "unknown", False, "motion_policy_only", "ik_only", "Cobotta Pro 900 has a shipped motion-policy config, but no validated pick/place controller/gripper path was found.", ("live asset_list", "policy_map.json")),
-        _profile("cobotta_pro_1300", "Denso Cobotta Pro 1300", "Denso", "denso", _robot_usd("Denso", "CobottaPro1300", "cobotta_pro_1300.usd"), "Cobotta_Pro_1300", ("Cobotta_Pro_1300", "cobotta_pro_1300", "cobottapro1300"), "unknown", False, "motion_policy_only", "ik_only", "Cobotta Pro 1300 has a shipped motion-policy config, but no validated pick/place controller/gripper path was found.", ("live asset_list", "policy_map.json")),
+        _profile("cobotta_pro_900", "Denso Cobotta Pro 900", "Denso", "denso", _robot_usd("Denso", "CobottaPro900", "cobotta_pro_900.usd"), "Cobotta_Pro_900", ("Cobotta_Pro_900", "cobotta_pro_900", "cobottapro900"), "unknown", False, "motion_policy_only", "ik_only", "Cobotta Pro 900 has a shipped motion-policy config, but no validated pick/place controller/gripper path was found.", ("live asset_list", "policy_map.json"), end_effector_frame_candidates=_DENSO_EE_FRAME_CANDIDATES),
+        _profile("cobotta_pro_1300", "Denso Cobotta Pro 1300", "Denso", "denso", _robot_usd("Denso", "CobottaPro1300", "cobotta_pro_1300.usd"), "Cobotta_Pro_1300", ("Cobotta_Pro_1300", "cobotta_pro_1300", "cobottapro1300"), "unknown", False, "motion_policy_only", "ik_only", "Cobotta Pro 1300 has a shipped motion-policy config, but no validated pick/place controller/gripper path was found.", ("live asset_list", "policy_map.json"), end_effector_frame_candidates=_DENSO_EE_FRAME_CANDIDATES),
         _profile("fanuc_crx10ia_l", "Fanuc CRX10iA/L", "Fanuc", "fanuc", _robot_usd("Fanuc", "crx10ia_l", "crx10ia_l.usd"), "Fanuc_CRX10IAL", ("Fanuc_CRX10IAL", "crx10ia_l", "crx10ial"), "none", False, "motion_policy_only", "ik_only", "Fanuc CRX10iA/L has a shipped motion-policy config, but no built-in gripper or validated pick/place controller path was found.", ("docs asset inventory", "policy_map.json")),
         _profile("flexiv_rizon4", "Flexiv Rizon4", "Flexiv", "flexiv", _robot_usd("Flexiv", "Rizon4", "flexiv_rizon4.usd"), "Rizon4", ("Rizon4", "rizon4", "flexiv_rizon4"), "unknown", False, "motion_policy_only", "ik_only", "Flexiv Rizon4 has a shipped motion-policy config, but no validated pick/place controller/gripper path was found.", ("docs asset inventory", "policy_map.json")),
         _profile("techman_tm12", "Techman TM12", "Techman", "techman", _robot_usd("Techman", "TM12", "tm12.usd"), "Techman_TM12", ("Techman_TM12", "TM12", "tm12"), "none", False, "motion_policy_only", "ik_only", "Techman TM12 has a shipped motion-policy config, but no validated pick/place controller/gripper path was found.", ("docs asset inventory", "policy_map.json")),
@@ -376,6 +432,7 @@ def builtin_robot_arm_profiles() -> tuple[RobotArmProfile, ...]:
             "ik_only",
             "The mobile manipulator embeds a UR5-family arm, but no validated pick/place wrapper exists for the combined base+arm asset.",
             ("docs asset inventory", "policy_map.json"),
+            end_effector_frame_candidates=_MOBILE_UR_EE_FRAME_CANDIDATES,
         ),
     )
 

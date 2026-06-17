@@ -54,18 +54,86 @@ data store.
 - Use `robot_list_arm_profiles` before multi-arm work. It is the curated
   support matrix for built-in Isaac Sim 6.0 robot arms; only profiles marked
   `validated_pick_place` have live pick/place proof. Candidate/IK/profile-only
-  profiles must not be reported as pick/place successes.
+  profiles must not be reported as pick/place successes. Before broad profile
+  batches, inspect `dynamic_probe_recommended_profiles`,
+  `static_only_probe_recommended_profiles`,
+  `recommended_probe_mode_by_profile`, `recommended_probe_mode_reasons`,
+  `known_dynamic_timeout_profiles`, and `known_dynamic_timeout_profile_reasons`
+  so known host-degrading dynamic paths can be scheduled as static-only hazard
+  rows while healthy neighbors still run dynamically; treat those rows as
+  static-only hazard rows, not joint-control proof. Before pick/place adapter
+  proof loops, inspect `known_pick_place_blocker_profiles` and
+  `known_pick_place_blocker_profile_reasons`; these blockers are not probe
+  controllability failures, but they identify profiles with durable live
+  playback hazards.
+- Use `robot_probe_arm_profile` or `robot_probe_arm_profiles` to build a
+  manipulation capability matrix for built-in arm profiles. Probe success means
+  MCP load/joint/gripper/IK/EE-pose readiness only; it does not promote a
+  profile to `validated_pick_place`. Read each row's `mcp_controllability`
+  and `probe_capability_level` fields before claiming MCP controllability:
+  `dynamic_joint_control` proves a
+  dynamic safe-nudge write/read path, `dynamic_joint_read_only` lacks write
+  proof, `static_load_articulation_metadata` is static hazard-triage evidence,
+  and `blocked_*` rows are blockers rather than controllability proof. Probe
+  levels are capability-matrix evidence only and are capped below durable
+  pick/place validation. Every probe row also reports
+  `probe_proves_pick_place=false` plus `pick_place_validation_status` and
+  `pick_place_validation_reason`; use those fields to separate catalog proof,
+  known playback blockers, and profiles not validated by the probe. For
+  matrix runs, `robot_probe_arm_profile.timeout_s` defaults to 90 seconds
+  for bounded single-profile evidence; pass null only for deliberate
+  unbounded diagnostics. Use `per_profile_timeout_s` so one slow or blocked
+  profile is recorded as a per-profile timeout instead of losing the whole
+  batch, and keep `batch_timeout_s` below the MCP caller timeout for
+  multi-profile batches.
+  Inspect batch summary fields such as `mcp_controllability_counts`,
+  `mcp_controllability_profiles`, `probe_capability_level_name_counts`,
+  `probe_capability_level_name_profiles`, `unsupported_capability_counts`,
+  `timed_out_profiles`,
+  `batch_timeout_profiles`, `batch_aborted_profiles`, `blocked_profiles`,
+  `hard_failure_profiles`,
+  `lifecycle_recovery_profiles`, `ik_target_failure_profiles`,
+  `pick_place_validation_status_counts`,
+  `pick_place_validation_status_profiles`, and
+  `known_dynamic_timeout_routed_profiles` before reporting a broad matrix run.
+  Omit `profile_names` for catalog-order matrix runs. Use
+  `profile_names=[...]` for exact ordered small-batch reruns when a proof or
+  blocker must be tied to specific profiles rather than catalog order; an
+  explicit empty list selects no profiles, which is useful as a safe dry-run
+  guard but is not a shorthand for the full catalog.
+  Use `dynamic_checks=false` only for load/articulation/static-metadata hazard
+  triage; it is partial evidence and must not be reported as probe-level
+  controllability. For single-profile or broad matrix refreshes, set
+  `static_only_for_known_dynamic_timeouts=true` only when you want profiles with
+  durable live dynamic-timeout evidence to be recorded as static-only hazard
+  rows instead of re-running a known host-degrading dynamic path. That policy
+  does not prove joint control. `robot_get_joint_config_static` is diagnostic
+  USD metadata only; its order is not proof for `set_joint_positions`.
 - `robot_install_pick_place_playback_demo(profile_name=...)` is the profile
-  selector. `franka_panda` routes to the validated Franka playback demo.
-  Franka-family candidate profiles may use the same adapter only to gather
-  live proof, and remain `candidate_pick_place` until that proof is recorded;
-  other profiles return an explicit `unsupported` status until their family
-  controller/gripper path has separate live proof.
+  selector. `franka_fr3` is the current validated Franka-family playback route;
+  `franka_panda` is a candidate with a known repeatability blocker until a
+  future durable proof artifact exists. Candidate, IK-only, and profile-only
+  arms return an explicit `unsupported` status from this selector until their
+  family controller/gripper path has separate durable live proof; do not use the
+  selector to launch known-unvalidated playback paths. Inspect
+  `diagnostics.known_pick_place_blocker` and
+  `diagnostics.known_pick_place_blocker_reason` on unsupported selector
+  responses before attempting a proof loop.
 - After installing a playback demo, immediately call
-  `robot_get_pick_place_demo_status` and inspect `object_fit_ok`,
-  `object_bbox_size`, `object_fit_limit_m`, and `object_fit_measured_m`.
+  `robot_get_pick_place_demo_status(timeout_s=...)` with a small timeout
+  below the proof-cycle budget, and inspect `object_fit_ok`,
+  `object_bbox_size`, `object_fit_limit_m`, `object_fit_measured_m`, and
+  `diagnostics.playback_progress` for controller event progress, object
+  movement, lift delta, and distance-to-target samples.
   If `object_fit_ok=false`, stop before Play cycles and collect bbox,
   viewport, and Console WARN/ERROR evidence instead of claiming validation.
+  During playback proof loops, treat
+  `ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT` as a non-proof timeout and
+  recover the live host under the process-lifecycle rules. If playback
+  `simulation_step`, demo-status, `simulation_stop`, final status, or log
+  capture calls all hit timeout/error boundaries, record a host-degrading
+  blocker and stop that adapter path rather than following more diagnostic
+  offset recommendations.
 - For live Isaac Sim validation, bracket risky operations with Console log
   capture: call `extension_clear_logs` immediately before the operation, then
   on failure call `extension_capture_logs(level="WARN", stop_after_capture=True)`
@@ -75,6 +143,13 @@ data store.
 - Live worker lifecycle is attach/start/reload-first. Start with
   `kit_app_start` to attach to an already-running instance or spawn one if
   needed, then confirm `simulation_get_status` before mutating the stage.
+  After changing `src/omniverse_kit_mcp`, call `mcp_runtime_info` in the live
+  worker before result-shape validation; if the tool/fields are absent or source
+  files are newer than import time, restart the MCP host/thread before claiming
+  live exposure. Treat `source_newer_than_import=true`,
+  `restart_required_for_latest_mcp_code=true`, or missing expected result fields
+  as a stale-MCP blocker for live result-shape claims and for probes that depend
+  on the new fields.
   Do not call `kit_app_restart` as routine setup; reserve it for confirmed
   crash/hang, `omni.mycompany.validation_api` self-code changes,
   extension.toml/native dependency changes, failed `extension_reload` or

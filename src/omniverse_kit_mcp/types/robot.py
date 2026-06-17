@@ -35,9 +35,10 @@ class JointConfig:
 
     Symmetric readback for ``set_joint_positions`` — exposes drive
     stiffness/damping/max_force, position lower/upper limits, and max
-    joint velocities. ``source`` reports which backend filled the arrays
-    (``dof_properties`` for SingleArticulation runtime view, or
-    ``usd_drive_api`` for the per-joint UsdPhysics fallback).
+    joint velocities. ``source`` reports which backend filled the arrays.
+    Runtime sources such as ``dof_properties`` and ``usd_drive_api`` follow
+    SingleArticulation DOF order. Static USD discovery sources are diagnostic
+    only and must not be treated as write-order proof.
     """
 
     prim_path: str
@@ -51,6 +52,8 @@ class JointConfig:
     lower_limits: tuple[float, ...]
     upper_limits: tuple[float, ...]
     max_velocity: tuple[float, ...]
+    static_only: bool = False
+    order_reliable: bool = True
 
 
 @dataclass(slots=True, frozen=True)
@@ -150,6 +153,7 @@ class RobotArmProfile:
     evidence: tuple[str, ...]
     max_grasp_width_m: float | None = None
     fit_clearance_m: float = 0.005
+    end_effector_frame_candidates: tuple[str, ...] = ()
 
 
 @dataclass(slots=True, frozen=True)
@@ -159,7 +163,101 @@ class RobotArmProfilesResult:
     candidate_pick_place_profiles: tuple[str, ...]
     motion_policy_profiles: tuple[str, ...]
     profile_only_profiles: tuple[str, ...]
+    known_dynamic_timeout_profiles: tuple[str, ...]
+    known_dynamic_timeout_profile_reasons: dict[str, str]
+    dynamic_probe_recommended_profiles: tuple[str, ...]
+    static_only_probe_recommended_profiles: tuple[str, ...]
+    recommended_probe_mode_by_profile: dict[str, str]
+    recommended_probe_mode_reasons: dict[str, str]
+    known_pick_place_blocker_profiles: tuple[str, ...]
+    known_pick_place_blocker_profile_reasons: dict[str, str]
     profiles: tuple[RobotArmProfile, ...]
+
+
+@dataclass(slots=True, frozen=True)
+class RobotProbeCheck:
+    ok: bool
+    skipped: bool
+    error_code: str | None
+    message: str
+    evidence: dict[str, Any]
+
+
+@dataclass(slots=True, frozen=True)
+class RobotArmProfileProbeRequest:
+    profile_name: str
+    prim_path: str | None = None
+    reset_stage: bool = True
+    safe_nudge: bool = True
+    cleanup: bool = True
+    dynamic_checks: bool = True
+    static_only_for_known_dynamic_timeouts: bool = False
+    timeout_s: float | None = 90.0
+
+
+@dataclass(slots=True, frozen=True)
+class RobotArmProfileProbeResult:
+    profile_name: str
+    display_name: str
+    family: str
+    asset_url: str
+    prim_path: str
+    support_status: str
+    controller_strategy: str
+    recommended_next_status: str
+    overall_ok: bool
+    mcp_controllability: str
+    mcp_controllability_reason: str
+    probe_capability_level: int
+    probe_capability_level_name: str
+    probe_capability_level_reason: str
+    probe_proves_pick_place: bool
+    pick_place_validation_status: str
+    pick_place_validation_reason: str
+    checks: dict[str, RobotProbeCheck]
+
+
+@dataclass(slots=True, frozen=True)
+class RobotArmProfilesProbeRequest:
+    profile_names: tuple[str, ...] | None = None
+    status_filter: tuple[str, ...] | None = None
+    family_filter: tuple[str, ...] | None = None
+    limit: int | None = None
+    reset_stage_per_profile: bool = True
+    safe_nudge: bool = True
+    cleanup: bool = True
+    dynamic_checks: bool = True
+    static_only_for_known_dynamic_timeouts: bool = False
+    per_profile_timeout_s: float | None = 90.0
+    batch_timeout_s: float | None = 105.0
+
+
+@dataclass(slots=True, frozen=True)
+class RobotArmProfilesProbeResult:
+    count: int
+    requested_count: int
+    profile_names: tuple[str, ...] | None
+    status_filter: tuple[str, ...] | None
+    family_filter: tuple[str, ...] | None
+    mcp_controllability_counts: dict[str, int]
+    mcp_controllability_profiles: dict[str, tuple[str, ...]]
+    probe_capability_level_name_counts: dict[str, int]
+    probe_capability_level_name_profiles: dict[str, tuple[str, ...]]
+    pick_place_validation_status_counts: dict[str, int]
+    pick_place_validation_status_profiles: dict[str, tuple[str, ...]]
+    unsupported_capability_counts: dict[str, int]
+    timed_out_profiles: tuple[str, ...]
+    batch_timeout_profiles: tuple[str, ...]
+    batch_aborted_profiles: tuple[str, ...]
+    blocked_profiles: tuple[str, ...]
+    hard_failure_profiles: tuple[str, ...]
+    lifecycle_recovery_profiles: tuple[str, ...]
+    unsupported_capability_profiles: tuple[str, ...]
+    ik_target_failure_profiles: tuple[str, ...]
+    static_metadata_profiles: tuple[str, ...]
+    known_dynamic_timeout_routed_profiles: tuple[str, ...]
+    dynamic_joint_control_profiles: tuple[str, ...]
+    results: tuple[RobotArmProfileProbeResult, ...]
 
 
 @dataclass(slots=True, frozen=True)
@@ -246,7 +344,7 @@ class RobotFrankaPickPlaceDemoRequest:
 class RobotPickPlaceDemoRequest:
     """Install a profile-selected pick/place playback demo."""
 
-    profile_name: str = "franka_panda"
+    profile_name: str = "franka_fr3"
     robot_prim_path: str = "/World/Franka"
     object_prim_path: str = "/World/PickCube"
     target_position: tuple[float, float, float] = (0.45, -0.35, 0.02575)

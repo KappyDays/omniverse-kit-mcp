@@ -1174,6 +1174,25 @@ async def robot_get_joint_config(
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.get("/robot/joint_config_static")
+async def robot_get_joint_config_static(
+    prim_path: str = Query(..., description="Articulation prim path"),
+) -> Any:
+    """Read static UsdPhysics joint metadata without simulation warmup.
+
+    Diagnostic only: returned order follows USD prim traversal, not guaranteed
+    ``set_joint_positions`` write order.
+    """
+    require_robot_stack()
+    try:
+        return await _robot.get_joint_config_static(prim_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("robot/joint_config_static GET failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @router.post("/robot/navigate")
 async def robot_navigate(body: RobotNavigateRequestModel) -> Any:
     require_robot_stack()

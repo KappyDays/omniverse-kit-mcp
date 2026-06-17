@@ -324,3 +324,204 @@ def test_f6_pull_doc_code_refs_exist():
                 if not ok:
                     problems.append(f"{md.relative_to(PROJECT)}: {rel}::{symbol}")
     assert not problems, "Dangling code refs in pull-docs:\n  " + "\n  ".join(problems[:20])
+
+
+# ---------------------------------------------------------------------------
+# F7: robot arm matrix artifact covers every built-in arm profile exactly once
+# ---------------------------------------------------------------------------
+
+def _robot_arm_matrix_artifact() -> Path:
+    return (
+        PROJECT
+        / "docs"
+        / "artifacts"
+        / "robot-pickplace"
+        / "robot-arm-mcp-probe-matrix-2026-06-15.md"
+    )
+
+
+def _robot_arm_matrix_section(text: str, start_heading: str, end_heading: str) -> str:
+    start = text.index(start_heading)
+    end = text.index(end_heading, start)
+    return text[start:end]
+
+
+def _parse_profile_reason_rows(section: str) -> dict[str, str]:
+    row_re = re.compile(r"^\| `([^`]+)` \| ([^|]+) \|$", re.MULTILINE)
+    return {profile_name: reason.strip() for profile_name, reason in row_re.findall(section)}
+
+
+def _parse_robot_matrix_full_catalog_rows(
+    section: str,
+) -> dict[str, tuple[str, str, str, str]]:
+    row_re = re.compile(
+        r"^\| `([^`]+)` \| `([^`]+)` \| `([^`]+)` \| (.*?) \| ([^|]+) \|$",
+        re.MULTILINE,
+    )
+    return {
+        profile_name: (
+            status,
+            family,
+            evidence.strip(),
+            pick_place_validation.strip(),
+        )
+        for profile_name, status, family, evidence, pick_place_validation in row_re.findall(
+            section
+        )
+    }
+
+
+def test_f7_robot_arm_probe_matrix_covers_builtin_profile_catalog():
+    from omniverse_kit_mcp.robot_arm_profiles import builtin_robot_arm_profiles
+
+    artifact = _robot_arm_matrix_artifact()
+    assert artifact.exists(), f"Missing robot arm matrix artifact: {artifact}"
+
+    text = artifact.read_text(encoding="utf-8")
+    section = _robot_arm_matrix_section(
+        text,
+        "## Full Catalog Coverage",
+        "## Adapter Priorities",
+    )
+    rows = _parse_robot_matrix_full_catalog_rows(section)
+    observed = {
+        profile_name: (status, family)
+        for profile_name, (status, family, _evidence, _pick_place) in rows.items()
+    }
+    duplicates = sorted(
+        profile_name
+        for profile_name in observed
+        if section.count(f"| `{profile_name}` |") > 1
+    )
+
+    profiles = {profile.profile_name: profile for profile in builtin_robot_arm_profiles()}
+    missing = sorted(set(profiles) - set(observed))
+    extra = sorted(set(observed) - set(profiles))
+    mismatched = sorted(
+        f"{name}: artifact=({observed[name][0]}, {observed[name][1]}), "
+        f"catalog=({profiles[name].support_status}, {profiles[name].family})"
+        for name in set(profiles) & set(observed)
+        if observed[name] != (profiles[name].support_status, profiles[name].family)
+    )
+
+    assert not duplicates, "Duplicate robot matrix rows:\n  " + "\n  ".join(duplicates)
+    assert not missing, "Missing robot matrix rows:\n  " + "\n  ".join(missing)
+    assert not extra, "Unknown robot matrix rows:\n  " + "\n  ".join(extra)
+    assert not mismatched, "Robot matrix status/family drift:\n  " + "\n  ".join(mismatched)
+
+
+def test_f8_robot_arm_probe_matrix_guard_ledgers_match_code():
+    from omniverse_kit_mcp.modules.robot_module import (
+        _KNOWN_DYNAMIC_TIMEOUT_PROFILE_REASONS,
+        _KNOWN_PICK_PLACE_BLOCKER_PROFILE_REASONS,
+    )
+    from omniverse_kit_mcp.robot_arm_profiles import builtin_robot_arm_profiles
+
+    artifact = _robot_arm_matrix_artifact()
+    assert artifact.exists(), f"Missing robot arm matrix artifact: {artifact}"
+
+    text = artifact.read_text(encoding="utf-8")
+    section = _robot_arm_matrix_section(
+        text,
+        "## Guarded Hazard Ledgers",
+        "## Full Catalog Coverage",
+    )
+    dynamic_section = _robot_arm_matrix_section(
+        section,
+        "### Known Dynamic Timeout Profiles",
+        "### Known Pick/Place Blocker Profiles",
+    )
+    blocker_start = section.index("### Known Pick/Place Blocker Profiles")
+    blocker_section = section[blocker_start:]
+
+    dynamic_rows = _parse_profile_reason_rows(dynamic_section)
+    blocker_rows = _parse_profile_reason_rows(blocker_section)
+    catalog_names = {profile.profile_name for profile in builtin_robot_arm_profiles()}
+    unknown_guarded = sorted((set(dynamic_rows) | set(blocker_rows)) - catalog_names)
+
+    assert dynamic_rows == _KNOWN_DYNAMIC_TIMEOUT_PROFILE_REASONS
+    assert blocker_rows == _KNOWN_PICK_PLACE_BLOCKER_PROFILE_REASONS
+    assert not unknown_guarded, "Unknown guarded robot profiles:\n  " + "\n  ".join(unknown_guarded)
+
+
+def test_f9_robot_arm_probe_matrix_pick_place_column_does_not_overclaim():
+    from omniverse_kit_mcp.robot_arm_profiles import builtin_robot_arm_profiles
+
+    artifact = _robot_arm_matrix_artifact()
+    assert artifact.exists(), f"Missing robot arm matrix artifact: {artifact}"
+
+    text = artifact.read_text(encoding="utf-8")
+    section = _robot_arm_matrix_section(
+        text,
+        "## Full Catalog Coverage",
+        "## Adapter Priorities",
+    )
+    rows = _parse_robot_matrix_full_catalog_rows(section)
+    profiles = {profile.profile_name: profile for profile in builtin_robot_arm_profiles()}
+
+    nonvalidated_claims = sorted(
+        f"{name}: status={profiles[name].support_status}, pick/place={row[3]!r}"
+        for name, row in rows.items()
+        if profiles[name].support_status != "validated_pick_place"
+        and row[3] != "not validated"
+    )
+    validated_missing_claim = sorted(
+        name
+        for name, row in rows.items()
+        if profiles[name].support_status == "validated_pick_place"
+        and row[3] == "not validated"
+    )
+
+    assert not nonvalidated_claims, (
+        "Only catalog validated_pick_place profiles may claim pick/place validation:\n  "
+        + "\n  ".join(nonvalidated_claims)
+    )
+    assert not validated_missing_claim, (
+        "Catalog validated_pick_place profiles must not be listed as unvalidated:\n  "
+        + "\n  ".join(validated_missing_claim)
+    )
+
+
+def test_f10_robot_arm_validated_pick_place_profiles_have_durable_proof_artifacts():
+    from omniverse_kit_mcp.robot_arm_profiles import builtin_robot_arm_profiles
+
+    validated_profiles = [
+        profile
+        for profile in builtin_robot_arm_profiles()
+        if profile.support_status == "validated_pick_place"
+    ]
+    assert validated_profiles, "Expected at least one validated pick/place profile"
+
+    for profile in validated_profiles:
+        proof_artifacts = [
+            PROJECT / evidence
+            for evidence in profile.evidence
+            if evidence.startswith("docs/artifacts/robot-pickplace/")
+            and "proof" in Path(evidence).name
+        ]
+
+        assert proof_artifacts, (
+            f"{profile.profile_name} is validated_pick_place but has no "
+            "robot-pickplace proof artifact"
+        )
+
+        for artifact in proof_artifacts:
+            assert artifact.exists(), (
+                f"{profile.profile_name} proof artifact does not exist: {artifact}"
+            )
+            text = artifact.read_text(encoding="utf-8")
+            missing_markers = [
+                marker
+                for marker in (
+                    f"Profile: `{profile.profile_name}`",
+                    "`validated_pick_place`",
+                    "object_fit_ok=true",
+                    "done/lifted/placed=true",
+                    "uses_kinematic_carry=false",
+                )
+                if marker not in text
+            ]
+            assert not missing_markers, (
+                f"{profile.profile_name} proof artifact is missing markers "
+                f"{missing_markers}: {artifact}"
+            )
