@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 146
+**Tool count**: 151
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)](#character--behavioragent--ira--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (50)
+- Unclassified (55)
 
 ## Process — MCP / Kit app lifecycle
 
@@ -2013,6 +2013,95 @@ url, library} entries.
 | name | type | default | required |
 |------|------|---------|----------|
 | `library` | `string` | `'default'` |  |
+
+### `official_asset_get`
+
+```python
+official_asset_get(asset_id: 'str') -> 'str'
+```
+
+Return the full generated official asset/material catalog entry by URL-based id.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `asset_id` | `string` | `'—'` | ✓ |
+
+### `official_asset_resolve`
+
+```python
+official_asset_resolve(name_or_id: 'str', kind: 'str | None' = None, app_profile: 'str | None' = None, prefer_loadable: 'bool' = True) -> 'str'
+```
+
+Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer
+current app/profile loadability; if stale or not load/assign verified,
+verify_required_before_use is true.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `name_or_id` | `string` | `'—'` | ✓ |
+| `kind` | `string \| None` | `None` |  |
+| `app_profile` | `string \| None` | `None` |  |
+| `prefer_loadable` | `boolean` | `True` |  |
+
+### `official_asset_search`
+
+```python
+official_asset_search(query: 'str', kind: 'str | None' = None, app_profile: 'str | None' = None, provider: 'str | None' = None, min_status: 'str' = 'url_validated', allow_stale: 'bool' = True, limit: 'int' = 20) -> 'str'
+```
+
+Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns
+URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; stale
+hits may be listed only when allow_stale=True and must be passed to official_asset_verify
+before use.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `query` | `string` | `'—'` | ✓ |
+| `kind` | `string \| None` | `None` |  |
+| `app_profile` | `string \| None` | `None` |  |
+| `provider` | `string \| None` | `None` |  |
+| `min_status` | `string` | `'url_validated'` |  |
+| `allow_stale` | `boolean` | `True` |  |
+| `limit` | `integer` | `20` |  |
+
+### `official_asset_sync_status`
+
+```python
+official_asset_sync_status(app_profile: 'str | None' = None) -> 'str'
+```
+
+Report latest official asset snapshot metadata, provider/app versions, counts, stale status,
+and failure counts. No Kit launch required.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `app_profile` | `string \| None` | `None` |  |
+
+### `official_asset_verify`
+
+```python
+official_asset_verify(asset_id: 'str', app_profile: 'str | None' = None, timeout_s: 'float | None' = None) -> 'str'
+```
+
+On-demand live verification for one official catalog item. Assets use
+stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding,
+and cleanup. Use workspace workers for live Kit.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `asset_id` | `string` | `'—'` | ✓ |
+| `app_profile` | `string \| None` | `None` |  |
+| `timeout_s` | `number \| None` | `None` |  |
 
 ### `omnigraph_connect`
 

@@ -162,6 +162,7 @@ from omniverse_kit_mcp.types.window import WindowCaptureRequest
 _MCP_SERVER_IMPORT_EPOCH_MS = int(time.time() * 1000)
 _MCP_FRESHNESS_MODULES = (
     "omniverse_kit_mcp.tools.module_tools",
+    "omniverse_kit_mcp.modules.asset_module",
     "omniverse_kit_mcp.modules.robot_module",
     "omniverse_kit_mcp.robot_arm_profiles",
     "omniverse_kit_mcp.types.robot",
@@ -1184,6 +1185,78 @@ def register_module_tools(
         meta = make_meta(ModuleName.ASSET)
         result = await asset.search(
             meta, query=query, category=category, limit=limit
+        )
+        return _serialize(result)
+
+    @mcp.tool()
+    async def official_asset_search(
+        query: str,
+        kind: str | None = None,
+        app_profile: str | None = None,
+        provider: str | None = None,
+        min_status: str = "url_validated",
+        allow_stale: bool = True,
+        limit: int = 20,
+    ) -> str:
+        """Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; stale hits may be listed only when allow_stale=True and must be passed to official_asset_verify before use."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.official_search(
+            meta,
+            query=query,
+            kind=kind,
+            app_profile=app_profile,
+            provider=provider,
+            min_status=min_status,
+            allow_stale=allow_stale,
+            limit=limit,
+        )
+        return _serialize(result)
+
+    @mcp.tool()
+    async def official_asset_resolve(
+        name_or_id: str,
+        kind: str | None = None,
+        app_profile: str | None = None,
+        prefer_loadable: bool = True,
+    ) -> str:
+        """Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer current app/profile loadability; if stale or not load/assign verified, verify_required_before_use is true."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.official_resolve(
+            meta,
+            name_or_id=name_or_id,
+            kind=kind,
+            app_profile=app_profile,
+            prefer_loadable=prefer_loadable,
+        )
+        return _serialize(result)
+
+    @mcp.tool()
+    async def official_asset_get(asset_id: str) -> str:
+        """Return the full generated official asset/material catalog entry by URL-based id."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.official_get(meta, asset_id=asset_id)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def official_asset_sync_status(app_profile: str | None = None) -> str:
+        """Report latest official asset snapshot metadata, provider/app versions, counts, stale status, and failure counts. No Kit launch required."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.official_sync_status(meta, app_profile=app_profile)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def official_asset_verify(
+        asset_id: str,
+        app_profile: str | None = None,
+        timeout_s: float | None = None,
+    ) -> str:
+        """On-demand live verification for one official catalog item. Assets use stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding, and cleanup. Use workspace workers for live Kit."""
+        meta = make_meta(ModuleName.ASSET)
+        result = await asset.official_verify(
+            meta,
+            asset_id=asset_id,
+            app_profile=app_profile,
+            timeout_s=timeout_s,
         )
         return _serialize(result)
 

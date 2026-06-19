@@ -20,6 +20,7 @@
 | `harvest_extension_metadata.py` · `render_catalog_md.py` · `sync_testbed_snapshot.py` | Kit Extension Reference Local Recollection | ignored `docs/references/extensions*.json/md` When needed |
 | `diff_catalog.py` | Current local `extensions.json` vs fresh harvest comparison (added / removed / version_bumped / category_changed) | Determine whether local sync is necessary after kit/app version bump — workflow is `/omniverse-kit-extension-catalog-sync` skill |
 | `diff_asset_inventory.py` | HTTP HEAD verification of all USD/USDA URLs of `docs/assets/isaac/assets/*.md` to NVIDIA S3. 404/NET/5xx reporting | When reporting asset path failure or after updating Isaac Sim 6.x / SimReady asset bucket — workflow is `/omniverse-asset-inventory-sync` skill |
+| `sync_official_asset_catalog.py` | Discover provider roots, recursively list NVIDIA official asset/material content, write ignored JSON snapshots/progress, and optionally verify one app at a time | Generate `docs/references/official-assets/` for `official_asset_*`; full live verification must use workspace workers, not repo-root Kit launch |
 | `rebuild_scene.py <builder.py> --out <out.usd> [--reopen]` | Rebuild thin USD with anonymous-layer + `dont_write_bytecode` (bypass lock/registry/pycache) | When the Live Kit opens USD and re-export fails silently. Details: `../docs/runbooks/scene-reexport-lock.md` |
 
 ## Additional rules

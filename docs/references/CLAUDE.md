@@ -13,6 +13,7 @@
 |---------------------|------|---------------------------|
 | `sensor_menu_catalog.md` | All sensors in `Create > Sensors` menu — vendor × model grouping + `window_menu_trigger` menu_path | Recall `window_menu_list(menu_path="Create")` after starting Isaac Sim |
 | `extensions.json` / `extensions-catalog.md` / `harvest-progress.json` | Locally installed extension catalog (ignored in public repo) | `harvest_extension_metadata.py` + `render_catalog_md.py` |
+| `official-asset-catalog.md` / `official-assets/` | Tracked schema/runbook + ignored generated NVIDIA official asset/material snapshots | `sync_official_asset_catalog.py` |
 | `app-specific/` / `testbed-snapshot/` | Local research enrichment material (ignored in public repo) | Recreate locally when needed / Store separately |
 
 ## MCP function research order (task-driven, based on autonomous loop)
@@ -92,4 +93,6 @@ Returns `EXTENSION_CATALOG_UNAVAILABLE`. Implementation:
 - tracked MCP resource source: `sensor_menu_catalog.md`
 - ignored local generated refs: `extensions.json`, `extensions-catalog.md`,
   `harvest-progress.json`, `app-specific/`, `testbed-snapshot/`
+- ignored official asset/material snapshots: `official-assets/`; tracked schema:
+  `official-asset-catalog.md`
 - Regeneration script convention: `../../scripts/CLAUDE.md`

@@ -177,7 +177,7 @@ class StageService:
         import omni.kit.async_engine  # lazy
         import omni.kit.commands
         import omni.usd
-        from pxr import Gf, UsdGeom
+        from pxr import Gf, Usd, UsdGeom
 
         usd_url: str = request["usd_url"].replace("\\", "/")  # USD needs forward slashes
         prim_path: str = request["prim_path"]
@@ -205,14 +205,27 @@ class StageService:
             prim = stage.GetPrimAtPath(prim_path)
             if not prim.IsValid():
                 raise RuntimeError(f"Prim not found at {prim_path} after loading")
+            if prim.HasPayload():
+                stage.Load(prim.GetPath(), Usd.LoadWithDescendants)
+                await _wait_stage_loading()
+                prim = stage.GetPrimAtPath(prim_path)
 
-            return prim
+            load_mode = "payload"
+            if not list(prim.GetChildren()) and prim.GetTypeName() in ("", "Xform"):
+                stage.RemovePrim(prim.GetPath())
+                ref_prim = UsdGeom.Xform.Define(stage, prim_path).GetPrim()
+                ref_prim.GetReferences().AddReference(usd_url)
+                await _wait_stage_loading()
+                prim = stage.GetPrimAtPath(prim_path)
+                load_mode = "reference_fallback"
+
+            return prim, load_mode
 
         # Kit main event loop 에 coroutine schedule → concurrent.futures.Future 반환
         # (non-main thread 에서 호출되므로 run_coroutine_threadsafe 경로)
         future = omni.kit.async_engine.run_coroutine(_main_loop_impl())
         # asyncio 방식 await — FastAPI loop 는 free → Kit main loop 는 자기 tick 진행
-        prim = await asyncio.wrap_future(future)
+        prim, load_mode = await asyncio.wrap_future(future)
 
         ctx = omni.usd.get_context()
         stage = ctx.get_stage()
@@ -245,6 +258,7 @@ class StageService:
             "type_name": prim.GetTypeName(),
             "usd_url": usd_url,
             "has_children": len(children) > 0,
+            "load_mode": load_mode,
         }
 
     async def set_property(self, request: dict[str, Any]) -> dict[str, Any]:

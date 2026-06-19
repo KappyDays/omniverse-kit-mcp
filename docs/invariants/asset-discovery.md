@@ -16,8 +16,11 @@ with **entry workflow**, not validation.
 
 1. **Categorizing Request Types** — What to Place? (robot / character / environment / prop /
 simready/etc). See mapping table below.
-2. **Get URL** — Natural language needs → concrete USD URL. **`asset_search` priority** (Offline, Isaac
-(operates even when not started). As an auxiliary catalog markdown directly Read, live `asset_list` /
+2. **Get URL** — Natural language needs → concrete USD URL. Prefer
+**`official_asset_search`** when `docs/references/official-assets/latest.json`
+exists (generated NVIDIA browser-extension catalog; stale hits require
+`official_asset_verify` before use), then **`asset_search`** (Offline, Isaac
+operates even when not started). As an auxiliary catalog markdown directly Read, live `asset_list` /
 `content_browse`. “URL Acquisition Path” below.
 3. **Check load safety conditions** — Compliance with load conditions of `docs/invariants/usd-load.md` (full HTTPS
 S3 URL, `file://` prohibited, automatic stop-guard during play, skip/fallback/placeholder prohibited).
@@ -40,9 +43,15 @@ Read only files — no unnecessary token consumption.
 
 ## URL acquisition path
 
-The three paths are complementary. **Planning stage / If Isaac is not started, `asset_search` is 1st.**
+The four paths are complementary. **Planning stage / If Isaac is not started,
+`official_asset_search` is 1st when generated; otherwise `asset_search` is 1st.**
 
-1. **`asset_search(query, category=None, limit=20)` — Primary, offline.** Curation markdown
+0. **`official_asset_search(query, kind=None, app_profile=None, provider=None)` —
+Generated official catalog, offline.** Searches ignored NVIDIA official
+asset/material snapshots from browser providers. Use `official_asset_resolve`
+for concrete USD/MDL targets and `official_asset_verify` when stale or not
+load/assign verified for the target app.
+1. **`asset_search(query, category=None, limit=20)` — Legacy curated catalog, offline.** Curation markdown
 Read the catalog directly from the MCP server process + ranking → `[{name, url, category,
    source_file}]`. Live REST / Isaac Startup **Not Required**. Example: `asset_search("forklift")`,
 `asset_search("warehouse", category="environments")`. (Natural language such as “Find a forklift”

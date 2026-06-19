@@ -4,11 +4,18 @@
 ``search`` is fully **offline**: it reads the curated markdown catalog under
 ``docs/assets/isaac/`` directly in the MCP server process, ranks entries, and
 returns concrete USD URLs — usable at planning time without Isaac running.
+``official_*`` reads generated NVIDIA official browser-extension snapshots from
+``docs/references/official-assets/`` and can verify one entry on demand.
 """
 
 from __future__ import annotations
 
+import asyncio
+from datetime import datetime, timezone
+import json
 import logging
+import math
+import os
 import re
 import time
 from pathlib import Path
@@ -24,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 # Project-root-relative default catalog dir (…/docs/assets/isaac).
 _DEFAULT_CATALOG_DIR = Path(__file__).resolve().parents[3] / "docs" / "assets" / "isaac"
+_DEFAULT_OFFICIAL_CATALOG_DIR = (
+    Path(__file__).resolve().parents[3] / "docs" / "references" / "official-assets"
+)
 
 # Curated per-category catalog files (stems double as the `category` value).
 _CATEGORY_FILES = ("robots", "environments", "people", "props", "simready", "other")
@@ -41,6 +51,21 @@ _HEADING_RE = re.compile(r"^#{1,6}\s")
 _BOLD_RE = re.compile(r"\*+")
 # Plausible SimReady prose asset name (lowercase props, ranges/variants allowed).
 _SIMREADY_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*[a-z0-9_~/,. ]*$")
+_OFFICIAL_STATUS_RANK = {
+    "failed": -1,
+    "stale": -1,
+    "discovered": 0,
+    "url_validated": 1,
+    "inspect_verified": 2,
+    "load_verified": 3,
+    "assign_verified": 3,
+}
+OFFICIAL_ASSET_LOAD_VERIFIED_QUALITIES = frozenset(
+    {"valid", "content_verified_no_bbox"}
+)
+_OFFICIAL_MAX_AGE_DAYS = int(
+    os.environ.get("OFFICIAL_ASSET_CATALOG_MAX_AGE_DAYS", "30")
+)
 
 
 class AssetModule:
@@ -49,11 +74,18 @@ class AssetModule:
         client: IsaacRestClient,
         catalog_dir: Path | None = None,
         external_assets: ExternalAssetRegistry | None = None,
+        official_catalog_dir: Path | None = None,
     ) -> None:
         self._client = client
         self._catalog_dir = catalog_dir or _DEFAULT_CATALOG_DIR
         self._external_assets = external_assets
         self._index: list[dict[str, Any]] | None = None
+        self._official_catalog_dir = (
+            official_catalog_dir or _DEFAULT_OFFICIAL_CATALOG_DIR
+        )
+        self._official_catalog_cache: dict[
+            str, tuple[tuple[str, int, int], dict[str, Any]]
+        ] = {}
 
     async def list(
         self,
@@ -239,6 +271,431 @@ class AssetModule:
         if self._external_assets is None:
             self._external_assets = ExternalAssetRegistry()
         return self._external_assets
+
+    # ------------------------------------------------------------------
+    # Generated NVIDIA official asset/material catalog
+    # ------------------------------------------------------------------
+
+    def _load_official_catalog(self, app_profile: str | None = None) -> dict[str, Any]:
+        path = _official_catalog_path(self._official_catalog_dir, app_profile)
+        file_id = _official_catalog_file_id(path)
+        cache_key = str(path.resolve()) if path.exists() else str(path)
+        cached = self._official_catalog_cache.get(cache_key)
+        if cached and cached[0] == file_id:
+            return cached[1]
+        catalog = _load_official_catalog(self._official_catalog_dir, app_profile)
+        self._official_catalog_cache[cache_key] = (file_id, catalog)
+        return catalog
+
+    async def official_search(
+        self,
+        meta: OperationMeta,
+        query: str,
+        kind: str | None = None,
+        app_profile: str | None = None,
+        provider: str | None = None,
+        min_status: str = "url_validated",
+        allow_stale: bool = True,
+        limit: int = 20,
+    ) -> ModuleResult[dict[str, Any]]:
+        started = int(time.time() * 1000)
+        try:
+            catalog = self._load_official_catalog(app_profile)
+            entries = _official_entries(catalog)
+            min_rank = _official_status_rank(min_status)
+            scored: list[tuple[int, str, dict[str, Any]]] = []
+            for entry in entries:
+                if kind and str(entry.get("kind", "")).lower() != kind.lower():
+                    continue
+                if app_profile and not _official_entry_has_app(entry, app_profile):
+                    continue
+                if provider and not _official_entry_has_provider(entry, provider):
+                    continue
+                status = _official_entry_status(entry, app_profile)
+                if _official_status_rank(status) < min_rank:
+                    continue
+                stale_warning = _official_stale_warning(catalog, entry, app_profile)
+                if stale_warning and not allow_stale:
+                    continue
+                score = _official_score(entry, query)
+                if query.strip() and score <= 0:
+                    continue
+                scored.append((score, str(entry.get("name", "")), entry))
+
+            scored.sort(key=lambda item: (-item[0], item[1].lower()))
+            candidates = [
+                _official_candidate(catalog, entry, app_profile)
+                for _, _, entry in scored[: max(0, limit)]
+            ]
+            return ok_result(
+                {
+                    "catalog_path": str(catalog.get("_catalog_path") or _official_catalog_path(self._official_catalog_dir, app_profile)),
+                    "catalog_identity": _official_public_catalog_identity(catalog),
+                    "query": query,
+                    "kind": kind,
+                    "app_profile": app_profile,
+                    "provider": provider,
+                    "min_status": min_status,
+                    "allow_stale": allow_stale,
+                    "count": len(candidates),
+                    "candidates": candidates,
+                },
+                started_ms=started,
+            )
+        except FileNotFoundError as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="OFFICIAL_ASSET_SEARCH_ERROR",
+            )
+
+    async def official_resolve(
+        self,
+        meta: OperationMeta,
+        name_or_id: str,
+        kind: str | None = None,
+        app_profile: str | None = None,
+        prefer_loadable: bool = True,
+    ) -> ModuleResult[dict[str, Any]]:
+        started = int(time.time() * 1000)
+        try:
+            catalog = self._load_official_catalog(app_profile)
+            entry = _find_official_entry(
+                catalog,
+                name_or_id,
+                kind=kind,
+                app_profile=app_profile,
+                prefer_loadable=prefer_loadable,
+            )
+            if entry is None:
+                return error_result(
+                    f"Official asset entry not found: {name_or_id}",
+                    started_ms=started,
+                    error_code="OFFICIAL_ASSET_NOT_FOUND",
+                )
+            return ok_result(
+                _official_resolved(catalog, entry, app_profile),
+                started_ms=started,
+            )
+        except FileNotFoundError as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="OFFICIAL_ASSET_RESOLVE_ERROR",
+            )
+
+    async def official_get(
+        self,
+        meta: OperationMeta,
+        asset_id: str,
+    ) -> ModuleResult[dict[str, Any]]:
+        started = int(time.time() * 1000)
+        try:
+            catalog = self._load_official_catalog()
+            entry = _find_official_entry(catalog, asset_id)
+            if entry is None:
+                return error_result(
+                    f"Official asset entry not found: {asset_id}",
+                    started_ms=started,
+                    error_code="OFFICIAL_ASSET_NOT_FOUND",
+                )
+            data = dict(entry)
+            data["stale_warning"] = _official_stale_warning(catalog, entry, None)
+            data["verify_required_before_use"] = _official_verify_required(
+                catalog, entry, None
+            )
+            return ok_result(data, started_ms=started)
+        except FileNotFoundError as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="OFFICIAL_ASSET_GET_ERROR",
+            )
+
+    async def official_sync_status(
+        self,
+        meta: OperationMeta,
+        app_profile: str | None = None,
+    ) -> ModuleResult[dict[str, Any]]:
+        started = int(time.time() * 1000)
+        try:
+            catalog = self._load_official_catalog(app_profile)
+            entries = _official_entries(catalog)
+            snapshots = [
+                s for s in catalog.get("snapshots", [])
+                if not app_profile or s.get("app_profile") == app_profile
+            ]
+            profiles = []
+            for snapshot in snapshots:
+                profile = str(snapshot.get("app_profile", ""))
+                profile_entries = [
+                    e for e in entries if _official_entry_has_app(e, profile)
+                ]
+                failure_count = sum(
+                    1
+                    for e in profile_entries
+                    if _official_entry_status(e, profile) == "failed"
+                )
+                profiles.append(
+                    {
+                        "app_profile": profile,
+                        "app_version": snapshot.get("app_version"),
+                        "kit_version": snapshot.get("kit_version"),
+                        "generated_at": snapshot.get("generated_at")
+                        or catalog.get("generated_at"),
+                        "providers": snapshot.get("providers") or [],
+                        "counts": snapshot.get("counts")
+                        or _official_counts(profile_entries, profile),
+                        "stale": _official_snapshot_is_stale(catalog, snapshot),
+                        "stale_warning": _official_snapshot_stale_warning(
+                            catalog, snapshot
+                        ),
+                        "failure_count": failure_count,
+                    }
+                )
+            filtered_entries = [
+                e for e in entries
+                if not app_profile or _official_entry_has_app(e, app_profile)
+            ]
+            return ok_result(
+                {
+                    "catalog_path": str(catalog.get("_catalog_path") or _official_catalog_path(self._official_catalog_dir, app_profile)),
+                    "catalog_identity": _official_public_catalog_identity(catalog),
+                    "schema_version": catalog.get("schema_version"),
+                    "generated_at": catalog.get("generated_at"),
+                    "app_profile": app_profile,
+                    "profile_count": len(profiles),
+                    "profiles": profiles,
+                    "counts": _official_counts(filtered_entries, app_profile),
+                },
+                started_ms=started,
+            )
+        except FileNotFoundError as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="OFFICIAL_ASSET_SYNC_STATUS_ERROR",
+            )
+
+    async def official_verify(
+        self,
+        meta: OperationMeta,
+        asset_id: str,
+        app_profile: str | None = None,
+        timeout_s: float | None = None,
+    ) -> ModuleResult[dict[str, Any]]:
+        started = int(time.time() * 1000)
+        try:
+            catalog = self._load_official_catalog(app_profile)
+            entry = _find_official_entry(
+                catalog,
+                asset_id,
+                app_profile=app_profile,
+                prefer_loadable=False,
+            )
+            if entry is None:
+                return error_result(
+                    f"Official asset entry not found: {asset_id}",
+                    started_ms=started,
+                    error_code="OFFICIAL_ASSET_NOT_FOUND",
+                )
+            default_timeout = 45.0 if entry.get("kind") == "material" else 120.0
+            timeout = float(timeout_s or default_timeout)
+            attempts = 2
+            last_record: dict[str, Any] | None = None
+            for attempt in range(1, attempts + 1):
+                attempt_started = time.perf_counter()
+                try:
+                    record = await asyncio.wait_for(
+                        self._verify_official_entry(meta, entry, app_profile),
+                        timeout=timeout,
+                    )
+                    record["attempt"] = attempt
+                    record["timeout_s"] = timeout
+                    record["elapsed_ms"] = int(
+                        (time.perf_counter() - attempt_started) * 1000
+                    )
+                    last_record = record
+                    if record.get("verification_status") != "failed":
+                        break
+                except Exception as exc:  # noqa: BLE001 - preserve retry evidence
+                    last_record = _official_verify_record(
+                        entry,
+                        app_profile,
+                        status="failed",
+                        error=str(exc),
+                    )
+                    last_record["attempt"] = attempt
+                    last_record["timeout_s"] = timeout
+                    last_record["elapsed_ms"] = int(
+                        (time.perf_counter() - attempt_started) * 1000
+                    )
+            record = last_record or _official_verify_record(
+                entry, app_profile, status="failed", error="verification did not run"
+            )
+            record["retry_count"] = attempts - 1
+            _append_official_verify_record(self._official_catalog_dir, record)
+            return ok_result(record, started_ms=started)
+        except FileNotFoundError as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code="OFFICIAL_ASSET_VERIFY_ERROR",
+            )
+
+    async def _verify_official_entry(
+        self,
+        meta: OperationMeta,
+        entry: dict[str, Any],
+        app_profile: str | None,
+    ) -> dict[str, Any]:
+        if entry.get("kind") == "material":
+            return await self._verify_official_material(meta, entry, app_profile)
+        return await self._verify_official_asset(meta, entry, app_profile)
+
+    async def _verify_official_asset(
+        self,
+        meta: OperationMeta,
+        entry: dict[str, Any],
+        app_profile: str | None,
+    ) -> dict[str, Any]:
+        url = str(entry.get("canonical_url", ""))
+        prim_path = f"/World/OfficialAssetVerify/{_safe_prim_name(entry)}"
+        cleanup: dict[str, Any] | None = None
+        record = _official_verify_record(entry, app_profile, status="failed")
+        try:
+            await self._ensure_timeline_stopped()
+            load = await self._client.stage_load_usd(
+                {"usd_url": url, "prim_path": prim_path, "position": None, "rotation": None}
+            )
+            bbox = await self._client.stage_compute_world_bbox(
+                {"prim_path": prim_path, "include_purposes": ["default", "render"]}
+            )
+            inspect = await self._client.content_inspect({"url": url})
+            quality = official_asset_load_quality_evidence(load, bbox, inspect)
+            load_verified = (
+                quality["load_quality"] in OFFICIAL_ASSET_LOAD_VERIFIED_QUALITIES
+            )
+            record.update(
+                {
+                    "verification_status": (
+                        "load_verified" if load_verified else "failed"
+                    ),
+                    "prim_path": prim_path,
+                    "stage_load": load,
+                    "bbox": {
+                        "min": bbox.get("min"),
+                        "max": bbox.get("max"),
+                        "center": bbox.get("center"),
+                        "size": bbox.get("size"),
+                    },
+                    "meters_per_unit": inspect.get("meters_per_unit"),
+                    "up_axis": inspect.get("up_axis"),
+                    "prim_count": inspect.get("prim_count"),
+                    "load_quality": quality["load_quality"],
+                    "load_quality_warning": quality["load_quality_warning"],
+                    "bbox_valid": quality["bbox_valid"],
+                    "bbox_validation_reasons": quality["bbox_validation_reasons"],
+                    "has_authored_children": quality["has_authored_children"],
+                    "has_default_prim": quality["has_default_prim"],
+                    "prim_count_valid": quality["prim_count_valid"],
+                    "error": None if load_verified else quality["load_quality_warning"],
+                }
+            )
+            return record
+        finally:
+            try:
+                cleanup = await self._client.stage_delete_prim(prim_path)
+            except Exception as exc:  # noqa: BLE001
+                cleanup = {"ok": False, "error": str(exc)}
+            record["cleanup"] = cleanup
+
+    async def _verify_official_material(
+        self,
+        meta: OperationMeta,
+        entry: dict[str, Any],
+        app_profile: str | None,
+    ) -> dict[str, Any]:
+        url = str(entry.get("canonical_url", ""))
+        material_name = _official_material_name(entry)
+        prim_path = f"/World/OfficialMaterialVerify/{_safe_prim_name(entry)}Target"
+        cleanup: dict[str, Any] | None = None
+        record = _official_verify_record(entry, app_profile, status="failed")
+        try:
+            create = await self._client.stage_create_prim(
+                {"prim_path": prim_path, "prim_type": "Cube", "position": [0.0, 0.0, 0.0]}
+            )
+            assign = await self._client.material_assign_mdl(
+                {
+                    "prim_path": prim_path,
+                    "mdl_url": url,
+                    "material_name": material_name,
+                }
+            )
+            bound = await self._client.material_get_bound(prim_path)
+            create_ok = bool(create.get("ok", True))
+            assign_ok = bool(assign.get("ok", True))
+            bound_ok = bool(bound.get("ok", True)) and bool(bound.get("material_path"))
+            record.update(
+                {
+                    "verification_status": (
+                        "assign_verified" if create_ok and assign_ok and bound_ok else "failed"
+                    ),
+                    "prim_path": prim_path,
+                    "material_name": material_name,
+                    "create_prim": create,
+                    "assign": assign,
+                    "bound": bound,
+                    "error": None if create_ok and assign_ok and bound_ok else "material assign or binding readback failed",
+                }
+            )
+            return record
+        finally:
+            try:
+                cleanup = await self._client.stage_delete_prim(prim_path)
+            except Exception as exc:  # noqa: BLE001
+                cleanup = {"ok": False, "error": str(exc)}
+            record["cleanup"] = cleanup
+
+    async def _ensure_timeline_stopped(self) -> None:
+        status = await self._client.simulation_status()
+        if status.get("is_playing"):
+            await self._client.simulation_stop()
 
 
 # ----------------------------------------------------------------------
@@ -523,6 +980,699 @@ def _parse_list(raw: dict) -> AssetListResult:
         items=items,
         count=int(raw.get("count", len(items))),
     )
+
+
+def official_asset_id(canonical_url: str) -> str:
+    """Stable URL-based catalog id used by generated snapshots and MCP tools."""
+    return f"url:{canonical_url.strip()}"
+
+
+def _official_profile_latest_name(app_profile: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "-", app_profile.strip()).strip("-")
+    return f"latest-{safe or app_profile}.json"
+
+
+def _official_catalog_path(
+    catalog_dir: Path,
+    app_profile: str | None = None,
+) -> Path:
+    names: list[str] = []
+    if app_profile:
+        names.append(_official_profile_latest_name(app_profile))
+    names.extend(("latest.json", "catalog.json", "official-assets.latest.json"))
+    for name in names:
+        candidate = catalog_dir / name
+        if candidate.is_file():
+            return candidate
+    return catalog_dir / (_official_profile_latest_name(app_profile) if app_profile else "latest.json")
+
+
+def _official_catalog_file_id(path: Path) -> tuple[str, int, int]:
+    if not path.is_file():
+        return (str(path), -1, -1)
+    stat = path.stat()
+    return (str(path.resolve()), int(stat.st_mtime_ns), int(stat.st_size))
+
+
+def _official_public_catalog_identity(catalog: dict[str, Any]) -> dict[str, Any]:
+    return dict(catalog.get("_catalog_identity") or {})
+
+
+def _load_official_catalog(
+    catalog_dir: Path,
+    app_profile: str | None = None,
+) -> dict[str, Any]:
+    path = _official_catalog_path(catalog_dir, app_profile)
+    if not path.is_file():
+        raise FileNotFoundError(
+            "Official asset catalog is not available. Generate "
+            "docs/references/official-assets/latest.json with "
+            "scripts/sync_official_asset_catalog.py before using official_asset_* tools."
+        )
+    catalog = json.loads(path.read_text(encoding="utf-8"))
+    catalog["_catalog_path"] = str(path)
+    stat = path.stat()
+    catalog["_catalog_identity"] = {
+        "path": str(path),
+        "mtime_ns": int(stat.st_mtime_ns),
+        "size": int(stat.st_size),
+        "run_id": catalog.get("run_id"),
+        "generated_at": catalog.get("generated_at"),
+        "profiles": [
+            snapshot.get("app_profile")
+            for snapshot in catalog.get("snapshots") or []
+            if snapshot.get("app_profile")
+        ],
+    }
+    return catalog
+
+
+def _official_entries(catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    flattened: dict[str, dict[str, Any]] = {}
+    raw_items = list(catalog.get("items") or [])
+    for snapshot in catalog.get("snapshots") or []:
+        for item in snapshot.get("items") or []:
+            raw_items.append(_official_item_with_snapshot_defaults(item, snapshot))
+    for raw in raw_items:
+        entry = _normalize_official_entry(raw)
+        key = str(entry["id"])
+        if key in flattened:
+            _merge_official_entry(flattened[key], entry)
+        else:
+            flattened[key] = entry
+    return list(flattened.values())
+
+
+def _official_item_with_snapshot_defaults(
+    item: dict[str, Any],
+    snapshot: dict[str, Any],
+) -> dict[str, Any]:
+    out = dict(item)
+    for key in ("app_profile", "app_version", "kit_version"):
+        out.setdefault(key, snapshot.get(key))
+    if not out.get("provided_in"):
+        out["provided_in"] = [
+            {
+                "app_profile": snapshot.get("app_profile"),
+                "app_version": snapshot.get("app_version"),
+                "kit_version": snapshot.get("kit_version"),
+                "provider": item.get("provider"),
+                "extension_id": item.get("extension_id"),
+                "extension_version": item.get("extension_version"),
+                "source_root": item.get("source_root"),
+                "category": item.get("category"),
+            }
+        ]
+    return out
+
+
+def _normalize_official_entry(raw: dict[str, Any]) -> dict[str, Any]:
+    canonical_url = str(raw.get("canonical_url") or raw.get("url") or "").strip()
+    entry = dict(raw)
+    entry["canonical_url"] = canonical_url
+    entry["id"] = str(raw.get("id") or official_asset_id(canonical_url))
+    entry["kind"] = str(raw.get("kind") or _guess_official_kind(canonical_url))
+    entry["name"] = str(raw.get("name") or _url_name(canonical_url))
+    entry["aliases"] = _dedupe_strs(raw.get("aliases") or [])
+    entry["provided_in"] = _dedupe_dicts(raw.get("provided_in") or [])
+    entry["loadable_in"] = _dedupe_dicts(raw.get("loadable_in") or [])
+    if raw.get("app_profile") and not entry["provided_in"]:
+        entry["provided_in"] = [
+            {
+                "app_profile": raw.get("app_profile"),
+                "app_version": raw.get("app_version"),
+                "kit_version": raw.get("kit_version"),
+                "provider": raw.get("provider"),
+                "extension_id": raw.get("extension_id"),
+                "extension_version": raw.get("extension_version"),
+                "source_root": raw.get("source_root"),
+                "category": raw.get("category"),
+            }
+        ]
+    entry["verification_status"] = str(
+        raw.get("verification_status") or _status_from_loadable(entry) or "discovered"
+    )
+    return entry
+
+
+def _merge_official_entry(target: dict[str, Any], source: dict[str, Any]) -> None:
+    for key in (
+        "kind",
+        "name",
+        "canonical_url",
+        "provider",
+        "source_root",
+        "category",
+        "app_profile",
+        "app_version",
+        "kit_version",
+        "extension_id",
+        "extension_version",
+        "material_name",
+    ):
+        if not target.get(key) and source.get(key):
+            target[key] = source[key]
+    target["aliases"] = _dedupe_strs(
+        list(target.get("aliases") or []) + list(source.get("aliases") or [])
+    )
+    target["provided_in"] = _dedupe_dicts(
+        list(target.get("provided_in") or []) + list(source.get("provided_in") or [])
+    )
+    target["loadable_in"] = _dedupe_dicts(
+        list(target.get("loadable_in") or []) + list(source.get("loadable_in") or [])
+    )
+    if _official_status_rank(source.get("verification_status")) > _official_status_rank(
+        target.get("verification_status")
+    ):
+        target["verification_status"] = source.get("verification_status")
+
+
+def _dedupe_strs(values: list[Any]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value).strip()
+        key = text.lower()
+        if text and key not in seen:
+            out.append(text)
+            seen.add(key)
+    return out
+
+
+def _dedupe_dicts(values: list[Any]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        key = json.dumps(value, sort_keys=True, ensure_ascii=False, default=str)
+        if key not in seen:
+            out.append(dict(value))
+            seen.add(key)
+    return out
+
+
+def _guess_official_kind(url: str) -> str:
+    lower = url.lower()
+    if lower.endswith(".mdl"):
+        return "material"
+    return "asset"
+
+
+def _url_name(url: str) -> str:
+    clean = url.split("?", 1)[0].rstrip("/")
+    return clean.rsplit("/", 1)[-1] or clean
+
+
+def _status_from_loadable(entry: dict[str, Any]) -> str | None:
+    statuses = [
+        str(item.get("verification_status") or "")
+        for item in entry.get("loadable_in") or []
+    ]
+    statuses = [s for s in statuses if s]
+    if not statuses:
+        return None
+    return max(statuses, key=_official_status_rank)
+
+
+def _official_status_rank(status: Any) -> int:
+    return _OFFICIAL_STATUS_RANK.get(str(status or "discovered"), 0)
+
+
+def _official_entry_has_app(entry: dict[str, Any], app_profile: str) -> bool:
+    if entry.get("app_profile") == app_profile:
+        return True
+    return any(
+        item.get("app_profile") == app_profile
+        for item in list(entry.get("provided_in") or []) + list(entry.get("loadable_in") or [])
+    )
+
+
+def _official_entry_has_provider(entry: dict[str, Any], provider: str) -> bool:
+    if entry.get("provider") == provider:
+        return True
+    return any(
+        item.get("provider") == provider
+        for item in entry.get("provided_in") or []
+    )
+
+
+def _official_entry_status(
+    entry: dict[str, Any],
+    app_profile: str | None,
+) -> str:
+    if app_profile:
+        statuses = [
+            str(item.get("verification_status") or "")
+            for item in entry.get("loadable_in") or []
+            if item.get("app_profile") == app_profile
+        ]
+        statuses = [s for s in statuses if s]
+        if statuses:
+            return max(statuses, key=_official_status_rank)
+    return str(entry.get("verification_status") or _status_from_loadable(entry) or "discovered")
+
+
+def _official_score(entry: dict[str, Any], query: str) -> int:
+    tokens = [t for t in (query or "").lower().split() if t]
+    if not tokens:
+        return 0
+    name = str(entry.get("name", "")).lower()
+    stem = re.sub(r"\.(usd|usda|mdl)$", "", name)
+    aliases = " ".join(str(a) for a in entry.get("aliases") or []).lower()
+    hay = " ".join(
+        str(part or "")
+        for part in (
+            entry.get("id"),
+            entry.get("canonical_url"),
+            entry.get("provider"),
+            entry.get("category"),
+            aliases,
+        )
+    ).lower()
+    full = " ".join(tokens)
+    score = 0
+    for token in tokens:
+        if token == stem:
+            score += 100
+        elif token in name:
+            score += 20
+        if token in aliases:
+            score += 15
+        if token in hay:
+            score += 3
+    if full and (full in name or full in aliases):
+        score += 50
+    return score
+
+
+def _official_candidate(
+    catalog: dict[str, Any],
+    entry: dict[str, Any],
+    app_profile: str | None,
+) -> dict[str, Any]:
+    status = _official_entry_status(entry, app_profile)
+    stale_warning = _official_stale_warning(catalog, entry, app_profile)
+    provider_evidence = _official_provider_evidence(entry, app_profile)
+    app_evidence = _official_app_evidence(entry, app_profile)
+    return {
+        "id": entry.get("id"),
+        "kind": entry.get("kind"),
+        "name": entry.get("name"),
+        "aliases": entry.get("aliases") or [],
+        "canonical_url": entry.get("canonical_url"),
+        "provider": entry.get("provider"),
+        "category": entry.get("category"),
+        "status": "stale" if stale_warning else status,
+        "verification_status": status,
+        "provider_evidence": provider_evidence,
+        "app_version_evidence": app_evidence,
+        "stale_warning": stale_warning,
+        "verify_required_before_use": _official_verify_required(
+            catalog, entry, app_profile
+        ),
+        "target": _official_target(entry),
+    }
+
+
+def _official_provider_evidence(
+    entry: dict[str, Any],
+    app_profile: str | None,
+) -> list[dict[str, Any]]:
+    evidence = []
+    for item in entry.get("provided_in") or []:
+        if app_profile and item.get("app_profile") != app_profile:
+            continue
+        evidence.append(
+            {
+                "provider": item.get("provider") or entry.get("provider"),
+                "app_profile": item.get("app_profile"),
+                "extension_id": item.get("extension_id") or entry.get("extension_id"),
+                "extension_version": item.get("extension_version")
+                or entry.get("extension_version"),
+                "source_root": item.get("source_root") or entry.get("source_root"),
+                "category": item.get("category") or entry.get("category"),
+            }
+        )
+    return evidence
+
+
+def _official_app_evidence(
+    entry: dict[str, Any],
+    app_profile: str | None,
+) -> list[dict[str, Any]]:
+    evidence = []
+    for item in list(entry.get("provided_in") or []) + list(entry.get("loadable_in") or []):
+        if app_profile and item.get("app_profile") != app_profile:
+            continue
+        evidence.append(
+            {
+                "app_profile": item.get("app_profile"),
+                "app_version": item.get("app_version"),
+                "kit_version": item.get("kit_version"),
+                "verification_status": item.get("verification_status"),
+                "checked_at": item.get("checked_at"),
+            }
+        )
+    return _dedupe_dicts(evidence)
+
+
+def _official_target(entry: dict[str, Any]) -> dict[str, Any]:
+    if entry.get("kind") == "material":
+        return {
+            "mdl_url": entry.get("canonical_url"),
+            "material_name": _official_material_name(entry),
+        }
+    return {"usd_url": entry.get("canonical_url")}
+
+
+def _official_resolved(
+    catalog: dict[str, Any],
+    entry: dict[str, Any],
+    app_profile: str | None,
+) -> dict[str, Any]:
+    return {
+        **_official_candidate(catalog, entry, app_profile),
+        "provided_in": entry.get("provided_in") or [],
+        "loadable_in": entry.get("loadable_in") or [],
+        "bbox": entry.get("bbox"),
+        "meters_per_unit": entry.get("meters_per_unit"),
+        "up_axis": entry.get("up_axis"),
+        "prim_count": entry.get("prim_count"),
+        "error": entry.get("error"),
+    }
+
+
+def _find_official_entry(
+    catalog: dict[str, Any],
+    name_or_id: str,
+    kind: str | None = None,
+    app_profile: str | None = None,
+    prefer_loadable: bool = True,
+) -> dict[str, Any] | None:
+    needle = str(name_or_id or "").strip()
+    if not needle:
+        return None
+    entries = [
+        e for e in _official_entries(catalog)
+        if not kind or str(e.get("kind", "")).lower() == kind.lower()
+    ]
+    exact = [
+        e for e in entries
+        if needle in {str(e.get("id")), str(e.get("canonical_url"))}
+    ]
+    if not exact:
+        lower = needle.lower()
+        exact = [
+            e for e in entries
+            if lower == str(e.get("name", "")).lower()
+            or lower in {str(a).lower() for a in e.get("aliases") or []}
+        ]
+    if not exact:
+        scored = [
+            (_official_score(e, needle), e) for e in entries
+            if _official_score(e, needle) > 0
+        ]
+        scored.sort(key=lambda item: (-item[0], str(item[1].get("name", "")).lower()))
+        exact = [item[1] for item in scored[:5]]
+    if app_profile:
+        exact = [e for e in exact if _official_entry_has_app(e, app_profile)] or exact
+    if prefer_loadable and app_profile:
+        loadable = [
+            e for e in exact
+            if any(
+                item.get("app_profile") == app_profile
+                for item in e.get("loadable_in") or []
+            )
+        ]
+        if loadable:
+            return loadable[0]
+    return exact[0] if exact else None
+
+
+def _official_verify_required(
+    catalog: dict[str, Any],
+    entry: dict[str, Any],
+    app_profile: str | None,
+) -> bool:
+    if _official_stale_warning(catalog, entry, app_profile):
+        return True
+    status = _official_entry_status(entry, app_profile)
+    required_status = (
+        "assign_verified" if entry.get("kind") == "material" else "load_verified"
+    )
+    if _official_status_rank(status) < _official_status_rank(required_status):
+        return True
+    if app_profile and not any(
+        item.get("app_profile") == app_profile
+        for item in entry.get("loadable_in") or []
+    ):
+        return True
+    return False
+
+
+def _official_stale_warning(
+    catalog: dict[str, Any],
+    entry: dict[str, Any],
+    app_profile: str | None,
+) -> str | None:
+    if entry.get("stale"):
+        return "Official asset entry is marked stale; run official_asset_verify before use."
+    relevant_profiles = [app_profile] if app_profile else _entry_profiles(entry)
+    snapshots = {
+        str(s.get("app_profile")): s for s in catalog.get("snapshots") or []
+    }
+    stale_profiles = []
+    for profile in relevant_profiles:
+        snapshot = snapshots.get(str(profile))
+        if not snapshot:
+            continue
+        warning = _official_snapshot_stale_warning(catalog, snapshot)
+        if warning:
+            stale_profiles.append(f"{profile}: {warning}")
+    if stale_profiles:
+        return "; ".join(stale_profiles)
+    return None
+
+
+def _entry_profiles(entry: dict[str, Any]) -> list[str]:
+    profiles = []
+    for item in list(entry.get("provided_in") or []) + list(entry.get("loadable_in") or []):
+        profile = item.get("app_profile")
+        if profile and profile not in profiles:
+            profiles.append(str(profile))
+    if entry.get("app_profile") and entry.get("app_profile") not in profiles:
+        profiles.append(str(entry.get("app_profile")))
+    return profiles
+
+
+def _official_snapshot_is_stale(
+    catalog: dict[str, Any],
+    snapshot: dict[str, Any],
+) -> bool:
+    return _official_snapshot_stale_warning(catalog, snapshot) is not None
+
+
+def _official_snapshot_stale_warning(
+    catalog: dict[str, Any],
+    snapshot: dict[str, Any],
+) -> str | None:
+    if snapshot.get("stale"):
+        return "snapshot metadata is marked stale"
+    generated = snapshot.get("generated_at") or catalog.get("generated_at")
+    parsed = _parse_iso_datetime(str(generated or ""))
+    if parsed is None:
+        return "snapshot generated_at is missing or invalid"
+    age_days = (datetime.now(timezone.utc) - parsed).days
+    if age_days > _OFFICIAL_MAX_AGE_DAYS:
+        return (
+            f"snapshot is {age_days} days old "
+            f"(max {_OFFICIAL_MAX_AGE_DAYS}); verify before use"
+        )
+    return None
+
+
+def _parse_iso_datetime(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        normalized = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def _official_counts(
+    entries: list[dict[str, Any]],
+    app_profile: str | None,
+) -> dict[str, int]:
+    counts = {
+        "items": len(entries),
+        "asset": 0,
+        "material": 0,
+        "discovered": 0,
+        "url_validated": 0,
+        "inspect_verified": 0,
+        "load_verified": 0,
+        "assign_verified": 0,
+        "failed": 0,
+    }
+    for entry in entries:
+        kind = str(entry.get("kind") or "asset")
+        if kind in counts:
+            counts[kind] += 1
+        status = _official_entry_status(entry, app_profile)
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
+def _official_material_name(entry: dict[str, Any]) -> str:
+    value = entry.get("material_name")
+    if value:
+        return str(value)
+    name = str(entry.get("name") or _url_name(str(entry.get("canonical_url", ""))))
+    return re.sub(r"\.(mdl|usd|usda)$", "", name, flags=re.IGNORECASE)
+
+
+_BBOX_EPSILON = 1.0e-9
+_BBOX_SENTINEL_ABS_LIMIT = 1.0e12
+
+
+def official_asset_load_quality_evidence(
+    load: dict[str, Any],
+    bbox: dict[str, Any],
+    inspect: dict[str, Any],
+) -> dict[str, Any]:
+    """Classify an on-stage asset load using API, bbox, and USD inspect evidence."""
+    load_ok = bool(load.get("ok", True))
+    bbox_ok = bool(bbox.get("ok", True))
+    inspect_ok = bool(inspect.get("ok", True))
+    bbox_reasons = _official_bbox_invalid_reasons(bbox)
+    bbox_valid = not bbox_reasons
+    prim_count = _official_int(inspect.get("prim_count"))
+    prim_count_valid = prim_count is not None and prim_count > 0
+    has_authored_children = bool(
+        load.get("has_authored_children") or load.get("has_children")
+    )
+    has_default_prim = bool(str(inspect.get("default_prim") or "").strip())
+    has_content_evidence = (
+        has_authored_children or has_default_prim or prim_count_valid
+    )
+
+    if not (load_ok and bbox_ok and inspect_ok):
+        quality = "failed"
+        warning = "load, bbox, or inspect call failed"
+    elif not has_content_evidence:
+        quality = "empty_content"
+        warning = "no authored child, default prim, or prim_count evidence"
+    elif not bbox_valid:
+        quality = "content_verified_no_bbox"
+        warning = "invalid bbox evidence: " + ", ".join(bbox_reasons)
+    else:
+        quality = "valid"
+        warning = None
+
+    return {
+        "load_quality": quality,
+        "load_quality_warning": warning,
+        "load_ok": load_ok,
+        "bbox_ok": bbox_ok,
+        "inspect_ok": inspect_ok,
+        "bbox_valid": bbox_valid,
+        "bbox_validation_reasons": bbox_reasons,
+        "has_authored_children": has_authored_children,
+        "has_default_prim": has_default_prim,
+        "prim_count_valid": prim_count_valid,
+    }
+
+
+def _official_bbox_invalid_reasons(bbox: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    if bool(bbox.get("is_empty")):
+        reasons.append("empty_flag")
+    bbox_min = _official_float_triplet(bbox.get("min") or bbox.get("bbox_min"))
+    bbox_max = _official_float_triplet(bbox.get("max") or bbox.get("bbox_max"))
+    if bbox_min is None or bbox_max is None:
+        reasons.append("missing_or_nonfinite_min_max")
+        return reasons
+    if any(lo > hi for lo, hi in zip(bbox_min, bbox_max, strict=True)):
+        reasons.append("min_greater_than_max")
+    if any(
+        abs(value) > _BBOX_SENTINEL_ABS_LIMIT
+        for value in [*bbox_min, *bbox_max]
+    ):
+        reasons.append("sentinel_magnitude")
+    extent = [hi - lo for lo, hi in zip(bbox_min, bbox_max, strict=True)]
+    if all(abs(value) <= _BBOX_EPSILON for value in extent):
+        reasons.append("zero_extent")
+    return reasons
+
+
+def _official_float_triplet(value: Any) -> list[float] | None:
+    if not isinstance(value, (list, tuple)) or len(value) != 3:
+        return None
+    try:
+        triplet = [float(item) for item in value]
+    except (TypeError, ValueError):
+        return None
+    if not all(math.isfinite(item) for item in triplet):
+        return None
+    return triplet
+
+
+def _official_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_prim_name(entry: dict[str, Any]) -> str:
+    stem = re.sub(
+        r"\.(usd|usda|mdl)$",
+        "",
+        str(entry.get("name") or _url_name(str(entry.get("canonical_url", "")))),
+        flags=re.IGNORECASE,
+    )
+    safe = re.sub(r"[^A-Za-z0-9_]+", "_", stem).strip("_")
+    if not safe:
+        return "Entry"
+    if not re.match(r"[A-Za-z_]", safe):
+        return f"Asset_{safe}"
+    return safe
+
+
+def _official_verify_record(
+    entry: dict[str, Any],
+    app_profile: str | None,
+    status: str,
+    error: str | None = None,
+) -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return {
+        "id": entry.get("id"),
+        "kind": entry.get("kind"),
+        "name": entry.get("name"),
+        "canonical_url": entry.get("canonical_url"),
+        "app_profile": app_profile,
+        "verification_status": status,
+        "checked_at": now,
+        "error": error,
+    }
+
+
+def _append_official_verify_record(
+    catalog_dir: Path,
+    record: dict[str, Any],
+) -> None:
+    catalog_dir.mkdir(parents=True, exist_ok=True)
+    path = catalog_dir / "verification-on-demand.jsonl"
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
 
 def _conversion_output_path(cache_dir: str, asset_id: str, output_format: str) -> str:

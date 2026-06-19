@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 import httpx
@@ -217,6 +219,150 @@ def synthetic_catalog(tmp_path: Path) -> Path:
     return d
 
 
+@pytest.fixture
+def synthetic_official_catalog(tmp_path: Path) -> Path:
+    d = tmp_path / "official-assets"
+    d.mkdir()
+    sim_root = (
+        "https://omniverse-content-staging.s3.us-west-2.amazonaws.com"
+        "/Assets/simready_content/props"
+    )
+    material_root = (
+        "https://omniverse-content-production.s3-us-west-2.amazonaws.com"
+        "/Assets/Materials/2023_2_1/Base"
+    )
+    catalog = {
+        "schema_version": 1,
+        "generated_at": "2099-01-01T00:00:00Z",
+        "generator": "test",
+        "snapshots": [
+            {
+                "app_profile": "isaac-sim",
+                "app_version": "6.0.0",
+                "kit_version": "110.1.1",
+                "generated_at": "2099-01-01T00:00:00Z",
+                "providers": [
+                    {
+                        "provider": "omni.simready.explorer",
+                        "extension_id": "omni.simready.explorer",
+                        "extension_version": "1.1.4",
+                        "source_roots": [sim_root],
+                    }
+                ],
+                "counts": {"items": 2, "asset": 2, "url_validated": 2},
+                "items": [],
+            },
+            {
+                "app_profile": "usd-composer",
+                "app_version": "usd-composer",
+                "kit_version": "110.1.1",
+                "generated_at": "2099-01-01T00:00:00Z",
+                "providers": [
+                    {
+                        "provider": "omni.kit.browser.material",
+                        "extension_id": "omni.kit.browser.material",
+                        "extension_version": "1.6.5",
+                        "source_roots": [material_root],
+                        "material_overrides": [
+                            "Materials/2023_2_1/Automotive",
+                            "Materials/2023_2_1/Base",
+                            "vMaterials_2",
+                        ],
+                    }
+                ],
+                "counts": {"items": 1, "material": 1, "assign_verified": 1},
+                "items": [],
+            },
+        ],
+        "items": [
+            {
+                "id": f"url:{sim_root}/aluminumpallet_a01/aluminumpallet_a01.usd",
+                "kind": "asset",
+                "name": "aluminumpallet_a01.usd",
+                "aliases": ["aluminumpallet_a01", "pallet"],
+                "canonical_url": f"{sim_root}/aluminumpallet_a01/aluminumpallet_a01.usd",
+                "provider": "omni.simready.explorer",
+                "source_root": sim_root,
+                "category": "pallets",
+                "extension_id": "omni.simready.explorer",
+                "extension_version": "1.1.4",
+                "provided_in": [
+                    {
+                        "app_profile": "isaac-sim",
+                        "app_version": "6.0.0",
+                        "kit_version": "110.1.1",
+                        "provider": "omni.simready.explorer",
+                        "extension_id": "omni.simready.explorer",
+                        "extension_version": "1.1.4",
+                        "source_root": sim_root,
+                        "category": "pallets",
+                    }
+                ],
+                "loadable_in": [],
+                "verification_status": "url_validated",
+            },
+            {
+                "id": f"url:{sim_root}/aluminumpallet_a02/aluminumpallet_a02.usd",
+                "kind": "asset",
+                "name": "aluminumpallet_a02.usd",
+                "aliases": ["aluminumpallet_a02", "pallet"],
+                "canonical_url": f"{sim_root}/aluminumpallet_a02/aluminumpallet_a02.usd",
+                "provider": "omni.simready.explorer",
+                "source_root": sim_root,
+                "category": "pallets",
+                "provided_in": [
+                    {
+                        "app_profile": "isaac-sim",
+                        "app_version": "6.0.0",
+                        "kit_version": "110.1.1",
+                        "provider": "omni.simready.explorer",
+                    }
+                ],
+                "loadable_in": [],
+                "verification_status": "url_validated",
+            },
+            {
+                "id": f"url:{material_root}/Metals/Brushed_Aluminum.mdl",
+                "kind": "material",
+                "name": "Brushed_Aluminum.mdl",
+                "aliases": ["brushed aluminum"],
+                "canonical_url": f"{material_root}/Metals/Brushed_Aluminum.mdl",
+                "material_name": "Brushed_Aluminum",
+                "provider": "omni.kit.browser.material",
+                "source_root": material_root,
+                "category": "Metals",
+                "provided_in": [
+                    {
+                        "app_profile": "usd-composer",
+                        "app_version": "usd-composer",
+                        "kit_version": "110.1.1",
+                        "provider": "omni.kit.browser.material",
+                        "extension_id": "omni.kit.browser.material",
+                        "extension_version": "1.6.5",
+                        "source_root": material_root,
+                        "category": "Metals",
+                    }
+                ],
+                "loadable_in": [
+                    {
+                        "app_profile": "usd-composer",
+                        "app_version": "usd-composer",
+                        "kit_version": "110.1.1",
+                        "verification_status": "assign_verified",
+                        "checked_at": "2099-01-01T00:00:00Z",
+                    }
+                ],
+                "verification_status": "assign_verified",
+            },
+        ],
+    }
+    (d / "latest.json").write_text(
+        json.dumps(catalog, indent=2),
+        encoding="utf-8",
+    )
+    return d
+
+
 @pytest.mark.asyncio
 async def test_parser_bare_filename_uses_group_folder(synthetic_catalog: Path):
     module = AssetModule(_ExplodingClient(), catalog_dir=synthetic_catalog)
@@ -259,6 +405,423 @@ def test_resolve_catalog_asset_url_uses_markdown_catalog(synthetic_catalog: Path
         )
         == "https://example.com/Isaac/Robots/FrankaRobotics/FrankaPanda/franka.usd"
     )
+
+
+# ---------------------------------------------------------------------------
+# official_asset_* — generated NVIDIA official browser-extension catalog
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_official_asset_search_returns_url_id_and_variant(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_search(
+        _meta(),
+        query="aluminumpallet_a01",
+        app_profile="isaac-sim",
+    )
+
+    assert result.ok, result.message
+    assert result.data["count"] == 1
+    hit = result.data["candidates"][0]
+    assert hit["id"].startswith("url:https://")
+    assert hit["name"] == "aluminumpallet_a01.usd"
+    assert hit["canonical_url"].endswith("/aluminumpallet_a01/aluminumpallet_a01.usd")
+    assert hit["verification_status"] == "url_validated"
+    assert hit["verify_required_before_use"] is True
+    assert hit["provider_evidence"][0]["provider"] == "omni.simready.explorer"
+    assert all("a02" not in c["name"] for c in result.data["candidates"])
+
+
+def _catalog_with_items(
+    *,
+    run_id: str,
+    app_profile: str,
+    generated_at: str,
+    items: list[dict[str, object]],
+) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "generated_at": generated_at,
+        "generator": "test",
+        "run_id": run_id,
+        "snapshots": [
+            {
+                "app_profile": app_profile,
+                "app_version": "6.0.0",
+                "kit_version": "110.1.1",
+                "generated_at": generated_at,
+                "providers": [],
+                "counts": {"items": len(items)},
+                "items": [],
+            }
+        ],
+        "items": items,
+    }
+
+
+def _minimal_official_item(name: str, app_profile: str) -> dict[str, object]:
+    url = f"https://example.com/Assets/{name}/{name}.usd"
+    return {
+        "id": f"url:{url}",
+        "kind": "asset",
+        "name": f"{name}.usd",
+        "aliases": [name],
+        "canonical_url": url,
+        "provider": "omni.simready.explorer",
+        "source_root": "https://example.com/Assets",
+        "category": "props",
+        "provided_in": [
+            {
+                "app_profile": app_profile,
+                "app_version": "6.0.0",
+                "kit_version": "110.1.1",
+                "provider": "omni.simready.explorer",
+                "source_root": "https://example.com/Assets",
+                "category": "props",
+            }
+        ],
+        "loadable_in": [],
+        "verification_status": "url_validated",
+    }
+
+
+@pytest.mark.asyncio
+async def test_official_asset_search_uses_profile_latest_pointer(tmp_path: Path):
+    shared = _catalog_with_items(
+        run_id="composer-run",
+        app_profile="usd-composer",
+        generated_at="2099-01-01T00:00:00Z",
+        items=[],
+    )
+    isaac = _catalog_with_items(
+        run_id="isaac-run",
+        app_profile="isaac-sim",
+        generated_at="2099-01-01T00:00:00Z",
+        items=[_minimal_official_item("aluminumpallet_a01", "isaac-sim")],
+    )
+    tmp_path.joinpath("latest.json").write_text(json.dumps(shared), encoding="utf-8")
+    tmp_path.joinpath("latest-isaac-sim.json").write_text(
+        json.dumps(isaac), encoding="utf-8"
+    )
+    module = AssetModule(_ExplodingClient(), official_catalog_dir=tmp_path)
+
+    result = await module.official_search(
+        _meta(), query="aluminumpallet_a01", app_profile="isaac-sim"
+    )
+
+    assert result.ok, result.message
+    assert result.data["count"] == 1
+    assert result.data["catalog_path"].endswith("latest-isaac-sim.json")
+    assert result.data["catalog_identity"]["run_id"] == "isaac-run"
+
+
+@pytest.mark.asyncio
+async def test_official_asset_search_reloads_when_profile_latest_changes(tmp_path: Path):
+    path = tmp_path / "latest-isaac-sim.json"
+    path.write_text(
+        json.dumps(
+            _catalog_with_items(
+                run_id="empty-run",
+                app_profile="isaac-sim",
+                generated_at="2099-01-01T00:00:00Z",
+                items=[],
+            )
+        ),
+        encoding="utf-8",
+    )
+    module = AssetModule(_ExplodingClient(), official_catalog_dir=tmp_path)
+    first = await module.official_search(
+        _meta(), query="aluminumpallet_a01", app_profile="isaac-sim"
+    )
+    assert first.ok and first.data["count"] == 0
+
+    path.write_text(
+        json.dumps(
+            _catalog_with_items(
+                run_id="fresh-run",
+                app_profile="isaac-sim",
+                generated_at="2099-01-01T00:01:00Z",
+                items=[_minimal_official_item("aluminumpallet_a01", "isaac-sim")],
+            )
+        ),
+        encoding="utf-8",
+    )
+    stat = path.stat()
+    os.utime(path, (stat.st_atime, stat.st_mtime + 1.0))
+
+    second = await module.official_search(
+        _meta(), query="aluminumpallet_a01", app_profile="isaac-sim"
+    )
+
+    assert second.ok, second.message
+    assert second.data["count"] == 1
+    assert second.data["catalog_identity"]["run_id"] == "fresh-run"
+
+
+@pytest.mark.asyncio
+async def test_official_asset_resolve_material_target_and_loadability(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_resolve(
+        _meta(),
+        name_or_id="brushed aluminum",
+        kind="material",
+        app_profile="usd-composer",
+    )
+
+    assert result.ok, result.message
+    assert result.data["kind"] == "material"
+    assert result.data["target"] == {
+        "mdl_url": result.data["canonical_url"],
+        "material_name": "Brushed_Aluminum",
+    }
+    assert result.data["verify_required_before_use"] is False
+    assert result.data["loadable_in"][0]["verification_status"] == "assign_verified"
+
+
+@pytest.mark.asyncio
+async def test_official_asset_stale_snapshot_warns_and_can_be_filtered(
+    synthetic_official_catalog: Path,
+):
+    path = synthetic_official_catalog / "latest.json"
+    catalog = json.loads(path.read_text(encoding="utf-8"))
+    catalog["snapshots"][0]["stale"] = True
+    path.write_text(json.dumps(catalog), encoding="utf-8")
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+
+    stale = await module.official_search(
+        _meta(),
+        query="aluminumpallet_a01",
+        app_profile="isaac-sim",
+        allow_stale=True,
+    )
+    fresh_only = await module.official_search(
+        _meta(),
+        query="aluminumpallet_a01",
+        app_profile="isaac-sim",
+        allow_stale=False,
+    )
+
+    assert stale.ok and stale.data["count"] == 1
+    assert stale.data["candidates"][0]["status"] == "stale"
+    assert stale.data["candidates"][0]["stale_warning"]
+    assert stale.data["candidates"][0]["verify_required_before_use"] is True
+    assert fresh_only.ok and fresh_only.data["count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_official_asset_sync_status_reports_profile_counts(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_sync_status(_meta(), app_profile="usd-composer")
+
+    assert result.ok, result.message
+    assert result.data["profile_count"] == 1
+    assert result.data["profiles"][0]["app_profile"] == "usd-composer"
+    assert result.data["counts"]["material"] == 1
+    assert result.data["counts"]["assign_verified"] == 1
+
+
+@pytest.mark.asyncio
+async def test_official_asset_get_missing_catalog_reports_unavailable(tmp_path: Path):
+    module = AssetModule(_ExplodingClient(), official_catalog_dir=tmp_path / "missing")
+    result = await module.official_get(_meta(), asset_id="url:https://missing")
+
+    assert not result.ok
+    assert result.error_code == "OFFICIAL_ASSET_CATALOG_UNAVAILABLE"
+
+
+def test_official_safe_prim_name_prefixes_leading_digit() -> None:
+    from omniverse_kit_mcp.modules.asset_module import _safe_prim_name
+
+    assert _safe_prim_name({"name": "4Tier_Fountain.usd"}) == "Asset_4Tier_Fountain"
+
+
+@pytest.mark.asyncio
+async def test_official_asset_verify_asset_uses_stage_inspect_and_cleanup(
+    synthetic_official_catalog: Path,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+    asset_id = (
+        "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com"
+        "/Assets/simready_content/props/aluminumpallet_a01/aluminumpallet_a01.usd"
+    )
+    result = await module.official_verify(
+        _meta(),
+        asset_id=asset_id,
+        app_profile="isaac-sim",
+        timeout_s=1.0,
+    )
+
+    assert result.ok, result.message
+    assert result.data["verification_status"] == "load_verified"
+    assert result.data["load_quality"] == "valid"
+    assert result.data["load_quality_warning"] is None
+    assert result.data["bbox_valid"] is True
+    assert result.data["has_authored_children"] is True
+    assert result.data["prim_count_valid"] is True
+    call_names = [name for name, _payload in client.calls]
+    assert "simulation_status" in call_names
+    assert "stage_load_usd" in call_names
+    assert "stage_compute_world_bbox" in call_names
+    assert "content_inspect" in call_names
+    assert call_names[-1] == "stage_delete_prim"
+    assert (synthetic_official_catalog / "verification-on-demand.jsonl").is_file()
+
+
+@pytest.mark.asyncio
+async def test_official_asset_verify_asset_accepts_content_without_bbox(
+    synthetic_official_catalog: Path,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    sentinel = 3.4028234663852886e38
+    client.responses["stage_compute_world_bbox"] = {
+        "ok": True,
+        "min": [sentinel, sentinel, sentinel],
+        "max": [-sentinel, -sentinel, -sentinel],
+        "center": [0.0, 0.0, 0.0],
+        "size": [0.0, 0.0, 0.0],
+        "is_empty": True,
+    }
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+    asset_id = (
+        "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com"
+        "/Assets/simready_content/props/aluminumpallet_a01/aluminumpallet_a01.usd"
+    )
+
+    result = await module.official_verify(
+        _meta(),
+        asset_id=asset_id,
+        app_profile="isaac-sim",
+        timeout_s=1.0,
+    )
+
+    assert result.ok, result.message
+    assert result.data["verification_status"] == "load_verified"
+    assert result.data["load_quality"] == "content_verified_no_bbox"
+    assert result.data["bbox_valid"] is False
+    assert "empty_flag" in result.data["bbox_validation_reasons"]
+    assert "min_greater_than_max" in result.data["bbox_validation_reasons"]
+    assert "sentinel_magnitude" in result.data["bbox_validation_reasons"]
+    assert result.data["load_quality_warning"] is not None
+    assert result.data["error"] is None
+
+
+@pytest.mark.asyncio
+async def test_official_asset_verify_asset_rejects_empty_content(
+    synthetic_official_catalog: Path,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["stage_load_usd"] = {
+        "ok": True,
+        "prim_path": "/World/OfficialAssetVerify/empty",
+        "type_name": "Xform",
+        "has_children": False,
+    }
+    client.responses["content_inspect"] = {
+        "ok": True,
+        "default_prim": "",
+        "prim_count": 0,
+    }
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+    asset_id = (
+        "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com"
+        "/Assets/simready_content/props/aluminumpallet_a01/aluminumpallet_a01.usd"
+    )
+
+    result = await module.official_verify(
+        _meta(),
+        asset_id=asset_id,
+        app_profile="isaac-sim",
+        timeout_s=1.0,
+    )
+
+    assert result.ok, result.message
+    assert result.data["verification_status"] == "failed"
+    assert result.data["load_quality"] == "empty_content"
+    assert result.data["error"] == "no authored child, default prim, or prim_count evidence"
+
+
+@pytest.mark.asyncio
+async def test_official_asset_verify_material_assigns_and_reads_binding(
+    synthetic_official_catalog: Path,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+    result = await module.official_verify(
+        _meta(),
+        asset_id=(
+            "url:https://omniverse-content-production.s3-us-west-2.amazonaws.com"
+            "/Assets/Materials/2023_2_1/Base/Metals/Brushed_Aluminum.mdl"
+        ),
+        app_profile="usd-composer",
+        timeout_s=1.0,
+    )
+
+    assert result.ok, result.message
+    assert result.data["verification_status"] == "assign_verified"
+    call_names = [name for name, _payload in client.calls]
+    assert "stage_create_prim" in call_names
+    assert "material_assign_mdl" in call_names
+    assert "material_get_bound" in call_names
+    assert call_names[-1] == "stage_delete_prim"
+
+
+@pytest.mark.asyncio
+async def test_official_asset_verify_material_requires_created_test_prim(
+    synthetic_official_catalog: Path,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["stage_create_prim"] = {
+        "ok": False,
+        "error": "create failed",
+    }
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+
+    result = await module.official_verify(
+        _meta(),
+        asset_id=(
+            "url:https://omniverse-content-production.s3-us-west-2.amazonaws.com"
+            "/Assets/Materials/2023_2_1/Base/Metals/Brushed_Aluminum.mdl"
+        ),
+        app_profile="usd-composer",
+        timeout_s=1.0,
+    )
+
+    assert result.ok, result.message
+    assert result.data["verification_status"] == "failed"
+    assert result.data["create_prim"]["ok"] is False
+    assert result.data["assign"]["ok"] is True
+    assert result.data["bound"]["material_path"]
+    assert result.data["error"] == "material assign or binding readback failed"
 
 
 # ---------------------------------------------------------------------------

@@ -69,6 +69,12 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "asset_list",
     # Asset discovery — offline curated-catalog semantic search (no REST)
     "asset_search",
+    # Generated NVIDIA official browser-extension catalog (offline + on-demand verify)
+    "official_asset_search",
+    "official_asset_resolve",
+    "official_asset_get",
+    "official_asset_sync_status",
+    "official_asset_verify",
     # External free asset prepare-only ingest (download + convert, no stage placement)
     "external_asset_search",
     "external_asset_download",
