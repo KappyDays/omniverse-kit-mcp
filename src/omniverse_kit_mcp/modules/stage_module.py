@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-import re
 import time
-from dataclasses import asdict
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
@@ -21,6 +19,9 @@ from omniverse_kit_mcp.types.stage import (
     StageCaptureFilter,
     StageDiff,
     StageDiffEntry,
+    StagePlacementValidationEntry,
+    StagePlacementValidationReport,
+    StagePlacementValidationRequest,
     StageSelection,
     StageSnapshot,
     StageVisualAlignmentEntry,
@@ -202,6 +203,39 @@ class StageModule:
                 error_code="STAGE_VISUAL_ALIGNMENT_ERROR",
             )
 
+    async def placement_validation_report(
+        self, meta: OperationMeta, request: StagePlacementValidationRequest
+    ) -> ModuleResult[StagePlacementValidationReport]:
+        started = int(time.time() * 1000)
+        try:
+            raw = await self._client.stage_placement_validate({
+                "subject_prim_paths": list(request.subject_prim_paths),
+                "container_prim_path": request.container_prim_path,
+                "support_prim_path": request.support_prim_path,
+                "obstacle_prim_paths": list(request.obstacle_prim_paths),
+                "checks": list(request.checks),
+                "include_purposes": list(request.include_purposes),
+                "containment_axes": list(request.containment_axes),
+                "margin_m": request.margin_m,
+                "min_clearance_m": request.min_clearance_m,
+                "floor_tolerance_m": request.floor_tolerance_m,
+                "floor_axis": request.floor_axis,
+            })
+            report = _parse_placement_validation_report(raw)
+            if report.passed:
+                return ok_result(report, started_ms=started)
+            return fail_result(
+                "Stage placement validation failed",
+                started_ms=started,
+                data=report,
+                error_code="STAGE_PLACEMENT_VALIDATION_FAILED",
+            )
+        except Exception as exc:
+            return error_result(
+                str(exc), started_ms=started,
+                error_code="STAGE_PLACEMENT_VALIDATION_ERROR",
+            )
+
     # ------------------------------------------------------------------
     # Selection (Phase B+) — GUI Stage panel selection
     # ------------------------------------------------------------------
@@ -368,6 +402,41 @@ def _parse_world_bbox(raw: dict) -> StageWorldBbox:
             float(v) for v in raw.get("world_orient_wxyz", (1.0, 0.0, 0.0, 0.0))[:4]
         ),  # type: ignore[arg-type]
         is_empty=bool(raw.get("is_empty", False)),
+    )
+
+
+def _parse_optional_world_bbox(raw: dict | None) -> StageWorldBbox | None:
+    if not isinstance(raw, dict):
+        return None
+    return _parse_world_bbox(raw)
+
+
+def _parse_placement_validation_report(raw: dict) -> StagePlacementValidationReport:
+    entries = []
+    for entry_raw in raw.get("entries", []):
+        entries.append(
+            StagePlacementValidationEntry(
+                subject_prim_path=str(entry_raw.get("subject_prim_path", "")),
+                passed=bool(entry_raw.get("passed", False)),
+                failure_codes=tuple(entry_raw.get("failure_codes", [])),
+                bbox=_parse_optional_world_bbox(entry_raw.get("bbox")),
+                checks=dict(entry_raw.get("checks", {})),
+                prim=dict(entry_raw.get("prim", {})),
+            )
+        )
+    return StagePlacementValidationReport(
+        passed=bool(raw.get("passed", False)),
+        checked_count=int(raw.get("checked_count", len(entries))),
+        approximation=str(raw.get("approximation", "world_aabb")),
+        entries=tuple(entries),
+        container_bbox=_parse_optional_world_bbox(raw.get("container_bbox")),
+        support_bbox=_parse_optional_world_bbox(raw.get("support_bbox")),
+        obstacle_bboxes=tuple(
+            _parse_world_bbox(bbox)
+            for bbox in raw.get("obstacle_bboxes", [])
+            if isinstance(bbox, dict)
+        ),
+        settings=dict(raw.get("settings", {})),
     )
 
 

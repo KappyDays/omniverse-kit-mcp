@@ -2,7 +2,7 @@
 
 Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/python.exe scripts/generate_tool_catalog.py` after any tool addition / removal / signature change. `tests/unit/test_tool_catalog_sync.py` fails if this file drifts out of sync with the `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset SoT.
 
-**Tool count**: 146
+**Tool count**: 147
 
 ## Table of contents
 
@@ -20,7 +20,7 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 - [Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)](#character--behavioragent--ira--navmesh-async-job) — 8 tools
 - [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
 - [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (50)
+- Unclassified (51)
 
 ## Process — MCP / Kit app lifecycle
 
@@ -2540,6 +2540,32 @@ world translate/orientation; use before camera framing or layout checks.
 | name | type | default | required |
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
+| `include_purposes` | `list[string] \| None` | `None` |  |
+
+### `stage_placement_validation_report`
+
+```python
+stage_placement_validation_report(subject_prim_paths: 'list[str]', container_prim_path: 'str | None' = None, support_prim_path: 'str | None' = None, obstacle_prim_paths: 'list[str] | None' = None, checks: 'list[str] | None' = None, containment_axes: 'list[str] | None' = None, margin_m: 'float' = 0.0, min_clearance_m: 'float' = 0.0, floor_tolerance_m: 'float' = 0.01, floor_axis: 'str' = 'z', include_purposes: 'list[str] | None' = None) -> 'str'
+```
+
+Validate asset placement with world-AABB containment, clearance, and on-floor checks. Use
+explicit PlacementZone/AcceptanceVolume prims as containers; this is broad-phase evidence, not
+final visual acceptance.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `subject_prim_paths` | `list[string]` | `'—'` | ✓ |
+| `container_prim_path` | `string \| None` | `None` |  |
+| `support_prim_path` | `string \| None` | `None` |  |
+| `obstacle_prim_paths` | `list[string] \| None` | `None` |  |
+| `checks` | `list[string] \| None` | `None` |  |
+| `containment_axes` | `list[string] \| None` | `None` |  |
+| `margin_m` | `number` | `0.0` |  |
+| `min_clearance_m` | `number` | `0.0` |  |
+| `floor_tolerance_m` | `number` | `0.01` |  |
+| `floor_axis` | `string` | `'z'` |  |
 | `include_purposes` | `list[string] \| None` | `None` |  |
 
 ### `stage_set_semantic_label`

@@ -86,6 +86,171 @@ class StageService:
             "is_empty": bool(aligned.IsEmpty()),
         }
 
+    async def placement_validation_report(
+        self, request: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Broad-phase placement checks using world-space axis-aligned bboxes."""
+        import omni.usd  # lazy
+        from pxr import Usd, UsdGeom  # lazy
+
+        stage = omni.usd.get_context().get_stage()
+        if stage is None:
+            raise RuntimeError("No USD stage available")
+
+        purposes_map = {
+            "default": UsdGeom.Tokens.default_,
+            "proxy": UsdGeom.Tokens.proxy,
+            "render": UsdGeom.Tokens.render,
+            "guide": UsdGeom.Tokens.guide,
+        }
+        tokens = [
+            purposes_map[p]
+            for p in request.get("include_purposes", ["default", "render"])
+            if p in purposes_map
+        ]
+        if not tokens:
+            tokens = [UsdGeom.Tokens.default_]
+
+        bbox_cache = UsdGeom.BBoxCache(
+            Usd.TimeCode.Default(), tokens, useExtentsHint=True
+        )
+        xform_cache = UsdGeom.XformCache(Usd.TimeCode.Default())
+        checks = [
+            str(check).strip().lower()
+            for check in request.get("checks", ["containment"])
+            if str(check).strip()
+        ] or ["containment"]
+        valid_checks = {"containment", "clearance", "on_floor"}
+        unknown_checks = sorted(set(checks) - valid_checks)
+        if unknown_checks:
+            raise ValueError(f"Unsupported placement checks: {unknown_checks}")
+
+        axis_map = {"x": 0, "y": 1, "z": 2}
+        axes = [
+            str(axis).strip().lower()
+            for axis in request.get("containment_axes", ["x", "y"])
+            if str(axis).strip()
+        ] or ["x", "y"]
+        bad_axes = sorted(set(axes) - set(axis_map))
+        if bad_axes:
+            raise ValueError(f"Unsupported containment axes: {bad_axes}")
+        floor_axis = str(request.get("floor_axis", "z")).strip().lower() or "z"
+        if floor_axis not in axis_map:
+            raise ValueError(f"Unsupported floor axis: {floor_axis}")
+
+        margin_m = float(request.get("margin_m", 0.0))
+        min_clearance_m = float(request.get("min_clearance_m", 0.0))
+        floor_tolerance_m = float(request.get("floor_tolerance_m", 0.01))
+
+        def bbox_or_none(path: str | None) -> dict[str, Any] | None:
+            if not path:
+                return None
+            prim = stage.GetPrimAtPath(path)
+            if not prim or not prim.IsValid():
+                return None
+            return _compute_world_bbox_dict(path, prim, bbox_cache, xform_cache)
+
+        container_path = request.get("container_prim_path")
+        support_path = request.get("support_prim_path")
+        obstacle_paths = list(request.get("obstacle_prim_paths", []))
+        container_bbox = bbox_or_none(container_path)
+        support_bbox = bbox_or_none(support_path)
+        obstacle_bboxes = [
+            bbox
+            for bbox in (bbox_or_none(path) for path in obstacle_paths)
+            if bbox is not None
+        ]
+
+        entries: list[dict[str, Any]] = []
+        for subject_path in request.get("subject_prim_paths", []):
+            prim = stage.GetPrimAtPath(subject_path)
+            prim_info = _prim_status_dict(prim, subject_path)
+            failures: list[str] = []
+            check_details: dict[str, Any] = {}
+            subject_bbox: dict[str, Any] | None = None
+
+            if not prim or not prim.IsValid():
+                failures.append("PRIM_MISSING")
+            else:
+                subject_bbox = _compute_world_bbox_dict(
+                    subject_path, prim, bbox_cache, xform_cache
+                )
+                if subject_bbox.get("is_empty"):
+                    failures.append("BBOX_EMPTY")
+
+            if subject_bbox is not None and "containment" in checks:
+                if container_bbox is None:
+                    failures.append(
+                        "CONTAINER_PRIM_MISSING"
+                        if container_path else "CONTAINER_REQUIRED"
+                    )
+                    check_details["containment"] = {
+                        "passed": False,
+                        "reason": "container bbox unavailable",
+                    }
+                else:
+                    containment = _check_containment(
+                        subject_bbox, container_bbox, axes, axis_map, margin_m
+                    )
+                    check_details["containment"] = containment
+                    if not containment["passed"]:
+                        failures.append("OUTSIDE_CONTAINER")
+
+            if subject_bbox is not None and "on_floor" in checks:
+                if support_bbox is None:
+                    failures.append(
+                        "SUPPORT_PRIM_MISSING" if support_path else "SUPPORT_REQUIRED"
+                    )
+                    check_details["on_floor"] = {
+                        "passed": False,
+                        "reason": "support bbox unavailable",
+                    }
+                else:
+                    on_floor = _check_on_floor(
+                        subject_bbox, support_bbox, axis_map[floor_axis],
+                        floor_tolerance_m,
+                    )
+                    check_details["on_floor"] = on_floor
+                    if on_floor["failure_code"]:
+                        failures.append(str(on_floor["failure_code"]))
+
+            if subject_bbox is not None and "clearance" in checks:
+                clearance = _check_clearance(
+                    subject_bbox, obstacle_bboxes, min_clearance_m
+                )
+                check_details["clearance"] = clearance
+                if clearance["failure_code"]:
+                    failures.append(str(clearance["failure_code"]))
+
+            entries.append({
+                "subject_prim_path": subject_path,
+                "passed": not failures,
+                "failure_codes": sorted(set(failures)),
+                "bbox": subject_bbox,
+                "prim": prim_info,
+                "checks": check_details,
+            })
+
+        return {
+            "ok": True,
+            "passed": all(entry["passed"] for entry in entries),
+            "checked_count": len(entries),
+            "approximation": "world_aabb",
+            "entries": entries,
+            "container_bbox": container_bbox,
+            "support_bbox": support_bbox,
+            "obstacle_bboxes": obstacle_bboxes,
+            "settings": {
+                "checks": checks,
+                "containment_axes": axes,
+                "margin_m": margin_m,
+                "min_clearance_m": min_clearance_m,
+                "floor_tolerance_m": floor_tolerance_m,
+                "floor_axis": floor_axis,
+                "include_purposes": request.get("include_purposes", ["default", "render"]),
+            },
+        }
+
     async def capture_snapshot(self, capture_filter: dict[str, Any]) -> dict[str, Any]:
         """Traverse stage and collect prim information."""
         import omni.usd  # lazy import
@@ -213,9 +378,6 @@ class StageService:
         future = omni.kit.async_engine.run_coroutine(_main_loop_impl())
         # asyncio 방식 await — FastAPI loop 는 free → Kit main loop 는 자기 tick 진행
         prim = await asyncio.wrap_future(future)
-
-        ctx = omni.usd.get_context()
-        stage = ctx.get_stage()
 
         # API 특이사항 #16: 빈 Xform prim 생성 검사 (S3 404 등)
         children = list(prim.GetChildren())
@@ -562,6 +724,167 @@ class StageService:
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+def _compute_world_bbox_dict(
+    prim_path: str,
+    prim: Any,
+    bbox_cache: Any,
+    xform_cache: Any,
+) -> dict[str, Any]:
+    world_bbox = bbox_cache.ComputeWorldBound(prim)
+    aligned = world_bbox.ComputeAlignedRange()
+    mn, mx, ctr, sz = (
+        aligned.GetMin(),
+        aligned.GetMax(),
+        aligned.GetMidpoint(),
+        aligned.GetSize(),
+    )
+    world_xform = xform_cache.GetLocalToWorldTransform(prim)
+    translate = world_xform.ExtractTranslation()
+    rot_quat = world_xform.ExtractRotationQuat()
+    imag = rot_quat.GetImaginary()
+    return {
+        "ok": True,
+        "prim_path": prim_path,
+        "min": [mn[0], mn[1], mn[2]],
+        "max": [mx[0], mx[1], mx[2]],
+        "center": [ctr[0], ctr[1], ctr[2]],
+        "size": [sz[0], sz[1], sz[2]],
+        "world_translate": [translate[0], translate[1], translate[2]],
+        "world_orient_wxyz": [rot_quat.GetReal(), imag[0], imag[1], imag[2]],
+        "is_empty": bool(aligned.IsEmpty()),
+        "bbox_source": "UsdGeom.BBoxCache",
+    }
+
+
+def _prim_status_dict(prim: Any, prim_path: str) -> dict[str, Any]:
+    if not prim or not prim.IsValid():
+        return {
+            "prim_path": prim_path,
+            "valid": False,
+            "type_name": "",
+            "active": False,
+            "defined": False,
+            "loaded": False,
+            "instanceable": False,
+            "variant_selections": {},
+        }
+    loaded = False
+    try:
+        loaded = bool(prim.IsLoaded())
+    except Exception:
+        loaded = False
+    variant_selections: dict[str, str] = {}
+    try:
+        variant_sets = prim.GetVariantSets()
+        for name in variant_sets.GetNames():
+            variant_selections[name] = variant_sets.GetVariantSet(name).GetVariantSelection()
+    except Exception:
+        variant_selections = {}
+    return {
+        "prim_path": prim_path,
+        "valid": True,
+        "type_name": prim.GetTypeName(),
+        "active": bool(prim.IsActive()),
+        "defined": bool(prim.IsDefined()),
+        "loaded": loaded,
+        "instanceable": bool(prim.IsInstanceable()),
+        "variant_selections": variant_selections,
+    }
+
+
+def _check_containment(
+    subject_bbox: dict[str, Any],
+    container_bbox: dict[str, Any],
+    axes: list[str],
+    axis_map: dict[str, int],
+    margin_m: float,
+) -> dict[str, Any]:
+    overruns: dict[str, dict[str, float]] = {}
+    passed = True
+    for axis in axes:
+        idx = axis_map[axis]
+        min_over = max(
+            0.0, float(container_bbox["min"][idx]) + margin_m - float(subject_bbox["min"][idx])
+        )
+        max_over = max(
+            0.0, float(subject_bbox["max"][idx]) - (float(container_bbox["max"][idx]) - margin_m)
+        )
+        if min_over > 0.0 or max_over > 0.0:
+            passed = False
+        overruns[axis] = {
+            "below_min_m": min_over,
+            "above_max_m": max_over,
+        }
+    return {
+        "passed": passed,
+        "axes": axes,
+        "margin_m": margin_m,
+        "overruns_m": overruns,
+    }
+
+
+def _check_on_floor(
+    subject_bbox: dict[str, Any],
+    support_bbox: dict[str, Any],
+    axis_index: int,
+    tolerance_m: float,
+) -> dict[str, Any]:
+    subject_bottom = float(subject_bbox["min"][axis_index])
+    support_top = float(support_bbox["max"][axis_index])
+    gap_m = subject_bottom - support_top
+    failure_code = None
+    if gap_m < -tolerance_m:
+        failure_code = "GROUND_PENETRATION"
+    elif gap_m > tolerance_m:
+        failure_code = "NOT_ON_FLOOR"
+    return {
+        "passed": failure_code is None,
+        "subject_bottom_m": subject_bottom,
+        "support_top_m": support_top,
+        "gap_m": gap_m,
+        "tolerance_m": tolerance_m,
+        "failure_code": failure_code,
+    }
+
+
+def _check_clearance(
+    subject_bbox: dict[str, Any],
+    obstacle_bboxes: list[dict[str, Any]],
+    min_clearance_m: float,
+) -> dict[str, Any]:
+    min_distance_m = None
+    closest_obstacle = None
+    intersects = False
+    for obstacle in obstacle_bboxes:
+        axis_gaps = []
+        for idx in range(3):
+            if float(subject_bbox["max"][idx]) < float(obstacle["min"][idx]):
+                axis_gaps.append(float(obstacle["min"][idx]) - float(subject_bbox["max"][idx]))
+            elif float(obstacle["max"][idx]) < float(subject_bbox["min"][idx]):
+                axis_gaps.append(float(subject_bbox["min"][idx]) - float(obstacle["max"][idx]))
+            else:
+                axis_gaps.append(0.0)
+        distance = math.sqrt(sum(gap * gap for gap in axis_gaps))
+        if min_distance_m is None or distance < min_distance_m:
+            min_distance_m = distance
+            closest_obstacle = obstacle.get("prim_path")
+        if distance == 0.0:
+            intersects = True
+
+    failure_code = None
+    if intersects:
+        failure_code = "INTERSECTS_OBSTACLE"
+    elif min_distance_m is not None and min_distance_m < min_clearance_m:
+        failure_code = "CLEARANCE_BELOW_THRESHOLD"
+    return {
+        "passed": failure_code is None,
+        "min_distance_m": min_distance_m,
+        "min_clearance_m": min_clearance_m,
+        "closest_obstacle_prim_path": closest_obstacle,
+        "failure_code": failure_code,
+    }
+
 
 async def _wait_stage_loading(max_frames: int = 600) -> None:
     """Wait until all USD assets have finished loading."""
