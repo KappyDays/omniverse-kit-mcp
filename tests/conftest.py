@@ -158,6 +158,20 @@ class MockIsaacRestClient:
             "is_empty": False,
         })
 
+    async def stage_placement_validate(self, request: dict) -> dict:
+        self.calls.append(("stage_placement_validate", request))
+        return self.responses.get("stage_placement_validate", {
+            "ok": True,
+            "passed": True,
+            "checked_count": len(request.get("subject_prim_paths", [])),
+            "approximation": "world_aabb",
+            "entries": [],
+            "container_bbox": None,
+            "support_bbox": None,
+            "obstacle_bboxes": [],
+            "settings": {},
+        })
+
     async def viewport_capture(self, request: dict) -> dict:
         self.calls.append(("viewport_capture", request))
         return self.responses.get("viewport_capture", {"artifact_id": "test_img", "path": "/tmp/test.png", "width": 1280, "height": 720, "sha256": "abc", "created_at_epoch_ms": 0})

@@ -88,6 +88,9 @@ class IsaacRestClient:
     async def stage_compute_world_bbox(self, request: dict[str, Any]) -> dict[str, Any]:
         return await self._post(f"{BASE_PATH}/stage/compute_world_bbox", json=request)
 
+    async def stage_placement_validate(self, request: dict[str, Any]) -> dict[str, Any]:
+        return await self._post(f"{BASE_PATH}/stage/placement/validate", json=request)
+
     # --- Viewport ---
 
     async def viewport_capture(self, request: dict[str, Any]) -> dict[str, Any]:

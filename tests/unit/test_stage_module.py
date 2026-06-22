@@ -12,6 +12,7 @@ from omniverse_kit_mcp.types.stage import (
     PrimSpec,
     PropertyAssertion,
     StageCaptureFilter,
+    StagePlacementValidationRequest,
     StageSnapshot,
     StageVisualAlignmentRequest,
     StageWorldBboxRequest,
@@ -197,3 +198,103 @@ async def test_visual_alignment_report_flags_xy_iou_failure(stage_module, meta):
     assert result.data.passed is False
     assert result.data.entries[0].iou_xy == 0.0
     assert "IOU_XY_BELOW_THRESHOLD" in result.data.entries[0].failure_codes
+
+
+@pytest.mark.asyncio
+async def test_placement_validation_report_flags_outside_container(stage_module, meta):
+    stage_module._client.responses["stage_placement_validate"] = {
+        "ok": True,
+        "passed": False,
+        "checked_count": 1,
+        "approximation": "world_aabb",
+        "container_bbox": {
+            "ok": True,
+            "prim_path": "/World/Validation/WarehouseInterior",
+            "min": [0.0, 0.0, 0.0],
+            "max": [5.0, 5.0, 3.0],
+            "center": [2.5, 2.5, 1.5],
+            "size": [5.0, 5.0, 3.0],
+            "world_translate": [0.0, 0.0, 0.0],
+            "world_orient_wxyz": [1.0, 0.0, 0.0, 0.0],
+            "is_empty": False,
+        },
+        "support_bbox": None,
+        "obstacle_bboxes": [],
+        "settings": {
+            "checks": ["containment"],
+            "containment_axes": ["x", "y"],
+            "margin_m": 0.1,
+        },
+        "entries": [{
+            "subject_prim_path": "/World/Forklift",
+            "passed": False,
+            "failure_codes": ["OUTSIDE_CONTAINER"],
+            "bbox": {
+                "ok": True,
+                "prim_path": "/World/Forklift",
+                "min": [4.8, 1.0, 0.0],
+                "max": [5.8, 2.0, 1.5],
+                "center": [5.3, 1.5, 0.75],
+                "size": [1.0, 1.0, 1.5],
+                "world_translate": [5.3, 1.5, 0.75],
+                "world_orient_wxyz": [1.0, 0.0, 0.0, 0.0],
+                "is_empty": False,
+            },
+            "prim": {
+                "prim_path": "/World/Forklift",
+                "valid": True,
+                "type_name": "Xform",
+                "active": True,
+                "defined": True,
+                "loaded": True,
+                "instanceable": True,
+                "variant_selections": {},
+            },
+            "checks": {
+                "containment": {
+                    "passed": False,
+                    "axes": ["x", "y"],
+                    "margin_m": 0.1,
+                    "overruns_m": {
+                        "x": {"below_min_m": 0.0, "above_max_m": 0.9},
+                        "y": {"below_min_m": 0.0, "above_max_m": 0.0},
+                    },
+                },
+            },
+        }],
+    }
+
+    result = await stage_module.placement_validation_report(
+        meta,
+        StagePlacementValidationRequest(
+            subject_prim_paths=("/World/Forklift",),
+            container_prim_path="/World/Validation/WarehouseInterior",
+            checks=("containment",),
+            containment_axes=("x", "y"),
+            margin_m=0.1,
+        ),
+    )
+
+    assert result.ok is False
+    assert result.error_code == "STAGE_PLACEMENT_VALIDATION_FAILED"
+    assert result.data is not None
+    assert result.data.approximation == "world_aabb"
+    assert result.data.container_bbox is not None
+    assert result.data.entries[0].bbox is not None
+    assert "OUTSIDE_CONTAINER" in result.data.entries[0].failure_codes
+    assert stage_module._client.calls[-1] == (
+        "stage_placement_validate",
+        {
+            "subject_prim_paths": ["/World/Forklift"],
+            "container_prim_path": "/World/Validation/WarehouseInterior",
+            "support_prim_path": None,
+            "obstacle_prim_paths": [],
+            "checks": ["containment"],
+            "include_purposes": ["default", "render"],
+            "containment_axes": ["x", "y"],
+            "margin_m": 0.1,
+            "min_clearance_m": 0.0,
+            "floor_tolerance_m": 0.01,
+            "floor_axis": "z",
+        },
+    )

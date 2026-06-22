@@ -31,6 +31,7 @@ EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
     "stage_diff_snapshots",
     "stage_compute_world_bbox",
     "stage_visual_alignment_report",
+    "stage_placement_validation_report",
     "stage_assert_prim_exists",
     "stage_assert_property",
     # Stage WRITE (→ SimulationModule)

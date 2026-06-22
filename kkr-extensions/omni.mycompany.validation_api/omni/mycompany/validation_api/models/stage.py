@@ -106,3 +106,24 @@ class StageComputeWorldBboxRequestModel(BaseModel):
         default_factory=lambda: ["default", "render"],
         description="UsdGeom purposes to include (default / proxy / render / guide).",
     )
+
+
+class StagePlacementValidationRequestModel(BaseModel):
+    """Broad-phase placement validation using world-space aligned bboxes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    subject_prim_paths: list[str] = Field(min_length=1)
+    container_prim_path: str | None = None
+    support_prim_path: str | None = None
+    obstacle_prim_paths: list[str] = Field(default_factory=list)
+    checks: list[str] = Field(default_factory=lambda: ["containment"])
+    include_purposes: list[str] = Field(
+        default_factory=lambda: ["default", "render"],
+        description="UsdGeom purposes to include (default / proxy / render / guide).",
+    )
+    containment_axes: list[str] = Field(default_factory=lambda: ["x", "y"])
+    margin_m: float = Field(default=0.0, ge=0.0)
+    min_clearance_m: float = Field(default=0.0, ge=0.0)
+    floor_tolerance_m: float = Field(default=0.01, ge=0.0)
+    floor_axis: str = "z"

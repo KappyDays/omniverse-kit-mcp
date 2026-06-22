@@ -116,6 +116,43 @@ class StageVisualAlignmentReport:
     entries: tuple[StageVisualAlignmentEntry, ...]
 
 
+@dataclass(slots=True, frozen=True)
+class StagePlacementValidationRequest:
+    subject_prim_paths: tuple[str, ...]
+    container_prim_path: str | None = None
+    support_prim_path: str | None = None
+    obstacle_prim_paths: tuple[str, ...] = ()
+    checks: tuple[str, ...] = ("containment",)
+    include_purposes: tuple[str, ...] = ("default", "render")
+    containment_axes: tuple[str, ...] = ("x", "y")
+    margin_m: float = 0.0
+    min_clearance_m: float = 0.0
+    floor_tolerance_m: float = 0.01
+    floor_axis: str = "z"
+
+
+@dataclass(slots=True, frozen=True)
+class StagePlacementValidationEntry:
+    subject_prim_path: str
+    passed: bool
+    failure_codes: tuple[str, ...]
+    bbox: StageWorldBbox | None
+    checks: dict[str, JsonValue]
+    prim: dict[str, JsonValue]
+
+
+@dataclass(slots=True, frozen=True)
+class StagePlacementValidationReport:
+    passed: bool
+    checked_count: int
+    approximation: str
+    entries: tuple[StagePlacementValidationEntry, ...]
+    container_bbox: StageWorldBbox | None
+    support_bbox: StageWorldBbox | None
+    obstacle_bboxes: tuple[StageWorldBbox, ...]
+    settings: dict[str, JsonValue]
+
+
 class DiffKind(str, Enum):
     PRIM_ADDED = "prim_added"
     PRIM_REMOVED = "prim_removed"

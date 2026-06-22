@@ -51,6 +51,7 @@ from .models.stage import (
     StageComputeWorldBboxRequestModel,
     StageCreatePrimRequestModel,
     StageLoadUsdRequestModel,
+    StagePlacementValidationRequestModel,
     StageSetPropertyRequestModel,
     StageSetSemanticLabelRequestModel,
 )
@@ -1589,6 +1590,17 @@ async def stage_compute_world_bbox(body: StageComputeWorldBboxRequestModel) -> A
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.error("stage/compute_world_bbox failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/stage/placement/validate")
+async def stage_placement_validate(body: StagePlacementValidationRequestModel) -> Any:
+    try:
+        return await _stage.placement_validation_report(body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("stage/placement/validate failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

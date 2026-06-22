@@ -94,6 +94,7 @@ from omniverse_kit_mcp.types.stage import (
     PrimExistenceAssertion,
     PropertyAssertion,
     StageCaptureFilter,
+    StagePlacementValidationRequest,
     StageVisualAlignmentRequest,
     StageWorldBboxRequest,
     UsdPropertyValue,
@@ -163,6 +164,8 @@ _MCP_SERVER_IMPORT_EPOCH_MS = int(time.time() * 1000)
 _MCP_FRESHNESS_MODULES = (
     "omniverse_kit_mcp.tools.module_tools",
     "omniverse_kit_mcp.modules.asset_module",
+    "omniverse_kit_mcp.modules.stage_module",
+    "omniverse_kit_mcp.types.stage",
     "omniverse_kit_mcp.modules.robot_module",
     "omniverse_kit_mcp.robot_arm_profiles",
     "omniverse_kit_mcp.types.robot",
@@ -297,6 +300,38 @@ def register_module_tools(
             max_center_delta_m=max_center_delta_m,
         )
         result = await stage.visual_alignment_report(meta, request)
+        return _serialize(result)
+
+    @mcp.tool()
+    async def stage_placement_validation_report(
+        subject_prim_paths: list[str],
+        container_prim_path: str | None = None,
+        support_prim_path: str | None = None,
+        obstacle_prim_paths: list[str] | None = None,
+        checks: list[str] | None = None,
+        containment_axes: list[str] | None = None,
+        margin_m: float = 0.0,
+        min_clearance_m: float = 0.0,
+        floor_tolerance_m: float = 0.01,
+        floor_axis: str = "z",
+        include_purposes: list[str] | None = None,
+    ) -> str:
+        """Validate asset placement with world-AABB containment, clearance, and on-floor checks. Use explicit PlacementZone/AcceptanceVolume prims as containers; this is broad-phase evidence, not final visual acceptance."""
+        meta = make_meta(ModuleName.STAGE)
+        request = StagePlacementValidationRequest(
+            subject_prim_paths=tuple(subject_prim_paths),
+            container_prim_path=container_prim_path,
+            support_prim_path=support_prim_path,
+            obstacle_prim_paths=tuple(obstacle_prim_paths or ()),
+            checks=tuple(checks or ("containment",)),
+            include_purposes=tuple(include_purposes or ("default", "render")),
+            containment_axes=tuple(containment_axes or ("x", "y")),
+            margin_m=margin_m,
+            min_clearance_m=min_clearance_m,
+            floor_tolerance_m=floor_tolerance_m,
+            floor_axis=floor_axis,
+        )
+        result = await stage.placement_validation_report(meta, request)
         return _serialize(result)
 
     @mcp.tool()
