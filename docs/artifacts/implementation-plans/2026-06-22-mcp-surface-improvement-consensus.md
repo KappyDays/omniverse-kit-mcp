@@ -98,13 +98,13 @@ MCP_SERVER_TOOL_EXCLUDE=<comma-separated tool or group names>
 
 `app`
 
-- App-aware profile based on `ISAAC_MCP_APP_PROFILE`.
-- Isaac keeps robot/character/sensor/navigation where useful.
-- USD Composer keeps common USD authoring, material/content/asset/catalog,
-  viewport/window, extension, and diagnostic tools.
-- Do not overload the existing `KitAppProfile.supported_module_groups`; add a
-  separate MCP tool profile mapping so app support and MCP exposure stay
-  independently reviewable.
+- App-workflow slim profile with invariant public tool names across
+  `ISAAC_MCP_APP_PROFILE`.
+- Keep runtime-guarded capability tools registered even when a Kit app may not
+  support them; unsupported operations must return `CAPABILITY_NOT_SUPPORTED`
+  or the app-specific graceful error at call time.
+- Do not overload the existing `KitAppProfile.supported_module_groups`; keep
+  app support, runtime guards, and MCP exposure independently reviewable.
 
 `custom`
 

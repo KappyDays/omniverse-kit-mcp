@@ -285,19 +285,26 @@ def test_app_tool_profile_is_strict_subset_for_isaac():
     assert "kit_python_run" not in registered
 
 
-def test_app_tool_profile_uses_active_app_profile(monkeypatch):
+def test_app_tool_profile_is_invariant_across_app_profiles(monkeypatch):
+    default_config = AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_APP))
+    default_mcp = create_mcp_server(default_config)
+    default_registered = frozenset(default_mcp._tool_manager._tools)
+
     monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
     config = AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_APP))
     mcp = create_mcp_server(config)
     registered = frozenset(mcp._tool_manager._tools)
 
+    assert registered == default_registered
     assert registered < EXPECTED_ALL_TOOLS
     assert "mcp_runtime_info" in registered
     assert "material_assign_mdl" in registered
     assert "content_browse" in registered
-    assert "robot_load" not in registered
-    assert "sensor_attach_rtx_camera" not in registered
-    assert "omnigraph_create_ros2_publisher" not in registered
+    assert "robot_load" in registered
+    assert "sensor_attach_rtx_camera" in registered
+    assert "omnigraph_create_ros2_publisher" in registered
+    assert "external_asset_download" not in registered
+    assert "kit_python_run" not in registered
 
 
 def test_mcp_runtime_info_present_in_every_tool_profile():

@@ -27,7 +27,7 @@ The generated signature reference remains `docs/tool-catalog.md`.
 |---|---|
 | `full` | Default compatibility mode. Registers the complete generated tool surface. |
 | `core` | Smaller everyday authoring and diagnostics surface. |
-| `app` | App-aware surface based on `ISAAC_MCP_APP_PROFILE`. |
+| `app` | Slim app-workflow surface with invariant tool names across `ISAAC_MCP_APP_PROFILE`; unsupported app-specific capabilities fail at runtime with capability errors. |
 | `custom` | Starts from `core`, then applies `MCP_SERVER_TOOL_INCLUDE` and `MCP_SERVER_TOOL_EXCLUDE` tokens. |
 
 Set `MCP_SERVER_TOOL_PROFILE=full` and restart the MCP host to roll back to the

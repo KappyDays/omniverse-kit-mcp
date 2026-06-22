@@ -600,10 +600,13 @@ def build_tool_selection(
             if PROFILE_CORE in meta.default_profiles
         }
     elif normalized_profile == PROFILE_APP:
+        # Keep the public MCP tool-name surface invariant across Kit app
+        # profiles. App-specific unsupported capabilities are reported by the
+        # runtime guards, while app_profiles remains metadata for reporting.
         selected = {
             name
             for name, meta in TOOL_METADATA.items()
-            if PROFILE_APP in meta.default_profiles and app_profile in meta.app_profiles
+            if PROFILE_APP in meta.default_profiles
         }
     else:
         selected = {
