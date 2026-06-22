@@ -36,6 +36,12 @@ from omniverse_kit_mcp.scenario.loader import list_scenarios, load_scenario, val
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
+from omniverse_kit_mcp.tools.tool_profiles import (
+    PROFILE_FULL,
+    ToolSelection,
+    build_tool_selection,
+    selected_tool_decorator,
+)
 
 # Module-level store for last run reports
 _last_reports: dict[str, str] = {}
@@ -86,8 +92,13 @@ def register_scenario_tools(
     replicator: ReplicatorModule,
     omnigraph: OmnigraphModule,
     content: ContentModule,
+    *,
+    selection: ToolSelection | None = None,
 ) -> None:
     """Register all 3 scenario-level tools on the MCP server."""
+    if selection is None:
+        selection = build_tool_selection(profile=PROFILE_FULL)
+    tool = selected_tool_decorator(mcp, selection)
 
     runner = ScenarioRunner(
         stage, viewport, lakehouse, extension, simulation, robot, job, asset, character,
@@ -95,7 +106,7 @@ def register_scenario_tools(
         replicator, omnigraph, content,
     )
 
-    @mcp.tool()
+    @tool()
     async def scenario_validate(
         scenario_path: str,
         dry_run: bool = False,
@@ -131,7 +142,7 @@ def register_scenario_tools(
         _last_reports[scenario.scenario_id] = report
         return report
 
-    @mcp.tool()
+    @tool()
     async def scenario_plan(
         scenario_path: str,
     ) -> str:
@@ -162,7 +173,7 @@ def register_scenario_tools(
     # (isaacsim://scenarios, isaacsim://scenario-schema)
     # — see src/omniverse_kit_mcp/mcp/resources.py.
 
-    @mcp.tool()
+    @tool()
     async def scenario_last_report(
         scenario_id: str,
     ) -> str:

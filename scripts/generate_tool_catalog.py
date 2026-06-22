@@ -24,56 +24,16 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from omniverse_kit_mcp.config import AppConfig  # noqa: E402
+from omniverse_kit_mcp.config import AppConfig, MCPServerConfig  # noqa: E402
 from omniverse_kit_mcp.mcp.server import create_mcp_server  # noqa: E402
+from omniverse_kit_mcp.tools.tool_profiles import (  # noqa: E402
+    CATALOG_GROUPS,
+    PROFILE_FULL,
+    tool_catalog_group,
+)
 
 
 OUTPUT = PROJECT_ROOT / "docs" / "tool-catalog.md"
-
-
-# Prefix → (group title, order key)
-_GROUPS: list[tuple[str, tuple[str, ...]]] = [
-    ("Process — MCP / Kit app lifecycle", ("mcp_runtime_info", "kit_app_", "process_")),
-    ("Stage — READ / ASSERT / file & selection", (
-        "stage_capture_snapshot", "stage_diff_snapshots",
-        "stage_assert_prim_exists", "stage_assert_property",
-        "stage_get_selection", "stage_set_selection",
-    )),
-    ("Stage — WRITE (mutations routed to SimulationModule)", (
-        "stage_load_usd", "stage_set_property",
-        "stage_create_prim", "stage_delete_prim",
-        "stage_save", "stage_open", "stage_new",
-    )),
-    ("Simulation — timeline", (
-        "simulation_play", "simulation_pause", "simulation_stop",
-        "simulation_get_status",
-    )),
-    ("Viewport — 3D renderer capture + camera", ("viewport_",)),
-    ("Window — Kit GUI (app window / menus / omni.ui windows)", ("window_",)),
-    ("Extension — lifecycle / UI automation / carb log capture", ("extension_",)),
-    ("Lakehouse — query-only", ("lakehouse_",)),
-    ("Robot — articulation + navigation (ASYNC Job)", ("robot_",)),
-    ("Job — async job polling / cancel", ("job_",)),
-    ("Asset — catalog browsing (GUI Asset Browser equivalent)", ("asset_",)),
-    ("Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)", ("character_",)),
-    ("Navigation — NavMesh bake / path query / exclude volume", ("navigation_",)),
-    ("Scenario — YAML Arrange / Act / Assert / Cleanup runner", ("scenario_",)),
-]
-
-
-def _match_group(name: str) -> int:
-    """Return the group index a tool name belongs to. Prefers exact prefix,
-    falls back to explicit-name membership for the hybrid `stage_*` split."""
-    for i, (_title, keys) in enumerate(_GROUPS):
-        # Exact-name match wins over prefix match
-        for key in keys:
-            if key == name:
-                return i
-    for i, (_title, keys) in enumerate(_GROUPS):
-        for key in keys:
-            if key.endswith("_") and name.startswith(key):
-                return i
-    return len(_GROUPS)  # unknown → last bucket
 
 
 def _render_tool(name: str, tool) -> str:
@@ -144,14 +104,19 @@ def _extract_header(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _full_catalog_config() -> AppConfig:
+    """Build config for the generated canonical full-mode catalog."""
+    return AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_FULL))
+
+
 def main() -> int:
-    config = AppConfig()
+    config = _full_catalog_config()
     mcp = create_mcp_server(config)
     tools = mcp._tool_manager._tools
 
-    grouped: dict[int, list[tuple[str, object]]] = {}
+    grouped: dict[str, list[tuple[str, object]]] = {}
     for name, tool in sorted(tools.items()):
-        grouped.setdefault(_match_group(name), []).append((name, tool))
+        grouped.setdefault(tool_catalog_group(name), []).append((name, tool))
 
     total = sum(len(v) for v in grouped.values())
     lines: list[str] = []
@@ -170,28 +135,28 @@ def main() -> int:
     lines.append("")
     lines.append("## Table of contents")
     lines.append("")
-    for i, (title, _) in enumerate(_GROUPS):
-        bucket = grouped.get(i, [])
+    for title in CATALOG_GROUPS:
+        bucket = grouped.get(title, [])
         if not bucket:
             continue
         anchor = re.sub(r"[^a-z0-9\- ]", "", title.lower()).replace(" ", "-")
         lines.append(f"- [{title}](#{anchor}) — {len(bucket)} tools")
-    if grouped.get(len(_GROUPS)):
-        lines.append(f"- Unclassified ({len(grouped[len(_GROUPS)])})")
+    if grouped.get("Unclassified"):
+        lines.append(f"- Unclassified ({len(grouped['Unclassified'])})")
     lines.append("")
 
-    for i, (title, _keys) in enumerate(_GROUPS):
-        bucket = grouped.get(i, [])
+    for title in CATALOG_GROUPS:
+        bucket = grouped.get(title, [])
         if not bucket:
             continue
         lines.append(f"## {title}")
         lines.append("")
         for name, tool in bucket:
             lines.append(_render_tool(name, tool))
-    if grouped.get(len(_GROUPS)):
+    if grouped.get("Unclassified"):
         lines.append("## Unclassified")
         lines.append("")
-        for name, tool in grouped[len(_GROUPS)]:
+        for name, tool in grouped["Unclassified"]:
             lines.append(_render_tool(name, tool))
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

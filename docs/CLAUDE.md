@@ -9,7 +9,8 @@ omniverse-kit-mcp records “what you can do now” (tool catalog) and “what y
 
 | file/subdirectory | role | update rule |
 |---------------------|------|--------------|
-| `tool-catalog.md` | **All MCP tools now callable** — signature, description, parameters. Entry point for external session | **Auto-generated**. `scripts/generate_tool_catalog.py` Re-execution required. `tests/unit/test_tool_catalog_sync.py` detects drift |
+| `mcp-usage-guide.md` | **Task-first MCP gateway** — route common work to first tools and canonical pull-docs before loading the full catalog | Keep short; link invariants/runbooks instead of duplicating rules |
+| `tool-catalog.md` | **All full-mode MCP tools now callable** — signature, description, parameters. Exact generated reference after using the task guide | **Auto-generated**. `scripts/generate_tool_catalog.py` Re-execution required. `tests/unit/test_tool_catalog_sync.py` detects drift |
 | `tool-diagnostic-map.md` | **Error/Failure Diagnosis** — Question → MCP read-only tool inverted index + debugging workflow | When a new diagnostic pattern is discovered |
 | `invariants/` | **Must-read pull-docs before work** — asset discovery / USD load / process lifecycle / live worker coordination / MCP tool addition / module addition / extension reload / UI invoke / scenario validation / multi-app / visual-validation: 11 files. The "Required pull-doc before work" table in root CLAUDE.md is the entry point. | Hard cap ≤200 lines. Add new permanent rules here |
 | `runbooks/` | **Failure-response pull-docs** — kit-stdin-deadlock / cold-boot-timeout / hub-orphan / env-sub-config / kit-dep-solver-fail / multi-app / scene-reexport-lock: 7 files. Ignored in normal development flow, referenced only in case of failure | Hard cap ≤300 lines. Add new failure types here |
@@ -29,7 +30,7 @@ omniverse-kit-mcp records “what you can do now” (tool catalog) and “what y
 
 ## Root referencing this directory from external sessions
 
-- Another Claude Code session / LLM asked "What can you do with omniverse-kit-mcp" → `docs/tool-catalog.md` Understanding the entire surface by reading just one.
+- Another Claude Code session / LLM asked "What can you do with omniverse-kit-mcp" → start with `docs/mcp-usage-guide.md`; use `docs/tool-catalog.md` only for exact signatures and the complete full-mode surface.
 - When looking for Kit SDK unpublished API → Check for duplicate existing `docs/tool-catalog.md` → If there is local generated catalog, `extension_search` → Actual Kit source/official document.
 
 ## Related Boundaries

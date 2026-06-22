@@ -13,10 +13,18 @@ from types import SimpleNamespace
 import pytest
 from mcp.server.fastmcp import FastMCP
 
-from omniverse_kit_mcp.config import AppConfig
+from omniverse_kit_mcp.config import AppConfig, MCPServerConfig
 from omniverse_kit_mcp.mcp.server import create_mcp_server
 from omniverse_kit_mcp.modules.robot_module import RobotModule
 from omniverse_kit_mcp.tools.module_tools import register_module_tools
+from omniverse_kit_mcp.tools.tool_profiles import (
+    PROFILE_APP,
+    PROFILE_CORE,
+    PROFILE_CUSTOM,
+    PROFILE_FULL,
+    TOOL_METADATA,
+    build_tool_selection,
+)
 
 
 EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
@@ -219,6 +227,18 @@ EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({
 EXPECTED_ALL_TOOLS: frozenset[str] = EXPECTED_MODULE_TOOLS | EXPECTED_SCENARIO_TOOLS
 
 
+@pytest.fixture(autouse=True)
+def _isolate_tool_profile_env(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    for key in (
+        "MCP_SERVER_TOOL_PROFILE",
+        "MCP_SERVER_TOOL_INCLUDE",
+        "MCP_SERVER_TOOL_EXCLUDE",
+        "ISAAC_MCP_APP_PROFILE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
 @pytest.fixture
 def mcp_server():
     config = AppConfig()
@@ -232,6 +252,84 @@ def test_registered_tools_match_expected_set(mcp_server):
     unexpected = registered - EXPECTED_ALL_TOOLS
     assert not missing, f"Missing tools: {sorted(missing)}"
     assert not unexpected, f"Unexpected tools: {sorted(unexpected)}"
+
+
+def test_full_tool_profile_matches_expected_set():
+    """Explicit full profile is the compatibility surface."""
+    config = AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_FULL))
+    mcp = create_mcp_server(config)
+    registered = frozenset(mcp._tool_manager._tools)
+    assert registered == EXPECTED_ALL_TOOLS
+
+
+def test_core_tool_profile_is_strict_subset():
+    config = AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_CORE))
+    mcp = create_mcp_server(config)
+    registered = frozenset(mcp._tool_manager._tools)
+
+    assert registered < EXPECTED_ALL_TOOLS
+    assert "mcp_runtime_info" in registered
+    assert "stage_load_usd" in registered
+    assert "robot_load" not in registered
+
+
+def test_app_tool_profile_is_strict_subset_for_isaac():
+    config = AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_APP))
+    mcp = create_mcp_server(config)
+    registered = frozenset(mcp._tool_manager._tools)
+
+    assert registered < EXPECTED_ALL_TOOLS
+    assert "mcp_runtime_info" in registered
+    assert "robot_load" in registered
+    assert "external_asset_download" not in registered
+    assert "kit_python_run" not in registered
+
+
+def test_app_tool_profile_uses_active_app_profile(monkeypatch):
+    monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
+    config = AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_APP))
+    mcp = create_mcp_server(config)
+    registered = frozenset(mcp._tool_manager._tools)
+
+    assert registered < EXPECTED_ALL_TOOLS
+    assert "mcp_runtime_info" in registered
+    assert "material_assign_mdl" in registered
+    assert "content_browse" in registered
+    assert "robot_load" not in registered
+    assert "sensor_attach_rtx_camera" not in registered
+    assert "omnigraph_create_ros2_publisher" not in registered
+
+
+def test_mcp_runtime_info_present_in_every_tool_profile():
+    for profile in (PROFILE_FULL, PROFILE_CORE, PROFILE_APP, PROFILE_CUSTOM):
+        config = AppConfig(mcp_server=MCPServerConfig(tool_profile=profile))
+        mcp = create_mcp_server(config)
+        assert "mcp_runtime_info" in mcp._tool_manager._tools
+
+
+def test_every_expected_tool_has_metadata_classification():
+    assert frozenset(TOOL_METADATA) == EXPECTED_ALL_TOOLS
+    for name, meta in TOOL_METADATA.items():
+        assert meta.name == name
+        assert meta.group
+        assert meta.group != "Unclassified"
+        assert meta.domain
+        assert PROFILE_FULL in meta.default_profiles
+        assert meta.workflow_tags
+        assert meta.risk_level
+
+
+def test_custom_profile_applies_include_exclude_tokens():
+    selection = build_tool_selection(
+        profile=PROFILE_CUSTOM,
+        include="robot_load,material",
+        exclude="lakehouse",
+    )
+
+    assert "mcp_runtime_info" in selection.included_tools
+    assert "robot_load" in selection.included_tools
+    assert "material_assign_mdl" in selection.included_tools
+    assert "lakehouse_query" not in selection.included_tools
 
 
 def test_tool_count_matches_expected_list(mcp_server):
@@ -269,6 +367,10 @@ async def test_mcp_runtime_info_reports_probe_result_freshness(mcp_server):
     assert payload["ok"] is True
     assert payload["has_mcp_runtime_info_tool"] is True
     assert payload["tool_count"] == len(EXPECTED_ALL_TOOLS)
+    assert payload["tool_profile"] == PROFILE_FULL
+    assert payload["registered_tool_count"] == len(EXPECTED_ALL_TOOLS)
+    assert payload["omitted_tool_count"] == 0
+    assert payload["omitted_groups"] == {}
     assert payload["robot_probe_result_has_mcp_controllability"] is True
     assert payload["robot_probe_result_has_probe_capability_level"] is True
     assert payload["robot_probe_result_has_pick_place_validation_boundary"] is True

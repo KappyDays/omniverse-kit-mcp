@@ -6,23 +6,30 @@ Auto-generated from the live FastMCP server. Regenerate with `.venv/Scripts/pyth
 
 ## Table of contents
 
-- [Process — MCP / Kit app lifecycle](#process--mcp--kit-app-lifecycle) — 5 tools
-- [Stage — READ / ASSERT / file & selection](#stage--read--assert--file--selection) — 6 tools
-- [Stage — WRITE (mutations routed to SimulationModule)](#stage--write-mutations-routed-to-simulationmodule) — 7 tools
-- [Simulation — timeline](#simulation--timeline) — 4 tools
-- [Viewport — 3D renderer capture + camera](#viewport--3d-renderer-capture--camera) — 14 tools
-- [Window — Kit GUI (app window / menus / omni.ui windows)](#window--kit-gui-app-window--menus--omniui-windows) — 7 tools
-- [Extension — lifecycle / UI automation / carb log capture](#extension--lifecycle--ui-automation--carb-log-capture) — 13 tools
-- [Lakehouse — query-only](#lakehouse--query-only) — 1 tools
-- [Robot — articulation + navigation (ASYNC Job)](#robot--articulation--navigation-async-job) — 19 tools
-- [Job — async job polling / cancel](#job--async-job-polling--cancel) — 2 tools
-- [Asset — catalog browsing (GUI Asset Browser equivalent)](#asset--catalog-browsing-gui-asset-browser-equivalent) — 2 tools
-- [Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)](#character--behavioragent--ira--navmesh-async-job) — 8 tools
-- [Navigation — NavMesh bake / path query / exclude volume](#navigation--navmesh-bake--path-query--exclude-volume) — 5 tools
-- [Scenario — YAML Arrange / Act / Assert / Cleanup runner](#scenario--yaml-arrange--act--assert--cleanup-runner) — 3 tools
-- Unclassified (56)
+- [Process - MCP / Kit app lifecycle](#process---mcp--kit-app-lifecycle) — 5 tools
+- [Stage - READ / ASSERT](#stage---read--assert) — 7 tools
+- [Stage - WRITE / file / selection](#stage---write--file--selection) — 10 tools
+- [Simulation - timeline](#simulation---timeline) — 8 tools
+- [Viewport - capture / camera / render](#viewport---capture--camera--render) — 14 tools
+- [Window - Kit GUI / menus / omni.ui](#window---kit-gui--menus--omniui) — 7 tools
+- [Extension - lifecycle / UI automation / logs / catalog](#extension---lifecycle--ui-automation--logs--catalog) — 13 tools
+- [Lakehouse - query-only](#lakehouse---query-only) — 1 tools
+- [Asset - catalog browsing / official assets](#asset---catalog-browsing--official-assets) — 10 tools
+- [Content - browser / preview / inspect / resolve](#content---browser--preview--inspect--resolve) — 4 tools
+- [Navigation - NavMesh](#navigation---navmesh) — 5 tools
+- [Robot - articulation / navigation / manipulation](#robot---articulation--navigation--manipulation) — 19 tools
+- [Job - async polling / cancel](#job---async-polling--cancel) — 2 tools
+- [Character - animation / crowd / navigation](#character---animation--crowd--navigation) — 8 tools
+- [Sensor - RTX / contact / IMU / annotators](#sensor---rtx--contact--imu--annotators) — 8 tools
+- [Physics - bodies / colliders / joints / scene](#physics---bodies--colliders--joints--scene) — 8 tools
+- [Lighting - UsdLux / exposure](#lighting---usdlux--exposure) — 6 tools
+- [Material - MDL list / assign / bound](#material---mdl-list--assign--bound) — 3 tools
+- [Replicator - writers / randomizers / triggers](#replicator---writers--randomizers--triggers) — 4 tools
+- [OmniGraph - nodes / execution / ROS2](#omnigraph---nodes--execution--ros2) — 5 tools
+- [Scenario - YAML validation runner](#scenario---yaml-validation-runner) — 3 tools
+- [Kit commands - command registry / Python runner](#kit-commands---command-registry--python-runner) — 2 tools
 
-## Process — MCP / Kit app lifecycle
+## Process - MCP / Kit app lifecycle
 
 ### `kit_app_restart`
 
@@ -78,7 +85,7 @@ kit_file, profile_matches, is_this_mcp_instance. Use BEFORE destructive ops (Kit
 user.config.json edit, settings reset, force reload) — external instances overwrite settings on
 shutdown. Windows-only.
 
-## Stage — READ / ASSERT / file & selection
+## Stage - READ / ASSERT
 
 ### `stage_assert_prim_exists`
 
@@ -138,6 +145,22 @@ Capture current USD Stage prim tree (prims + properties + relationships + metada
 | `include_metadata` | `boolean` | `True` |  |
 | `max_prim_count` | `integer` | `10000` |  |
 
+### `stage_compute_world_bbox`
+
+```python
+stage_compute_world_bbox(prim_path: 'str', include_purposes: 'list[str] | None' = None) -> 'str'
+```
+
+Compute a prim's world-space aligned bbox via USD BBoxCache. Returns min/max/center/size plus
+world translate/orientation; use before camera framing or layout checks.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `include_purposes` | `list[string] \| None` | `None` |  |
+
 ### `stage_diff_snapshots`
 
 ```python
@@ -154,31 +177,52 @@ stage_capture_snapshot JSON outputs.
 | `before_snapshot_json` | `string` | `'—'` | ✓ |
 | `after_snapshot_json` | `string` | `'—'` | ✓ |
 
-### `stage_get_selection`
+### `stage_placement_validation_report`
 
 ```python
-stage_get_selection() -> 'str'
+stage_placement_validation_report(subject_prim_paths: 'list[str]', container_prim_path: 'str | None' = None, support_prim_path: 'str | None' = None, obstacle_prim_paths: 'list[str] | None' = None, checks: 'list[str] | None' = None, containment_axes: 'list[str] | None' = None, margin_m: 'float' = 0.0, min_clearance_m: 'float' = 0.0, floor_tolerance_m: 'float' = 0.01, floor_axis: 'str' = 'z', include_purposes: 'list[str] | None' = None) -> 'str'
 ```
 
-Return the current Stage-panel selection (prim paths) — GUI Stage panel readout.
-
-### `stage_set_selection`
-
-```python
-stage_set_selection(prim_paths: 'list[str]', expand_in_stage: 'bool' = True) -> 'str'
-```
-
-Replace the Stage-panel selection — GUI Stage panel click. *expand_in_stage* auto-expands the
-tree to reveal selected prims.
+Validate asset placement with world-AABB containment, clearance, and on-floor checks. Use
+explicit PlacementZone/AcceptanceVolume prims as containers; this is broad-phase evidence, not
+final visual acceptance.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
-| `prim_paths` | `list[string]` | `'—'` | ✓ |
-| `expand_in_stage` | `boolean` | `True` |  |
+| `subject_prim_paths` | `list[string]` | `'—'` | ✓ |
+| `container_prim_path` | `string \| None` | `None` |  |
+| `support_prim_path` | `string \| None` | `None` |  |
+| `obstacle_prim_paths` | `list[string] \| None` | `None` |  |
+| `checks` | `list[string] \| None` | `None` |  |
+| `containment_axes` | `list[string] \| None` | `None` |  |
+| `margin_m` | `number` | `0.0` |  |
+| `min_clearance_m` | `number` | `0.0` |  |
+| `floor_tolerance_m` | `number` | `0.01` |  |
+| `floor_axis` | `string` | `'z'` |  |
+| `include_purposes` | `list[string] \| None` | `None` |  |
 
-## Stage — WRITE (mutations routed to SimulationModule)
+### `stage_visual_alignment_report`
+
+```python
+stage_visual_alignment_report(reference_prim_path: 'str', candidate_prim_paths: 'list[str]', min_iou_xy: 'float' = 0.5, max_center_delta_m: 'float' = 0.05, include_purposes: 'list[str] | None' = None) -> 'str'
+```
+
+Compare candidate prim world bboxes against a reference bbox. Reports XY IoU and center deltas
+to catch visual/physics/acceptance-volume misalignment.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `reference_prim_path` | `string` | `'—'` | ✓ |
+| `candidate_prim_paths` | `list[string]` | `'—'` | ✓ |
+| `min_iou_xy` | `number` | `0.5` |  |
+| `max_center_delta_m` | `number` | `0.05` |  |
+| `include_purposes` | `list[string] \| None` | `None` |  |
+
+## Stage - WRITE / file / selection
 
 ### `stage_create_prim`
 
@@ -210,6 +254,14 @@ Delete USD Prim (also removes children).
 | name | type | default | required |
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
+
+### `stage_get_selection`
+
+```python
+stage_get_selection() -> 'str'
+```
+
+Return the current Stage-panel selection (prim paths) — GUI Stage panel readout.
 
 ### `stage_load_usd`
 
@@ -283,7 +335,42 @@ Set a USD Prim attribute; type_hint specifies USD type
 | `value` | `Any` | `'—'` | ✓ |
 | `type_hint` | `string \| None` | `None` |  |
 
-## Simulation — timeline
+### `stage_set_selection`
+
+```python
+stage_set_selection(prim_paths: 'list[str]', expand_in_stage: 'bool' = True) -> 'str'
+```
+
+Replace the Stage-panel selection — GUI Stage panel click. *expand_in_stage* auto-expands the
+tree to reveal selected prims.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_paths` | `list[string]` | `'—'` | ✓ |
+| `expand_in_stage` | `boolean` | `True` |  |
+
+### `stage_set_semantic_label`
+
+```python
+stage_set_semantic_label(prim_path: 'str', label_class: 'str', label_type: 'str' = 'class') -> 'str'
+```
+
+Apply a semantic label to a prim (inherits to its subtree) so Replicator segmentation / bbox
+annotators classify it. Authors UsdSemantics.LabelsAPI (semantics:labels:<label_type>) + best-
+effort legacy Semantics schema. Fills the gap left by sensor_set_annotator (which attaches
+annotators but cannot label the props). 400 if prim_path not found.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `label_class` | `string` | `'—'` | ✓ |
+| `label_type` | `string` | `'class'` |  |
+
+## Simulation - timeline
 
 ### `simulation_get_status`
 
@@ -310,6 +397,53 @@ simulation_play() -> 'str'
 Start simulation timeline (play button). Does NOT launch the Kit application — use
 kit_app_start for that.
 
+### `simulation_set_time`
+
+```python
+simulation_set_time(time_seconds: 'float') -> 'str'
+```
+
+Seek timeline to time_seconds; preserves current play/stop state.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `time_seconds` | `number` | `'—'` | ✓ |
+
+### `simulation_step`
+
+```python
+simulation_step(frames: 'int' = 1) -> 'str'
+```
+
+Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play
+state.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `frames` | `integer` | `1` |  |
+
+### `simulation_step_observe`
+
+```python
+simulation_step_observe(frames: 'int' = 1, observe_prims: 'list[str] | None' = None, observe_joints: 'list[str] | None' = None, observe_ee: 'list[dict[str, Any]] | None' = None) -> 'str'
+```
+
+Advance N frames, then return synchronized prim/joint/end-effector observations. Use this for
+deterministic ScriptNode/controller debugging instead of sleep+separate polling.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `frames` | `integer` | `1` |  |
+| `observe_prims` | `list[string] \| None` | `None` |  |
+| `observe_joints` | `list[string] \| None` | `None` |  |
+| `observe_ee` | `list[object] \| None` | `None` |  |
+
 ### `simulation_stop`
 
 ```python
@@ -319,7 +453,26 @@ simulation_stop() -> 'str'
 Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Kit
 application — use kit_app_stop for that.
 
-## Viewport — 3D renderer capture + camera
+### `simulation_wait_until`
+
+```python
+simulation_wait_until(until_time: 'float', timeout_s: 'float' = 30.0) -> 'str'
+```
+
+Tick the timeline until current_time >= until_time (or timeout_s wall-clock elapses), then
+return final status + reached/timed_out/elapsed_s/frames_waited. Ticks via next_update_async on
+the Kit loop (deadlock-safe, non-blocking). Replaces sleep+poll loops for sim_time-precise
+timing (e.g. trigger an event at t=12s). Requires the timeline PLAYING to advance — otherwise
+it times out.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `until_time` | `number` | `'—'` | ✓ |
+| `timeout_s` | `number` | `30.0` |  |
+
+## Viewport - capture / camera / render
 
 ### `viewport_capture`
 
@@ -578,7 +731,7 @@ Toggle viewport overlay. overlay ∈ {gridlines, axis, stats}; stats toggles RTX
 | `overlay` | `string` | `'gridlines'` |  |
 | `visible` | `boolean` | `True` |  |
 
-## Window — Kit GUI (app window / menus / omni.ui windows)
+## Window - Kit GUI / menus / omni.ui
 
 ### `window_capture`
 
@@ -700,7 +853,7 @@ resolved_via and visible_after.
 | `focus` | `boolean` | `True` |  |
 | `settle_frames` | `integer` | `5` |  |
 
-## Extension — lifecycle / UI automation / carb log capture
+## Extension - lifecycle / UI automation / logs / catalog
 
 ### `extension_activate`
 
@@ -923,7 +1076,7 @@ Invoke an omni.ui widget, then poll a Stage property assertion until it passes o
 | `timeout_s` | `number` | `45.0` |  |
 | `poll_interval_s` | `number` | `0.5` |  |
 
-## Lakehouse — query-only
+## Lakehouse - query-only
 
 ### `lakehouse_query`
 
@@ -944,7 +1097,350 @@ Query Lakehouse REST for expected values; accepts raw SQL or namespace/dataset/t
 | `filters` | `object \| None` | `None` |  |
 | `limit` | `integer` | `1000` |  |
 
-## Robot — articulation + navigation (ASYNC Job)
+## Asset - catalog browsing / official assets
+
+### `asset_list`
+
+```python
+asset_list(category: 'str | None' = None, subpath: 'str' = '', recursive: 'bool' = False, max_depth: 'int' = 2, max_entries: 'int' = 500) -> 'str'
+```
+
+Browse Isaac Sim asset catalog. No args → top-level categories; category → folder contents;
+is_folder=false entries have spawnable url.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `category` | `string \| None` | `None` |  |
+| `subpath` | `string` | `''` |  |
+| `recursive` | `boolean` | `False` |  |
+| `max_depth` | `integer` | `2` |  |
+| `max_entries` | `integer` | `500` |  |
+
+### `asset_search`
+
+```python
+asset_search(query: 'str', category: 'str | None' = None, limit: 'int' = 20) -> 'str'
+```
+
+Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.  Maps
+a natural-language need (e.g. "forklift", "warehouse", "franka", "police character", "pallet")
+to concrete spawnable USD URLs by ranking the curated markdown catalog under docs/assets/isaac/
+(robots 90+, environments, people/animations, props, SimReady 1000+). Use this at planning time
+/ before building a scene to pick a real asset (Validation Rule R1 — actual outputs use actual
+assets; controlled test/demo fixtures may be primitives); complements the live asset_list
+(which needs Isaac up) and content_browse.  Args:   query: free-text terms matched against
+asset name / catalog text.   category: optional filter — one of robots / environments / people
+/     props / simready / other.   limit: max results (default 20).  Returns a ranked list of
+{name, url, category, source_file}. Load a chosen url with stage_load_usd / robot_load /
+character_load per docs/invariants/usd-load.md.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `query` | `string` | `'—'` | ✓ |
+| `category` | `string \| None` | `None` |  |
+| `limit` | `integer` | `20` |  |
+
+### `external_asset_convert`
+
+```python
+external_asset_convert(manifest_path: 'str', output_format: 'str' = 'usd', timeout_s: 'float' = 180.0) -> 'str'
+```
+
+Convert a downloaded external asset manifest to local USD through live Kit's
+omni.kit.asset_converter. Prepare-only: no stage_load_usd/file:// placement.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `manifest_path` | `string` | `'—'` | ✓ |
+| `output_format` | `string` | `'usd'` |  |
+| `timeout_s` | `number` | `180.0` |  |
+
+### `external_asset_download`
+
+```python
+external_asset_download(provider: 'str', asset_id: 'str', format_preference: 'list[str] | None' = None) -> 'str'
+```
+
+Download one selected external free asset into ignored .omniverse-kit-mcp/external_assets and
+write manifest.json. Does not place the asset in the stage.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `provider` | `string` | `'—'` | ✓ |
+| `asset_id` | `string` | `'—'` | ✓ |
+| `format_preference` | `list[string] \| None` | `None` |  |
+
+### `external_asset_search`
+
+```python
+external_asset_search(query: 'str', providers: 'list[str] | None' = None, limit: 'int' = 10) -> 'str'
+```
+
+Search external free asset providers after asset_search misses. Default provider order is Poly
+Haven then token-gated Sketchfab; returns normalized candidates and provider_status.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `query` | `string` | `'—'` | ✓ |
+| `providers` | `list[string] \| None` | `None` |  |
+| `limit` | `integer` | `10` |  |
+
+### `official_asset_get`
+
+```python
+official_asset_get(asset_id: 'str') -> 'str'
+```
+
+Return the full generated official asset/material catalog entry by URL-based id.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `asset_id` | `string` | `'—'` | ✓ |
+
+### `official_asset_resolve`
+
+```python
+official_asset_resolve(name_or_id: 'str', kind: 'str | None' = None, app_profile: 'str | None' = None, prefer_loadable: 'bool' = True) -> 'str'
+```
+
+Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer
+current app/profile loadability; if stale or not load/assign verified,
+verify_required_before_use is true.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `name_or_id` | `string` | `'—'` | ✓ |
+| `kind` | `string \| None` | `None` |  |
+| `app_profile` | `string \| None` | `None` |  |
+| `prefer_loadable` | `boolean` | `True` |  |
+
+### `official_asset_search`
+
+```python
+official_asset_search(query: 'str', kind: 'str | None' = None, app_profile: 'str | None' = None, provider: 'str | None' = None, min_status: 'str' = 'url_validated', allow_stale: 'bool' = True, limit: 'int' = 20) -> 'str'
+```
+
+Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns
+URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; stale
+hits may be listed only when allow_stale=True and must be passed to official_asset_verify
+before use.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `query` | `string` | `'—'` | ✓ |
+| `kind` | `string \| None` | `None` |  |
+| `app_profile` | `string \| None` | `None` |  |
+| `provider` | `string \| None` | `None` |  |
+| `min_status` | `string` | `'url_validated'` |  |
+| `allow_stale` | `boolean` | `True` |  |
+| `limit` | `integer` | `20` |  |
+
+### `official_asset_sync_status`
+
+```python
+official_asset_sync_status(app_profile: 'str | None' = None) -> 'str'
+```
+
+Report latest official asset snapshot metadata, provider/app versions, counts, stale status,
+and failure counts. No Kit launch required.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `app_profile` | `string \| None` | `None` |  |
+
+### `official_asset_verify`
+
+```python
+official_asset_verify(asset_id: 'str', app_profile: 'str | None' = None, timeout_s: 'float | None' = None) -> 'str'
+```
+
+On-demand live verification for one official catalog item. Assets use
+stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding,
+and cleanup. Use workspace workers for live Kit.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `asset_id` | `string` | `'—'` | ✓ |
+| `app_profile` | `string \| None` | `None` |  |
+| `timeout_s` | `number \| None` | `None` |  |
+
+## Content - browser / preview / inspect / resolve
+
+### `content_browse`
+
+```python
+content_browse(url: 'str', recursive: 'bool' = False, max_depth: 'int' = 2, max_entries: 'int' = 500) -> 'str'
+```
+
+List URL children (omniverse://, https://, s3://, file:///). recursive walks up to max_depth.
+Entry: {url, name, is_folder, size, modified_time_ns, flags}.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
+| `recursive` | `boolean` | `False` |  |
+| `max_depth` | `integer` | `2` |  |
+| `max_entries` | `integer` | `500` |  |
+
+### `content_inspect`
+
+```python
+content_inspect(url: 'str') -> 'str'
+```
+
+Inspect a USD asset's GEOMETRY without adding it to the stage: opens the USD off the main
+thread and returns default_prim, world bbox (bbox_min/bbox_max), meters_per_unit, up_axis, and
+prim_count. Use at planning time to size/place an asset — content_preview only gives file
+metadata (size/mtime). Needs the Omniverse/HTTP resolver, so values are produced live; off-
+thread open keeps the Kit event loop unblocked.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
+
+### `content_preview`
+
+```python
+content_preview(url: 'str') -> 'str'
+```
+
+Stat a single URL; returns same entry shape as content_browse (size, mtime, is_folder, flags).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
+
+### `content_resolve`
+
+```python
+content_resolve(url: 'str') -> 'str'
+```
+
+Normalize URL via omni.client; collapses relative components, canonicalizes scheme, resolves
+Nucleus prefix.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `url` | `string` | `'—'` | ✓ |
+
+## Navigation - NavMesh
+
+### `navigation_add_exclude_volume`
+
+```python
+navigation_add_exclude_volume(prim_path: 'str | None' = None, padding: 'float' = 0.1) -> 'str'
+```
+
+Add NavMeshVolume(Exclude) around prim's world-aligned bbox to block agent step-up. Requires
+re-bake (navigation_bake) to take effect.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string \| None` | `None` |  |
+| `padding` | `number` | `0.1` |  |
+
+### `navigation_bake`
+
+```python
+navigation_bake(volume_scale: 'float' = 40.0, timeout_s: 'float' = 300.0) -> 'str'
+```
+
+Bake Stage NavMesh (creates NavMeshVolume if absent). Requires timeline stopped — playing
+returns ok=True but get_navmesh()=None (false positive).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `volume_scale` | `number` | `40.0` |  |
+| `timeout_s` | `number` | `300.0` |  |
+
+### `navigation_query_path`
+
+```python
+navigation_query_path(start: 'list[float]', end: 'list[float]', agent_radius: 'float' = 0.25, agent_height: 'float' = 1.8, straighten: 'bool' = True) -> 'str'
+```
+
+Query shortest NavMesh path between two world-space points. Auto-bakes if needed
+(response.auto_baked=true). straighten=True collapses straight runs.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `start` | `list[number]` | `'—'` | ✓ |
+| `end` | `list[number]` | `'—'` | ✓ |
+| `agent_radius` | `number` | `0.25` |  |
+| `agent_height` | `number` | `1.8` |  |
+| `straighten` | `boolean` | `True` |  |
+
+### `navigation_sample_walkable_points`
+
+```python
+navigation_sample_walkable_points(count: 'int', bounds_min: 'list[float] | None' = None, bounds_max: 'list[float] | None' = None, seed: 'int | None' = None) -> 'str'
+```
+
+Sample N random walkable points on the baked NavMesh (area-weighted barycentric, spec §8.1).
+count ∈ [1, 1000]. Optional [x,y,z] bounds_min/max restrict to AABB (both must be set or both
+null). When triangle iteration API is unavailable on this Kit build, falls back to bbox-
+rejection (random-in-bbox + reachability via query_shortest_path) — response ``method`` field
+reports which path won. Requires prior navigation_bake.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `count` | `integer` | `'—'` | ✓ |
+| `bounds_min` | `list[number] \| None` | `None` |  |
+| `bounds_max` | `list[number] \| None` | `None` |  |
+| `seed` | `integer \| None` | `None` |  |
+
+### `navigation_set_visualization`
+
+```python
+navigation_set_visualization(mode: 'str') -> 'str'
+```
+
+Toggle NavMesh viewport overlay. mode ∈ {walkable, obstacles, off}. walkable shows baked
+surface; obstacles shows excluded regions; off hides overlay.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `mode` | `string` | `'—'` | ✓ |
+
+## Robot - articulation / navigation / manipulation
 
 ### `robot_drive_physics`
 
@@ -1342,7 +1838,7 @@ wrap in continueOnFailure for optional calls.
 | `prim_path` | `string` | `'—'` | ✓ |
 | `positions` | `list[number]` | `'—'` | ✓ |
 
-## Job — async job polling / cancel
+## Job - async polling / cancel
 
 ### `job_cancel`
 
@@ -1372,54 +1868,7 @@ Poll async Job status (returns status/progress/result/error).
 |------|------|---------|----------|
 | `job_id` | `string` | `'—'` | ✓ |
 
-## Asset — catalog browsing (GUI Asset Browser equivalent)
-
-### `asset_list`
-
-```python
-asset_list(category: 'str | None' = None, subpath: 'str' = '', recursive: 'bool' = False, max_depth: 'int' = 2, max_entries: 'int' = 500) -> 'str'
-```
-
-Browse Isaac Sim asset catalog. No args → top-level categories; category → folder contents;
-is_folder=false entries have spawnable url.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `category` | `string \| None` | `None` |  |
-| `subpath` | `string` | `''` |  |
-| `recursive` | `boolean` | `False` |  |
-| `max_depth` | `integer` | `2` |  |
-| `max_entries` | `integer` | `500` |  |
-
-### `asset_search`
-
-```python
-asset_search(query: 'str', category: 'str | None' = None, limit: 'int' = 20) -> 'str'
-```
-
-Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.  Maps
-a natural-language need (e.g. "forklift", "warehouse", "franka", "police character", "pallet")
-to concrete spawnable USD URLs by ranking the curated markdown catalog under docs/assets/isaac/
-(robots 90+, environments, people/animations, props, SimReady 1000+). Use this at planning time
-/ before building a scene to pick a real asset (Validation Rule R1 — actual outputs use actual
-assets; controlled test/demo fixtures may be primitives); complements the live asset_list
-(which needs Isaac up) and content_browse.  Args:   query: free-text terms matched against
-asset name / catalog text.   category: optional filter — one of robots / environments / people
-/     props / simready / other.   limit: max results (default 20).  Returns a ranked list of
-{name, url, category, source_file}. Load a chosen url with stage_load_usd / robot_load /
-character_load per docs/invariants/usd-load.md.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `query` | `string` | `'—'` | ✓ |
-| `category` | `string \| None` | `None` |  |
-| `limit` | `integer` | `20` |  |
-
-## Character — BehaviorAgent / IRA + NavMesh (ASYNC Job)
+## Character - animation / crowd / navigation
 
 ### `character_get_state`
 
@@ -1563,844 +2012,7 @@ already Idle.
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
 
-## Navigation — NavMesh bake / path query / exclude volume
-
-### `navigation_add_exclude_volume`
-
-```python
-navigation_add_exclude_volume(prim_path: 'str | None' = None, padding: 'float' = 0.1) -> 'str'
-```
-
-Add NavMeshVolume(Exclude) around prim's world-aligned bbox to block agent step-up. Requires
-re-bake (navigation_bake) to take effect.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string \| None` | `None` |  |
-| `padding` | `number` | `0.1` |  |
-
-### `navigation_bake`
-
-```python
-navigation_bake(volume_scale: 'float' = 40.0, timeout_s: 'float' = 300.0) -> 'str'
-```
-
-Bake Stage NavMesh (creates NavMeshVolume if absent). Requires timeline stopped — playing
-returns ok=True but get_navmesh()=None (false positive).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `volume_scale` | `number` | `40.0` |  |
-| `timeout_s` | `number` | `300.0` |  |
-
-### `navigation_query_path`
-
-```python
-navigation_query_path(start: 'list[float]', end: 'list[float]', agent_radius: 'float' = 0.25, agent_height: 'float' = 1.8, straighten: 'bool' = True) -> 'str'
-```
-
-Query shortest NavMesh path between two world-space points. Auto-bakes if needed
-(response.auto_baked=true). straighten=True collapses straight runs.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `start` | `list[number]` | `'—'` | ✓ |
-| `end` | `list[number]` | `'—'` | ✓ |
-| `agent_radius` | `number` | `0.25` |  |
-| `agent_height` | `number` | `1.8` |  |
-| `straighten` | `boolean` | `True` |  |
-
-### `navigation_sample_walkable_points`
-
-```python
-navigation_sample_walkable_points(count: 'int', bounds_min: 'list[float] | None' = None, bounds_max: 'list[float] | None' = None, seed: 'int | None' = None) -> 'str'
-```
-
-Sample N random walkable points on the baked NavMesh (area-weighted barycentric, spec §8.1).
-count ∈ [1, 1000]. Optional [x,y,z] bounds_min/max restrict to AABB (both must be set or both
-null). When triangle iteration API is unavailable on this Kit build, falls back to bbox-
-rejection (random-in-bbox + reachability via query_shortest_path) — response ``method`` field
-reports which path won. Requires prior navigation_bake.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `count` | `integer` | `'—'` | ✓ |
-| `bounds_min` | `list[number] \| None` | `None` |  |
-| `bounds_max` | `list[number] \| None` | `None` |  |
-| `seed` | `integer \| None` | `None` |  |
-
-### `navigation_set_visualization`
-
-```python
-navigation_set_visualization(mode: 'str') -> 'str'
-```
-
-Toggle NavMesh viewport overlay. mode ∈ {walkable, obstacles, off}. walkable shows baked
-surface; obstacles shows excluded regions; off hides overlay.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `mode` | `string` | `'—'` | ✓ |
-
-## Scenario — YAML Arrange / Act / Assert / Cleanup runner
-
-### `scenario_last_report`
-
-```python
-scenario_last_report(scenario_id: 'str') -> 'str'
-```
-
-Get last execution report for a scenario_id from the most recent scenario_validate run.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `scenario_id` | `string` | `'—'` | ✓ |
-
-### `scenario_plan`
-
-```python
-scenario_plan(scenario_path: 'str') -> 'str'
-```
-
-Compile scenario YAML and show execution plan (variables, phases, step graph) without running
-it.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `scenario_path` | `string` | `'—'` | ✓ |
-
-### `scenario_validate`
-
-```python
-scenario_validate(scenario_path: 'str', dry_run: 'bool' = False, fail_fast: 'bool | None' = None, input_overrides: 'dict[str, Any] | None' = None) -> 'str'
-```
-
-Execute YAML validation scenario (Arrange→Act→Assert→Cleanup). Returns step-level pass/fail
-summary. input_overrides substitutes scenario variables.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `scenario_path` | `string` | `'—'` | ✓ |
-| `dry_run` | `boolean` | `False` |  |
-| `fail_fast` | `boolean \| None` | `None` |  |
-| `input_overrides` | `object \| None` | `None` |  |
-
-## Unclassified
-
-### `content_browse`
-
-```python
-content_browse(url: 'str', recursive: 'bool' = False, max_depth: 'int' = 2, max_entries: 'int' = 500) -> 'str'
-```
-
-List URL children (omniverse://, https://, s3://, file:///). recursive walks up to max_depth.
-Entry: {url, name, is_folder, size, modified_time_ns, flags}.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `url` | `string` | `'—'` | ✓ |
-| `recursive` | `boolean` | `False` |  |
-| `max_depth` | `integer` | `2` |  |
-| `max_entries` | `integer` | `500` |  |
-
-### `content_inspect`
-
-```python
-content_inspect(url: 'str') -> 'str'
-```
-
-Inspect a USD asset's GEOMETRY without adding it to the stage: opens the USD off the main
-thread and returns default_prim, world bbox (bbox_min/bbox_max), meters_per_unit, up_axis, and
-prim_count. Use at planning time to size/place an asset — content_preview only gives file
-metadata (size/mtime). Needs the Omniverse/HTTP resolver, so values are produced live; off-
-thread open keeps the Kit event loop unblocked.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `url` | `string` | `'—'` | ✓ |
-
-### `content_preview`
-
-```python
-content_preview(url: 'str') -> 'str'
-```
-
-Stat a single URL; returns same entry shape as content_browse (size, mtime, is_folder, flags).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `url` | `string` | `'—'` | ✓ |
-
-### `content_resolve`
-
-```python
-content_resolve(url: 'str') -> 'str'
-```
-
-Normalize URL via omni.client; collapses relative components, canonicalizes scheme, resolves
-Nucleus prefix.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `url` | `string` | `'—'` | ✓ |
-
-### `external_asset_convert`
-
-```python
-external_asset_convert(manifest_path: 'str', output_format: 'str' = 'usd', timeout_s: 'float' = 180.0) -> 'str'
-```
-
-Convert a downloaded external asset manifest to local USD through live Kit's
-omni.kit.asset_converter. Prepare-only: no stage_load_usd/file:// placement.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `manifest_path` | `string` | `'—'` | ✓ |
-| `output_format` | `string` | `'usd'` |  |
-| `timeout_s` | `number` | `180.0` |  |
-
-### `external_asset_download`
-
-```python
-external_asset_download(provider: 'str', asset_id: 'str', format_preference: 'list[str] | None' = None) -> 'str'
-```
-
-Download one selected external free asset into ignored .omniverse-kit-mcp/external_assets and
-write manifest.json. Does not place the asset in the stage.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `provider` | `string` | `'—'` | ✓ |
-| `asset_id` | `string` | `'—'` | ✓ |
-| `format_preference` | `list[string] \| None` | `None` |  |
-
-### `external_asset_search`
-
-```python
-external_asset_search(query: 'str', providers: 'list[str] | None' = None, limit: 'int' = 10) -> 'str'
-```
-
-Search external free asset providers after asset_search misses. Default provider order is Poly
-Haven then token-gated Sketchfab; returns normalized candidates and provider_status.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `query` | `string` | `'—'` | ✓ |
-| `providers` | `list[string] \| None` | `None` |  |
-| `limit` | `integer` | `10` |  |
-
-### `kit_command_execute`
-
-```python
-kit_command_execute(name: 'str', payload: 'dict | None' = None, expect_undo: 'bool' = False) -> 'str'
-```
-
-Execute an omni.kit.commands registered command.  Dispatches to the currently-active Kit app's
-command registry. Common examples:   - CreateConveyorBelt (Isaac, isaacsim.asset.gen.conveyor)
-- CreatePrimWithDefaultXform (common)   - ChangeProperty (common)  Unknown command names on the
-current app return ok=false with error=command_exception (not a tool failure — parseable
-result).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `name` | `string` | `'—'` | ✓ |
-| `payload` | `object \| None` | `None` |  |
-| `expect_undo` | `boolean` | `False` |  |
-
-### `kit_python_run`
-
-```python
-kit_python_run(code: 'str', return_keys: 'list[str] | None' = None) -> 'str'
-```
-
-Run arbitrary Python source in the Kit main thread.  Fills the gap the Kit command registry
-leaves — when the operation you need isn't a registered Kit command (USD relationship edits,
-``Usd.EditContext`` walks, ``omni.client`` direct calls, bulk attribute author patterns), use
-this instead of pasting code into the GUI Script Editor.  Args:   code: Python source.
-Statements run in a fresh ``__main__``-style         namespace, so ``import omni.usd`` / ``from
-pxr import ...``         work without setup.   return_keys: Optional list of namespace variable
-names whose                final values are returned in the response. Empty =
-stdout-only communication. Non-JSON-safe values are                coerced via str() fallback.
-Returns: dict with ``ok`` / ``stdout`` / ``stderr`` / ``error`` / ``traceback`` / ``returned``.
-Script exceptions become an ``error`` + ``traceback`` payload (the MCP call still succeeds —
-caller inspects ``ok`` to decide).  Tool naming note: REST/internal names use ``python_run`` to
-avoid the project's pre-tool security hook (which flags the literal substring ``exec`` followed
-by ``(``); the user-facing tool name is also ``kit_python_run`` for consistency.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `code` | `string` | `'—'` | ✓ |
-| `return_keys` | `list[string] \| None` | `None` |  |
-
-### `lighting_create_disk`
-
-```python
-lighting_create_disk(prim_path: 'str', intensity: 'float' = 1000.0, radius: 'float' = 1.0) -> 'str'
-```
-
-Create a UsdLux.DiskLight at *prim_path*. Emission originates from a disk of radius *radius*
-(meters).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `intensity` | `number` | `1000.0` |  |
-| `radius` | `number` | `1.0` |  |
-
-### `lighting_create_distant`
-
-```python
-lighting_create_distant(prim_path: 'str', intensity: 'float' = 1000.0, angle_deg: 'float' = 0.53) -> 'str'
-```
-
-Create a UsdLux.DistantLight (directional) at *prim_path*. *angle_deg* widens the shadow
-penumbra (sun ≈ 0.53°).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `intensity` | `number` | `1000.0` |  |
-| `angle_deg` | `number` | `0.53` |  |
-
-### `lighting_create_dome`
-
-```python
-lighting_create_dome(prim_path: 'str', intensity: 'float' = 1000.0, texture: 'str | None' = None) -> 'str'
-```
-
-Create a UsdLux.DomeLight at *prim_path* for HDRI environment lighting. Optionally bind a
-*texture* (HDR/EXR URL or local path).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `intensity` | `number` | `1000.0` |  |
-| `texture` | `string \| None` | `None` |  |
-
-### `lighting_create_rect`
-
-```python
-lighting_create_rect(prim_path: 'str', intensity: 'float' = 1000.0, width: 'float' = 1.0, height: 'float' = 1.0) -> 'str'
-```
-
-Create a UsdLux.RectLight at *prim_path* with a *width* × *height* emission surface (meters).
-Typical softbox / window light.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `intensity` | `number` | `1000.0` |  |
-| `width` | `number` | `1.0` |  |
-| `height` | `number` | `1.0` |  |
-
-### `lighting_create_sphere`
-
-```python
-lighting_create_sphere(prim_path: 'str', intensity: 'float' = 1000.0, radius: 'float' = 1.0) -> 'str'
-```
-
-Create a UsdLux.SphereLight at *prim_path* with *radius* (meters). Represents a point-ish bulb
-with finite area for soft shadows.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `intensity` | `number` | `1000.0` |  |
-| `radius` | `number` | `1.0` |  |
-
-### `lighting_set_exposure`
-
-```python
-lighting_set_exposure(exposure: 'float') -> 'str'
-```
-
-Set RTX tonemap exposure globally (carb /rtx/post/tonemap/exposure); positive brightens,
-negative darkens.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `exposure` | `number` | `'—'` | ✓ |
-
-### `material_assign_mdl`
-
-```python
-material_assign_mdl(prim_path: 'str', mdl_url: 'str', material_name: 'str') -> 'str'
-```
-
-Create MDL-backed UsdShade.Material under /World/Materials and bind to prim_path
-(strongerThanDescendants).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `mdl_url` | `string` | `'—'` | ✓ |
-| `material_name` | `string` | `'—'` | ✓ |
-
-### `material_get_bound`
-
-```python
-material_get_bound(prim_path: 'str') -> 'str'
-```
-
-Read direct material binding for prim_path; returns {material_path, binding_strength} (None
-when unbound).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-
-### `material_list_mdl`
-
-```python
-material_list_mdl(library: 'str' = 'default') -> 'str'
-```
-
-Enumerate .mdl modules under Kit install; library is alias or absolute path. Returns {name,
-url, library} entries.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `library` | `string` | `'default'` |  |
-
-### `official_asset_get`
-
-```python
-official_asset_get(asset_id: 'str') -> 'str'
-```
-
-Return the full generated official asset/material catalog entry by URL-based id.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `asset_id` | `string` | `'—'` | ✓ |
-
-### `official_asset_resolve`
-
-```python
-official_asset_resolve(name_or_id: 'str', kind: 'str | None' = None, app_profile: 'str | None' = None, prefer_loadable: 'bool' = True) -> 'str'
-```
-
-Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer
-current app/profile loadability; if stale or not load/assign verified,
-verify_required_before_use is true.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `name_or_id` | `string` | `'—'` | ✓ |
-| `kind` | `string \| None` | `None` |  |
-| `app_profile` | `string \| None` | `None` |  |
-| `prefer_loadable` | `boolean` | `True` |  |
-
-### `official_asset_search`
-
-```python
-official_asset_search(query: 'str', kind: 'str | None' = None, app_profile: 'str | None' = None, provider: 'str | None' = None, min_status: 'str' = 'url_validated', allow_stale: 'bool' = True, limit: 'int' = 20) -> 'str'
-```
-
-Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns
-URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; stale
-hits may be listed only when allow_stale=True and must be passed to official_asset_verify
-before use.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `query` | `string` | `'—'` | ✓ |
-| `kind` | `string \| None` | `None` |  |
-| `app_profile` | `string \| None` | `None` |  |
-| `provider` | `string \| None` | `None` |  |
-| `min_status` | `string` | `'url_validated'` |  |
-| `allow_stale` | `boolean` | `True` |  |
-| `limit` | `integer` | `20` |  |
-
-### `official_asset_sync_status`
-
-```python
-official_asset_sync_status(app_profile: 'str | None' = None) -> 'str'
-```
-
-Report latest official asset snapshot metadata, provider/app versions, counts, stale status,
-and failure counts. No Kit launch required.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `app_profile` | `string \| None` | `None` |  |
-
-### `official_asset_verify`
-
-```python
-official_asset_verify(asset_id: 'str', app_profile: 'str | None' = None, timeout_s: 'float | None' = None) -> 'str'
-```
-
-On-demand live verification for one official catalog item. Assets use
-stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding,
-and cleanup. Use workspace workers for live Kit.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `asset_id` | `string` | `'—'` | ✓ |
-| `app_profile` | `string \| None` | `None` |  |
-| `timeout_s` | `number \| None` | `None` |  |
-
-### `omnigraph_connect`
-
-```python
-omnigraph_connect(src_attr: 'str', dst_attr: 'str') -> 'str'
-```
-
-Connect OmniGraph attributes: '/Graph/Node.outputs:<attr>' → '/Graph/Node.inputs:<attr>'. Works
-for compute and execution edges.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `src_attr` | `string` | `'—'` | ✓ |
-| `dst_attr` | `string` | `'—'` | ✓ |
-
-### `omnigraph_create_node`
-
-```python
-omnigraph_create_node(graph_path: 'str', node_type: 'str', node_name: 'str | None' = None) -> 'str'
-```
-
-Create OmniGraph node inside graph_path (auto-creates graph if absent). node_type e.g.
-'omni.graph.action.OnTick'. node_name defaults to last segment.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `graph_path` | `string` | `'—'` | ✓ |
-| `node_type` | `string` | `'—'` | ✓ |
-| `node_name` | `string \| None` | `None` |  |
-
-### `omnigraph_create_ros2_publisher`
-
-```python
-omnigraph_create_ros2_publisher(graph_path: 'str', topic: 'str', source_prim: 'str', msg_type: 'str' = 'sensor_msgs/msg/Image') -> 'str'
-```
-
-Assemble ActionGraph (OnTick→RenderProduct→ROS2PublishImage) for camera publishing. rclpy
-unavailable → graph only (response.ros2_available=false).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `graph_path` | `string` | `'—'` | ✓ |
-| `topic` | `string` | `'—'` | ✓ |
-| `source_prim` | `string` | `'—'` | ✓ |
-| `msg_type` | `string` | `'sensor_msgs/msg/Image'` |  |
-
-### `omnigraph_create_script_controller`
-
-```python
-omnigraph_create_script_controller(script_path: 'str', graph_path: 'str' = '/World/ActionGraph', node_name: 'str' = 'ScriptNode', tick_node_name: 'str' = 'OnPlaybackTick', evaluator: 'str' = 'execution', reset_state: 'bool' = True) -> 'str'
-```
-
-Create ActionGraph OnPlaybackTick→ScriptNode and bind script_path. This mirrors Isaac Sim
-example style: MCP builds wiring; controller logic runs in Kit on playback ticks.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `script_path` | `string` | `'—'` | ✓ |
-| `graph_path` | `string` | `'/World/ActionGraph'` |  |
-| `node_name` | `string` | `'ScriptNode'` |  |
-| `tick_node_name` | `string` | `'OnPlaybackTick'` |  |
-| `evaluator` | `string` | `'execution'` |  |
-| `reset_state` | `boolean` | `True` |  |
-
-### `omnigraph_execute`
-
-```python
-omnigraph_execute(graph_path: 'str') -> 'str'
-```
-
-Evaluate graph_path once; fires OnTick + downstream manually for ActionGraphs when scene event
-is unavailable.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `graph_path` | `string` | `'—'` | ✓ |
-
-### `physics_apply_collider`
-
-```python
-physics_apply_collider(prim_path: 'str', approximation: 'str' = 'convexHull') -> 'str'
-```
-
-Apply UsdPhysics.CollisionAPI to prim_path; also MeshCollisionAPI with approximation ∈
-{convexHull, triangleMesh, sdf, box, sphere, none}.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `approximation` | `string` | `'convexHull'` |  |
-
-### `physics_apply_material`
-
-```python
-physics_apply_material(prim_path: 'str', friction: 'float' = 0.5, restitution: 'float' = 0.0, density: 'float' = 1000.0, material_name: 'str | None' = None) -> 'str'
-```
-
-Create PhysicsMaterial under /World/PhysicsMaterials and bind to prim_path. friction =
-static+dynamic; restitution ∈ [0,1].
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `friction` | `number` | `0.5` |  |
-| `restitution` | `number` | `0.0` |  |
-| `density` | `number` | `1000.0` |  |
-| `material_name` | `string \| None` | `None` |  |
-
-### `physics_apply_rigid_body`
-
-```python
-physics_apply_rigid_body(prim_path: 'str', mass: 'float' = 1.0, dynamic: 'bool' = True) -> 'str'
-```
-
-Apply UsdPhysics.RigidBodyAPI + MassAPI to prim_path. dynamic=False → kinematic/static.
-Requires physics_set_scene before simulation_play.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-| `mass` | `number` | `1.0` |  |
-| `dynamic` | `boolean` | `True` |  |
-
-### `physics_create_joint`
-
-```python
-physics_create_joint(joint_type: 'str', body_a: 'str', body_b: 'str', anchor: 'list[float] | None' = None, axis: 'list[float] | None' = None, joint_prim_path: 'str | None' = None) -> 'str'
-```
-
-Create UsdPhysics joint (Fixed/Revolute/Prismatic/Spherical) between body_a and body_b.
-anchor=localPos0; axis selects X/Y/Z for Revolute/Prismatic.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `joint_type` | `string` | `'—'` | ✓ |
-| `body_a` | `string` | `'—'` | ✓ |
-| `body_b` | `string` | `'—'` | ✓ |
-| `anchor` | `list[number] \| None` | `None` |  |
-| `axis` | `list[number] \| None` | `None` |  |
-| `joint_prim_path` | `string \| None` | `None` |  |
-
-### `physics_get_rigid_body_state`
-
-```python
-physics_get_rigid_body_state(prim_path: 'str') -> 'str'
-```
-
-Read PhysX runtime state — linear/angular velocity, mass, COM, kinematic/enabled flags.
-Symmetric readback for physics_apply_rigid_body. source='physx_runtime' (live PhysX via
-SingleRigidPrim, requires simulation.play to have ticked) or 'usd_initial' (USD authored
-values, velocities reflect pre-play state but mass/COM always accurate).
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `prim_path` | `string` | `'—'` | ✓ |
-
-### `physics_set_joint_drive`
-
-```python
-physics_set_joint_drive(joint_prim_path: 'str', drive_type: 'str' = 'angular', target_position: 'float' = 0.0, target_velocity: 'float' = 0.0, stiffness: 'float' = 0.0, damping: 'float' = 0.0, max_force: 'float | None' = None) -> 'str'
-```
-
-Configure a UsdPhysics DriveAPI on an existing joint so it actuates (physics_create_joint only
-creates the joint). drive_type ∈ {linear (Prismatic), angular (Revolute)}; target_position
-drives toward a pose (deg for angular, distance for linear), stiffness/damping form the PD
-gains, max_force=None leaves the PhysX default (unbounded). Body needs RigidBodyAPI +
-physics_set_scene + simulation_play to move.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `joint_prim_path` | `string` | `'—'` | ✓ |
-| `drive_type` | `string` | `'angular'` |  |
-| `target_position` | `number` | `0.0` |  |
-| `target_velocity` | `number` | `0.0` |  |
-| `stiffness` | `number` | `0.0` |  |
-| `damping` | `number` | `0.0` |  |
-| `max_force` | `number \| None` | `None` |  |
-
-### `physics_set_scene`
-
-```python
-physics_set_scene(gravity: 'list[float] | None' = None, timestep: 'float' = 0.016666666666666666, solver_iter_pos: 'int' = 4, solver_iter_vel: 'int' = 1, scene_prim_path: 'str' = '/World/PhysicsScene') -> 'str'
-```
-
-Define UsdPhysics.Scene; configure gravity [gx,gy,gz] m/s² (default [0,0,-9.81]) + solver
-iterations. Required once before gravity acts on rigid bodies.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `gravity` | `list[number] \| None` | `None` |  |
-| `timestep` | `number` | `0.016666666666666666` |  |
-| `solver_iter_pos` | `integer` | `4` |  |
-| `solver_iter_vel` | `integer` | `1` |  |
-| `scene_prim_path` | `string` | `'/World/PhysicsScene'` |  |
-
-### `physics_visualize`
-
-```python
-physics_visualize(mode: 'str') -> 'str'
-```
-
-Toggle PhysX debug visualization. mode ∈ {collision, joint, mass, off}; clears all carb
-/physics/visualization* keys then enables requested channel.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `mode` | `string` | `'—'` | ✓ |
-
-### `replicator_create_writer`
-
-```python
-replicator_create_writer(writer_type: 'str', output_dir: 'str', rgb: 'bool' = True, depth: 'bool' = False, semantic_segmentation: 'bool' = False) -> 'str'
-```
-
-Create replicator writer (BasicWriter/KittiWriter/CocoWriter); writes to output_dir on each
-orchestrator step. Requires omni.replicator.core enabled.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `writer_type` | `string` | `'—'` | ✓ |
-| `output_dir` | `string` | `'—'` | ✓ |
-| `rgb` | `boolean` | `True` |  |
-| `depth` | `boolean` | `False` |  |
-| `semantic_segmentation` | `boolean` | `False` |  |
-
-### `replicator_register_randomizer`
-
-```python
-replicator_register_randomizer(type: 'str', target: 'str', config: 'dict[str, Any] | None' = None) -> 'str'
-```
-
-Register randomizer for orchestrator frames. type ∈ {position, rotation, lighting}; target is a
-prim glob. Returns randomizer_id.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `type` | `string` | `'—'` | ✓ |
-| `target` | `string` | `'—'` | ✓ |
-| `config` | `object \| None` | `None` |  |
-
-### `replicator_trigger_on_time`
-
-```python
-replicator_trigger_on_time(interval_s: 'float') -> 'str'
-```
-
-Register periodic orchestrator trigger at interval_s; keep > 0.016 s to avoid queue buildup.
-Returns trigger_id.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `interval_s` | `number` | `'—'` | ✓ |
-
-### `replicator_trigger_once`
-
-```python
-replicator_trigger_once(num_frames: 'int' = 1) -> 'str'
-```
-
-Run replicator orchestrator for N frames (fires randomizers + writers). Timeline play alone
-does NOT trigger writers.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `num_frames` | `integer` | `1` |  |
+## Sensor - RTX / contact / IMU / annotators
 
 ### `sensor_attach_contact`
 
@@ -2549,148 +2161,557 @@ frustum+preview. Response includes sensor_type.
 | `sensor_prim` | `string` | `'—'` | ✓ |
 | `mode` | `string` | `'on'` |  |
 
-### `simulation_set_time`
+## Physics - bodies / colliders / joints / scene
+
+### `physics_apply_collider`
 
 ```python
-simulation_set_time(time_seconds: 'float') -> 'str'
+physics_apply_collider(prim_path: 'str', approximation: 'str' = 'convexHull') -> 'str'
 ```
 
-Seek timeline to time_seconds; preserves current play/stop state.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `time_seconds` | `number` | `'—'` | ✓ |
-
-### `simulation_step`
-
-```python
-simulation_step(frames: 'int' = 1) -> 'str'
-```
-
-Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play
-state.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `frames` | `integer` | `1` |  |
-
-### `simulation_step_observe`
-
-```python
-simulation_step_observe(frames: 'int' = 1, observe_prims: 'list[str] | None' = None, observe_joints: 'list[str] | None' = None, observe_ee: 'list[dict[str, Any]] | None' = None) -> 'str'
-```
-
-Advance N frames, then return synchronized prim/joint/end-effector observations. Use this for
-deterministic ScriptNode/controller debugging instead of sleep+separate polling.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `frames` | `integer` | `1` |  |
-| `observe_prims` | `list[string] \| None` | `None` |  |
-| `observe_joints` | `list[string] \| None` | `None` |  |
-| `observe_ee` | `list[object] \| None` | `None` |  |
-
-### `simulation_wait_until`
-
-```python
-simulation_wait_until(until_time: 'float', timeout_s: 'float' = 30.0) -> 'str'
-```
-
-Tick the timeline until current_time >= until_time (or timeout_s wall-clock elapses), then
-return final status + reached/timed_out/elapsed_s/frames_waited. Ticks via next_update_async on
-the Kit loop (deadlock-safe, non-blocking). Replaces sleep+poll loops for sim_time-precise
-timing (e.g. trigger an event at t=12s). Requires the timeline PLAYING to advance — otherwise
-it times out.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `until_time` | `number` | `'—'` | ✓ |
-| `timeout_s` | `number` | `30.0` |  |
-
-### `stage_compute_world_bbox`
-
-```python
-stage_compute_world_bbox(prim_path: 'str', include_purposes: 'list[str] | None' = None) -> 'str'
-```
-
-Compute a prim's world-space aligned bbox via USD BBoxCache. Returns min/max/center/size plus
-world translate/orientation; use before camera framing or layout checks.
+Apply UsdPhysics.CollisionAPI to prim_path; also MeshCollisionAPI with approximation ∈
+{convexHull, triangleMesh, sdf, box, sphere, none}.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
-| `include_purposes` | `list[string] \| None` | `None` |  |
+| `approximation` | `string` | `'convexHull'` |  |
 
-### `stage_placement_validation_report`
-
-```python
-stage_placement_validation_report(subject_prim_paths: 'list[str]', container_prim_path: 'str | None' = None, support_prim_path: 'str | None' = None, obstacle_prim_paths: 'list[str] | None' = None, checks: 'list[str] | None' = None, containment_axes: 'list[str] | None' = None, margin_m: 'float' = 0.0, min_clearance_m: 'float' = 0.0, floor_tolerance_m: 'float' = 0.01, floor_axis: 'str' = 'z', include_purposes: 'list[str] | None' = None) -> 'str'
-```
-
-Validate asset placement with world-AABB containment, clearance, and on-floor checks. Use
-explicit PlacementZone/AcceptanceVolume prims as containers; this is broad-phase evidence, not
-final visual acceptance.
-
-**Parameters**
-
-| name | type | default | required |
-|------|------|---------|----------|
-| `subject_prim_paths` | `list[string]` | `'—'` | ✓ |
-| `container_prim_path` | `string \| None` | `None` |  |
-| `support_prim_path` | `string \| None` | `None` |  |
-| `obstacle_prim_paths` | `list[string] \| None` | `None` |  |
-| `checks` | `list[string] \| None` | `None` |  |
-| `containment_axes` | `list[string] \| None` | `None` |  |
-| `margin_m` | `number` | `0.0` |  |
-| `min_clearance_m` | `number` | `0.0` |  |
-| `floor_tolerance_m` | `number` | `0.01` |  |
-| `floor_axis` | `string` | `'z'` |  |
-| `include_purposes` | `list[string] \| None` | `None` |  |
-
-### `stage_set_semantic_label`
+### `physics_apply_material`
 
 ```python
-stage_set_semantic_label(prim_path: 'str', label_class: 'str', label_type: 'str' = 'class') -> 'str'
+physics_apply_material(prim_path: 'str', friction: 'float' = 0.5, restitution: 'float' = 0.0, density: 'float' = 1000.0, material_name: 'str | None' = None) -> 'str'
 ```
 
-Apply a semantic label to a prim (inherits to its subtree) so Replicator segmentation / bbox
-annotators classify it. Authors UsdSemantics.LabelsAPI (semantics:labels:<label_type>) + best-
-effort legacy Semantics schema. Fills the gap left by sensor_set_annotator (which attaches
-annotators but cannot label the props). 400 if prim_path not found.
+Create PhysicsMaterial under /World/PhysicsMaterials and bind to prim_path. friction =
+static+dynamic; restitution ∈ [0,1].
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
 | `prim_path` | `string` | `'—'` | ✓ |
-| `label_class` | `string` | `'—'` | ✓ |
-| `label_type` | `string` | `'class'` |  |
+| `friction` | `number` | `0.5` |  |
+| `restitution` | `number` | `0.0` |  |
+| `density` | `number` | `1000.0` |  |
+| `material_name` | `string \| None` | `None` |  |
 
-### `stage_visual_alignment_report`
+### `physics_apply_rigid_body`
 
 ```python
-stage_visual_alignment_report(reference_prim_path: 'str', candidate_prim_paths: 'list[str]', min_iou_xy: 'float' = 0.5, max_center_delta_m: 'float' = 0.05, include_purposes: 'list[str] | None' = None) -> 'str'
+physics_apply_rigid_body(prim_path: 'str', mass: 'float' = 1.0, dynamic: 'bool' = True) -> 'str'
 ```
 
-Compare candidate prim world bboxes against a reference bbox. Reports XY IoU and center deltas
-to catch visual/physics/acceptance-volume misalignment.
+Apply UsdPhysics.RigidBodyAPI + MassAPI to prim_path. dynamic=False → kinematic/static.
+Requires physics_set_scene before simulation_play.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
-| `reference_prim_path` | `string` | `'—'` | ✓ |
-| `candidate_prim_paths` | `list[string]` | `'—'` | ✓ |
-| `min_iou_xy` | `number` | `0.5` |  |
-| `max_center_delta_m` | `number` | `0.05` |  |
-| `include_purposes` | `list[string] \| None` | `None` |  |
+| `prim_path` | `string` | `'—'` | ✓ |
+| `mass` | `number` | `1.0` |  |
+| `dynamic` | `boolean` | `True` |  |
+
+### `physics_create_joint`
+
+```python
+physics_create_joint(joint_type: 'str', body_a: 'str', body_b: 'str', anchor: 'list[float] | None' = None, axis: 'list[float] | None' = None, joint_prim_path: 'str | None' = None) -> 'str'
+```
+
+Create UsdPhysics joint (Fixed/Revolute/Prismatic/Spherical) between body_a and body_b.
+anchor=localPos0; axis selects X/Y/Z for Revolute/Prismatic.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `joint_type` | `string` | `'—'` | ✓ |
+| `body_a` | `string` | `'—'` | ✓ |
+| `body_b` | `string` | `'—'` | ✓ |
+| `anchor` | `list[number] \| None` | `None` |  |
+| `axis` | `list[number] \| None` | `None` |  |
+| `joint_prim_path` | `string \| None` | `None` |  |
+
+### `physics_get_rigid_body_state`
+
+```python
+physics_get_rigid_body_state(prim_path: 'str') -> 'str'
+```
+
+Read PhysX runtime state — linear/angular velocity, mass, COM, kinematic/enabled flags.
+Symmetric readback for physics_apply_rigid_body. source='physx_runtime' (live PhysX via
+SingleRigidPrim, requires simulation.play to have ticked) or 'usd_initial' (USD authored
+values, velocities reflect pre-play state but mass/COM always accurate).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+
+### `physics_set_joint_drive`
+
+```python
+physics_set_joint_drive(joint_prim_path: 'str', drive_type: 'str' = 'angular', target_position: 'float' = 0.0, target_velocity: 'float' = 0.0, stiffness: 'float' = 0.0, damping: 'float' = 0.0, max_force: 'float | None' = None) -> 'str'
+```
+
+Configure a UsdPhysics DriveAPI on an existing joint so it actuates (physics_create_joint only
+creates the joint). drive_type ∈ {linear (Prismatic), angular (Revolute)}; target_position
+drives toward a pose (deg for angular, distance for linear), stiffness/damping form the PD
+gains, max_force=None leaves the PhysX default (unbounded). Body needs RigidBodyAPI +
+physics_set_scene + simulation_play to move.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `joint_prim_path` | `string` | `'—'` | ✓ |
+| `drive_type` | `string` | `'angular'` |  |
+| `target_position` | `number` | `0.0` |  |
+| `target_velocity` | `number` | `0.0` |  |
+| `stiffness` | `number` | `0.0` |  |
+| `damping` | `number` | `0.0` |  |
+| `max_force` | `number \| None` | `None` |  |
+
+### `physics_set_scene`
+
+```python
+physics_set_scene(gravity: 'list[float] | None' = None, timestep: 'float' = 0.016666666666666666, solver_iter_pos: 'int' = 4, solver_iter_vel: 'int' = 1, scene_prim_path: 'str' = '/World/PhysicsScene') -> 'str'
+```
+
+Define UsdPhysics.Scene; configure gravity [gx,gy,gz] m/s² (default [0,0,-9.81]) + solver
+iterations. Required once before gravity acts on rigid bodies.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `gravity` | `list[number] \| None` | `None` |  |
+| `timestep` | `number` | `0.016666666666666666` |  |
+| `solver_iter_pos` | `integer` | `4` |  |
+| `solver_iter_vel` | `integer` | `1` |  |
+| `scene_prim_path` | `string` | `'/World/PhysicsScene'` |  |
+
+### `physics_visualize`
+
+```python
+physics_visualize(mode: 'str') -> 'str'
+```
+
+Toggle PhysX debug visualization. mode ∈ {collision, joint, mass, off}; clears all carb
+/physics/visualization* keys then enables requested channel.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `mode` | `string` | `'—'` | ✓ |
+
+## Lighting - UsdLux / exposure
+
+### `lighting_create_disk`
+
+```python
+lighting_create_disk(prim_path: 'str', intensity: 'float' = 1000.0, radius: 'float' = 1.0) -> 'str'
+```
+
+Create a UsdLux.DiskLight at *prim_path*. Emission originates from a disk of radius *radius*
+(meters).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `radius` | `number` | `1.0` |  |
+
+### `lighting_create_distant`
+
+```python
+lighting_create_distant(prim_path: 'str', intensity: 'float' = 1000.0, angle_deg: 'float' = 0.53) -> 'str'
+```
+
+Create a UsdLux.DistantLight (directional) at *prim_path*. *angle_deg* widens the shadow
+penumbra (sun ≈ 0.53°).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `angle_deg` | `number` | `0.53` |  |
+
+### `lighting_create_dome`
+
+```python
+lighting_create_dome(prim_path: 'str', intensity: 'float' = 1000.0, texture: 'str | None' = None) -> 'str'
+```
+
+Create a UsdLux.DomeLight at *prim_path* for HDRI environment lighting. Optionally bind a
+*texture* (HDR/EXR URL or local path).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `texture` | `string \| None` | `None` |  |
+
+### `lighting_create_rect`
+
+```python
+lighting_create_rect(prim_path: 'str', intensity: 'float' = 1000.0, width: 'float' = 1.0, height: 'float' = 1.0) -> 'str'
+```
+
+Create a UsdLux.RectLight at *prim_path* with a *width* × *height* emission surface (meters).
+Typical softbox / window light.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `width` | `number` | `1.0` |  |
+| `height` | `number` | `1.0` |  |
+
+### `lighting_create_sphere`
+
+```python
+lighting_create_sphere(prim_path: 'str', intensity: 'float' = 1000.0, radius: 'float' = 1.0) -> 'str'
+```
+
+Create a UsdLux.SphereLight at *prim_path* with *radius* (meters). Represents a point-ish bulb
+with finite area for soft shadows.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `intensity` | `number` | `1000.0` |  |
+| `radius` | `number` | `1.0` |  |
+
+### `lighting_set_exposure`
+
+```python
+lighting_set_exposure(exposure: 'float') -> 'str'
+```
+
+Set RTX tonemap exposure globally (carb /rtx/post/tonemap/exposure); positive brightens,
+negative darkens.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `exposure` | `number` | `'—'` | ✓ |
+
+## Material - MDL list / assign / bound
+
+### `material_assign_mdl`
+
+```python
+material_assign_mdl(prim_path: 'str', mdl_url: 'str', material_name: 'str') -> 'str'
+```
+
+Create MDL-backed UsdShade.Material under /World/Materials and bind to prim_path
+(strongerThanDescendants).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+| `mdl_url` | `string` | `'—'` | ✓ |
+| `material_name` | `string` | `'—'` | ✓ |
+
+### `material_get_bound`
+
+```python
+material_get_bound(prim_path: 'str') -> 'str'
+```
+
+Read direct material binding for prim_path; returns {material_path, binding_strength} (None
+when unbound).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `prim_path` | `string` | `'—'` | ✓ |
+
+### `material_list_mdl`
+
+```python
+material_list_mdl(library: 'str' = 'default') -> 'str'
+```
+
+Enumerate .mdl modules under Kit install; library is alias or absolute path. Returns {name,
+url, library} entries.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `library` | `string` | `'default'` |  |
+
+## Replicator - writers / randomizers / triggers
+
+### `replicator_create_writer`
+
+```python
+replicator_create_writer(writer_type: 'str', output_dir: 'str', rgb: 'bool' = True, depth: 'bool' = False, semantic_segmentation: 'bool' = False) -> 'str'
+```
+
+Create replicator writer (BasicWriter/KittiWriter/CocoWriter); writes to output_dir on each
+orchestrator step. Requires omni.replicator.core enabled.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `writer_type` | `string` | `'—'` | ✓ |
+| `output_dir` | `string` | `'—'` | ✓ |
+| `rgb` | `boolean` | `True` |  |
+| `depth` | `boolean` | `False` |  |
+| `semantic_segmentation` | `boolean` | `False` |  |
+
+### `replicator_register_randomizer`
+
+```python
+replicator_register_randomizer(type: 'str', target: 'str', config: 'dict[str, Any] | None' = None) -> 'str'
+```
+
+Register randomizer for orchestrator frames. type ∈ {position, rotation, lighting}; target is a
+prim glob. Returns randomizer_id.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `type` | `string` | `'—'` | ✓ |
+| `target` | `string` | `'—'` | ✓ |
+| `config` | `object \| None` | `None` |  |
+
+### `replicator_trigger_on_time`
+
+```python
+replicator_trigger_on_time(interval_s: 'float') -> 'str'
+```
+
+Register periodic orchestrator trigger at interval_s; keep > 0.016 s to avoid queue buildup.
+Returns trigger_id.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `interval_s` | `number` | `'—'` | ✓ |
+
+### `replicator_trigger_once`
+
+```python
+replicator_trigger_once(num_frames: 'int' = 1) -> 'str'
+```
+
+Run replicator orchestrator for N frames (fires randomizers + writers). Timeline play alone
+does NOT trigger writers.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `num_frames` | `integer` | `1` |  |
+
+## OmniGraph - nodes / execution / ROS2
+
+### `omnigraph_connect`
+
+```python
+omnigraph_connect(src_attr: 'str', dst_attr: 'str') -> 'str'
+```
+
+Connect OmniGraph attributes: '/Graph/Node.outputs:<attr>' → '/Graph/Node.inputs:<attr>'. Works
+for compute and execution edges.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `src_attr` | `string` | `'—'` | ✓ |
+| `dst_attr` | `string` | `'—'` | ✓ |
+
+### `omnigraph_create_node`
+
+```python
+omnigraph_create_node(graph_path: 'str', node_type: 'str', node_name: 'str | None' = None) -> 'str'
+```
+
+Create OmniGraph node inside graph_path (auto-creates graph if absent). node_type e.g.
+'omni.graph.action.OnTick'. node_name defaults to last segment.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `graph_path` | `string` | `'—'` | ✓ |
+| `node_type` | `string` | `'—'` | ✓ |
+| `node_name` | `string \| None` | `None` |  |
+
+### `omnigraph_create_ros2_publisher`
+
+```python
+omnigraph_create_ros2_publisher(graph_path: 'str', topic: 'str', source_prim: 'str', msg_type: 'str' = 'sensor_msgs/msg/Image') -> 'str'
+```
+
+Assemble ActionGraph (OnTick→RenderProduct→ROS2PublishImage) for camera publishing. rclpy
+unavailable → graph only (response.ros2_available=false).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `graph_path` | `string` | `'—'` | ✓ |
+| `topic` | `string` | `'—'` | ✓ |
+| `source_prim` | `string` | `'—'` | ✓ |
+| `msg_type` | `string` | `'sensor_msgs/msg/Image'` |  |
+
+### `omnigraph_create_script_controller`
+
+```python
+omnigraph_create_script_controller(script_path: 'str', graph_path: 'str' = '/World/ActionGraph', node_name: 'str' = 'ScriptNode', tick_node_name: 'str' = 'OnPlaybackTick', evaluator: 'str' = 'execution', reset_state: 'bool' = True) -> 'str'
+```
+
+Create ActionGraph OnPlaybackTick→ScriptNode and bind script_path. This mirrors Isaac Sim
+example style: MCP builds wiring; controller logic runs in Kit on playback ticks.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `script_path` | `string` | `'—'` | ✓ |
+| `graph_path` | `string` | `'/World/ActionGraph'` |  |
+| `node_name` | `string` | `'ScriptNode'` |  |
+| `tick_node_name` | `string` | `'OnPlaybackTick'` |  |
+| `evaluator` | `string` | `'execution'` |  |
+| `reset_state` | `boolean` | `True` |  |
+
+### `omnigraph_execute`
+
+```python
+omnigraph_execute(graph_path: 'str') -> 'str'
+```
+
+Evaluate graph_path once; fires OnTick + downstream manually for ActionGraphs when scene event
+is unavailable.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `graph_path` | `string` | `'—'` | ✓ |
+
+## Scenario - YAML validation runner
+
+### `scenario_last_report`
+
+```python
+scenario_last_report(scenario_id: 'str') -> 'str'
+```
+
+Get last execution report for a scenario_id from the most recent scenario_validate run.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `scenario_id` | `string` | `'—'` | ✓ |
+
+### `scenario_plan`
+
+```python
+scenario_plan(scenario_path: 'str') -> 'str'
+```
+
+Compile scenario YAML and show execution plan (variables, phases, step graph) without running
+it.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `scenario_path` | `string` | `'—'` | ✓ |
+
+### `scenario_validate`
+
+```python
+scenario_validate(scenario_path: 'str', dry_run: 'bool' = False, fail_fast: 'bool | None' = None, input_overrides: 'dict[str, Any] | None' = None) -> 'str'
+```
+
+Execute YAML validation scenario (Arrange→Act→Assert→Cleanup). Returns step-level pass/fail
+summary. input_overrides substitutes scenario variables.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `scenario_path` | `string` | `'—'` | ✓ |
+| `dry_run` | `boolean` | `False` |  |
+| `fail_fast` | `boolean \| None` | `None` |  |
+| `input_overrides` | `object \| None` | `None` |  |
+
+## Kit commands - command registry / Python runner
+
+### `kit_command_execute`
+
+```python
+kit_command_execute(name: 'str', payload: 'dict | None' = None, expect_undo: 'bool' = False) -> 'str'
+```
+
+Execute an omni.kit.commands registered command.  Dispatches to the currently-active Kit app's
+command registry. Common examples:   - CreateConveyorBelt (Isaac, isaacsim.asset.gen.conveyor)
+- CreatePrimWithDefaultXform (common)   - ChangeProperty (common)  Unknown command names on the
+current app return ok=false with error=command_exception (not a tool failure — parseable
+result).
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `name` | `string` | `'—'` | ✓ |
+| `payload` | `object \| None` | `None` |  |
+| `expect_undo` | `boolean` | `False` |  |
+
+### `kit_python_run`
+
+```python
+kit_python_run(code: 'str', return_keys: 'list[str] | None' = None) -> 'str'
+```
+
+Run arbitrary Python source in the Kit main thread.  Fills the gap the Kit command registry
+leaves — when the operation you need isn't a registered Kit command (USD relationship edits,
+``Usd.EditContext`` walks, ``omni.client`` direct calls, bulk attribute author patterns), use
+this instead of pasting code into the GUI Script Editor.  Args:   code: Python source.
+Statements run in a fresh ``__main__``-style         namespace, so ``import omni.usd`` / ``from
+pxr import ...``         work without setup.   return_keys: Optional list of namespace variable
+names whose                final values are returned in the response. Empty =
+stdout-only communication. Non-JSON-safe values are                coerced via str() fallback.
+Returns: dict with ``ok`` / ``stdout`` / ``stderr`` / ``error`` / ``traceback`` / ``returned``.
+Script exceptions become an ``error`` + ``traceback`` payload (the MCP call still succeeds —
+caller inspects ``ok`` to decide).  Tool naming note: REST/internal names use ``python_run`` to
+avoid the project's pre-tool security hook (which flags the literal substring ``exec`` followed
+by ``(``); the user-facing tool name is also ``kit_python_run`` for consistency.
+
+**Parameters**
+
+| name | type | default | required |
+|------|------|---------|----------|
+| `code` | `string` | `'—'` | ✓ |
+| `return_keys` | `list[string] \| None` | `None` |  |

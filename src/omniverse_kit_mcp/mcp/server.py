@@ -34,6 +34,7 @@ from omniverse_kit_mcp.modules.window_module import WindowModule
 from omniverse_kit_mcp.mcp.resources import register_resources
 from omniverse_kit_mcp.tools.module_tools import register_module_tools
 from omniverse_kit_mcp.tools.scenario_tools import register_scenario_tools
+from omniverse_kit_mcp.tools.tool_profiles import build_tool_selection
 
 
 def create_mcp_server(config: AppConfig) -> FastMCP:
@@ -72,6 +73,13 @@ def create_mcp_server(config: AppConfig) -> FastMCP:
     catalog_module = CatalogModule(catalog_path)
 
     # Register tools
+    tool_selection = build_tool_selection(
+        profile=config.mcp_server.tool_profile,
+        app_profile=config.isaac_sim_process.app_profile.name,
+        include=config.mcp_server.tool_include,
+        exclude=config.mcp_server.tool_exclude,
+    )
+    mcp._omniverse_tool_selection = tool_selection  # type: ignore[attr-defined]
     register_module_tools(
         mcp, stage_module, viewport_module, lakehouse_module,
         extension_module, simulation_module, process_module,
@@ -80,6 +88,7 @@ def create_mcp_server(config: AppConfig) -> FastMCP:
         physics_module, lighting_module, material_module,
         replicator_module, omnigraph_module, content_module,
         kit_command_module, catalog_module,
+        selection=tool_selection,
     )
     register_scenario_tools(
         mcp, config, stage_module, viewport_module, lakehouse_module,
@@ -87,6 +96,7 @@ def create_mcp_server(config: AppConfig) -> FastMCP:
         asset_module, character_module, window_module, navigation_module,
         sensor_module, physics_module, lighting_module, material_module,
         replicator_module, omnigraph_module, content_module,
+        selection=tool_selection,
     )
     register_resources(mcp, config)
 

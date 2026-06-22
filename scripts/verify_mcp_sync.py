@@ -37,10 +37,19 @@ def _yellow(s: str) -> str:
     return f"\033[33m{s}\033[0m" if sys.stdout.isatty() else s
 
 
+def _tool_surface_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["MCP_SERVER_TOOL_PROFILE"] = "full"
+    env.pop("MCP_SERVER_TOOL_INCLUDE", None)
+    env.pop("MCP_SERVER_TOOL_EXCLUDE", None)
+    return env
+
+
 def _run(cmd: list[str]) -> tuple[int, str, str]:
     proc = subprocess.run(
         cmd, cwd=str(PROJECT_ROOT),
         capture_output=True, text=True, encoding="utf-8", errors="replace",
+        env=_tool_surface_env(),
     )
     return proc.returncode, proc.stdout, proc.stderr
 

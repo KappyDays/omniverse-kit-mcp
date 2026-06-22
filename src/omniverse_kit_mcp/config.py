@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from omniverse_kit_mcp.types.profile import KitAppProfile, get_profile
@@ -54,6 +54,16 @@ class MCPServerConfig(BaseSettings):
     name: str = "isaacsim-validation-mcp"
     host: str = "0.0.0.0"
     port: int = 8080
+    tool_profile: str = "full"
+    tool_include: str = ""
+    tool_exclude: str = ""
+
+    @field_validator("tool_profile")
+    @classmethod
+    def _validate_tool_profile(cls, value: str) -> str:
+        from omniverse_kit_mcp.tools.tool_profiles import normalize_tool_profile
+
+        return normalize_tool_profile(value)
 
 
 class IsaacSimProcessConfig(BaseSettings):

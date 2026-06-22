@@ -13,6 +13,9 @@ from pathlib import Path
 
 import pytest
 
+from omniverse_kit_mcp.mcp.server import create_mcp_server
+from scripts.generate_tool_catalog import _full_catalog_config
+from scripts.verify_mcp_sync import _tool_surface_env
 from tests.unit.test_tools_registration import (
     EXPECTED_ALL_TOOLS,
     EXPECTED_MODULE_TOOLS,
@@ -67,3 +70,30 @@ def test_catalog_has_tool_count_line(catalog_tools):
         f"Catalog 'Tool count' line reports {recorded} but "
         f"len(EXPECTED_ALL_TOOLS) = {len(EXPECTED_ALL_TOOLS)}"
     )
+
+
+def test_generated_catalog_config_forces_full_profile(monkeypatch):
+    monkeypatch.setenv("MCP_SERVER_TOOL_PROFILE", "core")
+
+    config = _full_catalog_config()
+    mcp = create_mcp_server(config)
+
+    assert config.mcp_server.tool_profile == "full"
+    assert frozenset(mcp._tool_manager._tools) == EXPECTED_ALL_TOOLS
+
+
+def test_verify_mcp_sync_forces_full_profile_env(monkeypatch):
+    monkeypatch.setenv("MCP_SERVER_TOOL_PROFILE", "core")
+    monkeypatch.setenv("MCP_SERVER_TOOL_INCLUDE", "robot")
+    monkeypatch.setenv("MCP_SERVER_TOOL_EXCLUDE", "stage")
+
+    env = _tool_surface_env()
+
+    assert env["MCP_SERVER_TOOL_PROFILE"] == "full"
+    assert "MCP_SERVER_TOOL_INCLUDE" not in env
+    assert "MCP_SERVER_TOOL_EXCLUDE" not in env
+
+
+def test_catalog_has_no_unclassified_group():
+    text = CATALOG.read_text(encoding="utf-8")
+    assert "## Unclassified" not in text

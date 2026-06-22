@@ -2,7 +2,7 @@
 
 **Drive NVIDIA Isaac Sim 6.0.0 in natural language from Claude Code (or any MCP client).**
 
-An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — stage editing, robot / character animation, multi-viewport capture, physics, lighting, SDG, OmniGraph, content browsing, extension management — as 133 tools plus 5 on-demand resources. Pair it with the bundled Kit Extension and Claude Code controls Isaac Sim end-to-end through stdio.
+An MCP (Model Context Protocol) server that exposes Isaac Sim's GUI surface — stage editing, robot / character animation, multi-viewport capture, physics, lighting, SDG, OmniGraph, content browsing, extension management — as a generated full-mode tool surface plus 5 on-demand resources. Pair it with the bundled Kit Extension and Claude Code controls Isaac Sim end-to-end through stdio.
 
 ![python](https://img.shields.io/badge/python-3.11%2B-blue) ![isaac-sim](https://img.shields.io/badge/Isaac%20Sim-6.0.0-green) ![mcp](https://img.shields.io/badge/MCP-stdio-purple)
 
@@ -271,14 +271,14 @@ the verification commands documented below.
 | `scripts/` | Developer utilities — tool catalog regen, sync verification, per-phase live tests, optional local reference harvest |
 | `tests/` | Mock-based pytest suite |
 | `setup/` | Windows installer + MCP-safe manual launcher templates + `~/.claude.json` wiring helpers |
-| `docs/` | `tool-catalog.md` (auto-generated), `invariants/`, `runbooks/`, `assets/isaac/` + `assets/composer/` (asset URL catalogs), public-safe references |
+| `docs/` | `mcp-usage-guide.md`, `tool-catalog.md` (auto-generated), `invariants/`, `runbooks/`, `assets/isaac/` + `assets/composer/` (asset URL catalogs), public-safe references |
 | `kkr-extensions/omni.mycompany.usd_mouse_interact/workshop/` | Workshop material (design / verification / tests) for the Composer mouse interaction demo |
 
 ---
 
 ## Surface Overview
 
-Exact list in [`docs/tool-catalog.md`](./docs/tool-catalog.md) (auto-generated).
+Start with the task routes in [`docs/mcp-usage-guide.md`](./docs/mcp-usage-guide.md), then use [`docs/tool-catalog.md`](./docs/tool-catalog.md) for exact generated signatures.
 
 **Tool domains include**: Process · Stage (read/write/file/selection) · Simulation · Viewport · Window · Extension · Navigation · Sensor · Physics · Lighting · Material · Robot · Character · Asset · Job · Replicator · OmniGraph · Content · Lakehouse · Scenario.
 
@@ -374,6 +374,7 @@ applications, see [`docs/oss-application-notes.md`](./docs/oss-application-notes
 Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md document map" table. High-signal entries:
 
 - **Operational rules & escalation protocols** → root [`CLAUDE.md`](./CLAUDE.md)
+- **Task-oriented MCP usage** → [`docs/mcp-usage-guide.md`](./docs/mcp-usage-guide.md)
 - **Tool surface contract** → [`docs/tool-catalog.md`](./docs/tool-catalog.md) + [`src/omniverse_kit_mcp/tools/CLAUDE.md`](./src/omniverse_kit_mcp/tools/CLAUDE.md)
 - **Kit Extension internals** → [`kkr-extensions/CLAUDE.md`](./kkr-extensions/CLAUDE.md)
 - **Module integration facts** (Kit / Isaac runtime gotchas — viewport caching, articulation warm-up, NavMesh lock) → [`src/omniverse_kit_mcp/modules/CLAUDE.md`](./src/omniverse_kit_mcp/modules/CLAUDE.md)
@@ -383,7 +384,9 @@ Everything is reachable from the root `CLAUDE.md` "Scope-specific CLAUDE.md docu
 
 ---
 
-## Status133 MCP tools + 5 resources covering stage / robot / character / sensor / multi-viewport / physics / lighting / material / SDG / OmniGraph / content / extension domains. Two Kit app profiles (Isaac Sim, USD Composer) with multi-instance support. See [`docs/tool-catalog.md`](./docs/tool-catalog.md) for the full surface.
+## Status
+
+Full/default mode exposes the generated MCP tool surface plus 5 resources covering stage / robot / character / sensor / multi-viewport / physics / lighting / material / SDG / OmniGraph / content / extension domains. Two Kit app profiles (Isaac Sim, USD Composer) have multi-instance support. See [`docs/mcp-usage-guide.md`](./docs/mcp-usage-guide.md) for task routing and [`docs/tool-catalog.md`](./docs/tool-catalog.md) for the generated full surface.
 
 ## License
 

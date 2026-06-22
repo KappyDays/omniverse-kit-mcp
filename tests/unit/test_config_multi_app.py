@@ -24,6 +24,9 @@ def _clear_env(monkeypatch, tmp_path):
         "ISAAC_SIM_KIT_FILE",
         "USD_COMPOSER_KIT_EXE",
         "USD_COMPOSER_KIT_FILE",
+        "MCP_SERVER_TOOL_PROFILE",
+        "MCP_SERVER_TOOL_INCLUDE",
+        "MCP_SERVER_TOOL_EXCLUDE",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -37,6 +40,19 @@ def test_default_profile_is_isaac_sim():
     assert cfg.isaac_sim_process.ext_port == 8111
     assert cfg.isaac_sim_process.health_url == "http://127.0.0.1:8111/validation/v1/health"
     assert cfg.isaac_sim.base_url == "http://127.0.0.1:8111"
+    assert cfg.mcp_server.tool_profile == "full"
+
+
+def test_mcp_tool_profile_env_accepts_core(monkeypatch):
+    monkeypatch.setenv("MCP_SERVER_TOOL_PROFILE", "core")
+    cfg = AppConfig()
+    assert cfg.mcp_server.tool_profile == "core"
+
+
+def test_mcp_tool_profile_rejects_unknown(monkeypatch):
+    monkeypatch.setenv("MCP_SERVER_TOOL_PROFILE", "tiny")
+    with pytest.raises(Exception, match="Unknown MCP tool profile"):
+        AppConfig()
 
 
 def test_isaac_instance_2_port_8112(monkeypatch):

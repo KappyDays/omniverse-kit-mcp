@@ -1,6 +1,6 @@
 """Layer 1: Module-level MCP Tools.
 
-Registers every domain module's public surface as `@mcp.tool()` functions.
+Registers every domain module's public surface as `@tool()` functions.
 Source of truth for the tool name set is
 ``tests/unit/test_tools_registration.py::EXPECTED_MODULE_TOOLS``.
 """
@@ -38,6 +38,12 @@ from omniverse_kit_mcp.modules.simulation_module import SimulationModule
 from omniverse_kit_mcp.modules.stage_module import StageModule
 from omniverse_kit_mcp.modules.viewport_module import ViewportModule
 from omniverse_kit_mcp.modules.window_module import WindowModule
+from omniverse_kit_mcp.tools.tool_profiles import (
+    PROFILE_FULL,
+    ToolSelection,
+    build_tool_selection,
+    selected_tool_decorator,
+)
 from omniverse_kit_mcp.types.character import (
     CharacterLoadCrowdRequest,
     CharacterLoadRequest,
@@ -196,43 +202,53 @@ def register_module_tools(
     content: ContentModule,
     kit_command: KitCommandModule,
     catalog: CatalogModule,
+    *,
+    selection: ToolSelection | None = None,
 ) -> None:
     """Register all module-level MCP tools."""
+    if selection is None:
+        selection = build_tool_selection(profile=PROFILE_FULL)
+    tool = selected_tool_decorator(mcp, selection)
 
     # ------------------------------------------------------------------
     # Process control — Kit application lifecycle (Isaac Sim / USD Composer)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def mcp_runtime_info() -> str:
         """Report MCP import freshness without host-local paths or process identifiers: source mtimes, registered tool count, robot probe timeout defaults, whether robot probe result fields include mcp_controllability/probe_capability_level/pick-place boundary fields, and whether batch probe results include summary fields. If this tool is absent or reports stale source files, restart the MCP host before live result-shape validation."""
-        return json.dumps(_mcp_runtime_info_payload(mcp), indent=2, ensure_ascii=False, default=str)
+        return json.dumps(
+            _mcp_runtime_info_payload(mcp, selection),
+            indent=2,
+            ensure_ascii=False,
+            default=str,
+        )
 
-    @mcp.tool()
+    @tool()
     async def kit_app_start() -> str:
         """Start the Kit application for this MCP instance (Isaac Sim or USD Composer per ISAAC_MCP_APP_PROFILE); waits for the validation REST health endpoint. Required before stage/sim/viewport ops."""
         result = await process.start()
         return json.dumps(result, indent=2)
 
-    @mcp.tool()
+    @tool()
     async def kit_app_stop() -> str:
         """Stop the Kit application (kit.exe) of this MCP instance only — other instances and other app profiles are unaffected."""
         result = await process.stop()
         return json.dumps(result, indent=2)
 
-    @mcp.tool()
+    @tool()
     async def kit_app_restart() -> str:
         """Restart Kit (stop → clear __pycache__ → start). Use only for crash/hang recovery, validation_api self-code changes, extension.toml/native dependency changes, failed extension_reload/marker checks, or explicit fresh-process requests; otherwise prefer kit_app_start attach and extension_reload."""
         result = await process.restart()
         return json.dumps(result, indent=2)
 
-    @mcp.tool()
+    @tool()
     async def process_list_kit_instances() -> str:
         """Enumerate ALL running kit.exe processes (read-only). Includes MCP-spawned, other MCP servers, and user GUI launches. Per-instance: pid, command_line, start_time_utc, ext_port, app_profile, kit_file, profile_matches, is_this_mcp_instance. Use BEFORE destructive ops (Kit user.config.json edit, settings reset, force reload) — external instances overwrite settings on shutdown. Windows-only."""
         result = await process.list_kit_instances()
         return json.dumps(result, indent=2)
 
-    @mcp.tool()
+    @tool()
     async def stage_capture_snapshot(
         include_prim_patterns: list[str] | None = None,
         exclude_prim_patterns: list[str] | None = None,
@@ -252,7 +268,7 @@ def register_module_tools(
         result = await stage.capture_snapshot(meta, capture_filter)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_diff_snapshots(
         before_snapshot_json: str,
         after_snapshot_json: str,
@@ -268,7 +284,7 @@ def register_module_tools(
         result = await stage.diff_snapshots(meta, before, after)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_compute_world_bbox(
         prim_path: str,
         include_purposes: list[str] | None = None,
@@ -282,7 +298,7 @@ def register_module_tools(
         result = await stage.compute_world_bbox(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_visual_alignment_report(
         reference_prim_path: str,
         candidate_prim_paths: list[str],
@@ -302,7 +318,7 @@ def register_module_tools(
         result = await stage.visual_alignment_report(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_placement_validation_report(
         subject_prim_paths: list[str],
         container_prim_path: str | None = None,
@@ -334,7 +350,7 @@ def register_module_tools(
         result = await stage.placement_validation_report(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_assert_prim_exists(
         prim_path: str,
         should_exist: bool = True,
@@ -352,7 +368,7 @@ def register_module_tools(
         result = await stage.assert_prim_exists(meta, assertion)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_assert_property(
         prim_path: str,
         property_name: str,
@@ -381,7 +397,7 @@ def register_module_tools(
         result = await stage.assert_property(meta, assertion)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_capture(
         viewport_name: str = "Viewport",
         camera_prim_path: str | None = None,
@@ -407,7 +423,7 @@ def register_module_tools(
         result = await viewport.capture(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_compare_ssim(
         baseline_artifact_path: str,
         candidate_artifact_path: str,
@@ -425,7 +441,7 @@ def register_module_tools(
         result = await viewport.compare_ssim(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def lakehouse_query(
         sql: str | None = None,
         namespace: str | None = None,
@@ -448,7 +464,7 @@ def register_module_tools(
         result = await lakehouse.query(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_trigger(
         operation: str,
         payload: dict[str, Any] | None = None,
@@ -466,7 +482,7 @@ def register_module_tools(
         result = await extension.trigger(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_get_state() -> str:
         """Get the validation_api Extension's runtime state (enabled/busy/last_operation/errors) — this MCP server's in-Kit companion, not an arbitrary Kit extension (use extension_get_info for those)."""
         meta = make_meta(ModuleName.EXTENSION)
@@ -477,7 +493,7 @@ def register_module_tools(
     # WRITE tools — Stage mutations
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def stage_load_usd(
         usd_url: str,
         prim_path: str,
@@ -495,7 +511,7 @@ def register_module_tools(
         result = await simulation.stage_load_usd(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_set_property(
         prim_path: str,
         property_name: str,
@@ -513,7 +529,7 @@ def register_module_tools(
         result = await simulation.stage_set_property(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_set_semantic_label(
         prim_path: str,
         label_class: str,
@@ -529,7 +545,7 @@ def register_module_tools(
         result = await simulation.stage_set_semantic_label(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_create_prim(
         prim_path: str,
         prim_type: str = "Xform",
@@ -545,7 +561,7 @@ def register_module_tools(
         result = await simulation.stage_create_prim(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_delete_prim(
         prim_path: str,
     ) -> str:
@@ -558,35 +574,35 @@ def register_module_tools(
     # WRITE tools — Simulation control
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def simulation_play() -> str:
         """Start simulation timeline (play button). Does NOT launch the Kit application — use kit_app_start for that."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.play(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def simulation_pause() -> str:
         """Pause simulation timeline."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.pause(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def simulation_stop() -> str:
         """Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Kit application — use kit_app_stop for that."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.stop(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def simulation_get_status() -> str:
         """Get simulation timeline status: is_playing, current_time, fps, etc."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.get_status(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def simulation_step(frames: int = 1) -> str:
         """Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play state."""
         meta = make_meta(ModuleName.SIMULATION)
@@ -594,7 +610,7 @@ def register_module_tools(
         result = await simulation.step(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def simulation_step_observe(
         frames: int = 1,
         observe_prims: list[str] | None = None,
@@ -623,7 +639,7 @@ def register_module_tools(
         result = await simulation.step_observe(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def simulation_wait_until(until_time: float, timeout_s: float = 30.0) -> str:
         """Tick the timeline until current_time >= until_time (or timeout_s wall-clock elapses), then return final status + reached/timed_out/elapsed_s/frames_waited. Ticks via next_update_async on the Kit loop (deadlock-safe, non-blocking). Replaces sleep+poll loops for sim_time-precise timing (e.g. trigger an event at t=12s). Requires the timeline PLAYING to advance — otherwise it times out."""
         meta = make_meta(ModuleName.SIMULATION)
@@ -631,7 +647,7 @@ def register_module_tools(
         result = await simulation.wait_until(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def simulation_set_time(time_seconds: float) -> str:
         """Seek timeline to time_seconds; preserves current play/stop state."""
         meta = make_meta(ModuleName.SIMULATION)
@@ -643,14 +659,14 @@ def register_module_tools(
     # Robot
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def robot_list_arm_profiles() -> str:
         """List curated built-in Isaac Sim 6.0 robot arm profiles with asset URL, controller strategy, support status, evidence, recommended dynamic-vs-static probe groups and per-profile probe-mode reasons, known dynamic-timeout probe hazards, and known pick/place playback blockers. Use before multi-arm pick/place or batch probe work."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.list_arm_profiles(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_probe_arm_profile(
         profile_name: str,
         prim_path: str | None = None,
@@ -678,7 +694,7 @@ def register_module_tools(
         result = await robot.probe_arm_profile(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_probe_arm_profiles(
         profile_names: list[str] | None = None,
         status_filter: list[str] | None = None,
@@ -710,7 +726,7 @@ def register_module_tools(
         result = await robot.probe_arm_profiles(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_load(
         usd_url: str,
         prim_path: str,
@@ -728,28 +744,28 @@ def register_module_tools(
         result = await robot.load(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_get_joint_positions(prim_path: str) -> str:
         """Get joint positions of an articulation (via SingleArticulation)."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_joint_positions(meta, prim_path)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_get_joint_config(prim_path: str) -> str:
         """Read drive stiffness/damping/max_force + position lower/upper limits + max joint velocity per DOF. Symmetric readback for set_joint_positions — diagnose IK / drive_physics anomalies (drive too soft, target outside limits, velocity capped). Source field reports backend (dof_properties / usd_drive_api fallback)."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_joint_config(meta, prim_path)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_get_joint_config_static(prim_path: str) -> str:
         """Read static UsdPhysics joint metadata without simulation_play. Diagnostic only: USD prim traversal order is not write-order proof for set_joint_positions."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_joint_config_static(meta, prim_path)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_set_joint_positions(
         prim_path: str,
         positions: list[float],
@@ -763,7 +779,7 @@ def register_module_tools(
         result = await robot.set_joint_positions(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_navigate_to(
         prim_path: str,
         target: list[float],
@@ -779,7 +795,7 @@ def register_module_tools(
         result = await robot.navigate_to(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_navigate_path(
         prim_path: str,
         waypoints: list[list[float]],
@@ -798,7 +814,7 @@ def register_module_tools(
         result = await robot.navigate_path(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_gripper_control(
         prim_path: str,
         action: str,
@@ -812,7 +828,7 @@ def register_module_tools(
         result = await robot.gripper_control(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_set_ee_target(
         prim_path: str,
         target_pose: list[float],
@@ -833,7 +849,7 @@ def register_module_tools(
         result = await robot.set_ee_target(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_get_ee_pose(
         prim_path: str,
         end_effector_frame: str | None = None,
@@ -843,7 +859,7 @@ def register_module_tools(
         result = await robot.get_ee_pose(meta, prim_path, end_effector_frame)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_run_franka_pick_place(
         robot_prim_path: str,
         object_prim_path: str,
@@ -895,7 +911,7 @@ def register_module_tools(
         result = await robot.run_franka_pick_place(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_install_franka_pick_place_playback_demo(
         robot_prim_path: str = "/World/Franka",
         object_prim_path: str = "/World/PickCube",
@@ -969,7 +985,7 @@ def register_module_tools(
         result = await robot.install_franka_pick_place_playback_demo(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_install_pick_place_playback_demo(
         profile_name: str = "franka_fr3",
         robot_prim_path: str = "/World/Franka",
@@ -1039,21 +1055,21 @@ def register_module_tools(
         result = await robot.install_pick_place_playback_demo(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_reset_pick_place_demo() -> str:
         """Reset the installed Franka pick/place playback demo object pose, robot joints/gripper, controller state, and status."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.reset_pick_place_demo(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_get_pick_place_demo_status(timeout_s: float | None = 10.0) -> str:
         """Return installed Franka pick/place playback demo status with a caller-side timeout; includes idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event, diagnostics.playback_progress with approach/contact windows, diagnostic end-effector offset deltas, bounded next-offset recommendations, and last_error."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_pick_place_demo_status(meta, timeout_s=timeout_s)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def robot_drive_physics(
         prim_path: str,
         waypoints: list[list[float]],
@@ -1100,14 +1116,14 @@ def register_module_tools(
     # Job — async job polling
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def job_status(job_id: str) -> str:
         """Poll async Job status (returns status/progress/result/error)."""
         meta = make_meta(ModuleName.JOB)
         result = await job.status(meta, job_id)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def job_cancel(job_id: str) -> str:
         """Cancel async Job (idempotent on terminal; 404 if unknown)."""
         meta = make_meta(ModuleName.JOB)
@@ -1118,35 +1134,35 @@ def register_module_tools(
     # File / Selection / Camera (Phase B+) — GUI File menu & Stage panel
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def stage_save(path: str | None = None) -> str:
         """Save the current stage — GUI File → Save / Save As. Omit *path* for in-place save."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.stage_save(meta, path)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_open(url: str) -> str:
         """Open (replace root) USD stage from local path or omniverse:// / https://; waits for load."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.stage_open(meta, url)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_new() -> str:
         """Create empty stage (GUI File → New)."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.stage_new(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_get_selection() -> str:
         """Return the current Stage-panel selection (prim paths) — GUI Stage panel readout."""
         meta = make_meta(ModuleName.STAGE)
         result = await stage.get_selection(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def stage_set_selection(
         prim_paths: list[str],
         expand_in_stage: bool = True,
@@ -1156,7 +1172,7 @@ def register_module_tools(
         result = await stage.set_selection(meta, prim_paths, expand_in_stage)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_set_active_camera(
         camera_path: str,
         viewport_name: str = "Viewport",
@@ -1170,7 +1186,7 @@ def register_module_tools(
     # Asset catalog (Phase B+) — GUI Asset Browser equivalent
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def asset_list(
         category: str | None = None,
         subpath: str = "",
@@ -1190,7 +1206,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def asset_search(
         query: str,
         category: str | None = None,
@@ -1223,7 +1239,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def official_asset_search(
         query: str,
         kind: str | None = None,
@@ -1247,7 +1263,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def official_asset_resolve(
         name_or_id: str,
         kind: str | None = None,
@@ -1265,21 +1281,21 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def official_asset_get(asset_id: str) -> str:
         """Return the full generated official asset/material catalog entry by URL-based id."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_get(meta, asset_id=asset_id)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def official_asset_sync_status(app_profile: str | None = None) -> str:
         """Report latest official asset snapshot metadata, provider/app versions, counts, stale status, and failure counts. No Kit launch required."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_sync_status(meta, app_profile=app_profile)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def official_asset_verify(
         asset_id: str,
         app_profile: str | None = None,
@@ -1295,7 +1311,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def external_asset_search(
         query: str,
         providers: list[str] | None = None,
@@ -1308,7 +1324,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def external_asset_download(
         provider: str,
         asset_id: str,
@@ -1324,7 +1340,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def external_asset_convert(
         manifest_path: str,
         output_format: str = "usd",
@@ -1344,7 +1360,7 @@ def register_module_tools(
     # Character
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def character_load(
         usd_url: str,
         prim_path: str | None = None,
@@ -1362,7 +1378,7 @@ def register_module_tools(
         result = await character.load(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def character_play_animation(
         prim_path: str,
         animation_name: str,
@@ -1380,7 +1396,7 @@ def register_module_tools(
         result = await character.play_animation(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def character_set_position(
         prim_path: str,
         position: list[float],
@@ -1396,7 +1412,7 @@ def register_module_tools(
         result = await character.set_position(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def character_stop_animation(prim_path: str) -> str:
         """Stop any active animation by switching the character to Idle (speed 0). Safe to call when already Idle."""
         meta = make_meta(ModuleName.CHARACTER)
@@ -1404,7 +1420,7 @@ def register_module_tools(
         result = await character.stop_animation(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def character_navigate_to(
         prim_path: str,
         target: list[float],
@@ -1420,14 +1436,14 @@ def register_module_tools(
         result = await character.navigate_to(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def character_get_state(prim_path: str) -> str:
         """Return character position, rotation (scalar-first quaternion), active animation action, is_navigating."""
         meta = make_meta(ModuleName.CHARACTER)
         result = await character.get_state(meta, prim_path)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def character_play_animation_variant(
         prim_path: str,
         variant: str,
@@ -1450,7 +1466,7 @@ def register_module_tools(
         result = await character.play_animation_variant(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def character_load_crowd(
         count: int,
         layout: str = "grid",
@@ -1479,7 +1495,7 @@ def register_module_tools(
     # Phase D — Extension UI automation + carb log capture
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def extension_activate(
         ext_id: str,
         reload: bool = False,
@@ -1489,14 +1505,14 @@ def register_module_tools(
         result = await extension.activate(meta, ext_id, reload=reload)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_reload(ext_id: str) -> str:
         """Clean-reload a Kit Extension's Python code WITHOUT restarting Kit: disable -> purge sys.modules tree (ext_id) -> invalidate import caches -> re-enable. Reflects .py edits + module-level singletons. 400 for 'omni.mycompany.validation_api' (self-reload unsupported -> use kit_app_restart) and unknown ext_id."""
         meta = make_meta(ModuleName.EXTENSION)
         result = await extension.reload_clean(meta, ext_id)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_get_ui_tree(
         ext_id: str | None = None,
         window: str | None = None,
@@ -1509,7 +1525,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_ui_invoke(
         widget_path: str,
         action: str = "click",
@@ -1520,7 +1536,7 @@ def register_module_tools(
         result = await extension.ui_invoke(meta, widget_path, action, value=value)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_ui_run_and_wait(
         widget_path: str,
         action: str = "click",
@@ -1554,7 +1570,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_capture_logs(
         ext_id: str | None = None,
         since_ms: int | None = None,
@@ -1574,7 +1590,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_clear_logs() -> str:
         """Start a request-scoped carb Console log capture window and empty the ring buffer; subsequent extension_capture_logs calls only see entries logged after this point."""
         meta = make_meta(ModuleName.EXTENSION)
@@ -1585,7 +1601,7 @@ def register_module_tools(
     # Window — Kit GUI application capture + menu + ui_window toggle
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def window_capture(
         mode: str = "kit",
         hwnd: int | None = None,
@@ -1613,7 +1629,7 @@ def register_module_tools(
         result = await window.capture(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def window_capture_sequence(
         num_frames: int = 10,
         interval_s: float = 0.5,
@@ -1670,21 +1686,21 @@ def register_module_tools(
             indent=2, ensure_ascii=False,
         )
 
-    @mcp.tool()
+    @tool()
     async def window_list() -> str:
         """List top-level kit.exe OS windows (Win32 EnumWindows) with HWND — for debugging window_capture auto-detection."""
         meta = make_meta(ModuleName.WINDOW)
         result = await window.list_windows(meta)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def window_ui_list(name_filter: str | None = None) -> str:
         """Enumerate registered omni.ui.Window instances. name_filter is case-insensitive substring. Lazy windows (browsers) only appear after first show."""
         meta = make_meta(ModuleName.WINDOW)
         result = await window.list_ui_windows(meta, name_filter)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def window_ui_show(
         name: str,
         visible: bool = True,
@@ -1698,14 +1714,14 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def window_menu_list(menu_path: str | None = None) -> str:
         """Walk Kit merged menu tree; menu_path limits to subtree. Each item has onclick_action for window_menu_trigger."""
         meta = make_meta(ModuleName.WINDOW)
         result = await window.list_menu_items(meta, menu_path)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def window_menu_trigger(menu_path: str) -> str:
         """Click a menu item by path via omni.kit.actions.core. Response includes created_prims (empty = UI-only or no-op)."""
         meta = make_meta(ModuleName.WINDOW)
@@ -1716,7 +1732,7 @@ def register_module_tools(
     # Navigation — NavMesh bake + path query + exclude volume helper
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def navigation_bake(
         volume_scale: float = 40.0,
         timeout_s: float = 300.0,
@@ -1726,7 +1742,7 @@ def register_module_tools(
         result = await navigation.bake(meta, volume_scale=volume_scale, timeout_s=timeout_s)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def navigation_query_path(
         start: list[float],
         end: list[float],
@@ -1746,7 +1762,7 @@ def register_module_tools(
         result = await navigation.query_path(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def navigation_add_exclude_volume(
         prim_path: str | None = None,
         padding: float = 0.1,
@@ -1758,7 +1774,7 @@ def register_module_tools(
         )
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def navigation_set_visualization(mode: str) -> str:
         """Toggle NavMesh viewport overlay. mode ∈ {walkable, obstacles, off}. walkable shows baked surface; obstacles shows excluded regions; off hides overlay."""
         meta = make_meta(ModuleName.NAVIGATION)
@@ -1766,7 +1782,7 @@ def register_module_tools(
         result = await navigation.set_visualization(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def navigation_sample_walkable_points(
         count: int,
         bounds_min: list[float] | None = None,
@@ -1800,7 +1816,7 @@ def register_module_tools(
     # Phase E — Sensor (RTX Camera / Lidar / Depth Camera + viz toggle)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def sensor_attach_rtx_camera(
         robot_prim: str,
         mount_offset: list[float],
@@ -1825,7 +1841,7 @@ def register_module_tools(
         result = await sensor.attach_rtx_camera(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def sensor_attach_rtx_lidar(
         robot_prim: str,
         mount_offset: list[float],
@@ -1847,7 +1863,7 @@ def register_module_tools(
         result = await sensor.attach_rtx_lidar(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def sensor_lidar_get_point_cloud(
         sensor_prim: str,
         max_points: int = 1000,
@@ -1863,7 +1879,7 @@ def register_module_tools(
         result = await sensor.lidar_get_point_cloud(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def sensor_attach_rtx_depth_camera(
         robot_prim: str,
         mount_offset: list[float],
@@ -1888,7 +1904,7 @@ def register_module_tools(
         result = await sensor.attach_rtx_depth_camera(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def sensor_set_visualization(
         sensor_prim: str,
         mode: str = "on",
@@ -1902,7 +1918,7 @@ def register_module_tools(
         result = await sensor.set_visualization(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def sensor_attach_contact(
         prim_path: str,
         sensor_name: str = "ContactSensor",
@@ -1926,7 +1942,7 @@ def register_module_tools(
         result = await sensor.attach_contact(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def sensor_attach_imu(
         prim_path: str,
         sensor_name: str = "IMUSensor",
@@ -1954,7 +1970,7 @@ def register_module_tools(
         result = await sensor.attach_imu(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def sensor_set_annotator(
         sensor_prim: str,
         annotators: list[str],
@@ -1978,7 +1994,7 @@ def register_module_tools(
     # Phase E — Multi-viewport (create / destroy)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def viewport_create(
         viewport_name: str,
         camera_path: str | None = None,
@@ -1998,7 +2014,7 @@ def register_module_tools(
         result = await viewport.create(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_destroy(viewport_name: str) -> str:
         """Destroy secondary viewport window by name. Idempotent — destroyed=False if not found."""
         meta = make_meta(ModuleName.VIEWPORT)
@@ -2010,7 +2026,7 @@ def register_module_tools(
     # Phase F — Physics (UsdPhysics rigid body / collider / material / joint / scene / viz)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def physics_apply_rigid_body(
         prim_path: str,
         mass: float = 1.0,
@@ -2024,14 +2040,14 @@ def register_module_tools(
         result = await physics.apply_rigid_body(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def physics_get_rigid_body_state(prim_path: str) -> str:
         """Read PhysX runtime state — linear/angular velocity, mass, COM, kinematic/enabled flags. Symmetric readback for physics_apply_rigid_body. source='physx_runtime' (live PhysX via SingleRigidPrim, requires simulation.play to have ticked) or 'usd_initial' (USD authored values, velocities reflect pre-play state but mass/COM always accurate)."""
         meta = make_meta(ModuleName.PHYSICS)
         result = await physics.get_rigid_body_state(meta, prim_path)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def physics_apply_collider(
         prim_path: str,
         approximation: str = "convexHull",
@@ -2045,7 +2061,7 @@ def register_module_tools(
         result = await physics.apply_collider(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def physics_apply_material(
         prim_path: str,
         friction: float = 0.5,
@@ -2065,7 +2081,7 @@ def register_module_tools(
         result = await physics.apply_material(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def physics_create_joint(
         joint_type: str,
         body_a: str,
@@ -2095,7 +2111,7 @@ def register_module_tools(
         result = await physics.create_joint(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def physics_set_joint_drive(
         joint_prim_path: str,
         drive_type: str = "angular",
@@ -2119,7 +2135,7 @@ def register_module_tools(
         result = await physics.set_joint_drive(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def physics_set_scene(
         gravity: list[float] | None = None,
         timestep: float = 1.0 / 60.0,
@@ -2143,7 +2159,7 @@ def register_module_tools(
         result = await physics.set_scene(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def physics_visualize(mode: str) -> str:
         """Toggle PhysX debug visualization. mode ∈ {collision, joint, mass, off}; clears all carb /physics/visualization* keys then enables requested channel."""
         meta = make_meta(ModuleName.PHYSICS)
@@ -2155,7 +2171,7 @@ def register_module_tools(
     # Phase F — Lighting (UsdLux Dome/Distant/Disk/Rect/Sphere + exposure)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def lighting_create_dome(
         prim_path: str,
         intensity: float = 1000.0,
@@ -2169,7 +2185,7 @@ def register_module_tools(
         result = await lighting.create_dome(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def lighting_create_distant(
         prim_path: str,
         intensity: float = 1000.0,
@@ -2183,7 +2199,7 @@ def register_module_tools(
         result = await lighting.create_distant(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def lighting_create_disk(
         prim_path: str,
         intensity: float = 1000.0,
@@ -2197,7 +2213,7 @@ def register_module_tools(
         result = await lighting.create_disk(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def lighting_create_rect(
         prim_path: str,
         intensity: float = 1000.0,
@@ -2213,7 +2229,7 @@ def register_module_tools(
         result = await lighting.create_rect(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def lighting_create_sphere(
         prim_path: str,
         intensity: float = 1000.0,
@@ -2227,7 +2243,7 @@ def register_module_tools(
         result = await lighting.create_sphere(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def lighting_set_exposure(exposure: float) -> str:
         """Set RTX tonemap exposure globally (carb /rtx/post/tonemap/exposure); positive brightens, negative darkens."""
         meta = make_meta(ModuleName.LIGHTING)
@@ -2239,7 +2255,7 @@ def register_module_tools(
     # Phase F — Material (MDL enumeration / assignment / bound readback)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def material_list_mdl(library: str = "default") -> str:
         """Enumerate .mdl modules under Kit install; library is alias or absolute path. Returns {name, url, library} entries."""
         meta = make_meta(ModuleName.MATERIAL)
@@ -2247,7 +2263,7 @@ def register_module_tools(
         result = await material.list_mdl(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def material_assign_mdl(
         prim_path: str,
         mdl_url: str,
@@ -2261,7 +2277,7 @@ def register_module_tools(
         result = await material.assign_mdl(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def material_get_bound(prim_path: str) -> str:
         """Read direct material binding for prim_path; returns {material_path, binding_strength} (None when unbound)."""
         meta = make_meta(ModuleName.MATERIAL)
@@ -2273,7 +2289,7 @@ def register_module_tools(
     # Phase F — Viewport render extension (mode / quality / overlay / fov)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def viewport_set_render_mode(
         viewport_name: str = "Viewport",
         mode: str = "RealTime",
@@ -2287,7 +2303,7 @@ def register_module_tools(
         result = await viewport.set_render_mode(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_set_render_quality(
         samples: int = 1,
         denoiser: str = "auto",
@@ -2301,7 +2317,7 @@ def register_module_tools(
         result = await viewport.set_render_quality(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_toggle_overlay(
         viewport_name: str = "Viewport",
         overlay: str = "gridlines",
@@ -2317,7 +2333,7 @@ def register_module_tools(
         result = await viewport.toggle_overlay(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_set_fov(
         viewport_name: str = "Viewport",
         fov_deg: float = 60.0,
@@ -2330,7 +2346,7 @@ def register_module_tools(
         result = await viewport.set_fov(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_set_camera_lookat(
         eye: list[float],
         target: list[float],
@@ -2350,7 +2366,7 @@ def register_module_tools(
         result = await viewport.set_camera_lookat(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_focus_prim(
         prim_path: str,
         viewport_name: str = "Viewport",
@@ -2370,7 +2386,7 @@ def register_module_tools(
         result = await viewport.focus_prim(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_project_points(
         points: list[list[float]],
         viewport_name: str = "Viewport",
@@ -2390,7 +2406,7 @@ def register_module_tools(
         result = await viewport.project_points(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_frame_prims(
         prim_paths: list[str],
         viewport_name: str = "Viewport",
@@ -2418,7 +2434,7 @@ def register_module_tools(
         result = await viewport.frame_prims(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def viewport_capture_assert(
         viewport_name: str = "Viewport",
         camera_prim_path: str | None = None,
@@ -2450,7 +2466,7 @@ def register_module_tools(
     # Phase H — Replicator (SDG writer / randomizer / trigger)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def replicator_create_writer(
         writer_type: str,
         output_dir: str,
@@ -2470,7 +2486,7 @@ def register_module_tools(
         result = await replicator.create_writer(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def replicator_register_randomizer(
         type: str,
         target: str,
@@ -2486,7 +2502,7 @@ def register_module_tools(
         result = await replicator.register_randomizer(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def replicator_trigger_once(num_frames: int = 1) -> str:
         """Run replicator orchestrator for N frames (fires randomizers + writers). Timeline play alone does NOT trigger writers."""
         meta = make_meta(ModuleName.REPLICATOR)
@@ -2494,7 +2510,7 @@ def register_module_tools(
         result = await replicator.trigger_once(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def replicator_trigger_on_time(interval_s: float) -> str:
         """Register periodic orchestrator trigger at interval_s; keep > 0.016 s to avoid queue buildup. Returns trigger_id."""
         meta = make_meta(ModuleName.REPLICATOR)
@@ -2506,7 +2522,7 @@ def register_module_tools(
     # Phase H — OmniGraph (node / connect / execute + ROS2 publisher macro)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def omnigraph_create_node(
         graph_path: str,
         node_type: str,
@@ -2522,7 +2538,7 @@ def register_module_tools(
         result = await omnigraph.create_node(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def omnigraph_connect(
         src_attr: str,
         dst_attr: str,
@@ -2533,7 +2549,7 @@ def register_module_tools(
         result = await omnigraph.connect(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def omnigraph_execute(graph_path: str) -> str:
         """Evaluate graph_path once; fires OnTick + downstream manually for ActionGraphs when scene event is unavailable."""
         meta = make_meta(ModuleName.OMNIGRAPH)
@@ -2541,7 +2557,7 @@ def register_module_tools(
         result = await omnigraph.execute(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def omnigraph_create_ros2_publisher(
         graph_path: str,
         topic: str,
@@ -2559,7 +2575,7 @@ def register_module_tools(
         result = await omnigraph.create_ros2_publisher(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def omnigraph_create_script_controller(
         script_path: str,
         graph_path: str = "/World/ActionGraph",
@@ -2585,7 +2601,7 @@ def register_module_tools(
     # Phase H — Content browser (omni.client list / stat / resolve)
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def content_browse(
         url: str,
         recursive: bool = False,
@@ -2603,7 +2619,7 @@ def register_module_tools(
         result = await content.browse(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def content_preview(url: str) -> str:
         """Stat a single URL; returns same entry shape as content_browse (size, mtime, is_folder, flags)."""
         meta = make_meta(ModuleName.CONTENT)
@@ -2611,7 +2627,7 @@ def register_module_tools(
         result = await content.preview(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def content_inspect(url: str) -> str:
         """Inspect a USD asset's GEOMETRY without adding it to the stage: opens the USD off the main thread and returns default_prim, world bbox (bbox_min/bbox_max), meters_per_unit, up_axis, and prim_count. Use at planning time to size/place an asset — content_preview only gives file metadata (size/mtime). Needs the Omniverse/HTTP resolver, so values are produced live; off-thread open keeps the Kit event loop unblocked."""
         meta = make_meta(ModuleName.CONTENT)
@@ -2619,7 +2635,7 @@ def register_module_tools(
         result = await content.inspect(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def content_resolve(url: str) -> str:
         """Normalize URL via omni.client; collapses relative components, canonicalizes scheme, resolves Nucleus prefix."""
         meta = make_meta(ModuleName.CONTENT)
@@ -2631,21 +2647,21 @@ def register_module_tools(
     # Phase H — Extension management extensions
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def extension_deactivate(ext_id: str) -> str:
         """Disable Kit Extension by id. Python module imports survive; for .py reimport rely on omni.ext.plugin fswatcher auto-reload on file save (extension_activate(reload=True) only re-toggles, does not clear sys.modules)."""
         meta = make_meta(ModuleName.EXTENSION)
         result = await extension.deactivate(meta, ext_id)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_list_all(enabled_only: bool = False) -> str:
         """Enumerate all Kit extensions known to ExtensionManager. enabled_only=True filters to active. Item: {id, full_id, name, version, enabled, path, title}."""
         meta = make_meta(ModuleName.EXTENSION)
         result = await extension.list_all(meta, enabled_only=enabled_only)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def extension_get_info(ext_id: str) -> str:
         """Return ExtensionManager info for ext_id (bare id match). 404 if not registered."""
         meta = make_meta(ModuleName.EXTENSION)
@@ -2656,7 +2672,7 @@ def register_module_tools(
     # Kit Commands (D25) — common profile lever
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def kit_command_execute(
         name: str,
         payload: dict | None = None,
@@ -2682,7 +2698,7 @@ def register_module_tools(
         result = await kit_command.execute(meta, request)
         return _serialize(result)
 
-    @mcp.tool()
+    @tool()
     async def kit_python_run(
         code: str,
         return_keys: list[str] | None = None,
@@ -2726,7 +2742,7 @@ def register_module_tools(
     # Catalog search (Phase E) — local JSON query, no REST
     # ------------------------------------------------------------------
 
-    @mcp.tool()
+    @tool()
     async def extension_search(
         keyword: str,
         app: str | None = None,
@@ -2764,7 +2780,10 @@ def _serialize(result: Any) -> str:
     return json.dumps(result, indent=2, ensure_ascii=False, default=str)
 
 
-def _mcp_runtime_info_payload(mcp: FastMCP) -> dict[str, Any]:
+def _mcp_runtime_info_payload(
+    mcp: FastMCP,
+    selection: ToolSelection | None = None,
+) -> dict[str, Any]:
     project_root = Path(__file__).resolve().parents[3]
     module_infos = []
     stale_modules: list[str] = []
@@ -2821,8 +2840,15 @@ def _mcp_runtime_info_payload(mcp: FastMCP) -> dict[str, Any]:
         "known_dynamic_timeout_routed_profiles",
         "dynamic_joint_control_profiles",
     }
+    tool_selection = selection or getattr(mcp, "_omniverse_tool_selection", None)
+    profile_payload = (
+        tool_selection.as_runtime_payload()
+        if isinstance(tool_selection, ToolSelection)
+        else build_tool_selection(profile=PROFILE_FULL).as_runtime_payload()
+    )
     return {
         "ok": True,
+        **profile_payload,
         "module_tools_import_epoch_ms": _MCP_SERVER_IMPORT_EPOCH_MS,
         "tool_count": len(getattr(mcp, "_tool_manager")._tools),
         "has_mcp_runtime_info_tool": "mcp_runtime_info" in getattr(mcp, "_tool_manager")._tools,
