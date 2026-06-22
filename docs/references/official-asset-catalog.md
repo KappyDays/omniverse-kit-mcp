@@ -131,6 +131,32 @@ each chunk avoids re-crawling S3:
 `failed`, or `skipped` records are rehydrated into the snapshot and not rerun
 unless `--rerun-classified` is passed.
 
+Use `--verify-id` to rerun exact items without offset arithmetic. The value can
+be either the item `id` (`url:<canonical_url>`) or the bare canonical URL. Pair
+it with `--rerun-classified` when auditing an item already classified as
+`failed` or `skipped` in the same run.
+
+S3 LIST keys are URL-escaped when converted to canonical URLs. This matters for
+official folders such as `Floor Lamps` and `Table Lamps`; literal spaces in a
+canonical URL are a tooling/path-sanitization bug, not evidence that the asset
+is missing.
+
+## Provider Coverage
+
+Provider coverage is app-profile specific. The current USD Composer profile
+loads some browser extensions from the per-user Kit cache, for example
+`%LOCALAPPDATA%/ov/data/Kit/KKR USD Composer/0.1/exts/<bucket>/...`, not only
+from the app install tree. The sync script includes those profile-specific
+cache roots when the app `.kit` package title/version identifies the cache.
+
+For USD Composer, `omni.kit.browser.material` is discovered through the
+Composer material extension and app `.kit` overrides. `omni.kit.browser.asset`
+and `omni.simready.explorer` may be live registered/enabled from the Composer
+user cache; when present, their extension settings provide the same official
+Asset Browser and SimReady roots used for catalog discovery. If a future
+profile snapshot reports empty roots for enabled browser providers, inspect the
+live extension path first before concluding the app lacks coverage.
+
 ## Tool Use
 
 Use `official_asset_search` before legacy `asset_search` when selecting NVIDIA

@@ -83,6 +83,7 @@ PROFILE_BASE_URLS = {
     "isaac-sim": "http://127.0.0.1:8111",
     "usd-composer": "http://127.0.0.1:8114",
 }
+KIT_USER_CACHE_VERSION_RE = re.compile(r"^\d+(?:\.\d+){0,2}$")
 
 VERSION_TAG_RE = re.compile(r"-\d+\.\d+.*$")
 URL_RE = re.compile(r"https?://[^\s\"'<>]+")
@@ -235,6 +236,15 @@ def profile_versions(profile_name: str) -> dict[str, str | None]:
     return dict(PROFILE_VERSION_HINTS.get(profile_name, {}))
 
 
+def _major_minor(version: str | None) -> str | None:
+    if not version:
+        return None
+    parts = [part for part in str(version).split(".") if part]
+    if len(parts) >= 2:
+        return ".".join(parts[:2])
+    return str(version)
+
+
 def read_toml(path: Path) -> dict[str, Any]:
     try:
         with path.open("rb") as fh:
@@ -243,9 +253,46 @@ def read_toml(path: Path) -> dict[str, Any]:
         return {}
 
 
+def profile_user_cache_roots(profile_name: str) -> list[Path]:
+    """Return profile-specific Kit user-cache roots that can hold installed exts."""
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if not local_app_data:
+        return []
+    kit_file = profile_kit_file(profile_name)
+    package = read_toml(kit_file).get("package") or {}
+    title = str(package.get("title") or "").strip()
+    if not title:
+        return []
+    version = str(package.get("version") or "").strip()
+    version_candidates = stable_unique(
+        value for value in (_major_minor(version), version) if value
+    )
+    kit_cache_root = Path(local_app_data) / "ov" / "data" / "Kit" / title
+    roots: list[Path] = []
+    for version_name in version_candidates:
+        candidate = kit_cache_root / version_name
+        if candidate.is_dir():
+            roots.append(candidate)
+    if not roots and kit_cache_root.is_dir():
+        for child in sorted(kit_cache_root.iterdir()):
+            if child.is_dir() and KIT_USER_CACHE_VERSION_RE.match(child.name):
+                roots.append(child)
+    return roots
+
+
+def extension_search_bases(root: Path, profile_name: str) -> list[Path]:
+    bases = [root / source_dir for source_dir in PROFILE_SOURCE_DIRS.get(profile_name, ())]
+    for cache_root in profile_user_cache_roots(profile_name):
+        for source_dir in ("exts", "extscache", "extsbuild"):
+            base = cache_root / source_dir
+            bases.append(base)
+            if base.is_dir():
+                bases.extend(child for child in sorted(base.iterdir()) if child.is_dir())
+    return bases
+
+
 def find_extension_dir(root: Path, profile_name: str, ext_id: str) -> Path | None:
-    for source_dir in PROFILE_SOURCE_DIRS.get(profile_name, ()):
-        base = root / source_dir
+    for base in extension_search_bases(root, profile_name):
         if not base.is_dir():
             continue
         for candidate in sorted(base.iterdir()):
@@ -277,6 +324,12 @@ def normalize_root(url: str) -> str:
     if cleaned.endswith(("'", '"')):
         cleaned = cleaned[:-1]
     return cleaned.rstrip("/")
+
+
+def url_from_s3_key(scheme: str, netloc: str, key: str) -> str:
+    """Build a public URL from an S3 object key, escaping path characters."""
+    quoted_path = "/" + parse.quote(key.lstrip("/"), safe="/")
+    return parse.urlunparse((scheme, netloc, quoted_path, "", "", ""))
 
 
 def discover_extension_roots(ext_dir: Path | None) -> list[str]:
@@ -488,7 +541,7 @@ def list_s3_objects(root_url: str, max_entries: int) -> tuple[list[str], list[st
             key = contents.findtext(f"{ns}Key")
             if not key:
                 continue
-            urls.append(parse.urlunparse((parsed_root.scheme, parsed_root.netloc, "/" + key, "", "", "")))
+            urls.append(url_from_s3_key(parsed_root.scheme, parsed_root.netloc, key))
             if len(urls) >= max_entries:
                 return urls, errors
         truncated = (xml.findtext(f"{ns}IsTruncated") or "").lower() == "true"
@@ -935,6 +988,7 @@ async def verify_profile_items(
     retry: int,
     verify_kinds: set[str] | None = None,
     verify_providers: set[str] | None = None,
+    verify_ids: set[str] | None = None,
     verify_offset: int = 0,
     verify_limit: int | None = None,
     rerun_classified: bool = False,
@@ -962,6 +1016,12 @@ async def verify_profile_items(
         if verify_kinds and str(item.get("kind")) not in verify_kinds:
             continue
         if verify_providers and str(item.get("provider")) not in verify_providers:
+            continue
+        if (
+            verify_ids
+            and item_id not in verify_ids
+            and str(item.get("canonical_url")) not in verify_ids
+        ):
             continue
         candidates.append(item)
     if verify_offset:
@@ -1212,6 +1272,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-entries-per-root", type=int, default=20000)
     parser.add_argument("--verify-kind", action="append", choices=["asset", "material"], default=[], help="When --verify full, verify only these item kinds. Repeatable.")
     parser.add_argument("--verify-provider", action="append", default=[], help="When --verify full, verify only these providers. Repeatable.")
+    parser.add_argument("--verify-id", action="append", default=[], help="When --verify full, verify only these item ids or canonical URLs. Repeatable.")
     parser.add_argument("--verify-offset", type=int, default=0, help="Skip this many not-yet-classified verification candidates after filtering.")
     parser.add_argument("--verify-limit", type=int, help="Verify at most this many not-yet-classified candidates after filtering.")
     parser.add_argument("--rerun-classified", action="store_true", help="Rerun items already classified in this run's verification JSONL or source snapshot.")
@@ -1267,6 +1328,7 @@ async def amain() -> int:
                 args.retry,
                 verify_kinds=set(args.verify_kind) or None,
                 verify_providers=set(args.verify_provider) or None,
+                verify_ids=set(args.verify_id) or None,
                 verify_offset=args.verify_offset,
                 verify_limit=args.verify_limit,
                 rerun_classified=args.rerun_classified,

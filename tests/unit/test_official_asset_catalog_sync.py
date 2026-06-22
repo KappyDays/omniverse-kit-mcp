@@ -47,6 +47,101 @@ def test_profile_root_uses_repo_env_kit_file(
     assert sync.profile_root("usd-composer") == Path("C:/Apps/Composer/release")
 
 
+def test_find_extension_dir_uses_profile_user_cache(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    for key in sync.ALLOWLISTED_PATH_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    local_app_data = tmp_path / "local"
+    monkeypatch.setenv("LOCALAPPDATA", str(local_app_data))
+    kit_file = tmp_path / "composer" / "release" / "apps" / "kkr_usd_composer.kit"
+    kit_file.parent.mkdir(parents=True)
+    kit_file.write_text(
+        """
+[package]
+title = "KKR USD Composer"
+version = "0.1.1"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("USD_COMPOSER_KIT_FILE", str(kit_file))
+    ext_dir = (
+        local_app_data
+        / "ov"
+        / "data"
+        / "Kit"
+        / "KKR USD Composer"
+        / "0.1"
+        / "exts"
+        / "3"
+        / "omni.kit.browser.asset-1.3.16"
+    )
+    (ext_dir / "config").mkdir(parents=True)
+
+    found = sync.find_extension_dir(
+        sync.profile_root("usd-composer"),
+        "usd-composer",
+        "omni.kit.browser.asset",
+    )
+
+    assert found == ext_dir
+
+
+def test_provider_roots_reads_profile_user_cache_extension(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    for key in sync.ALLOWLISTED_PATH_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    local_app_data = tmp_path / "local"
+    monkeypatch.setenv("LOCALAPPDATA", str(local_app_data))
+    kit_file = tmp_path / "composer" / "release" / "apps" / "kkr_usd_composer.kit"
+    kit_file.parent.mkdir(parents=True)
+    kit_file.write_text(
+        """
+[package]
+title = "KKR USD Composer"
+version = "0.1.1"
+""",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("USD_COMPOSER_KIT_FILE", str(kit_file))
+    ext_dir = (
+        local_app_data
+        / "ov"
+        / "data"
+        / "Kit"
+        / "KKR USD Composer"
+        / "0.1"
+        / "exts"
+        / "3"
+        / "omni.simready.explorer-1.1.4"
+    )
+    (ext_dir / "config").mkdir(parents=True)
+    (ext_dir / "config" / "extension.toml").write_text(
+        """
+[package]
+version = "1.1.4"
+
+[settings.exts."omni.simready.explorer"]
+folders = ["https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content"]
+""",
+        encoding="utf-8",
+    )
+
+    providers, errors = sync.provider_roots_for_profile(
+        "usd-composer",
+        enabled_providers={"omni.simready.explorer"},
+    )
+
+    assert errors == []
+    assert providers[0]["extension_dir"] == str(ext_dir)
+    assert providers[0]["source_roots"] == [
+        "https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content"
+    ]
+
+
 def test_discover_material_overrides_browser_material_section(tmp_path: Path) -> None:
     kit_file = tmp_path / "composer.kit"
     kit_file.write_text(
@@ -68,6 +163,37 @@ folders = [
         "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Automotive",
         "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/2023_2_1/Base",
         "https://omniverse-content-production.s3.us-west-2.amazonaws.com/Materials/vMaterials_2",
+    ]
+
+
+def test_list_s3_objects_percent_encodes_keys_with_spaces(monkeypatch) -> None:
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self) -> bytes:
+            return b"""<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <IsTruncated>false</IsTruncated>
+  <Contents>
+    <Key>Assets/ArchVis/Residential/Lighting/Floor Lamps/ArcFloorLamp.usd</Key>
+  </Contents>
+</ListBucketResult>"""
+
+    monkeypatch.setattr(sync.request, "urlopen", lambda *_args, **_kwargs: FakeResponse())
+
+    urls, errors = sync.list_s3_objects(
+        "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/ArchVis/Residential",
+        max_entries=10,
+    )
+
+    assert errors == []
+    assert urls == [
+        "https://omniverse-content-production.s3-us-west-2.amazonaws.com/"
+        "Assets/ArchVis/Residential/Lighting/Floor%20Lamps/ArcFloorLamp.usd"
     ]
 
 
@@ -242,6 +368,60 @@ async def test_verify_profile_items_limit_processes_next_candidate(
     assert result[0]["verification_status"] == "load_verified"
     assert result[1]["verification_status"] == "url_validated"
     verify_log = tmp_path / "verification" / "chunk-run.jsonl"
+    assert len(verify_log.read_text(encoding="utf-8").splitlines()) == 1
+
+
+@pytest.mark.asyncio
+async def test_verify_profile_items_filters_exact_ids(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    items = [
+        {
+            "id": "url:https://example.com/A.usd",
+            "kind": "asset",
+            "name": "A.usd",
+            "canonical_url": "https://example.com/A.usd",
+            "verification_status": "url_validated",
+        },
+        {
+            "id": "url:https://example.com/B.usd",
+            "kind": "asset",
+            "name": "B.usd",
+            "canonical_url": "https://example.com/B.usd",
+            "verification_status": "url_validated",
+        },
+    ]
+
+    async def fake_verify_one(_client, item, profile_name, *_args):
+        return {
+            "id": item["id"],
+            "kind": item["kind"],
+            "name": item["name"],
+            "canonical_url": item["canonical_url"],
+            "app_profile": profile_name,
+            "verification_status": "load_verified",
+            "checked_at": "2099-01-01T00:00:00Z",
+            "error": None,
+        }
+
+    monkeypatch.setattr(sync, "verify_one", fake_verify_one)
+
+    result = await sync.verify_profile_items(
+        "isaac-sim",
+        items,
+        tmp_path,
+        "id-filter-run",
+        "http://127.0.0.1:9",
+        asset_timeout_s=1.0,
+        material_timeout_s=1.0,
+        retry=0,
+        verify_ids={"url:https://example.com/B.usd"},
+    )
+
+    assert result[0]["verification_status"] == "url_validated"
+    assert result[1]["verification_status"] == "load_verified"
+    verify_log = tmp_path / "verification" / "id-filter-run.jsonl"
     assert len(verify_log.read_text(encoding="utf-8").splitlines()) == 1
 
 
