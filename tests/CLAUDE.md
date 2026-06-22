@@ -34,7 +34,7 @@ GUI-equiv live verification is `scripts/live_test_gui_equiv.py` — unit tests a
 - **Mock HTTP client**: Mock `IsaacRestClient` / `LakehouseClient` and verify that the module calls the correct endpoint + converts the response into a typed result.
 - **Fixture file**: Place the same JSON/YAML snapshot as the actual response in `fixtures/` and inject it as a mock return value.
 - **Scenario runner**: Verify state_machine flow (Arrange→Act→Assert→Cleanup, Cleanup finally guaranteed) while mocking all modules. `continueOnFailure: true` does not affect the phase terminal (branch to helper `_phase_has_fatal_failure()`)
-- **Tool registration**: `test_tools_registration.py` — `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` Set frozenset to SoT and verify that it exactly matches the registered set (FAIL for all omissions/excesses). Count assertion derives `len()` → No need to modify literal when adding phase
+- **Tool registration**: `test_tools_registration.py` — `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` Set frozenset to SoT and verify that it exactly matches the registered set (FAIL for all omissions/excesses). Count assertion derives `len()` → No need to modify literal when adding phase. Exception: profile-slimming contract tests may assert explicit advertised `full`/`app` counts.
 
 ## Scope Restrictions (IMPORTANT)
 

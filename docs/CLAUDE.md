@@ -20,7 +20,7 @@ omniverse-kit-mcp records “what you can do now” (tool catalog) and “what y
 
 ## tool-catalog.md — auto-regeneration rules
 
-1. When registering a new `@mcp.tool()` or changing the existing tool signature **Must be regenerated**:
+1. When registering a new MCP tool via the selected wrapper or changing the existing tool signature **Must be regenerated**:
    ```
    .venv/Scripts/python.exe scripts/generate_tool_catalog.py
    ```

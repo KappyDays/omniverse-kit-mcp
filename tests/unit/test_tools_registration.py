@@ -225,6 +225,8 @@ EXPECTED_SCENARIO_TOOLS: frozenset[str] = frozenset({
 })
 
 EXPECTED_ALL_TOOLS: frozenset[str] = EXPECTED_MODULE_TOOLS | EXPECTED_SCENARIO_TOOLS
+FULL_PROFILE_CONTRACT_TOOL_COUNT = 152
+APP_PROFILE_CONTRACT_TOOL_COUNT = 148
 
 
 @pytest.fixture(autouse=True)
@@ -260,6 +262,7 @@ def test_full_tool_profile_matches_expected_set():
     mcp = create_mcp_server(config)
     registered = frozenset(mcp._tool_manager._tools)
     assert registered == EXPECTED_ALL_TOOLS
+    assert len(registered) == FULL_PROFILE_CONTRACT_TOOL_COUNT
 
 
 def test_core_tool_profile_is_strict_subset():
@@ -279,6 +282,7 @@ def test_app_tool_profile_is_strict_subset_for_isaac():
     registered = frozenset(mcp._tool_manager._tools)
 
     assert registered < EXPECTED_ALL_TOOLS
+    assert len(registered) == APP_PROFILE_CONTRACT_TOOL_COUNT
     assert "mcp_runtime_info" in registered
     assert "robot_load" in registered
     assert "external_asset_download" not in registered
@@ -297,11 +301,15 @@ def test_app_tool_profile_is_invariant_across_app_profiles(monkeypatch):
 
     assert registered == default_registered
     assert registered < EXPECTED_ALL_TOOLS
+    assert len(registered) == APP_PROFILE_CONTRACT_TOOL_COUNT
     assert "mcp_runtime_info" in registered
     assert "material_assign_mdl" in registered
     assert "content_browse" in registered
     assert "robot_load" in registered
+    assert "robot_probe_arm_profiles" in registered
     assert "sensor_attach_rtx_camera" in registered
+    assert "sensor_lidar_get_point_cloud" in registered
+    assert "sensor_set_annotator" in registered
     assert "omnigraph_create_ros2_publisher" in registered
     assert "external_asset_download" not in registered
     assert "kit_python_run" not in registered
@@ -342,6 +350,7 @@ def test_custom_profile_applies_include_exclude_tokens():
 def test_tool_count_matches_expected_list(mcp_server):
     """Count is derived from the SoT list — no literal to update per Phase."""
     registered = mcp_server._tool_manager._tools
+    assert len(EXPECTED_ALL_TOOLS) == FULL_PROFILE_CONTRACT_TOOL_COUNT
     assert len(registered) == len(EXPECTED_ALL_TOOLS)
 
 
@@ -373,11 +382,16 @@ async def test_mcp_runtime_info_reports_probe_result_freshness(mcp_server):
 
     assert payload["ok"] is True
     assert payload["has_mcp_runtime_info_tool"] is True
-    assert payload["tool_count"] == len(EXPECTED_ALL_TOOLS)
+    assert payload["tool_count"] == FULL_PROFILE_CONTRACT_TOOL_COUNT
     assert payload["tool_profile"] == PROFILE_FULL
-    assert payload["registered_tool_count"] == len(EXPECTED_ALL_TOOLS)
+    assert payload["app_profile"] == "isaac-sim"
+    assert payload["registered_tool_count"] == FULL_PROFILE_CONTRACT_TOOL_COUNT
     assert payload["omitted_tool_count"] == 0
+    assert payload["included_groups"]["Process - MCP / Kit app lifecycle"] == 5
     assert payload["omitted_groups"] == {}
+    assert payload["omitted_tools"] == []
+    assert payload["custom_include_tokens"] == []
+    assert payload["custom_exclude_tokens"] == []
     assert payload["robot_probe_result_has_mcp_controllability"] is True
     assert payload["robot_probe_result_has_probe_capability_level"] is True
     assert payload["robot_probe_result_has_pick_place_validation_boundary"] is True
@@ -461,6 +475,61 @@ async def test_mcp_runtime_info_reports_probe_result_freshness(mcp_server):
         for entry in payload["source_modules"]
     )
     assert isinstance(payload["restart_required_for_latest_mcp_code"], bool)
+
+
+@pytest.mark.asyncio
+async def test_mcp_runtime_info_reports_app_profile_payload(monkeypatch):
+    monkeypatch.setenv("ISAAC_MCP_APP_PROFILE", "usd-composer")
+    config = AppConfig(mcp_server=MCPServerConfig(tool_profile=PROFILE_APP))
+    mcp = create_mcp_server(config)
+    tool = mcp._tool_manager._tools["mcp_runtime_info"]
+
+    payload = json.loads(await tool.fn())
+
+    assert payload["tool_profile"] == PROFILE_APP
+    assert payload["app_profile"] == "usd-composer"
+    assert payload["tool_count"] == APP_PROFILE_CONTRACT_TOOL_COUNT
+    assert payload["registered_tool_count"] == APP_PROFILE_CONTRACT_TOOL_COUNT
+    assert payload["omitted_tool_count"] == (
+        FULL_PROFILE_CONTRACT_TOOL_COUNT - APP_PROFILE_CONTRACT_TOOL_COUNT
+    )
+    assert payload["custom_include_tokens"] == []
+    assert payload["custom_exclude_tokens"] == []
+    assert sorted(payload["omitted_tools"]) == [
+        "external_asset_convert",
+        "external_asset_download",
+        "external_asset_search",
+        "kit_python_run",
+    ]
+    assert payload["omitted_groups"] == {
+        "Asset - catalog browsing / official assets": 3,
+        "Kit commands - command registry / Python runner": 1,
+    }
+    assert "robot_load" in mcp._tool_manager._tools
+    assert "sensor_attach_rtx_camera" in mcp._tool_manager._tools
+    assert "omnigraph_create_ros2_publisher" in mcp._tool_manager._tools
+
+
+@pytest.mark.asyncio
+async def test_mcp_runtime_info_reports_custom_include_exclude_tokens():
+    config = AppConfig(
+        mcp_server=MCPServerConfig(
+            tool_profile=PROFILE_CUSTOM,
+            tool_include="robot_load,material",
+            tool_exclude="lakehouse",
+        )
+    )
+    mcp = create_mcp_server(config)
+    tool = mcp._tool_manager._tools["mcp_runtime_info"]
+
+    payload = json.loads(await tool.fn())
+
+    assert payload["tool_profile"] == PROFILE_CUSTOM
+    assert payload["custom_include_tokens"] == ["material", "robot_load"]
+    assert payload["custom_exclude_tokens"] == ["lakehouse"]
+    assert "robot_load" in mcp._tool_manager._tools
+    assert "material_assign_mdl" in mcp._tool_manager._tools
+    assert "lakehouse_query" not in mcp._tool_manager._tools
 
 
 @pytest.mark.asyncio

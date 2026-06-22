@@ -8,21 +8,22 @@
 > Follow first. If you refer to this document without research,
 > Duplicate existing `@mcp.tool()` / Risk of selecting wrong Kit API.
 
-Adding a new `@mcp.tool()` means modifying 7 places simultaneously + passing auto-regen catalog + drift test**
+Adding a new MCP tool means modifying 8 places simultaneously + passing auto-regen catalog + drift test**
 3-step. If you miss even one place, `verify_mcp_sync.py` / drift pytest fails.
 
-## Checklist for editing 7 places simultaneously
+## Checklist for editing 8 places simultaneously
 
 When adding a new MCP tool, you must also change:
 
 1. **Extension REST endpoint** — `kkr-extensions/omni.mycompany.validation_api/omni/mycompany/validation_api/services/` or router
 2. **REST client** — Add `src/omniverse_kit_mcp/clients/isaac_rest_client.py` method
 3. **Module wrapper** — typed async method in `src/omniverse_kit_mcp/modules/` domain module
-4. **MCP tool registration** — `@mcp.tool()` decorator function of `src/omniverse_kit_mcp/tools/module_tools.py`
+4. **MCP tool registration** — selected `@tool()` wrapper function of `src/omniverse_kit_mcp/tools/module_tools.py`
 5. **Mock client** — MockIsaacRestClient in `tests/conftest.py` + new method
 6. **Tool name SoT** — `EXPECTED_MODULE_TOOLS` of `tests/unit/test_tools_registration.py`
 or add `EXPECTED_SCENARIO_TOOLS` to frozenset
-7. **Tool group caveat** — `src/omniverse_kit_mcp/tools/CLAUDE.md` One line in that group section
+7. **Tool metadata/profile registry** — `src/omniverse_kit_mcp/tools/tool_profiles.py`
+8. **Tool group caveat** — `src/omniverse_kit_mcp/tools/CLAUDE.md` One line in that group section
 
 ## Regeneration (required one-time manual execution)
 
@@ -43,7 +44,7 @@ uv run pytest tests/unit/test_tools_registration.py tests/unit/test_tool_catalog
 ```
 
 - `tests/unit/test_tools_registration.py` — Registered tool set ↔ EXPECTED_*_TOOLS frozenset
-Exact match (FAIL for both missing/exceeded)
+Exact match (FAIL for both missing/exceeded), plus `TOOL_METADATA` coverage
 - `tests/unit/test_tool_catalog_sync.py` — `docs/tool-catalog.md` is synchronous with the current registration state.
 
 ## Add/Move MCP Resource (separate procedure)

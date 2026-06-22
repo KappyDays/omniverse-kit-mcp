@@ -7,14 +7,17 @@ A thin layer that registers tools with FastMCP. For domain constraints (Lakehous
 
 ## file
 
-- `module_tools.py` — Register all module tools as `register_module_tools(mcp, stage, viewport, lakehouse, extension, simulation, process, robot, job, asset, character)`
-- `scenario_tools.py` — Register scenario tool as `register_scenario_tools(mcp, config, stage, viewport, lakehouse, extension, simulation, robot, job, asset, character)`. All module arguments are required — if the runner wants to dispatch `module: ...` in scenario YAML, it must be passed here.
+- `module_tools.py` — Register all module tools as `register_module_tools(..., catalog, *, selection=None)` with all domain modules passed explicitly.
+- `scenario_tools.py` — Register scenario tools as `register_scenario_tools(..., content, *, selection=None)`. All module arguments are required — if the runner wants to dispatch `module: ...` in scenario YAML, it must be passed here.
+- `tool_profiles.py` — Tool metadata/profile registry used for registration-time slimming, group counts, and generated catalog grouping.
 - `__init__.py` — re-export both
 
 ## Registration Terms and Conditions
 
 ```python
-@mcp.tool()
+tool = selected_tool_decorator(mcp, selection)
+
+@tool()
 async def stage_load_usd(usd_url: str, prim_path: str, ...) -> str:
     """Docstring is exposed as the MCP tool description; keep it concise and specific."""
     meta = make_meta(ModuleName.STAGE)
@@ -23,7 +26,7 @@ async def stage_load_usd(usd_url: str, prim_path: str, ...) -> str:
     return _serialize(result)
 ```
 
-- `@mcp.tool()` decorator — function name is tool name
+- `@tool()` delegates to `mcp.tool()` when the active `ToolSelection` includes the function name; function name is still the public tool name
 - Create `OperationMeta` from `make_meta(ModuleName.X)`. Passed as the first argument to the module method
 - The result is returned after converting to JSON string as `_serialize(result)`.
 - Docstring = tool description displayed in MCP client UI (Claude Code, Codex CLI, etc.)
@@ -38,7 +41,7 @@ async def stage_load_usd(usd_url: str, prim_path: str, ...) -> str:
 
 ## MCP Tools
 
-**Source of truth**: `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset of `tests/unit/test_tools_registration.py` specifies the set of all tools. When adding a phase, only these two frozensets are updated → count assertion is automatically set to `len()`.Non-obvious constraints by group (see frozenset for full name):- **Process (`mcp_runtime_info` / `kit_app_*` / `process_list_kit_instances`)** — `mcp_runtime_info` is read-only MCP-server freshness diagnostics; call it before live result-shape validation after changing `src/omniverse_kit_mcp`, and restart the MCP host if expected tools/fields are absent or source files are newer than import time. `kit_app_*` controls only kit.exe lifecycle without extension. The default for live workers is to attach/start to an existing instance with `kit_app_start`, and `kit_app_restart` is used only when crash/hang is confirmed, validation_api changes itself, extension.toml dependency/native changes, `extension_reload` fails, and user fresh-process requests are made. `process_list_kit_instances` is a read-only enumerate — returns all non-MCP-spawned user GUI instances/even other MCP servers (differentiated by the `is_this_mcp_instance` flag). Used to check external instances before destructive work (Kit `user.config.json` edit / settings reset / extension force reload). Windows-only (PowerShell `Get-CimInstance`)
+**Source of truth**: `EXPECTED_MODULE_TOOLS` / `EXPECTED_SCENARIO_TOOLS` frozenset of `tests/unit/test_tools_registration.py` specifies the set of all tools, and `TOOL_METADATA` in `tool_profiles.py` classifies every tool for profiles/catalog grouping. When adding a phase, update the frozensets and metadata together; normal count assertions derive from `len()` except explicit `full`/`app` profile contract-count tests. Non-obvious constraints by group (see frozenset for full name):- **Process (`mcp_runtime_info` / `kit_app_*` / `process_list_kit_instances`)** — `mcp_runtime_info` is read-only MCP-server freshness diagnostics; call it before live result-shape validation after changing `src/omniverse_kit_mcp`, and restart the MCP host if expected tools/fields are absent or source files are newer than import time. `kit_app_*` controls only kit.exe lifecycle without extension. The default for live workers is to attach/start to an existing instance with `kit_app_start`, and `kit_app_restart` is used only when crash/hang is confirmed, validation_api changes itself, extension.toml dependency/native changes, `extension_reload` fails, and user fresh-process requests are made. `process_list_kit_instances` is a read-only enumerate — returns all non-MCP-spawned user GUI instances/even other MCP servers (differentiated by the `is_this_mcp_instance` flag). Used to check external instances before destructive work (Kit `user.config.json` edit / settings reset / extension force reload). Windows-only (PowerShell `Get-CimInstance`)
 - **Stage READ/ASSERT (`stage_*`)** — `stage_diff_snapshots` is context-aware (receives the preceding two `stage_capture_snapshot` step ids). `stage_compute_world_bbox` is based on live USD BBoxCache, `stage_visual_alignment_report` quantifies visual/physics/acceptance volume misalignment with XY IoU + center delta of reference/candidate bbox, and `stage_placement_validation_report` is a broad-phase world-AABB placement gate for explicit PlacementZone/AcceptanceVolume prims; it does not replace final `viewport_capture` visual acceptance.
 - **Stage WRITE (`stage_load_usd` / `stage_set_property` / `stage_set_semantic_label` / `stage_create_prim` / `stage_delete_prim`)** — tools layer is routed to `SimulationModule` (implementation location is not StageModule). `stage_create_prim(prim_type=...)` accepts not only Cube/Sphere but also Camera, USDLux (DistantLight/DomeLight/...)
 - **Semantic label (`stage_set_semantic_label`)** — A hole where `sensor_set_annotator` only attached an annotator but could not perform prim labeling. `USDSemantics.LabelsAPI`(`semantics:labels:<label_type>`) + best-effort legacy `Semantics` schema are both authors (so that the annotator catches whichever schema it reads). Labels are inherited as a subtree — once in the reference prop's parent. Non-existent prim is 400. Verification of segmentation/bbox pickup operation is live.

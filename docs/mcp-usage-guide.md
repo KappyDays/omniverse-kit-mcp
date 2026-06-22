@@ -33,6 +33,11 @@ The generated signature reference remains `docs/tool-catalog.md`.
 Set `MCP_SERVER_TOOL_PROFILE=full` and restart the MCP host to roll back to the
 complete compatibility surface.
 
+Call `mcp_runtime_info` after MCP host startup to confirm the active
+`tool_profile`, `app_profile`, registered `tool_count`, omitted groups/tools,
+and custom include/exclude tokens before comparing a slim profile against the
+full catalog.
+
 ## Exact Signatures
 
 After choosing the likely task route, use `docs/tool-catalog.md` for exact tool

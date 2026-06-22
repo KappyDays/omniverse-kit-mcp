@@ -67,11 +67,11 @@ profiles are unaffected.
 mcp_runtime_info() -> 'str'
 ```
 
-Report MCP import freshness without host-local paths or process identifiers: source mtimes,
-registered tool count, robot probe timeout defaults, whether robot probe result fields include
-mcp_controllability/probe_capability_level/pick-place boundary fields, and whether batch probe
-results include summary fields. If this tool is absent or reports stale source files, restart
-the MCP host before live result-shape validation.
+Report MCP import freshness and active tool profile diagnostics without host-local paths or
+process identifiers: tool/app profile, registered and omitted tool counts, included/omitted
+groups, omitted tools, custom include/exclude tokens, source mtimes, and robot probe result-
+shape fields. If this tool is absent or reports stale source files, restart the MCP host before
+live result-shape validation.
 
 ### `process_list_kit_instances`
 

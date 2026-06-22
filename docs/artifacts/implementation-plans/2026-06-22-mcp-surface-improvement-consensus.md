@@ -12,7 +12,8 @@ current MCP runtime behavior.
 ## Current State
 
 - The default MCP surface exposes 152 tools in `docs/tool-catalog.md`.
-- `create_mcp_server()` currently registers all module and scenario tools.
+- `create_mcp_server()` registers all module and scenario tools in default
+  `full` profile; opt-in profiles register selected subsets.
 - `docs/tool-catalog.md` is generated from the live full FastMCP server.
 - `tests/unit/test_tools_registration.py` asserts the exact default tool set.
 - `verify_mcp_sync.py` is the required drift gate for tool surface changes.
@@ -235,8 +236,9 @@ Phase 3: Opt-in profiles
 
 - Add `core`, `app`, and `custom`.
 - Add profile-aware tests.
-- Teach `mcp_runtime_info` to report active profile, registered count, and
-  omitted groups/tools.
+- `mcp_runtime_info` reports active profile, app profile, registered/tool
+  counts, included/omitted groups, omitted tools, and custom include/exclude
+  tokens.
 - Keep full mode as rollback.
 
 Phase 4: Schema/docstring slimming
@@ -273,7 +275,8 @@ Additional profile-specific tests:
 - generated full catalog remains canonical
 - local slim env vars cannot poison `verify_mcp_sync.py`
 - invalid profile values fail clearly
-- `mcp_runtime_info` reports profile and counts
+- `mcp_runtime_info` reports profile, app profile, counts, omitted surface, and
+  custom include/exclude tokens
 
 ## Compatibility Review
 
