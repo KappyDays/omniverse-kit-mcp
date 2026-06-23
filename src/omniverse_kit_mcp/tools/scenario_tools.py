@@ -54,6 +54,29 @@ _last_reports: dict[str, str] = {}
 _last_report_summaries: dict[str, ScenarioRunSummary] = {}
 _last_report_id: str | None = None
 
+_EVIDENCE_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
+    ("sensor", "lidar_get_point_cloud"): (
+        "rtx_lidar_point_cloud",
+        ("sensor_prim", "frames_to_wait", "min_points", "max_points", "fail_on_warning"),
+    ),
+    ("viewport", "frame_prims"): (
+        "viewport_framing",
+        ("prim_paths", "margin", "view_direction", "set_camera"),
+    ),
+    ("viewport", "capture"): (
+        "viewport_capture",
+        ("width", "height", "warmup_frames", "return_stats"),
+    ),
+    ("viewport", "capture_assert"): (
+        "viewport_capture_assert",
+        ("width", "height", "warmup_frames", "min_mean", "min_variance"),
+    ),
+    ("window", "capture"): (
+        "window_capture",
+        ("window_title", "wait_stable", "timeout_s"),
+    ),
+}
+
 
 def _resolve_safe_path(user_path: str, scenarios_root: str) -> str:
     """Resolve a scenario path safely within the configured scenarios root.
@@ -278,6 +301,8 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         "variables": scenario.variables,
         "total_steps": sum(phase_counts.values()),
         "phase_counts": phase_counts,
+        "evidence_steps": _plan_evidence_steps(phases),
+        "retry_steps": _plan_retry_steps(phases),
         "phases": phases,
     }
 
@@ -316,6 +341,68 @@ def _plan_step(
             "maxBackoffSeconds": step.retry_policy.max_backoff_s,
         }
     return planned
+
+
+def _plan_evidence_steps(
+    phases: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    evidence_steps: list[dict[str, Any]] = []
+    for phase, steps in phases.items():
+        for step in steps:
+            spec = _EVIDENCE_STEP_SPECS.get((step["module"], step["action"]))
+            if spec is None:
+                continue
+            evidence_kind, arg_keys = spec
+            planned: dict[str, Any] = {
+                "id": step["id"],
+                "phase": phase,
+                "module": step["module"],
+                "action": step["action"],
+                "evidence_kind": evidence_kind,
+            }
+            key_args = _selected_plan_args(step.get("args"), arg_keys)
+            if key_args:
+                planned["key_args"] = key_args
+            _copy_plan_control_fields(step, planned)
+            evidence_steps.append(planned)
+    return evidence_steps
+
+
+def _plan_retry_steps(
+    phases: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    retry_steps: list[dict[str, Any]] = []
+    for phase, steps in phases.items():
+        for step in steps:
+            if not step.get("idempotent") and "retries" not in step:
+                continue
+            planned = {
+                "id": step["id"],
+                "phase": phase,
+                "module": step["module"],
+                "action": step["action"],
+            }
+            _copy_plan_control_fields(step, planned)
+            retry_steps.append(planned)
+    return retry_steps
+
+
+def _selected_plan_args(
+    args: Any,
+    keys: tuple[str, ...],
+) -> dict[str, Any]:
+    if not isinstance(args, dict):
+        return {}
+    return {key: args[key] for key in keys if key in args}
+
+
+def _copy_plan_control_fields(
+    source: dict[str, Any],
+    target: dict[str, Any],
+) -> None:
+    for key in ("timeoutSeconds", "idempotent", "continueOnFailure", "retries"):
+        if key in source:
+            target[key] = source[key]
 
 
 def _normalize_report_format(report_format: str) -> str:

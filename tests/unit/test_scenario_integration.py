@@ -1220,6 +1220,64 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "args": {},
         "automatic": True,
     }
+    evidence_steps = {step["id"]: step for step in plan["evidence_steps"]}
+    assert evidence_steps["read_lidar_point_cloud"] == {
+        "id": "read_lidar_point_cloud",
+        "phase": "act",
+        "module": "sensor",
+        "action": "lidar_get_point_cloud",
+        "evidence_kind": "rtx_lidar_point_cloud",
+        "key_args": {
+            "sensor_prim": "/World/Robot/NovaCarter/TopLidar",
+            "frames_to_wait": 180,
+            "min_points": 1,
+            "max_points": 512,
+            "fail_on_warning": True,
+        },
+        "idempotent": True,
+        "retries": {
+            "maxAttempts": 3,
+            "initialBackoffSeconds": 0.25,
+            "maxBackoffSeconds": 1.0,
+        },
+    }
+    assert evidence_steps["frame_robot_and_sensors"]["evidence_kind"] == (
+        "viewport_framing"
+    )
+    assert evidence_steps["frame_robot_and_sensors"]["key_args"]["prim_paths"] == [
+        "/World/Robot/NovaCarter",
+        "/World/Robot/NovaCarter/FrontCamera",
+        "/World/Robot/NovaCarter/TopLidar",
+        "/World/LidarTargets",
+    ]
+    assert evidence_steps["capture_visible_result"] == {
+        "id": "capture_visible_result",
+        "phase": "assert",
+        "module": "viewport",
+        "action": "capture_assert",
+        "evidence_kind": "viewport_capture_assert",
+        "key_args": {
+            "width": 1280,
+            "height": 720,
+            "warmup_frames": 8,
+            "min_mean": 8.0,
+            "min_variance": 1.0,
+        },
+    }
+    assert plan["retry_steps"] == [
+        {
+            "id": "read_lidar_point_cloud",
+            "phase": "act",
+            "module": "sensor",
+            "action": "lidar_get_point_cloud",
+            "idempotent": True,
+            "retries": {
+                "maxAttempts": 3,
+                "initialBackoffSeconds": 0.25,
+                "maxBackoffSeconds": 1.0,
+            },
+        }
+    ]
 
     summary = await runner.run(scenario)
 

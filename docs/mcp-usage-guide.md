@@ -38,9 +38,11 @@ Robot + RTX live proof wrapper:
 `scenario_last_report(report_format="markdown")` or
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
 `extension_capture_logs`.
-Before validation, check `scenario_plan.phase_counts` and `total_steps` so a
-missing setup, sensor, viewport, or cleanup phase is caught before live stage
-mutation. `automatic: true` cleanup steps are runner-added safeguards, not YAML.
+Before validation, check `scenario_plan.phase_counts`, `total_steps`,
+`evidence_steps`, and `retry_steps` so a missing setup, sensor, viewport,
+cleanup, lidar evidence, capture evidence, or idempotent retry gate is caught
+before live stage mutation. `automatic: true` cleanup steps are runner-added
+safeguards, not YAML.
 When using `input_overrides`, pass the same override dict to `scenario_plan` and
 `scenario_validate` so the plan preview reflects the exact variable-substituted
 prim paths and asset URLs that will run.
