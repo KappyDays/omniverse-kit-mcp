@@ -1190,6 +1190,48 @@ async def test_official_asset_verify_timeout_reports_diagnostics(
 
 
 @pytest.mark.asyncio
+async def test_official_asset_verify_material_timeout_reports_unknown_checks(
+    synthetic_official_catalog: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+
+    async def slow_verify(
+        meta: OperationMeta,
+        entry: dict[str, object],
+        app_profile: str | None,
+    ) -> dict[str, object]:
+        await asyncio.sleep(0.05)
+        return {}
+
+    monkeypatch.setattr(module, "_verify_official_entry", slow_verify)
+
+    result = await module.official_verify(
+        _meta(),
+        asset_id=(
+            "url:https://omniverse-content-production.s3-us-west-2.amazonaws.com"
+            "/Assets/Materials/2023_2_1/Base/Metals/Brushed_Aluminum.mdl"
+        ),
+        app_profile="usd-composer",
+        timeout_s=0.001,
+    )
+
+    assert result.ok, result.message
+    assert result.data["verification_status"] == "failed"
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "verify_timeout"
+    assert diagnostics["target_status"] == "assign_verified"
+    assert diagnostics["material_checks"] == {
+        "create_prim_ok": "unknown",
+        "assign_ok": "unknown",
+        "bound_ok": "unknown",
+    }
+
+
+@pytest.mark.asyncio
 async def test_official_asset_verify_material_assigns_and_reads_binding(
     synthetic_official_catalog: Path,
 ):

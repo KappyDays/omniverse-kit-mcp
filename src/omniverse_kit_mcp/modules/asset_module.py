@@ -1948,12 +1948,11 @@ def _official_verify_diagnostics(
     }
     if entry.get("kind") == "material":
         diagnostics["material_checks"] = {
-            "create_prim_ok": bool((record.get("create_prim") or {}).get("ok", True)),
-            "assign_ok": bool((record.get("assign") or {}).get("ok", True)),
-            "bound_ok": bool(
-                (record.get("bound") or {}).get("ok", True)
-                and (record.get("bound") or {}).get("material_path")
+            "create_prim_ok": _official_operation_ok_or_unknown(
+                record, "create_prim"
             ),
+            "assign_ok": _official_operation_ok_or_unknown(record, "assign"),
+            "bound_ok": _official_material_bound_ok_or_unknown(record),
         }
     else:
         diagnostics["asset_checks"] = {
@@ -1968,6 +1967,23 @@ def _official_verify_diagnostics(
     if record.get("error_type"):
         diagnostics["error_type"] = record.get("error_type")
     return diagnostics
+
+
+def _official_operation_ok_or_unknown(
+    record: dict[str, Any],
+    key: str,
+) -> bool | str:
+    operation = record.get(key)
+    if not isinstance(operation, dict):
+        return "unknown"
+    return bool(operation.get("ok", True))
+
+
+def _official_material_bound_ok_or_unknown(record: dict[str, Any]) -> bool | str:
+    bound = record.get("bound")
+    if not isinstance(bound, dict):
+        return "unknown"
+    return bool(bound.get("ok", True) and bound.get("material_path"))
 
 
 def _official_verify_failure_reason(

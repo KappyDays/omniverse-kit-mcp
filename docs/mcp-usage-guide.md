@@ -30,6 +30,10 @@ Reports include `diagnostic_next_actions` in JSON and `Diagnostic Next Actions`
 in Markdown when diagnostic payloads carry `suggested_next` or
 `fallback_tool_order`; follow that section before opening logs or changing
 scenario timing.
+Reports also include JSON `evidence_summary` and Markdown `Evidence Summary`
+when executed steps produced compact lidar, viewport-framing, or visual-capture
+evidence; compare it with `scenario_plan.evidence_steps` before claiming a
+robot/RTX or visual workflow is proven.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

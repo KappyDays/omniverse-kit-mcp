@@ -130,7 +130,8 @@ _PROCESS_ID_TEXT_RE = re.compile(
 )
 _WORKER_THREAD_ID_TEXT_RE = re.compile(
     r"\b(?P<label>"
-    r"thread[_ -]?id|worker[_ -]?id|pendingWorktreeId|pending[_ -]?worktree[_ -]?id"
+    r"thread[_ -]?id|worker[_ -]?id|worker[_ -]?thread[_ -]?id|"
+    r"pendingWorktreeId|pending[_ -]?worktree[_ -]?id"
     r")"
     r"\s*(?P<sep>[:=])\s*[A-Za-z0-9._:-]+\b",
     re.IGNORECASE,
@@ -219,6 +220,18 @@ def to_markdown(
                 f"- {_markdown_code_span(step_id)}: {_markdown_inline(detail)}"
             )
 
+    evidence_rows = _evidence_summary_payloads(
+        summary,
+        redact_local_paths=redact_local_paths,
+    )
+    if evidence_rows:
+        lines.extend(["", "## Evidence Summary", ""])
+        for row in evidence_rows:
+            lines.append(
+                f"- {_markdown_code_span(row['step_id'])}: "
+                f"{_markdown_inline(_format_evidence_summary(row))}"
+            )
+
     retry_rows = [
         (sr.step_id, failure)
         for sr in summary.step_results
@@ -303,6 +316,7 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
         step_results.append(step_result)
     d["step_results"] = step_results
     d["diagnostic_next_actions"] = diagnostic_next_actions
+    d["evidence_summary"] = _evidence_summary_payloads(summary)
     return d
 
 
@@ -476,6 +490,159 @@ def _format_data_summary_highlight(data_summary: dict[str, Any]) -> str:
             continue
         if key not in emitted and _is_compact_scalar(value):
             parts.extend(_format_summary_pair(key, value))
+    return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
+
+
+def _evidence_summary_payloads(
+    summary: ScenarioRunSummary,
+    *,
+    redact_local_paths: bool = False,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for step in summary.step_results:
+        if not step.data_summary:
+            continue
+        row = _evidence_summary_payload(step)
+        if not row:
+            continue
+        if redact_local_paths:
+            row = _redact_local_paths(row)
+        rows.append(row)
+    return rows
+
+
+def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
+    data_summary = step.data_summary
+    evidence_kind = _evidence_kind(data_summary)
+    if evidence_kind is None:
+        return {}
+    row: dict[str, Any] = {
+        "step_id": step.step_id,
+        "phase": step.phase,
+        "status": step.status.value,
+        "attempts": step.attempts,
+        "max_attempts": step.max_attempts,
+        "retry_failure_count": len(step.retry_failures),
+        "evidence_kind": evidence_kind,
+    }
+    if evidence_kind == "rtx_lidar_point_cloud":
+        _copy_if_present(
+            data_summary,
+            row,
+            (
+                "num_points",
+                "backend",
+                "frames_waited",
+                "empty_reason",
+                "warning",
+                "truncated",
+            ),
+        )
+        diagnostics = data_summary.get("diagnostics")
+        if isinstance(diagnostics, dict):
+            row["diagnostics"] = {
+                key: diagnostics[key]
+                for key in (
+                    "cached_lidar_instance",
+                    "readback_paths_attempted",
+                    "suggested_next",
+                    "fallback_tool_order",
+                )
+                if key in diagnostics
+            }
+    elif evidence_kind == "viewport_framing":
+        _copy_if_present(
+            data_summary,
+            row,
+            ("camera_path", "viewport_name", "distance"),
+        )
+        prim_paths = data_summary.get("prim_paths")
+        if isinstance(prim_paths, list):
+            row["prim_count"] = len(prim_paths)
+        bbox = data_summary.get("combined_bbox")
+        if isinstance(bbox, dict) and "is_empty" in bbox:
+            row["bbox_empty"] = bbox["is_empty"]
+    elif evidence_kind == "visual_capture":
+        artifact = data_summary.get("artifact")
+        if isinstance(artifact, dict):
+            if "path" in artifact:
+                row["capture_path"] = artifact["path"]
+            if "sha256" in artifact:
+                row["sha256"] = artifact["sha256"]
+        if "path" in data_summary:
+            row["capture_path"] = data_summary["path"]
+        _copy_if_present(
+            data_summary,
+            row,
+            (
+                "sha256",
+                "passed",
+                "non_empty",
+                "pixel_mean",
+                "pixel_variance",
+            ),
+        )
+    return {key: value for key, value in row.items() if value != {}}
+
+
+def _evidence_kind(data_summary: dict[str, Any]) -> str | None:
+    if "num_points" in data_summary:
+        return "rtx_lidar_point_cloud"
+    if (
+        "camera_path" in data_summary
+        and "prim_paths" in data_summary
+        and "combined_bbox" in data_summary
+    ):
+        return "viewport_framing"
+    artifact = data_summary.get("artifact")
+    if (
+        _is_top_level_image_artifact(data_summary)
+        or (
+            "sha256" in data_summary
+            and ("path" in data_summary or isinstance(artifact, dict))
+        )
+        or (
+            isinstance(artifact, dict)
+            and ("path" in artifact or "sha256" in artifact)
+        )
+    ):
+        return "visual_capture"
+    return None
+
+
+def _copy_if_present(
+    source: dict[str, Any],
+    target: dict[str, Any],
+    keys: tuple[str, ...],
+) -> None:
+    for key in keys:
+        if key in source:
+            target[key] = source[key]
+
+
+def _format_evidence_summary(row: dict[str, Any]) -> str:
+    parts = [
+        f"evidence_kind={_format_summary_value(row['evidence_kind'])}",
+        f"status={_format_summary_value(row['status'])}",
+        f"attempts={row['attempts']}/{row['max_attempts']}",
+    ]
+    if row.get("retry_failure_count"):
+        parts.append(f"retry_failure_count={row['retry_failure_count']}")
+    emitted = {
+        "step_id",
+        "phase",
+        "status",
+        "attempts",
+        "max_attempts",
+        "retry_failure_count",
+        "evidence_kind",
+    }
+    for key, value in row.items():
+        if key in emitted:
+            continue
+        if key == "empty_reason" and value is None:
+            continue
+        parts.extend(_format_summary_pair(key, value))
     return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
 
 

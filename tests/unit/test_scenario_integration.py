@@ -289,6 +289,7 @@ def test_reporters_can_redact_host_local_artifact_paths():
                 message=(
                     f"capture saved at {capture_path}; pid=<process-id>; "
                     "thread_id=thread-example-7f3a; "
+                    "worker_thread_id=worker-thread-message; "
                     "pending_worktree_id=pw_message"
                 ),
                 artifacts={"image": capture_path},
@@ -333,6 +334,7 @@ def test_reporters_can_redact_host_local_artifact_paths():
     assert "pw_12345" not in serialized
     assert "pw_message" not in serialized
     assert "worker-thread-123" not in serialized
+    assert "worker-thread-message" not in serialized
     assert '"pid": "<process-id>"' in serialized
     assert '"process_id": "<process-id>"' in serialized
     assert '"thread_id": "<worker-thread-id>"' in serialized
@@ -352,8 +354,10 @@ def test_reporters_can_redact_host_local_artifact_paths():
     assert "pw_12345" not in markdown
     assert "pw_message" not in markdown
     assert "worker-thread-123" not in markdown
+    assert "worker-thread-message" not in markdown
     assert "pid=<process-id>" in markdown
     assert "thread_id=<worker-thread-id>" in markdown
+    assert "worker_thread_id=<worker-thread-id>" in markdown
     assert "pending_worktree_id=<worker-thread-id>" in markdown
 
 
@@ -1387,6 +1391,50 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "intensity",
     ]
     assert cloud_report["data_summary"]["warning"] is None
+    evidence_report = {
+        result["step_id"]: result for result in report["evidence_summary"]
+    }
+    assert evidence_report["read_lidar_point_cloud"] == {
+        "step_id": "read_lidar_point_cloud",
+        "phase": "act",
+        "status": "passed",
+        "attempts": 1,
+        "max_attempts": 3,
+        "retry_failure_count": 0,
+        "evidence_kind": "rtx_lidar_point_cloud",
+        "num_points": 3,
+        "backend": "omni.replicator.core",
+        "frames_waited": 180,
+        "empty_reason": None,
+        "warning": None,
+        "truncated": False,
+    }
+    assert evidence_report["frame_robot_and_sensors"] == {
+        "step_id": "frame_robot_and_sensors",
+        "phase": "assert",
+        "status": "passed",
+        "attempts": 1,
+        "max_attempts": 1,
+        "retry_failure_count": 0,
+        "evidence_kind": "viewport_framing",
+        "camera_path": "/OmniverseKit_Persp",
+        "viewport_name": "Viewport",
+        "distance": 2.0,
+        "prim_count": 4,
+        "bbox_empty": False,
+    }
+    assert evidence_report["capture_visible_result"] == {
+        "step_id": "capture_visible_result",
+        "phase": "assert",
+        "status": "passed",
+        "attempts": 1,
+        "max_attempts": 1,
+        "retry_failure_count": 0,
+        "evidence_kind": "visual_capture",
+        "capture_path": "/tmp/golden_robot_sensor.png",
+        "sha256": "abc123",
+        "passed": True,
+    }
     markdown = to_markdown(summary)
     assert (
         "- `read_lidar_point_cloud`: num_points=3; "
@@ -1401,6 +1449,23 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     assert (
         "- `capture_visible_result`: capture_path=/tmp/golden_robot_sensor.png; "
         "sha256=abc123; passed=True"
+    ) in markdown
+    assert (
+        "- `read_lidar_point_cloud`: "
+        "evidence_kind=rtx_lidar_point_cloud; status=passed; attempts=1/3; "
+        "num_points=3; backend=omni.replicator.core; frames_waited=180; "
+        "warning=null; truncated=False"
+    ) in markdown
+    assert (
+        "- `frame_robot_and_sensors`: "
+        "evidence_kind=viewport_framing; status=passed; attempts=1/1; "
+        "camera_path=/OmniverseKit_Persp; viewport_name=Viewport; "
+        "distance=2.0; prim_count=4; bbox_empty=False"
+    ) in markdown
+    assert (
+        "- `capture_visible_result`: "
+        "evidence_kind=visual_capture; status=passed; attempts=1/1; "
+        "capture_path=/tmp/golden_robot_sensor.png; sha256=abc123; passed=True"
     ) in markdown
 
 
