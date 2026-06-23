@@ -949,6 +949,7 @@ def _lidar_readback_diagnostics(
         diagnostics["reason"] = empty_reason
         diagnostics["empty_reason"] = empty_reason
         diagnostics["suggested_next"] = _lidar_empty_suggested_next(empty_reason)
+        diagnostics["fallback_tool_order"] = _lidar_empty_fallback_tool_order()
     return diagnostics
 
 
@@ -968,6 +969,15 @@ def _lidar_empty_suggested_next(empty_reason: str) -> str:
     if empty_reason in {"payload_parse_failed", "unsupported_payload"}:
         return "capture raw_keys/backend and check the Kit lidar payload shape"
     return "inspect warning/raw_keys and retry only if the read is idempotent"
+
+
+def _lidar_empty_fallback_tool_order() -> list[str]:
+    return [
+        "simulation_get_status",
+        "simulation_step",
+        "sensor_lidar_get_point_cloud",
+        "extension_capture_logs",
+    ]
 
 
 def _enum_token(value: Any) -> str:

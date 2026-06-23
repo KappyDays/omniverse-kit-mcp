@@ -270,6 +270,12 @@ def test_lidar_readback_diagnostics_suggests_retry_for_empty_scan_buffer():
         "replicator_annotator",
     ]
     assert "retry an idempotent read" in diagnostics["suggested_next"]
+    assert diagnostics["fallback_tool_order"] == [
+        "simulation_get_status",
+        "simulation_step",
+        "sensor_lidar_get_point_cloud",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -305,6 +311,7 @@ def test_lidar_readback_diagnostics_omits_empty_guidance_for_nonempty_points():
     assert "empty_reason" not in diagnostics
     assert "reason" not in diagnostics
     assert "suggested_next" not in diagnostics
+    assert "fallback_tool_order" not in diagnostics
 
 
 def _load_validation_sensor_service():
