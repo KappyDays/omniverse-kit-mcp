@@ -48,6 +48,7 @@ Fault diagnosis is `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · 
 - **R1a** NavMesh bake after recalling `simulation_stop` (`load → stop → bake → query → play → navigate`) — Body `kkr-extensions/docs/kit-sdk-pitfalls.md` NavMesh §
 - **R2** Robot operation (`set_joint_positions` / `navigate_*` / `drive_physics`) requires `simulation_play` state (except `robot_load`) — Detailed `src/omniverse_kit_mcp/modules/CLAUDE.md` Robot
 - **R3** After `viewport_capture`, `Read` tool visual verification obligation — blank/black, retry backlight/camera/asset adjustment
+- **R4** Before public commit/push, review for user-specific paths, secrets, and generated local references; `tests/unit/test_public_repo_hygiene.py` guards drift.
 
 ## Change Routing
 
