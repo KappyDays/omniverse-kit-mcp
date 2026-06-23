@@ -41,10 +41,12 @@ Robot + RTX live proof wrapper:
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 
-Raw live reports can include host-local capture paths and Kit log filenames.
-For public evidence, request `redact_local_paths=true`, preserve SHA256/pixel stats
-and WARN/ERROR counts, confirm artifact paths look like
-`<validation-api-capture>/capture_<id>.png`, and run the public hygiene checks.
+Raw live reports can include host-local capture paths, Kit log filenames,
+process IDs, worker/thread IDs, and unstable Python object repr addresses.
+For public evidence, request `redact_local_paths=true`; it redacts those local
+identifiers while preserving SHA256/pixel stats and WARN/ERROR counts. Confirm
+artifact paths look like `<validation-api-capture>/capture_<id>.png`, and run
+the public hygiene checks.
 When retrying RTX lidar reads, preserve `retry_failures[].data_summary` fields
 such as `diagnostics.cached_lidar_instance` and
 `diagnostics.readback_paths_attempted` in evidence notes.

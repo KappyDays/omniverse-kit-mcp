@@ -266,8 +266,12 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
     assert "same MCP host process that ran" in guide
     assert "fresh stdio host has no in-memory latest report" in guide
     assert "Raw live reports can include host-local capture paths" in guide
+    assert "process IDs" in guide
+    assert "worker/thread IDs" in guide
+    assert "unstable Python object repr addresses" in guide
+    assert "redacts those local" in guide
+    assert "identifiers while preserving SHA256/pixel stats" in guide
     assert "<validation-api-capture>/capture_<id>.png" in guide
-    assert "preserve SHA256/pixel stats" in guide
     assert "WARN/ERROR counts" in guide
     assert "public hygiene checks" in guide
 
