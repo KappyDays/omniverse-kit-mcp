@@ -55,6 +55,7 @@ class StepResult:
     message: str | None = None
     duration_ms: int | None = None
     artifacts: dict[str, str] = field(default_factory=dict)
+    data_summary: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

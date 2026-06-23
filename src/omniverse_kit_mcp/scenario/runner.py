@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import asdict, is_dataclass
+from enum import Enum
 from typing import Any
 
 from omniverse_kit_mcp.modules.asset_module import AssetModule
@@ -28,7 +30,13 @@ from omniverse_kit_mcp.modules.viewport_module import ViewportModule
 from omniverse_kit_mcp.modules.window_module import WindowModule
 from omniverse_kit_mcp.scenario.action_registry import CONTEXT_AWARE_ACTIONS, build_request
 from omniverse_kit_mcp.scenario.context import ScenarioContext
-from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, ModuleResult
+from omniverse_kit_mcp.types.common import (
+    ExecutionStatus,
+    JsonPrimitive,
+    JsonValue,
+    ModuleName,
+    ModuleResult,
+)
 from omniverse_kit_mcp.types.extension import ExtensionResetRequest
 from omniverse_kit_mcp.types.scenario import (
     CompiledScenario,
@@ -185,6 +193,11 @@ class ScenarioRunner:
                     message=module_result.message if module_result else None,
                     duration_ms=int(time.time() * 1000) - step_started,
                     artifacts=module_result.artifacts if module_result else {},
+                    data_summary=(
+                        _summarize_step_data(module_result.data)
+                        if module_result and module_result.data is not None
+                        else {}
+                    ),
                 ))
                 if status != ExecutionStatus.PASSED and fail_fast and not step.continue_on_failure:
                     break
@@ -480,3 +493,56 @@ def _skip_steps(*step_groups: tuple[CompiledStep, ...]) -> list[StepResult]:
                 message="Skipped due to prior phase failure",
             ))
     return results
+
+
+def _summarize_step_data(data: Any) -> dict[str, JsonValue]:
+    """Return a bounded, JSON-safe diagnostic summary for scenario reports."""
+    if is_dataclass(data) and not isinstance(data, type):
+        raw = asdict(data)
+    elif isinstance(data, dict):
+        raw = data
+    else:
+        raw = {
+            key: value
+            for key, value in vars(data).items()
+            if not key.startswith("_")
+        } if hasattr(data, "__dict__") else {"value": data}
+
+    summary: dict[str, JsonValue] = {}
+    for key, value in raw.items():
+        summary[str(key)] = _summarize_json_value(value)
+    return summary
+
+
+def _summarize_json_value(value: Any) -> JsonValue:
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, dict):
+        return {
+            str(key): _summarize_json_value(item)
+            for key, item in list(value.items())[:20]
+        }
+    if isinstance(value, (list, tuple)):
+        return _summarize_sequence(value)
+    if is_dataclass(value) and not isinstance(value, type):
+        return {
+            str(key): _summarize_json_value(item)
+            for key, item in asdict(value).items()
+        }
+    return str(value)
+
+
+def _summarize_sequence(value: list[Any] | tuple[Any, ...]) -> JsonValue:
+    count = len(value)
+    if count <= 12 and all(_is_json_primitive(item) for item in value):
+        return [_summarize_json_value(item) for item in value]
+    return {
+        "count": count,
+        "sample": [_summarize_json_value(item) for item in value[:3]],
+    }
+
+
+def _is_json_primitive(value: Any) -> bool:
+    return isinstance(value, JsonPrimitive)

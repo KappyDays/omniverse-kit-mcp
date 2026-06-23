@@ -7,6 +7,7 @@ Guards against regressions of the Phase-A fixes (B1/B2/B3) and the
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,7 @@ from omniverse_kit_mcp.scenario.action_registry import (
 )
 from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import load_scenario
+from omniverse_kit_mcp.scenario.reporters import to_json
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName
 
@@ -480,6 +482,44 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     )
     assert capture_payload["return_stats"] is True
     assert capture_payload["warmup_frames"] == 8
+    cloud_step = next(
+        result for result in summary.step_results
+        if result.step_id == "read_lidar_point_cloud"
+    )
+    assert cloud_step.data_summary["num_points"] == 3
+    assert cloud_step.data_summary["backend"] == "omni.replicator.core"
+    assert cloud_step.data_summary["frames_waited"] == 12
+    assert cloud_step.data_summary["raw_keys"] == [
+        "azimuth",
+        "data",
+        "distance",
+        "elevation",
+        "intensity",
+    ]
+    assert cloud_step.data_summary["points"] == {
+        "count": 3,
+        "sample": [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+        ],
+    }
+    report = json.loads(to_json(summary))
+    cloud_report = next(
+        result for result in report["step_results"]
+        if result["step_id"] == "read_lidar_point_cloud"
+    )
+    assert cloud_report["data_summary"]["num_points"] == 3
+    assert cloud_report["data_summary"]["backend"] == "omni.replicator.core"
+    assert cloud_report["data_summary"]["frames_waited"] == 12
+    assert cloud_report["data_summary"]["raw_keys"] == [
+        "azimuth",
+        "data",
+        "distance",
+        "elevation",
+        "intensity",
+    ]
+    assert cloud_report["data_summary"]["warning"] is None
 
 
 @pytest.mark.asyncio
