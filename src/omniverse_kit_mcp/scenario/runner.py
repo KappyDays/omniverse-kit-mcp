@@ -175,9 +175,8 @@ class ScenarioRunner:
             step_started = int(time.time() * 1000)
             try:
                 timeout = step.timeout_s or 60.0
-                module_result = await asyncio.wait_for(
-                    self._execute_step(step, ctx, scenario_id),
-                    timeout=timeout,
+                module_result = await self._execute_step_with_retries(
+                    step, ctx, scenario_id, timeout
                 )
                 status = module_result.status if module_result else ExecutionStatus.ERROR
                 if module_result and module_result.artifacts:
@@ -222,6 +221,42 @@ class ScenarioRunner:
                 if fail_fast and not step.continue_on_failure:
                     break
         return results
+
+    async def _execute_step_with_retries(
+        self,
+        step: CompiledStep,
+        ctx: ScenarioContext,
+        scenario_id: str,
+        timeout: float,
+    ) -> ModuleResult[Any]:
+        policy = step.retry_policy
+        if policy is not None and policy.max_attempts > 1 and not step.idempotent:
+            return error_result(
+                (
+                    f"Step '{step.id}' declares retries but is not marked "
+                    "idempotent=true"
+                ),
+                started_ms=int(time.time() * 1000),
+                error_code="SCENARIO_RETRY_REQUIRES_IDEMPOTENT_STEP",
+            )
+
+        max_attempts = max(1, policy.max_attempts if policy is not None else 1)
+        backoff_s = policy.initial_backoff_s if policy is not None else 0.0
+        max_backoff_s = policy.max_backoff_s if policy is not None else 0.0
+
+        for attempt in range(1, max_attempts + 1):
+            module_result = await asyncio.wait_for(
+                self._execute_step(step, ctx, scenario_id),
+                timeout=timeout,
+            )
+            status = module_result.status if module_result else ExecutionStatus.ERROR
+            if status == ExecutionStatus.PASSED or attempt == max_attempts:
+                return module_result
+            if backoff_s > 0:
+                await asyncio.sleep(backoff_s)
+                backoff_s = min(max_backoff_s, backoff_s * policy.multiplier)
+
+        raise RuntimeError("unreachable retry loop exit")
 
     async def _execute_step(
         self, step: CompiledStep, ctx: ScenarioContext, scenario_id: str

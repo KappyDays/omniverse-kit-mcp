@@ -36,6 +36,7 @@ from omniverse_kit_mcp.scenario.loader import list_scenarios, load_scenario, val
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
+from omniverse_kit_mcp.types.scenario import CompiledStep
 from omniverse_kit_mcp.tools.tool_profiles import (
     PROFILE_FULL,
     ToolSelection,
@@ -161,10 +162,10 @@ def register_scenario_tools(
             },
             "variables": scenario.variables,
             "phases": {
-                "arrange": [{"id": s.id, "module": s.module.value, "action": s.action} for s in scenario.arrange_steps],
-                "act": [{"id": s.id, "module": s.module.value, "action": s.action} for s in scenario.act_steps],
-                "assert": [{"id": s.id, "module": s.module.value, "action": s.action} for s in scenario.assert_steps],
-                "cleanup": [{"id": s.id, "module": s.module.value, "action": s.action} for s in scenario.cleanup_steps],
+                "arrange": [_plan_step(s) for s in scenario.arrange_steps],
+                "act": [_plan_step(s) for s in scenario.act_steps],
+                "assert": [_plan_step(s) for s in scenario.assert_steps],
+                "cleanup": [_plan_step(s) for s in scenario.cleanup_steps],
             },
         }
         return json.dumps(plan, indent=2, ensure_ascii=False)
@@ -182,3 +183,21 @@ def register_scenario_tools(
         if report is None:
             return json.dumps({"error": f"No report found for scenario '{scenario_id}'"})
         return report
+
+
+def _plan_step(step: CompiledStep) -> dict[str, Any]:
+    planned: dict[str, Any] = {
+        "id": step.id,
+        "module": step.module.value,
+        "action": step.action,
+        "args": dict(step.args),
+    }
+    if step.idempotent:
+        planned["idempotent"] = True
+    if step.retry_policy is not None:
+        planned["retries"] = {
+            "maxAttempts": step.retry_policy.max_attempts,
+            "initialBackoffSeconds": step.retry_policy.initial_backoff_s,
+            "maxBackoffSeconds": step.retry_policy.max_backoff_s,
+        }
+    return planned

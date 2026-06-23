@@ -123,6 +123,11 @@ spec:
         annotators: [rgb, depth, semantic_segmentation]
         resolution: [1280, 720]
 
+    - id: play_for_sensor_data
+      module: simulation
+      action: play
+      args: {}
+
     - id: attach_top_lidar
       module: sensor
       action: attach_rtx_lidar
@@ -140,24 +145,24 @@ spec:
         sensor_prim: ${variables.lidar_prim}
         mode: "on"
 
-    - id: play_for_sensor_data
-      module: simulation
-      action: play
-      args: {}
-
     - id: advance_sensor_frames
       module: simulation
       action: step
       args:
-        frames: 30
+        frames: 60
 
     - id: read_lidar_point_cloud
       module: sensor
       action: lidar_get_point_cloud
+      idempotent: true
+      retries:
+        maxAttempts: 3
+        initialBackoffSeconds: 0.25
+        maxBackoffSeconds: 1.0
       args:
         sensor_prim: ${variables.lidar_prim}
         max_points: 512
-        frames_to_wait: 12
+        frames_to_wait: 60
         min_points: 1
         fail_on_warning: true
 

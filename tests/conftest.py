@@ -1295,6 +1295,9 @@ class MockIsaacRestClient:
 
     async def sensor_lidar_get_point_cloud(self, request: dict) -> dict:
         self.calls.append(("sensor_lidar_get_point_cloud", request))
+        sequence = self.responses.get("sensor_lidar_get_point_cloud_sequence")
+        if sequence:
+            return sequence.pop(0)
         max_points = int(request.get("max_points", 1000))
         n = min(3, max_points)
         return self.responses.get("sensor_lidar_get_point_cloud", {

@@ -72,7 +72,7 @@ spec:
 | `simulation` | WRITE + timeline (stage_load_usd, create/set/delete_prim, play/pause/stop, stage_save/open/new) | **Stage WRITE is simulation routing** (not StageModule) |
 | `viewport` | capture / capture_assert / frame_prims / compare_ssim / set_active_camera | Requires GUI mode; use `capture_assert` for nonblank smoke evidence |
 | `robot` / `character` | Domain tool (load / navigate / joints / play_animation, etc.) | R2 (playing required) + detailed caveat: `../src/omniverse_kit_mcp/tools/CLAUDE.md` |
-| `sensor` | RTX camera/lidar attach, annotators, point-cloud readback | Use `sensor.lidar_get_point_cloud` for lidar data; do not use lidar prims as viewport cameras |
+| `sensor` | RTX camera/lidar attach, annotators, point-cloud readback | Use `sensor.lidar_get_point_cloud` for lidar data; do not use lidar prims as viewport cameras. For robot+RTX timing/retry caveats, follow `../docs/invariants/scenario-validation.md` |
 | `asset` / `extension` / `job` / `lakehouse` | list/search/external_* prepare / trigger / status / query | `lakehouse` is query only; `asset.external_*` prepares ignored-cache files and is not stage placement proof |
 
 **GUI equivalent tools**: File menu (`stage_save/open/new`), Stage panel (`stage_get/set_selection`), Viewport toolbar (`viewport_set_active_camera`). `stage_create_prim(prim_type=...)` also accepts Camera / DistantLight / DomeLight / SphereLight / RectLight in addition to Cube/Sphere.

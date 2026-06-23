@@ -434,14 +434,20 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     )
     raw_cloud = next(
         step for step in raw["spec"]["act"] if step["id"] == "read_lidar_point_cloud"
-    )["args"]
-    assert raw_cloud["min_points"] == 1
-    assert raw_cloud["fail_on_warning"] is True
+    )
+    assert raw_cloud["args"]["min_points"] == 1
+    assert raw_cloud["args"]["fail_on_warning"] is True
+    assert raw_cloud["idempotent"] is True
+    assert raw_cloud["retries"]["maxAttempts"] == 3
     scenario = compile_scenario(raw)
 
     summary = await runner.run(scenario)
 
     assert summary.status == ExecutionStatus.PASSED, summary
+    act_step_ids = [step["id"] for step in raw["spec"]["act"]]
+    assert act_step_ids.index("play_for_sensor_data") < act_step_ids.index(
+        "attach_top_lidar"
+    )
     call_names = [name for name, _payload in isaac_client.calls]
     for expected in (
         "stage_load_usd",
@@ -455,7 +461,11 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "viewport_capture",
     ):
         assert expected in call_names
-    assert call_names.index("simulation_play") < call_names.index("simulation_stop")
+    play_indices = [
+        idx for idx, name in enumerate(call_names) if name == "simulation_play"
+    ]
+    lidar_attach_idx = call_names.index("sensor_attach_rtx_lidar")
+    assert play_indices[-1] < lidar_attach_idx
     assert call_names.index("sensor_attach_rtx_lidar") < call_names.index(
         "sensor_lidar_get_point_cloud"
     )
@@ -476,7 +486,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         payload for name, payload in isaac_client.calls
         if name == "sensor_lidar_get_point_cloud"
     )
-    assert cloud_payload["frames_to_wait"] == 12
+    assert cloud_payload["frames_to_wait"] == 60
     capture_payload = next(
         payload for name, payload in isaac_client.calls if name == "viewport_capture"
     )
@@ -488,7 +498,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     )
     assert cloud_step.data_summary["num_points"] == 3
     assert cloud_step.data_summary["backend"] == "omni.replicator.core"
-    assert cloud_step.data_summary["frames_waited"] == 12
+    assert cloud_step.data_summary["frames_waited"] == 60
     assert cloud_step.data_summary["raw_keys"] == [
         "azimuth",
         "data",
@@ -511,7 +521,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     )
     assert cloud_report["data_summary"]["num_points"] == 3
     assert cloud_report["data_summary"]["backend"] == "omni.replicator.core"
-    assert cloud_report["data_summary"]["frames_waited"] == 12
+    assert cloud_report["data_summary"]["frames_waited"] == 60
     assert cloud_report["data_summary"]["raw_keys"] == [
         "azimuth",
         "data",
@@ -520,6 +530,119 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "intensity",
     ]
     assert cloud_report["data_summary"]["warning"] is None
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_retries_transient_lidar_read_failure():
+    """Scenario step retries must absorb transient RTX lidar empty-buffer reads."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["sensor_lidar_get_point_cloud_sequence"] = [
+        {
+            "ok": True,
+            "sensor_prim": "/World/Robot/Lidar",
+            "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+            "backend": "omni.replicator.core",
+            "num_points": 0,
+            "points": [],
+            "intensities": [],
+            "truncated": False,
+            "frames_waited": 12,
+            "raw_keys": ["azimuth", "distance"],
+            "warning": "polar arrays contained 0 elements",
+        },
+        {
+            "ok": True,
+            "sensor_prim": "/World/Robot/Lidar",
+            "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+            "backend": "omni.replicator.core",
+            "num_points": 2,
+            "points": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            "intensities": [1.0, 1.0],
+            "truncated": False,
+            "frames_waited": 12,
+            "raw_keys": ["azimuth", "distance"],
+            "warning": None,
+        },
+    ]
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_lidar_retry", "name": "lidar retry"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "read_lidar",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "retries": {
+                        "maxAttempts": 2,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {
+                        "sensor_prim": "/World/Robot/Lidar",
+                        "frames_to_wait": 12,
+                        "min_points": 1,
+                        "fail_on_warning": True,
+                    },
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    lidar_calls = [
+        c for c in isaac_client.calls if c[0] == "sensor_lidar_get_point_cloud"
+    ]
+    assert len(lidar_calls) == 2
+    step_result = next(r for r in summary.step_results if r.step_id == "read_lidar")
+    assert step_result.status == ExecutionStatus.PASSED
+    assert step_result.data_summary["num_points"] == 2
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_rejects_retries_without_idempotent_flag():
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_retry_requires_idempotent", "name": "retry guard"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "unsafe_retry",
+                    "module": "simulation",
+                    "action": "stage_create_prim",
+                    "retries": {
+                        "maxAttempts": 2,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"prim_path": "/World/Unsafe", "prim_type": "Cube"},
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.FAILED, summary
+    create_calls = [c for c in isaac_client.calls if c[0] == "stage_create_prim"]
+    assert create_calls == []
+    step_result = next(r for r in summary.step_results if r.step_id == "unsafe_retry")
+    assert step_result.status == ExecutionStatus.ERROR
+    assert "idempotent=true" in (step_result.message or "")
 
 
 @pytest.mark.asyncio

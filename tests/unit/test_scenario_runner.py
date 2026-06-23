@@ -8,6 +8,7 @@ from omniverse_kit_mcp.exceptions import ScenarioSchemaError
 from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import validate_schema
 from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
+from omniverse_kit_mcp.tools.scenario_tools import _plan_step
 
 
 def test_validate_valid_scenario(sync_add_cube_scenario_raw):
@@ -47,3 +48,38 @@ def test_input_overrides_substitution(sync_add_cube_scenario_raw):
     raw["spec"]["variables"] = {**raw["spec"].get("variables", {}), "prim_path": "/World/Box"}
     scenario = compile_scenario(raw)
     assert scenario.assert_steps[0].args["prim_path"] == "/World/Box"
+
+
+def test_plan_step_includes_idempotent_retry_metadata():
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "plan_retry", "name": "plan retry"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "read_lidar",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "retries": {
+                        "maxAttempts": 3,
+                        "initialBackoffSeconds": 0.25,
+                        "maxBackoffSeconds": 1.0,
+                    },
+                    "args": {"sensor_prim": "/World/Lidar"},
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    planned = _plan_step(scenario.assert_steps[0])
+
+    assert planned["args"] == {"sensor_prim": "/World/Lidar"}
+    assert planned["idempotent"] is True
+    assert planned["retries"] == {
+        "maxAttempts": 3,
+        "initialBackoffSeconds": 0.25,
+        "maxBackoffSeconds": 1.0,
+    }

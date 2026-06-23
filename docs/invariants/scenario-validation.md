@@ -61,15 +61,22 @@ refusal. scenario is required to place `simulation_play` in arrange.
 
 Combined robot/sensor smoke uses `scenarios/smoke/robot_rtx_sensor_golden_workflow.yaml`:
 `stage_new -> load grid/light/robot -> create lidar target cubes -> play/stop
-warm-up -> attach RTX camera -> set camera annotators -> attach RTX lidar ->
-lidar visualization -> play/step ->
-sensor.lidar_get_point_cloud(min_points=1, fail_on_warning=true) -> pause ->
+warm-up -> attach RTX camera -> set camera annotators -> play ->
+attach RTX lidar -> lidar visualization -> step(frames=60) ->
+sensor.lidar_get_point_cloud(idempotent=true, retries.maxAttempts=3,
+frames_to_wait=60, min_points=1, fail_on_warning=true) -> pause ->
 viewport.frame_prims -> viewport.capture_assert -> cleanup`.
 
 Do not use an RTX lidar prim as a viewport camera. Frame the robot/sensor prims
 with a normal viewport camera and use `sensor.lidar_get_point_cloud` for lidar data.
 Keep at least one target prim near the lidar scan plane; an empty flat grid can
 legitimately produce zero point returns even when the sensor is attached.
+Attach RTX lidar after the timeline is already playing; live Isaac Sim 6.0
+evidence showed cold-attached lidar can stay on an empty GMO/scan buffer while a
+fresh lidar attached during play returns points in the same stage.
+Transient zero-point RTX buffers should be absorbed with step-level retries only
+on idempotent sensor reads; inspect `scenario_last_report.data_summary` before
+opening logs.
 
 ## R3. Viewport capture visual verification obligation
 
