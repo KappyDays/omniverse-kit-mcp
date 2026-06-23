@@ -271,6 +271,40 @@ def test_lidar_readback_diagnostics_suggests_retry_for_empty_scan_buffer():
     assert "retry an idempotent read" in diagnostics["suggested_next"]
 
 
+@pytest.mark.parametrize(
+    ("empty_reason", "expected_hint"),
+    [
+        ("readback_unavailable", "extension logs"),
+        ("payload_parse_failed", "payload shape"),
+        ("unsupported_payload", "payload shape"),
+        ("unknown_empty", "retry an idempotent read"),
+    ],
+)
+def test_lidar_empty_suggested_next_covers_failure_classes(
+    empty_reason: str,
+    expected_hint: str,
+):
+    service = _load_validation_sensor_service()
+
+    assert expected_hint in service._lidar_empty_suggested_next(empty_reason)
+
+
+def test_lidar_readback_diagnostics_omits_empty_guidance_for_nonempty_points():
+    service = _load_validation_sensor_service()
+
+    diagnostics = service._lidar_readback_diagnostics(
+        empty_reason=None,
+        warning=None,
+        raw_keys=["data", "intensity"],
+        frames_waited=2,
+        cached_lidar_instance=False,
+        readback_paths_attempted=["replicator_annotator"],
+    )
+
+    assert "empty_reason" not in diagnostics
+    assert "suggested_next" not in diagnostics
+
+
 def _load_validation_sensor_service():
     path = (
         PROJECT / "kkr-extensions" / "omni.mycompany.validation_api"
