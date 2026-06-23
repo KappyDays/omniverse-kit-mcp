@@ -85,6 +85,7 @@ class SensorService:
 
         sensor_path = _safe_child_path(robot_prim, sensor_name)
         if sensor_type == "rtx_lidar":
+            self._discard_cached_lidar_instance(sensor_path)
             # Proper RTX lidar = an OmniLidar prim carrying the
             # OmniSensorGenericLidarCoreAPI schema + a beam config, created via the
             # IsaacSensorCreateRtxLidar command. A bare UsdGeom.Camera prim has NO
@@ -110,6 +111,7 @@ class SensorService:
                     path=sensor_path,
                     config=preset,
                     translations=np.array(mount_offset, dtype=float),
+                    aux_output_level="FULL",
                 )
             except Exception as exc:  # noqa: BLE001
                 lidar_backend = f"legacy_command:{type(exc).__name__}"
@@ -201,6 +203,22 @@ class SensorService:
         if sensor_type == "rtx_depth_camera":
             response["annotator"] = custom_block["annotator"]
         return response
+
+    def _discard_cached_lidar_instance(self, sensor_path: str) -> None:
+        cached = self._lidar_instances.pop(sensor_path, None)
+        if cached is None:
+            return
+        invalidate = getattr(cached, "_invalidate_sensor", None)
+        if callable(invalidate):
+            try:
+                invalidate()
+            except Exception:  # noqa: BLE001
+                import logging as _lg
+                _lg.getLogger(__name__).warning(
+                    "cached RTX lidar invalidation failed for %s",
+                    sensor_path,
+                    exc_info=True,
+                )
 
     async def attach_contact(
         self, request: dict[str, Any],
@@ -499,82 +517,25 @@ class SensorService:
                 app = omni.kit.app.get_app()
                 for _ in range(frames_to_wait):
                     await app.next_update_async()
-                frame_raw = cached.get_data("generic-model-output")
-                frame = frame_raw
-                if isinstance(frame_raw, tuple) and len(frame_raw) == 2:
-                    gmo_raw = frame_raw[0]
-                    info = frame_raw[1] or {}
-                    if gmo_raw is not None:
-                        try:
-                            gmo = parse_generic_model_output_data(gmo_raw)
-                            (
-                                points,
-                                intensities,
-                                raw_keys,
-                                truncated,
-                            ) = _extract_gmo_points(gmo, max_points)
-                            if isinstance(info, dict):
-                                (
-                                    info_points,
-                                    info_intensities,
-                                    info_raw_keys,
-                                    info_truncated,
-                                    info_warning,
-                                ) = _extract_scan_dict_points(info, max_points)
-                                raw_keys = sorted({*raw_keys, *info_raw_keys})
-                                if info_points:
-                                    points = info_points
-                                    intensities = info_intensities
-                                    truncated = info_truncated
-                                elif info_warning:
-                                    raw_keys.append(f"info_warning:{info_warning}")
-                            if points:
-                                return {
-                                    "ok": True,
-                                    "sensor_prim": sensor_prim_path,
-                                    "annotator": "generic-model-output",
-                                    "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
-                                    "num_points": len(points),
-                                    "points": points,
-                                    "intensities": intensities,
-                                    "truncated": truncated,
-                                    "frames_waited": frames_to_wait,
-                                    "raw_keys": raw_keys,
-                                    "warning": None,
-                                    "empty_reason": None,
-                                    "diagnostics": _lidar_readback_diagnostics(
-                                        empty_reason=None,
-                                        warning=None,
-                                        raw_keys=raw_keys,
-                                        frames_waited=frames_to_wait,
-                                        cached_lidar_instance=True,
-                                        readback_paths_attempted=readback_paths_attempted,
-                                    ),
-                                }
-                            warning = (
-                                "parsed generic-model-output contained "
-                                f"{getattr(gmo, 'numElements', 0)} elements but no "
-                                "usable point data"
-                            )
-                        except Exception as exc:  # noqa: BLE001
-                            warning = f"generic-model-output parse failed: {exc}"
-                if isinstance(frame_raw, tuple) and len(frame_raw) == 2:
-                    frame = {"data": frame_raw[0], **(frame_raw[1] or {})}
-                if isinstance(frame, dict):
                     (
-                        legacy_points,
-                        legacy_intensities,
-                        legacy_raw_keys,
-                        legacy_truncated,
-                        legacy_warning,
-                    ) = _extract_scan_dict_points(frame, max_points)
-                    raw_keys = sorted({*raw_keys, *legacy_raw_keys})
-                    if legacy_points:
-                        points = legacy_points
-                        intensities = legacy_intensities
-                        truncated = legacy_truncated
-                    elif legacy_warning and warning is None:
-                        warning = legacy_warning
+                        frame_points,
+                        frame_intensities,
+                        frame_raw_keys,
+                        frame_truncated,
+                        frame_warning,
+                    ) = _extract_cached_lidar_frame_points(
+                        cached.get_data("generic-model-output"),
+                        max_points,
+                        parse_generic_model_output_data,
+                    )
+                    raw_keys = sorted({*raw_keys, *frame_raw_keys})
+                    if frame_points:
+                        points = frame_points
+                        intensities = frame_intensities
+                        truncated = frame_truncated
+                        break
+                    if frame_warning:
+                        warning = frame_warning
                 if points:
                     return {
                         "ok": True,
@@ -794,14 +755,20 @@ def _extract_gmo_points(
         return [], [], raw_keys, False
 
     elements = getattr(gmo, "elements", None)
+    source = elements if elements is not None else gmo
     if elements is None:
-        raw_keys.append("missing:elements")
+        raw_keys.append("source:top_level")
+
+    xs = getattr(source, "x", None)
+    ys = getattr(source, "y", None)
+    zs = getattr(source, "z", None)
+    if xs is None or ys is None or zs is None:
+        raw_keys.append("missing:xyz")
         return [], [], raw_keys, False
 
-    xs = getattr(elements, "x", None)
-    ys = getattr(elements, "y", None)
-    zs = getattr(elements, "z", None)
-    scalars = getattr(elements, "scalar", None)
+    scalars = getattr(source, "scalar", None)
+    if scalars is None:
+        scalars = getattr(source, "intensity", None)
     n = min(num_elements, max_points)
     truncated = num_elements > max_points
     cartesian = "cartesian" in coords_type.lower()
@@ -829,6 +796,76 @@ def _extract_gmo_points(
         if intensity is not None:
             intensities.append(intensity)
     return points, intensities, raw_keys, truncated
+
+
+def _extract_cached_lidar_frame_points(
+    frame_raw: Any,
+    max_points: int,
+    parse_gmo: Any,
+) -> tuple[list[list[float]], list[float], list[str], bool, str | None]:
+    """Extract points from one LidarSensor.get_data("generic-model-output") frame."""
+    frame = frame_raw
+    raw_keys: list[str] = []
+    points: list[list[float]] = []
+    intensities: list[float] = []
+    truncated = False
+    warning: str | None = None
+
+    if isinstance(frame_raw, tuple) and len(frame_raw) == 2:
+        gmo_raw = frame_raw[0]
+        info = frame_raw[1] or {}
+        if gmo_raw is not None:
+            try:
+                gmo = parse_gmo(gmo_raw)
+                (
+                    points,
+                    intensities,
+                    raw_keys,
+                    truncated,
+                ) = _extract_gmo_points(gmo, max_points)
+            except Exception as exc:  # noqa: BLE001
+                warning = f"generic-model-output parse failed: {exc}"
+        if isinstance(info, dict):
+            (
+                info_points,
+                info_intensities,
+                info_raw_keys,
+                info_truncated,
+                info_warning,
+            ) = _extract_scan_dict_points(info, max_points)
+            if info_points:
+                raw_keys = sorted({*raw_keys, *info_raw_keys})
+                points = info_points
+                intensities = info_intensities
+                truncated = info_truncated
+            elif not points:
+                raw_keys = sorted({*raw_keys, *info_raw_keys})
+                if info_warning and warning is None:
+                    warning = info_warning
+        frame = {"data": gmo_raw, **info} if isinstance(info, dict) else frame
+
+    if isinstance(frame, dict) and not points:
+        (
+            legacy_points,
+            legacy_intensities,
+            legacy_raw_keys,
+            legacy_truncated,
+            legacy_warning,
+        ) = _extract_scan_dict_points(frame, max_points)
+        raw_keys = sorted({*raw_keys, *legacy_raw_keys})
+        if legacy_points:
+            points = legacy_points
+            intensities = legacy_intensities
+            truncated = legacy_truncated
+        elif legacy_warning and warning is None:
+            warning = legacy_warning
+
+    if not points and warning is None:
+        warning = (
+            "parsed generic-model-output contained "
+            f"{_gmo_num_elements_from_keys(raw_keys)} elements but no usable point data"
+        )
+    return points, intensities, raw_keys, truncated, warning
 
 
 def _extract_scan_dict_points(
@@ -900,6 +937,17 @@ def _extract_scan_dict_points(
                 warning = "polar arrays had no usable numeric point data"
 
     return points, intensities, raw_keys, truncated, warning
+
+
+def _gmo_num_elements_from_keys(raw_keys: list[str]) -> int:
+    values: list[int] = []
+    for key in raw_keys:
+        if key.startswith("num_elements:"):
+            try:
+                values.append(int(key.split(":", 1)[1]))
+            except ValueError:
+                continue
+    return max(values, default=0)
 
 
 def _lidar_empty_reason(

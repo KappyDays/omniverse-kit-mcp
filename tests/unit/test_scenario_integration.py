@@ -880,6 +880,9 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     assert act_step_ids.index("play_for_sensor_data") < act_step_ids.index(
         "attach_top_lidar"
     )
+    assert act_step_ids.index("pre_lidar_attach_warmup") < act_step_ids.index(
+        "attach_top_lidar"
+    )
     call_names = [name for name, _payload in isaac_client.calls]
     for expected in (
         "stage_load_usd",
@@ -918,7 +921,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         payload for name, payload in isaac_client.calls
         if name == "sensor_lidar_get_point_cloud"
     )
-    assert cloud_payload["frames_to_wait"] == 60
+    assert cloud_payload["frames_to_wait"] == 180
     capture_payload = next(
         payload for name, payload in isaac_client.calls if name == "viewport_capture"
     )
@@ -930,7 +933,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     )
     assert cloud_step.data_summary["num_points"] == 3
     assert cloud_step.data_summary["backend"] == "omni.replicator.core"
-    assert cloud_step.data_summary["frames_waited"] == 60
+    assert cloud_step.data_summary["frames_waited"] == 180
     assert cloud_step.data_summary["raw_keys"] == [
         "azimuth",
         "data",
@@ -953,7 +956,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     )
     assert cloud_report["data_summary"]["num_points"] == 3
     assert cloud_report["data_summary"]["backend"] == "omni.replicator.core"
-    assert cloud_report["data_summary"]["frames_waited"] == 60
+    assert cloud_report["data_summary"]["frames_waited"] == 180
     assert cloud_report["data_summary"]["raw_keys"] == [
         "azimuth",
         "data",
@@ -965,7 +968,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     markdown = to_markdown(summary)
     assert (
         "- `read_lidar_point_cloud`: num_points=3; "
-        "backend=omni.replicator.core; frames_waited=60; "
+        "backend=omni.replicator.core; frames_waited=180; "
         "raw_keys=[azimuth, data, distance, elevation, intensity]; "
         "warning=null; truncated=False"
     ) in markdown

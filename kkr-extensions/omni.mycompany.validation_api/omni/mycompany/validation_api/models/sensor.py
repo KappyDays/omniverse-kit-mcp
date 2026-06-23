@@ -111,7 +111,7 @@ class SensorLidarGetPointCloudRequestModel(BaseModel):
         description="Truncate to first N points (response size cap)",
     )
     frames_to_wait: int = Field(
-        default=2, ge=1, le=60,
+        default=2, ge=1, le=300,
         description="Kit ticks to await before reading annotator (lidar must spin)",
     )
 

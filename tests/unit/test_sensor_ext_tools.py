@@ -6,6 +6,7 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from omniverse_kit_mcp.config import AppConfig
 from omniverse_kit_mcp.mcp.server import create_mcp_server
@@ -194,6 +195,111 @@ def test_lidar_gmo_extractor_truncates_cartesian_points():
     assert intensities == []
 
 
+def test_lidar_gmo_extractor_accepts_top_level_fields():
+    service = _load_validation_sensor_service()
+
+    class Coord:
+        name = "SPHERICAL"
+
+    class Gmo:
+        numElements = 2
+        elementsCoordsType = Coord()
+        x = [0.0, 90.0]
+        y = [0.0, 0.0]
+        z = [2.0, 3.0]
+        scalar = [0.25, 0.75]
+
+    points, intensities, raw_keys, truncated = service._extract_gmo_points(Gmo(), 10)
+
+    assert truncated is False
+    assert "source:top_level" in raw_keys
+    assert points[0] == pytest.approx([2.0, 0.0, 0.0])
+    assert points[1] == pytest.approx([0.0, 3.0, 0.0], abs=1e-6)
+    assert intensities == [0.25, 0.75]
+
+
+def test_lidar_cached_frame_extractor_uses_gmo_tuple():
+    service = _load_validation_sensor_service()
+
+    class Coord:
+        name = "CARTESIAN"
+
+    class Gmo:
+        numElements = 2
+        elementsCoordsType = Coord()
+        x = [1.0, 4.0]
+        y = [2.0, 5.0]
+        z = [3.0, 6.0]
+        intensity = [0.5, 0.75]
+
+    def parse_gmo(raw):
+        assert raw == b"gmo"
+        return Gmo()
+
+    points, intensities, raw_keys, truncated, warning = (
+        service._extract_cached_lidar_frame_points(
+            (b"gmo", {"data": []}), 1, parse_gmo
+        )
+    )
+
+    assert truncated is True
+    assert warning is None
+    assert "source:top_level" in raw_keys
+    assert "data" not in raw_keys
+    assert points == [[1.0, 2.0, 3.0]]
+    assert intensities == [0.5]
+
+
+def test_lidar_request_model_allows_golden_workflow_wait():
+    models = _load_validation_sensor_models()
+
+    request = models.SensorLidarGetPointCloudRequestModel(
+        sensor_prim="/World/Robot/RtxLidar",
+        frames_to_wait=180,
+    )
+
+    assert request.frames_to_wait == 180
+
+
+def test_lidar_request_model_rejects_excessive_wait():
+    models = _load_validation_sensor_models()
+
+    with pytest.raises(ValidationError):
+        models.SensorLidarGetPointCloudRequestModel(
+            sensor_prim="/World/Robot/RtxLidar",
+            frames_to_wait=301,
+        )
+
+
+def test_lidar_cache_discard_invalidates_existing_runtime():
+    service_module = _load_validation_sensor_service()
+    service = service_module.SensorService()
+
+    class CachedLidar:
+        invalidated = False
+
+        def _invalidate_sensor(self):
+            self.invalidated = True
+
+    cached = CachedLidar()
+    service._lidar_instances["/World/Robot/TopLidar"] = cached
+
+    service._discard_cached_lidar_instance("/World/Robot/TopLidar")
+
+    assert cached.invalidated is True
+    assert "/World/Robot/TopLidar" not in service._lidar_instances
+
+
+def test_lidar_gmo_num_elements_from_keys_uses_largest_value():
+    service = _load_validation_sensor_service()
+
+    assert service._gmo_num_elements_from_keys([
+        "num_elements:0",
+        "num_elements:352386",
+        "num_elements:not-an-int",
+    ]) == 352386
+
+
 def test_lidar_scan_dict_extractor_converts_degrees_to_cartesian():
     service = _load_validation_sensor_service()
 
@@ -321,6 +427,20 @@ def _load_validation_sensor_service():
         / "sensor_service.py"
     )
     spec = importlib.util.spec_from_file_location("_validation_sensor_service", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_validation_sensor_models():
+    path = (
+        PROJECT / "kkr-extensions" / "omni.mycompany.validation_api"
+        / "omni" / "mycompany" / "validation_api" / "models"
+        / "sensor.py"
+    )
+    spec = importlib.util.spec_from_file_location("_validation_sensor_models", path)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)

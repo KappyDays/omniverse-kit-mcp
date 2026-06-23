@@ -62,9 +62,9 @@ refusal. scenario is required to place `simulation_play` in arrange.
 Combined robot/sensor smoke uses `scenarios/smoke/robot_rtx_sensor_golden_workflow.yaml`:
 `stage_new -> load grid/light/robot -> create lidar target cubes -> play/stop
 warm-up -> attach RTX camera -> set camera annotators -> play ->
-attach RTX lidar -> lidar visualization -> step(frames=60) ->
+step(frames=5) -> attach RTX lidar -> lidar visualization -> step(frames=180) ->
 sensor.lidar_get_point_cloud(idempotent=true, retries.maxAttempts=3,
-frames_to_wait=60, min_points=1, fail_on_warning=true) -> pause ->
+frames_to_wait=180, min_points=1, fail_on_warning=true) -> pause ->
 viewport.frame_prims -> viewport.capture_assert -> cleanup`.
 
 Live proof wrapper: `mcp_runtime_info -> kit_app_start ->
@@ -80,6 +80,9 @@ legitimately produce zero point returns even when the sensor is attached.
 Attach RTX lidar after the timeline is already playing; live Isaac Sim 6.0
 evidence showed cold-attached lidar can stay on an empty GMO/scan buffer while a
 fresh lidar attached during play returns points in the same stage.
+When reusing the same Kit process, discard stale cached RTX lidar runtime state
+before reattaching the same sensor path; otherwise an old render product can
+hold the new scan buffer at zero points until the process is restarted.
 Transient zero-point RTX buffers should be absorbed with step-level retries only
 on idempotent sensor reads; inspect `scenario_last_report` fields
 `attempts`, `max_attempts`, `retry_failures`, `data_summary.num_points`,
