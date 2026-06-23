@@ -84,6 +84,28 @@ def test_action_registry_routes_stage_writes_to_simulation():
     assert build_request(ModuleName.STAGE, "create_prim", {}) is None
 
 
+def test_extension_trigger_smoke_marks_potential_stage_mutation():
+    raw = load_scenario(PROJECT / "scenarios" / "smoke" / "trigger_sync_cube.yaml")
+
+    plan = _scenario_plan_payload(compile_scenario(raw))
+
+    mutation_steps = {step["id"]: step for step in plan["stage_mutation_steps"]}
+    assert mutation_steps == {
+        "sync_extension": {
+            "id": "sync_extension",
+            "phase": "act",
+            "module": "extension",
+            "action": "trigger",
+            "mutation_kind": "extension_trigger_potential_stage_effect",
+            "key_args": {
+                "operation": "sync_from_lakehouse",
+                "wait_for_idle": True,
+                "idle_timeout_s": 30,
+            },
+        }
+    }
+
+
 def test_scenario_runner_accepts_simulation_module():
     """ScenarioRunner must register SIMULATION in its module dispatch dict (B2 fix)."""
     from tests.conftest import MockIsaacRestClient, MockLakehouseClient
@@ -3270,6 +3292,7 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
         },
     }
     assert diagnostic_steps["get_pallet_wrong_profile"]["continueOnFailure"] is True
+    assert plan["stage_mutation_steps"] == []
 
     summary = await runner.run(scenario)
 
@@ -3706,6 +3729,23 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
         "module": "asset",
         "action": "official_verify",
         "evidence_kind": "official_asset_verify",
+        "key_args": {
+            "asset_id": (
+                "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com/"
+                "Assets/simready_content/common_assets/props/aluminumpallet_a01/"
+                "aluminumpallet_a01.usd"
+            ),
+            "app_profile": "isaac-sim",
+            "timeout_s": 180,
+        },
+    }
+    mutation_steps = {step["id"]: step for step in plan["stage_mutation_steps"]}
+    assert mutation_steps["verify_pallet_asset"] == {
+        "id": "verify_pallet_asset",
+        "phase": "assert",
+        "module": "asset",
+        "action": "official_verify",
+        "mutation_kind": "official_asset_verify_stage_probe",
         "key_args": {
             "asset_id": (
                 "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com/"

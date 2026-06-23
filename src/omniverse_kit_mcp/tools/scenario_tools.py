@@ -98,6 +98,139 @@ _DIAGNOSTIC_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
         ("asset_id", "app_profile"),
     ),
 }
+_STAGE_MUTATION_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
+    ("extension", "trigger"): (
+        "extension_trigger_potential_stage_effect",
+        ("operation", "wait_for_idle", "idle_timeout_s"),
+    ),
+    ("simulation", "stage_new"): ("stage_reset", ()),
+    ("simulation", "stage_open"): ("stage_open", ("url",)),
+    ("simulation", "stage_load_usd"): (
+        "stage_load_usd",
+        ("usd_url", "prim_path", "position", "rotation"),
+    ),
+    ("simulation", "stage_create_prim"): (
+        "stage_create_prim",
+        ("prim_path", "prim_type", "position"),
+    ),
+    ("simulation", "stage_set_property"): (
+        "stage_set_property",
+        ("prim_path", "property_name", "value", "type_hint"),
+    ),
+    ("simulation", "stage_set_semantic_label"): (
+        "stage_set_semantic_label",
+        ("prim_path", "label", "label_type"),
+    ),
+    ("simulation", "stage_delete_prim"): ("stage_delete_prim", ("prim_path",)),
+    ("robot", "load"): (
+        "robot_load",
+        ("usd_url", "prim_path", "position", "rotation"),
+    ),
+    ("character", "load"): (
+        "character_load",
+        ("usd_url", "prim_path", "position", "yaw"),
+    ),
+    ("character", "load_crowd"): (
+        "character_load_crowd",
+        ("count", "layout", "base_name", "center", "usd_url"),
+    ),
+    ("sensor", "attach_rtx_camera"): (
+        "sensor_attach_rtx_camera",
+        ("robot_prim", "sensor_name", "mount_offset", "mount_rotation", "resolution"),
+    ),
+    ("sensor", "attach_rtx_lidar"): (
+        "sensor_attach_rtx_lidar",
+        ("robot_prim", "sensor_name", "mount_offset", "mount_rotation", "config_preset"),
+    ),
+    ("sensor", "attach_rtx_depth_camera"): (
+        "sensor_attach_rtx_depth_camera",
+        ("robot_prim", "sensor_name", "mount_offset", "mount_rotation", "resolution"),
+    ),
+    ("sensor", "attach_contact"): (
+        "sensor_attach_contact",
+        ("prim_path", "sensor_name", "frequency", "translation", "radius"),
+    ),
+    ("sensor", "attach_imu"): (
+        "sensor_attach_imu",
+        ("prim_path", "sensor_name", "frequency", "mount_offset"),
+    ),
+    ("sensor", "set_annotator"): (
+        "sensor_annotator_binding",
+        ("sensor_prim", "annotators", "resolution"),
+    ),
+    ("sensor", "set_visualization"): (
+        "sensor_visualization_toggle",
+        ("sensor_prim", "mode"),
+    ),
+    ("navigation", "add_exclude_volume"): (
+        "navigation_add_exclude_volume",
+        ("prim_path", "padding"),
+    ),
+    ("asset", "official_verify"): (
+        "official_asset_verify_stage_probe",
+        ("asset_id", "app_profile", "timeout_s"),
+    ),
+    ("lighting", "create_dome"): (
+        "lighting_create_dome",
+        ("prim_path", "intensity", "texture"),
+    ),
+    ("lighting", "create_distant"): (
+        "lighting_create_distant",
+        ("prim_path", "intensity", "angle_deg"),
+    ),
+    ("lighting", "create_disk"): (
+        "lighting_create_disk",
+        ("prim_path", "intensity", "radius"),
+    ),
+    ("lighting", "create_rect"): (
+        "lighting_create_rect",
+        ("prim_path", "intensity", "width", "height"),
+    ),
+    ("lighting", "create_sphere"): (
+        "lighting_create_sphere",
+        ("prim_path", "intensity", "radius"),
+    ),
+    ("physics", "apply_rigid_body"): (
+        "physics_apply_rigid_body",
+        ("prim_path", "mass", "dynamic"),
+    ),
+    ("physics", "apply_collider"): (
+        "physics_apply_collider",
+        ("prim_path", "approximation"),
+    ),
+    ("physics", "apply_material"): (
+        "physics_apply_material",
+        ("prim_path", "friction", "restitution", "density", "material_name"),
+    ),
+    ("physics", "create_joint"): (
+        "physics_create_joint",
+        ("joint_type", "body_a", "body_b", "joint_prim_path"),
+    ),
+    ("physics", "set_scene"): (
+        "physics_set_scene",
+        ("scene_prim_path", "gravity", "timestep"),
+    ),
+    ("material", "assign_mdl"): (
+        "material_assign_mdl",
+        ("prim_path", "mdl_url", "material_name"),
+    ),
+    ("omnigraph", "create_node"): (
+        "omnigraph_create_node",
+        ("graph_path", "node_type", "node_name"),
+    ),
+    ("omnigraph", "connect"): (
+        "omnigraph_connect",
+        ("src_attr", "dst_attr"),
+    ),
+    ("omnigraph", "create_ros2_publisher"): (
+        "omnigraph_create_ros2_publisher",
+        ("graph_path", "topic", "source_prim", "msg_type"),
+    ),
+    ("omnigraph", "create_script_controller"): (
+        "omnigraph_create_script_controller",
+        ("graph_path", "script_path", "node_name"),
+    ),
+}
 
 
 def _resolve_safe_path(user_path: str, scenarios_root: str) -> str:
@@ -321,6 +454,7 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         "total_steps": sum(phase_counts.values()),
         "phase_counts": phase_counts,
         "diagnostic_steps": _plan_diagnostic_steps(phases),
+        "stage_mutation_steps": _plan_stage_mutation_steps(phases),
         "evidence_steps": _plan_evidence_steps(phases),
         "retry_steps": _plan_retry_steps(phases),
         "phases": phases,
@@ -411,6 +545,51 @@ def _plan_diagnostic_steps(
             _copy_plan_control_fields(step, planned)
             diagnostic_steps.append(planned)
     return diagnostic_steps
+
+
+def _plan_stage_mutation_steps(
+    phases: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    mutation_steps: list[dict[str, Any]] = []
+    for phase, steps in phases.items():
+        for step in steps:
+            spec = _STAGE_MUTATION_STEP_SPECS.get((step["module"], step["action"]))
+            if spec is None:
+                spec = _conditional_stage_mutation_spec(step)
+            if spec is None:
+                continue
+            mutation_kind, arg_keys = spec
+            planned: dict[str, Any] = {
+                "id": step["id"],
+                "phase": phase,
+                "module": step["module"],
+                "action": step["action"],
+                "mutation_kind": mutation_kind,
+            }
+            key_args = _selected_plan_args(step.get("args"), arg_keys)
+            if key_args:
+                planned["key_args"] = key_args
+            _copy_plan_control_fields(step, planned)
+            mutation_steps.append(planned)
+    return mutation_steps
+
+
+def _conditional_stage_mutation_spec(
+    step: dict[str, Any],
+) -> tuple[str, tuple[str, ...]] | None:
+    args = step.get("args")
+    if not isinstance(args, dict):
+        return None
+    if (
+        step["module"] == "extension"
+        and step["action"] == "reset"
+        and args.get("reset_stage_changes") is True
+    ):
+        return (
+            "extension_reset_stage_changes",
+            ("reset_stage_changes", "reset_internal_state", "clear_caches"),
+        )
+    return None
 
 
 def _plan_retry_steps(
