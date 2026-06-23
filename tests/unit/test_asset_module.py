@@ -600,6 +600,42 @@ async def test_official_asset_search_uses_profile_latest_pointer(tmp_path: Path)
 
 
 @pytest.mark.asyncio
+async def test_official_asset_get_uses_profile_latest_pointer(tmp_path: Path):
+    shared = _catalog_with_items(
+        run_id="composer-run",
+        app_profile="usd-composer",
+        generated_at="2099-01-01T00:00:00Z",
+        items=[],
+    )
+    asset_id = (
+        "url:https://example.com/Assets/aluminumpallet_a01/"
+        "aluminumpallet_a01.usd"
+    )
+    isaac = _catalog_with_items(
+        run_id="isaac-run",
+        app_profile="isaac-sim",
+        generated_at="2099-01-01T00:00:00Z",
+        items=[_minimal_official_item("aluminumpallet_a01", "isaac-sim")],
+    )
+    tmp_path.joinpath("latest.json").write_text(json.dumps(shared), encoding="utf-8")
+    tmp_path.joinpath("latest-isaac-sim.json").write_text(
+        json.dumps(isaac), encoding="utf-8"
+    )
+    module = AssetModule(_ExplodingClient(), official_catalog_dir=tmp_path)
+
+    missing_without_profile = await module.official_get(_meta(), asset_id=asset_id)
+    result = await module.official_get(
+        _meta(), asset_id=asset_id, app_profile="isaac-sim"
+    )
+
+    assert not missing_without_profile.ok
+    assert missing_without_profile.data["diagnostics"]["reason"] == "empty_catalog"
+    assert result.ok, result.message
+    assert result.data["id"] == asset_id
+    assert result.data["verify_required_before_use"] is True
+
+
+@pytest.mark.asyncio
 async def test_official_asset_search_reloads_when_profile_latest_changes(tmp_path: Path):
     path = tmp_path / "latest-isaac-sim.json"
     path.write_text(

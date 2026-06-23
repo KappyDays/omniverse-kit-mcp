@@ -430,11 +430,12 @@ class AssetModule:
         self,
         meta: OperationMeta,
         asset_id: str,
+        app_profile: str | None = None,
     ) -> ModuleResult[dict[str, Any]]:
         started = int(time.time() * 1000)
         try:
-            catalog = self._load_official_catalog()
-            entry = _find_official_entry(catalog, asset_id)
+            catalog = self._load_official_catalog(app_profile)
+            entry = _find_official_entry(catalog, asset_id, app_profile=app_profile)
             if entry is None:
                 return _official_error_result(
                     f"Official asset entry not found: {asset_id}",
@@ -444,14 +445,16 @@ class AssetModule:
                         catalog,
                         name_or_id=asset_id,
                         kind=None,
-                        app_profile=None,
+                        app_profile=app_profile,
                         prefer_loadable=True,
                     ),
                 )
             data = dict(entry)
-            data["stale_warning"] = _official_stale_warning(catalog, entry, None)
+            data["stale_warning"] = _official_stale_warning(
+                catalog, entry, app_profile
+            )
             data["verify_required_before_use"] = _official_verify_required(
-                catalog, entry, None
+                catalog, entry, app_profile
             )
             return ok_result(data, started_ms=started)
         except FileNotFoundError as exc:
@@ -460,7 +463,7 @@ class AssetModule:
                 started_ms=started,
                 error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
                 data=_official_catalog_unavailable_data(
-                    self._official_catalog_dir, None
+                    self._official_catalog_dir, app_profile
                 ),
             )
         except Exception as exc:

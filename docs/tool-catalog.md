@@ -1198,16 +1198,19 @@ Haven then token-gated Sketchfab; returns normalized candidates and provider_sta
 ### `official_asset_get`
 
 ```python
-official_asset_get(asset_id: 'str') -> 'str'
+official_asset_get(asset_id: 'str', app_profile: 'str | None' = None) -> 'str'
 ```
 
-Return the full generated official asset/material catalog entry by URL-based id.
+Return the full generated official asset/material catalog entry by URL-based id. Pass the same
+app_profile used for search/resolve so profile-specific latest pointers and diagnostics are
+used.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
 | `asset_id` | `string` | `'—'` | ✓ |
+| `app_profile` | `string \| None` | `None` |  |
 
 ### `official_asset_resolve`
 

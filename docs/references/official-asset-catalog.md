@@ -165,6 +165,11 @@ returned with warnings, but any result with `verify_required_before_use=true`
 must be passed to `official_asset_verify` before stage placement or material
 assignment.
 
+Carry the same `app_profile` through `official_asset_search`,
+`official_asset_resolve`, `official_asset_get`, and `official_asset_verify` when
+the workflow starts from a profile-specific latest pointer such as
+`latest-isaac-sim.json`.
+
 When `official_asset_search` returns zero candidates, or when
 `official_asset_resolve`, `official_asset_get`, or `official_asset_verify`
 cannot find an entry, inspect `data.diagnostics.reason`, `candidate_counts`,

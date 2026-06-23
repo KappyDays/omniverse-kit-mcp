@@ -1287,10 +1287,15 @@ def register_module_tools(
         return _serialize(result)
 
     @tool()
-    async def official_asset_get(asset_id: str) -> str:
-        """Return the full generated official asset/material catalog entry by URL-based id."""
+    async def official_asset_get(
+        asset_id: str,
+        app_profile: str | None = None,
+    ) -> str:
+        """Return the full generated official asset/material catalog entry by URL-based id. Pass the same app_profile used for search/resolve so profile-specific latest pointers and diagnostics are used."""
         meta = make_meta(ModuleName.ASSET)
-        result = await asset.official_get(meta, asset_id=asset_id)
+        result = await asset.official_get(
+            meta, asset_id=asset_id, app_profile=app_profile
+        )
         return _serialize(result)
 
     @tool()
