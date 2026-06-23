@@ -14,7 +14,7 @@ See `../../../docs/invariants/*.md` pull-doc.
 - **Robot operation**: `simulation_play` state required (R2) — Details: `../../../docs/invariants/scenario-validation.md`
 
 ## Simulation / Timeline
-- **`simulation/play` asynchronous reflection**: Response time `is_playing=false` is possible. Recheck `get_status` a few seconds later
+- **`simulation/play|pause|stop` settled readback**: Control calls tick Kit at least once and return the observed post-action state plus `timeline_settled` / `timeline_settle_updates`. If `timeline_settled=false`, recheck `simulation_get_status` and capture WARN/ERROR logs before treating a later robot/sensor failure as root cause.
 - **`simulation_step` advance mode**: In Isaac Sim 6.0, `omni.timeline.forward_one_frame()` may crash in the active Replicator/HydraTexture render product state, so the default value is play → `next_update_async()` until target time → pause (was_playing preserved). If the timeline does not advance the actual time in the replicator remaining state, the target time is set with `set_current_time` fallback, and the response `advance_mode` is `play_burst` or `set_time_fallback`.
 
 ##Viewport

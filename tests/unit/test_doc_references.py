@@ -264,6 +264,21 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
     assert "public hygiene checks" in guide
 
 
+def test_f3c_simulation_guidance_uses_settled_timeline_readback():
+    paths = [
+        PROJECT / "docs" / "mcp-usage-guide.md",
+        PROJECT / "src" / "omniverse_kit_mcp" / "tools" / "CLAUDE.md",
+        PROJECT / "src" / "omniverse_kit_mcp" / "modules" / "integration-facts.md",
+    ]
+
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        assert "timeline_settled" in text, str(path)
+        assert "timeline_settle_updates" in text, str(path)
+        assert "is_playing=false is possible" not in text, str(path)
+        assert "reflected asynchronously" not in text, str(path)
+
+
 # ---------------------------------------------------------------------------
 # F4: scenario YAML usd_url values are S3 (not file://)
 # ---------------------------------------------------------------------------
