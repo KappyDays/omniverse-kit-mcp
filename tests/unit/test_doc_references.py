@@ -276,6 +276,50 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
     assert "public hygiene checks" in guide
 
 
+def test_f3b_official_asset_scenario_proof_wrapper_order():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    sequence = [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "extension_clear_logs",
+        "scenario_plan(smoke/official_asset_verify_live.yaml)",
+        "scenario_validate(smoke/official_asset_verify_live.yaml)",
+        'scenario_last_report(report_format="json", redact_local_paths=true)',
+        'scenario_last_report(report_format="markdown", redact_local_paths=true)',
+        'extension_capture_logs(level="WARN")',
+        'extension_capture_logs(level="ERROR")',
+    ]
+
+    start = guide.index("Official asset scenario proof wrapper:")
+    end = guide.index("Official asset on-demand live verify wrapper:", start)
+    wrapper = guide[start:end]
+    positions = [wrapper.find(token) for token in sequence]
+    missing = [token for token, pos in zip(sequence, positions) if pos < 0]
+    assert not missing, "mcp-usage-guide.md missing official asset proof tokens: " + ", ".join(
+        missing
+    )
+    assert positions == sorted(positions), (
+        "Official asset scenario proof wrapper is out of order in mcp-usage-guide.md"
+    )
+    assert "scenario_plan.evidence_steps" in wrapper
+    assert "evidence_kind=official_asset_verify" in wrapper
+    assert "evidence_summary[]" in wrapper
+    assert "verification_status" in wrapper
+    assert "diagnostics.asset_checks" in wrapper
+    assert "diagnostics.material_checks" in wrapper
+    assert "redacted JSON" in wrapper
+    assert "redacted Markdown" in wrapper
+
+
+def test_f3b_scenario_authoring_guide_mentions_official_verify_evidence():
+    guide = (PROJECT / "scenarios" / "CLAUDE.md").read_text(encoding="utf-8")
+
+    assert "evidence_summary` for official verify, lidar" in guide
+    assert "redact_local_paths=true" in guide
+    assert "scenario_plan` exposes `total_steps`" in guide
+
+
 def test_f3c_simulation_guidance_uses_settled_timeline_readback():
     paths = [
         PROJECT / "docs" / "mcp-usage-guide.md",

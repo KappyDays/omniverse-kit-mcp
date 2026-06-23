@@ -102,6 +102,22 @@ Markdown `Evidence Summary` also expose `evidence_kind=official_asset_verify`,
 `verification_status`, `kind`, `app_profile`, and bounded diagnostics, so use
 them as the compact proof row for `scenario_validate(smoke/official_asset_verify_live.yaml)`.
 
+Official asset scenario proof wrapper:
+`mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
+`extension_clear_logs` -> `scenario_plan(smoke/official_asset_verify_live.yaml)` ->
+`scenario_validate(smoke/official_asset_verify_live.yaml)` ->
+`scenario_last_report(report_format="json", redact_local_paths=true)` ->
+`scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
+`extension_capture_logs(level="WARN")` and
+`extension_capture_logs(level="ERROR")`.
+Before live execution, confirm `scenario_plan.evidence_steps` includes
+`evidence_kind=official_asset_verify` for the verify step. After validation,
+compare JSON `evidence_summary[]` with that plan row and check
+`verification_status`, `kind`, `app_profile`, and either
+`diagnostics.asset_checks` or `diagnostics.material_checks`. Use redacted JSON
+for exact public-safe fields and redacted Markdown `Evidence Summary`
+for the compact evidence note.
+
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
 `extension_clear_logs` -> `official_asset_sync_status(app_profile=...)` ->
