@@ -57,6 +57,20 @@ Reason: PhysX articulation view needs to run physics step to populate. Extension
 `robot_service.navigate_path` returns HTTP 400 if `omni.timeline.is_playing()` does not pass.
 refusal. scenario is required to place `simulation_play` in arrange.
 
+## Robot + RTX sensor standard sequence
+
+Combined robot/sensor smoke uses `scenarios/smoke/robot_rtx_sensor_golden_workflow.yaml`:
+`stage_new -> load grid/light/robot -> create lidar target cubes -> play/stop
+warm-up -> attach RTX camera -> set camera annotators -> attach RTX lidar ->
+lidar visualization -> play/step ->
+sensor.lidar_get_point_cloud(min_points=1, fail_on_warning=true) -> pause ->
+viewport.frame_prims -> viewport.capture_assert -> cleanup`.
+
+Do not use an RTX lidar prim as a viewport camera. Frame the robot/sensor prims
+with a normal viewport camera and use `sensor.lidar_get_point_cloud` for lidar data.
+Keep at least one target prim near the lidar scan plane; an empty flat grid can
+legitimately produce zero point returns even when the sensor is attached.
+
 ## R3. Viewport capture visual verification obligation
 
 After `viewport_capture`, be sure to check the PNG time with the `Read` tool.

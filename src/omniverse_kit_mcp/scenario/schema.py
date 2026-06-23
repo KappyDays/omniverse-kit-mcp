@@ -131,6 +131,62 @@ SCENARIO_SCHEMA: dict = {
                         }
                     },
                 },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "viewport"},
+                            "action": {"const": "capture"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/viewportCaptureArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "viewport"},
+                            "action": {"const": "frame_prims"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/viewportFramePrimsArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "viewport"},
+                            "action": {"const": "capture_assert"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/viewportCaptureAssertArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "sensor"},
+                            "action": {"const": "lidar_get_point_cloud"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/sensorLidarPointCloudArgs"}
+                        }
+                    },
+                },
             ],
         },
         "externalAssetSearchArgs": {
@@ -164,6 +220,86 @@ SCENARIO_SCHEMA: dict = {
                 "manifest_path": {"type": "string", "minLength": 1},
                 "output_format": {"type": "string", "enum": ["usd"]},
                 "timeout_s": {"type": "number", "minimum": 1},
+            },
+        },
+        "viewportCaptureArgs": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "viewport_name": {"type": "string"},
+                "camera_prim_path": {"type": ["string", "null"]},
+                "renderer": {"type": "string", "enum": ["rtx", "hydra"]},
+                "width": {"type": "integer", "minimum": 1},
+                "height": {"type": "integer", "minimum": 1},
+                "samples_per_pixel": {"type": "integer", "minimum": 1},
+                "settle_frames": {"type": "integer", "minimum": 0},
+                "output_format": {"type": "string", "enum": ["png", "jpg"]},
+                "transparent_background": {"type": "boolean"},
+                "warmup_frames": {"type": "integer", "minimum": 0},
+                "return_stats": {"type": "boolean"},
+            },
+        },
+        "viewportFramePrimsArgs": {
+            "type": "object",
+            "required": ["prim_paths"],
+            "additionalProperties": False,
+            "properties": {
+                "prim_paths": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"type": "string", "minLength": 1},
+                },
+                "viewport_name": {"type": "string"},
+                "camera_path": {"type": ["string", "null"]},
+                "include_purposes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+                "margin": {"type": "number", "minimum": 0},
+                "fov_deg": {"type": "number", "exclusiveMinimum": 0},
+                "view_direction": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {"type": "number"},
+                },
+                "up": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {"type": "number"},
+                },
+                "set_camera": {"type": "boolean"},
+            },
+        },
+        "viewportCaptureAssertArgs": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "viewport_name": {"type": "string"},
+                "camera_prim_path": {"type": ["string", "null"]},
+                "renderer": {"type": "string", "enum": ["rtx", "hydra"]},
+                "width": {"type": "integer", "minimum": 1},
+                "height": {"type": "integer", "minimum": 1},
+                "samples_per_pixel": {"type": "integer", "minimum": 1},
+                "settle_frames": {"type": "integer", "minimum": 0},
+                "output_format": {"type": "string", "enum": ["png", "jpg"]},
+                "transparent_background": {"type": "boolean"},
+                "warmup_frames": {"type": "integer", "minimum": 0},
+                "min_mean": {"type": "number", "minimum": 0},
+                "min_variance": {"type": "number", "minimum": 0},
+            },
+        },
+        "sensorLidarPointCloudArgs": {
+            "type": "object",
+            "required": ["sensor_prim"],
+            "additionalProperties": False,
+            "properties": {
+                "sensor_prim": {"type": "string", "minLength": 1},
+                "max_points": {"type": "integer", "minimum": 1},
+                "frames_to_wait": {"type": "integer", "minimum": 1},
+                "min_points": {"type": "integer", "minimum": 0},
+                "fail_on_warning": {"type": "boolean"},
             },
         },
     },

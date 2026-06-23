@@ -203,6 +203,76 @@ async def test_lidar_get_point_cloud_empty_with_warning():
 
 
 @pytest.mark.asyncio
+async def test_lidar_get_point_cloud_fails_when_below_min_points():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["sensor_lidar_get_point_cloud"] = {
+        "ok": True,
+        "sensor_prim": "/World/Lidar",
+        "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+        "backend": "omni.replicator.core",
+        "num_points": 0,
+        "points": [],
+        "intensities": [],
+        "truncated": False,
+        "frames_waited": 2,
+        "raw_keys": ["generic-model-output", "num_elements:0"],
+        "warning": "parsed generic-model-output contained 0 elements",
+    }
+    module = SensorModule(client)
+    request = SensorLidarGetPointCloudRequest(
+        sensor_prim="/World/Lidar",
+        min_points=1,
+    )
+    result = await module.lidar_get_point_cloud(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.FAILED
+    assert result.error_code == "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    assert result.data is not None
+    assert result.data.num_points == 0
+    assert "backend=omni.replicator.core" in (result.message or "")
+    assert "frames_waited=2" in (result.message or "")
+    assert "raw_keys=generic-model-output,num_elements:0" in (result.message or "")
+    assert "parsed generic-model-output" in (result.message or "")
+
+
+@pytest.mark.asyncio
+async def test_lidar_get_point_cloud_fails_on_warning_when_requested():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["sensor_lidar_get_point_cloud"] = {
+        "ok": True,
+        "sensor_prim": "/World/Lidar",
+        "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+        "backend": "omni.replicator.core",
+        "num_points": 3,
+        "points": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+        "intensities": [1.0, 1.0, 1.0],
+        "truncated": False,
+        "frames_waited": 2,
+        "raw_keys": ["data"],
+        "warning": "partial scan buffer",
+    }
+    module = SensorModule(client)
+    request = SensorLidarGetPointCloudRequest(
+        sensor_prim="/World/Lidar",
+        fail_on_warning=True,
+    )
+    result = await module.lidar_get_point_cloud(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.FAILED
+    assert result.error_code == "SENSOR_LIDAR_POINT_CLOUD_WARNING"
+    assert result.data is not None
+    assert result.data.num_points == 3
+    assert "backend=omni.replicator.core" in (result.message or "")
+    assert "raw_keys=data" in (result.message or "")
+
+
+@pytest.mark.asyncio
 async def test_lidar_get_point_cloud_propagates_400():
     """Extension raises ValueError for non-rtx_lidar sensor → wrapped error."""
     from tests.conftest import MockIsaacRestClient

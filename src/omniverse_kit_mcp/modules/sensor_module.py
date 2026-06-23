@@ -6,7 +6,7 @@ import logging
 import time
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
-from omniverse_kit_mcp.modules.base import error_result, ok_result
+from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
 from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
 from omniverse_kit_mcp.types.sensor import (
     SensorAttachContactRequest,
@@ -244,28 +244,46 @@ class SensorModule:
                 (float(p[0]), float(p[1]), float(p[2])) for p in points_raw
             )
             intensities_raw = raw.get("intensities") or []
-            return ok_result(
-                SensorLidarGetPointCloudResult(
-                    ok=bool(raw.get("ok", True)),
-                    sensor_prim=str(raw.get("sensor_prim", request.sensor_prim)),
-                    annotator=str(raw.get("annotator", "")),
-                    backend=str(raw.get("backend", "")),
-                    num_points=int(raw.get("num_points", len(points_tuple))),
-                    points=points_tuple,
-                    intensities=tuple(float(i) for i in intensities_raw),
-                    truncated=bool(raw.get("truncated", False)),
-                    frames_waited=int(raw.get("frames_waited", request.frames_to_wait)),
-                    raw_keys=tuple(str(k) for k in raw.get("raw_keys") or ()),
-                    warning=raw.get("warning"),
-                ),
-                started_ms=started,
+            data = SensorLidarGetPointCloudResult(
+                ok=bool(raw.get("ok", True)),
+                sensor_prim=str(raw.get("sensor_prim", request.sensor_prim)),
+                annotator=str(raw.get("annotator", "")),
+                backend=str(raw.get("backend", "")),
+                num_points=int(raw.get("num_points", len(points_tuple))),
+                points=points_tuple,
+                intensities=tuple(float(i) for i in intensities_raw),
+                truncated=bool(raw.get("truncated", False)),
+                frames_waited=int(raw.get("frames_waited", request.frames_to_wait)),
+                raw_keys=tuple(str(k) for k in raw.get("raw_keys") or ()),
+                warning=raw.get("warning"),
             )
+            if data.num_points < request.min_points:
+                return fail_result(
+                    (
+                        f"Lidar point cloud has {data.num_points} points; "
+                        f"expected at least {request.min_points}"
+                        f"{_format_lidar_failure_detail(data)}"
+                    ),
+                    started_ms=started,
+                    data=data,
+                    error_code="SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+                )
+            if request.fail_on_warning and data.warning:
+                return fail_result(
+                    (
+                        f"Lidar point cloud warning: {data.warning}"
+                        f"{_format_lidar_failure_detail(data, include_warning=False)}"
+                    ),
+                    started_ms=started,
+                    data=data,
+                    error_code="SENSOR_LIDAR_POINT_CLOUD_WARNING",
+                )
+            return ok_result(data, started_ms=started)
         except Exception as exc:  # noqa: BLE001
             return error_result(
                 str(exc), started_ms=started, exc=exc,
                 error_code="SENSOR_LIDAR_GET_POINT_CLOUD_ERROR",
             )
-
     async def set_visualization(
         self, meta: OperationMeta, request: SensorSetVisualizationRequest,
     ) -> ModuleResult[SensorSetVisualizationResult]:
@@ -289,3 +307,17 @@ class SensorModule:
                 str(exc), started_ms=started, exc=exc,
                 error_code="SENSOR_SET_VISUALIZATION_ERROR",
             )
+
+
+def _format_lidar_failure_detail(
+    data: SensorLidarGetPointCloudResult, *, include_warning: bool = True,
+) -> str:
+    details: list[str] = []
+    if include_warning and data.warning:
+        details.append(f"warning={data.warning}")
+    if data.backend:
+        details.append(f"backend={data.backend}")
+    details.append(f"frames_waited={data.frames_waited}")
+    if data.raw_keys:
+        details.append(f"raw_keys={','.join(data.raw_keys[:8])}")
+    return f" ({'; '.join(details)})" if details else ""

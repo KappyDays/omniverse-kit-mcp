@@ -7,6 +7,8 @@ Guards against regressions of the Phase-A fixes (B1/B2/B3) and the
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from omniverse_kit_mcp.modules.asset_module import AssetModule
@@ -23,8 +25,11 @@ from omniverse_kit_mcp.scenario.action_registry import (
     build_request,
 )
 from omniverse_kit_mcp.scenario.compiler import compile_scenario
+from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName
+
+PROJECT = Path(__file__).resolve().parents[2]
 
 
 def _build_runner(isaac_client, lakehouse_client):
@@ -272,6 +277,47 @@ def test_job_status_is_context_aware():
     assert (ModuleName.JOB, "status") in CONTEXT_AWARE_ACTIONS
 
 
+def test_action_registry_has_robot_rtx_sensor_golden_builders():
+    capture = build_request(
+        ModuleName.VIEWPORT,
+        "capture",
+        {"warmup_frames": 8, "return_stats": True},
+    )
+    frame = build_request(
+        ModuleName.VIEWPORT,
+        "frame_prims",
+        {"prim_paths": ["/World/Robot"], "view_direction": [1.0, -1.0, 0.5]},
+    )
+    capture_assert = build_request(
+        ModuleName.VIEWPORT,
+        "capture_assert",
+        {"warmup_frames": 8, "min_mean": 8.0, "min_variance": 1.0},
+    )
+    cloud = build_request(
+        ModuleName.SENSOR,
+        "lidar_get_point_cloud",
+        {
+            "sensor_prim": "/World/Robot/Lidar",
+            "max_points": 128,
+            "min_points": 1,
+            "fail_on_warning": True,
+        },
+    )
+
+    assert capture is not None
+    assert capture.warmup_frames == 8
+    assert capture.return_stats is True
+    assert frame is not None
+    assert frame.prim_paths == ("/World/Robot",)
+    assert capture_assert is not None
+    assert capture_assert.warmup_frames == 8
+    assert cloud is not None
+    assert cloud.sensor_prim == "/World/Robot/Lidar"
+    assert cloud.max_points == 128
+    assert cloud.min_points == 1
+    assert cloud.fail_on_warning is True
+
+
 def test_omnigraph_create_script_controller_builder():
     request = build_request(
         ModuleName.OMNIGRAPH,
@@ -362,6 +408,78 @@ async def test_omnigraph_create_script_controller_routes_through_runner():
     assert len(calls) == 1
     assert calls[0][1]["graph_path"] == "/World/ActionGraph"
     assert calls[0][1]["script_path"] == "C:/tmp/controller.py"
+
+
+@pytest.mark.asyncio
+async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["viewport_capture"] = {
+        "artifact_id": "golden_robot_sensor",
+        "path": "/tmp/golden_robot_sensor.png",
+        "width": 1280,
+        "height": 720,
+        "sha256": "abc123",
+        "created_at_epoch_ms": 0,
+        "pixel_mean": [32.0, 34.0, 36.0],
+        "pixel_variance": [8.0, 9.0, 10.0],
+        "warmup_frames_used": 8,
+    }
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    raw = load_scenario(
+        PROJECT / "scenarios" / "smoke" / "robot_rtx_sensor_golden_workflow.yaml"
+    )
+    raw_cloud = next(
+        step for step in raw["spec"]["act"] if step["id"] == "read_lidar_point_cloud"
+    )["args"]
+    assert raw_cloud["min_points"] == 1
+    assert raw_cloud["fail_on_warning"] is True
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    call_names = [name for name, _payload in isaac_client.calls]
+    for expected in (
+        "stage_load_usd",
+        "stage_create_prim",
+        "robot_load",
+        "sensor_attach_rtx_camera",
+        "sensor_set_annotator",
+        "sensor_attach_rtx_lidar",
+        "sensor_lidar_get_point_cloud",
+        "viewport_frame_prims",
+        "viewport_capture",
+    ):
+        assert expected in call_names
+    assert call_names.index("simulation_play") < call_names.index("simulation_stop")
+    assert call_names.index("sensor_attach_rtx_lidar") < call_names.index(
+        "sensor_lidar_get_point_cloud"
+    )
+    assert call_names.index("simulation_step") < call_names.index(
+        "sensor_lidar_get_point_cloud"
+    )
+    assert call_names.index("viewport_frame_prims") < call_names.index("viewport_capture")
+    create_payloads = [
+        payload for name, payload in isaac_client.calls if name == "stage_create_prim"
+    ]
+    created_paths = {payload["prim_path"] for payload in create_payloads}
+    assert "/World/LidarTargets" in created_paths
+    assert "/World/LidarTargets/TargetForward" in created_paths
+    assert "/World/LidarTargets/TargetBack" in created_paths
+    assert "/World/LidarTargets/TargetLeft" in created_paths
+    assert "/World/LidarTargets/TargetRight" in created_paths
+    cloud_payload = next(
+        payload for name, payload in isaac_client.calls
+        if name == "sensor_lidar_get_point_cloud"
+    )
+    assert cloud_payload["frames_to_wait"] == 12
+    capture_payload = next(
+        payload for name, payload in isaac_client.calls if name == "viewport_capture"
+    )
+    assert capture_payload["return_stats"] is True
+    assert capture_payload["warmup_frames"] == 8
 
 
 @pytest.mark.asyncio

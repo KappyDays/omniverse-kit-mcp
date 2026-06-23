@@ -1,0 +1,255 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: robot_rtx_sensor_golden_workflow
+  name: "Golden workflow: NovaCarter + RTX camera/lidar + viewport evidence"
+  tags: [smoke, golden, robot, sensor, rtx, viewport]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 300
+    failFast: true
+
+  variables:
+    grid_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Environments/Grid/default_environment.usd"
+    nova_carter_url: "https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/6.0/Isaac/Robots/NVIDIA/NovaCarter/nova_carter.usd"
+    grid_prim: "/World/Grid"
+    light_prim: "/World/Lighting/DomeLight"
+    robot_prim: "/World/Robot/NovaCarter"
+    camera_name: "FrontCamera"
+    lidar_name: "TopLidar"
+    camera_prim: "/World/Robot/NovaCarter/FrontCamera"
+    lidar_prim: "/World/Robot/NovaCarter/TopLidar"
+    lidar_targets_prim: "/World/LidarTargets"
+    lidar_target_front: "/World/LidarTargets/TargetForward"
+    lidar_target_back: "/World/LidarTargets/TargetBack"
+    lidar_target_left: "/World/LidarTargets/TargetLeft"
+    lidar_target_right: "/World/LidarTargets/TargetRight"
+
+  arrange:
+    - id: reset_stage
+      module: simulation
+      action: stage_new
+      args: {}
+
+    - id: load_flat_grid
+      module: simulation
+      action: stage_load_usd
+      args:
+        usd_url: ${variables.grid_url}
+        prim_path: ${variables.grid_prim}
+
+    - id: create_dome_light
+      module: lighting
+      action: create_dome
+      args:
+        prim_path: ${variables.light_prim}
+        intensity: 1200.0
+
+    - id: load_nova_carter
+      module: robot
+      action: load
+      args:
+        usd_url: ${variables.nova_carter_url}
+        prim_path: ${variables.robot_prim}
+        position: [0.0, 0.0, 0.0]
+
+    - id: create_lidar_targets_root
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.lidar_targets_prim}
+        prim_type: Xform
+        position: [0.0, 0.0, 0.0]
+
+    - id: create_lidar_target_front
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.lidar_target_front}
+        prim_type: Cube
+        position: [3.0, 0.0, 1.15]
+
+    - id: create_lidar_target_back
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.lidar_target_back}
+        prim_type: Cube
+        position: [-3.0, 0.0, 1.15]
+
+    - id: create_lidar_target_left
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.lidar_target_left}
+        prim_type: Cube
+        position: [0.0, 3.0, 1.15]
+
+    - id: create_lidar_target_right
+      module: simulation
+      action: stage_create_prim
+      args:
+        prim_path: ${variables.lidar_target_right}
+        prim_type: Cube
+        position: [0.0, -3.0, 1.15]
+
+    - id: warm_up_play
+      module: simulation
+      action: play
+      args: {}
+
+    - id: warm_up_stop
+      module: simulation
+      action: stop
+      args: {}
+
+  act:
+    - id: attach_front_camera
+      module: sensor
+      action: attach_rtx_camera
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.35, 0.0, 0.75]
+        mount_rotation: [0.0, 0.0, 0.0]
+        resolution: [1280, 720]
+        sensor_name: ${variables.camera_name}
+
+    - id: configure_camera_annotators
+      module: sensor
+      action: set_annotator
+      args:
+        sensor_prim: ${variables.camera_prim}
+        annotators: [rgb, depth, semantic_segmentation]
+        resolution: [1280, 720]
+
+    - id: attach_top_lidar
+      module: sensor
+      action: attach_rtx_lidar
+      args:
+        robot_prim: ${variables.robot_prim}
+        mount_offset: [0.0, 0.0, 1.15]
+        mount_rotation: [0.0, 0.0, 0.0]
+        config_preset: Example_Rotary
+        sensor_name: ${variables.lidar_name}
+
+    - id: show_lidar_debug_draw
+      module: sensor
+      action: set_visualization
+      args:
+        sensor_prim: ${variables.lidar_prim}
+        mode: "on"
+
+    - id: play_for_sensor_data
+      module: simulation
+      action: play
+      args: {}
+
+    - id: advance_sensor_frames
+      module: simulation
+      action: step
+      args:
+        frames: 30
+
+    - id: read_lidar_point_cloud
+      module: sensor
+      action: lidar_get_point_cloud
+      args:
+        sensor_prim: ${variables.lidar_prim}
+        max_points: 512
+        frames_to_wait: 12
+        min_points: 1
+        fail_on_warning: true
+
+    - id: pause_after_sensor_data
+      module: simulation
+      action: pause
+      args: {}
+
+  assert:
+    - id: robot_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.robot_prim}
+        should_exist: true
+
+    - id: camera_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.camera_prim}
+        should_exist: true
+
+    - id: lidar_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.lidar_prim}
+        should_exist: true
+
+    - id: frame_robot_and_sensors
+      module: viewport
+      action: frame_prims
+      args:
+        prim_paths:
+          - ${variables.robot_prim}
+          - ${variables.camera_prim}
+          - ${variables.lidar_prim}
+          - ${variables.lidar_targets_prim}
+        margin: 0.25
+        view_direction: [1.0, -1.0, 0.55]
+        set_camera: true
+
+    - id: capture_visible_result
+      module: viewport
+      action: capture_assert
+      args:
+        width: 1280
+        height: 720
+        warmup_frames: 8
+        min_mean: 8.0
+        min_variance: 1.0
+
+  cleanup:
+    - id: hide_lidar_debug_draw
+      module: sensor
+      action: set_visualization
+      args:
+        sensor_prim: ${variables.lidar_prim}
+        mode: "off"
+      continueOnFailure: true
+
+    - id: final_sim_stop
+      module: simulation
+      action: stop
+      args: {}
+      continueOnFailure: true
+
+    - id: remove_robot
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: "/World/Robot"
+      continueOnFailure: true
+
+    - id: remove_lidar_targets
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.lidar_targets_prim}
+      continueOnFailure: true
+
+    - id: remove_grid
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: ${variables.grid_prim}
+      continueOnFailure: true
+
+    - id: remove_lighting
+      module: simulation
+      action: stage_delete_prim
+      args:
+        prim_path: "/World/Lighting"
+      continueOnFailure: true

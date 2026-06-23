@@ -2112,12 +2112,14 @@ Attach RTX Lidar for point-cloud capture; config_preset selects profile
 ### `sensor_lidar_get_point_cloud`
 
 ```python
-sensor_lidar_get_point_cloud(sensor_prim: 'str', max_points: 'int' = 1000, frames_to_wait: 'int' = 2) -> 'str'
+sensor_lidar_get_point_cloud(sensor_prim: 'str', max_points: 'int' = 1000, frames_to_wait: 'int' = 2, min_points: 'int' = 0, fail_on_warning: 'bool' = False) -> 'str'
 ```
 
 Read one frame of RTX Lidar XYZ point cloud (symmetric readback for sensor_attach_rtx_lidar).
 Reuses annotator stamped on sensor prim. Empty cloud → response.warning explains (typically
-"call simulation_play & wait for spin"). Truncates to max_points (≤100000).
+"call simulation_play & wait for spin"). Set min_points>0 or fail_on_warning=True to make live
+proof loops fail instead of silently accepting empty/warned data. Truncates to max_points
+(≤100000).
 
 **Parameters**
 
@@ -2126,6 +2128,8 @@ Reuses annotator stamped on sensor prim. Empty cloud → response.warning explai
 | `sensor_prim` | `string` | `'—'` | ✓ |
 | `max_points` | `integer` | `1000` |  |
 | `frames_to_wait` | `integer` | `2` |  |
+| `min_points` | `integer` | `0` |  |
+| `fail_on_warning` | `boolean` | `False` |  |
 
 ### `sensor_set_annotator`
 

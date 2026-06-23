@@ -145,6 +145,8 @@ class SensorLidarGetPointCloudRequest:
     sensor_prim: str
     max_points: int = 1000
     frames_to_wait: int = 2
+    min_points: int = 0
+    fail_on_warning: bool = False
 
 
 @dataclass(slots=True, frozen=True)

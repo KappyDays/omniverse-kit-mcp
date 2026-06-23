@@ -54,6 +54,7 @@ from omniverse_kit_mcp.types.sensor import (
     SensorAttachRtxCameraRequest,
     SensorAttachRtxDepthCameraRequest,
     SensorAttachRtxLidarRequest,
+    SensorLidarGetPointCloudRequest,
     SensorSetAnnotatorRequest,
     SensorSetVisualizationRequest,
 )
@@ -102,9 +103,11 @@ from omniverse_kit_mcp.types.material import (
 )
 from omniverse_kit_mcp.types.viewport import (
     SSIMComparisonRequest,
+    ViewportCaptureAssertRequest,
     ViewportCaptureRequest,
     ViewportCreateRequest,
     ViewportDestroyRequest,
+    ViewportFramePrimsRequest,
     ViewportSetFovRequest,
     ViewportSetRenderModeRequest,
     ViewportSetRenderQualityRequest,
@@ -175,6 +178,8 @@ def _build_viewport_capture(args: dict[str, Any]) -> ViewportCaptureRequest:
         settle_frames=args.get("settle_frames", 5),
         output_format=args.get("output_format", "png"),
         transparent_background=args.get("transparent_background", False),
+        warmup_frames=args.get("warmup_frames", 0),
+        return_stats=args.get("return_stats", False),
     )
 
 
@@ -698,6 +703,48 @@ def _build_viewport_set_fov(args: dict[str, Any]) -> ViewportSetFovRequest:
     )
 
 
+def _build_viewport_frame_prims(args: dict[str, Any]) -> ViewportFramePrimsRequest:
+    prim_paths = args.get("prim_paths") or []
+    if not prim_paths:
+        raise ValueError("viewport.frame_prims requires prim_paths")
+    view_direction = args.get("view_direction") or [1.0, -1.0, 0.65]
+    up = args.get("up") or [0.0, 0.0, 1.0]
+    if len(view_direction) != 3 or len(up) != 3:
+        raise ValueError("viewport.frame_prims view_direction / up must be [x,y,z]")
+    return ViewportFramePrimsRequest(
+        prim_paths=tuple(str(path) for path in prim_paths),
+        viewport_name=str(args.get("viewport_name", "Viewport")),
+        camera_path=args.get("camera_path"),
+        include_purposes=tuple(
+            str(p) for p in args.get("include_purposes", ("default", "render"))
+        ),
+        margin=float(args.get("margin", 0.15)),
+        fov_deg=float(args.get("fov_deg", 60.0)),
+        view_direction=tuple(float(v) for v in view_direction),  # type: ignore[arg-type]
+        up=tuple(float(v) for v in up),  # type: ignore[arg-type]
+        set_camera=bool(args.get("set_camera", True)),
+    )
+
+
+def _build_viewport_capture_assert(
+    args: dict[str, Any],
+) -> ViewportCaptureAssertRequest:
+    return ViewportCaptureAssertRequest(
+        viewport_name=str(args.get("viewport_name", "Viewport")),
+        camera_prim_path=args.get("camera_prim_path"),
+        renderer=args.get("renderer", "rtx"),
+        width=int(args.get("width", 1280)),
+        height=int(args.get("height", 720)),
+        samples_per_pixel=int(args.get("samples_per_pixel", 64)),
+        settle_frames=int(args.get("settle_frames", 5)),
+        output_format=args.get("output_format", "png"),
+        transparent_background=bool(args.get("transparent_background", False)),
+        warmup_frames=int(args.get("warmup_frames", 0)),
+        min_mean=float(args.get("min_mean", 8.0)),
+        min_variance=float(args.get("min_variance", 1.0)),
+    )
+
+
 # --- Phase G builders ---
 
 
@@ -924,6 +971,27 @@ def _build_sensor_set_annotator(
         sensor_prim=args["sensor_prim"],
         annotators=tuple(str(a) for a in annotators),
         resolution=(int(resolution[0]), int(resolution[1])),
+    )
+
+
+def _build_sensor_lidar_get_point_cloud(
+    args: dict[str, Any],
+) -> SensorLidarGetPointCloudRequest:
+    max_points = int(args.get("max_points", 1000))
+    frames_to_wait = int(args.get("frames_to_wait", 2))
+    min_points = int(args.get("min_points", 0))
+    if max_points <= 0:
+        raise ValueError("sensor.lidar_get_point_cloud max_points must be positive")
+    if frames_to_wait < 1:
+        raise ValueError("sensor.lidar_get_point_cloud frames_to_wait must be >= 1")
+    if min_points < 0:
+        raise ValueError("sensor.lidar_get_point_cloud min_points must be >= 0")
+    return SensorLidarGetPointCloudRequest(
+        sensor_prim=args["sensor_prim"],
+        max_points=max_points,
+        frames_to_wait=frames_to_wait,
+        min_points=min_points,
+        fail_on_warning=bool(args.get("fail_on_warning", False)),
     )
 
 
@@ -1169,6 +1237,8 @@ _REGISTRY: dict[tuple[ModuleName, str], Any] = {
     (ModuleName.VIEWPORT, "set_render_quality"): _build_viewport_set_render_quality,
     (ModuleName.VIEWPORT, "toggle_overlay"): _build_viewport_toggle_overlay,
     (ModuleName.VIEWPORT, "set_fov"): _build_viewport_set_fov,
+    (ModuleName.VIEWPORT, "frame_prims"): _build_viewport_frame_prims,
+    (ModuleName.VIEWPORT, "capture_assert"): _build_viewport_capture_assert,
     # Phase G — Robot / Character / Sensor / Simulation extensions
     (ModuleName.ROBOT, "navigate_path"): _build_robot_navigate_path,
     (ModuleName.ROBOT, "gripper_control"): _build_robot_gripper_control,
@@ -1180,6 +1250,7 @@ _REGISTRY: dict[tuple[ModuleName, str], Any] = {
     (ModuleName.SENSOR, "attach_contact"): _build_sensor_attach_contact,
     (ModuleName.SENSOR, "attach_imu"): _build_sensor_attach_imu,
     (ModuleName.SENSOR, "set_annotator"): _build_sensor_set_annotator,
+    (ModuleName.SENSOR, "lidar_get_point_cloud"): _build_sensor_lidar_get_point_cloud,
     (ModuleName.SIMULATION, "step"): _build_simulation_step,
     (ModuleName.SIMULATION, "set_time"): _build_simulation_set_time,
     # Phase H — Replicator / OmniGraph / Content

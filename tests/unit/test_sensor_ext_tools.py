@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import importlib.util
+from pathlib import Path
+
 import pytest
 
 from omniverse_kit_mcp.config import AppConfig
@@ -17,6 +20,8 @@ from omniverse_kit_mcp.types.sensor import (
     SensorSetAnnotatorRequest,
     SensorSetAnnotatorResult,
 )
+
+PROJECT = Path(__file__).resolve().parents[2]
 
 
 def _meta() -> OperationMeta:
@@ -133,3 +138,112 @@ def test_action_registry_sensor_errors():
             ModuleName.SENSOR, "attach_imu",
             {"prim_path": "/x", "mount_orientation": [1, 0, 0]},
         )
+
+
+def test_lidar_gmo_extractor_converts_spherical_points():
+    service = _load_validation_sensor_service()
+
+    class Coord:
+        name = "SPHERICAL"
+
+    class Elements:
+        x = [0.0, 90.0]
+        y = [0.0, 0.0]
+        z = [2.0, 3.0]
+        scalar = [0.25, 0.75]
+
+    class Gmo:
+        numElements = 2
+        elementsCoordsType = Coord()
+        elements = Elements()
+
+    points, intensities, raw_keys, truncated = service._extract_gmo_points(Gmo(), 10)
+
+    assert truncated is False
+    assert raw_keys == [
+        "generic-model-output",
+        "coords_type:SPHERICAL",
+        "num_elements:2",
+    ]
+    assert points[0] == pytest.approx([2.0, 0.0, 0.0])
+    assert points[1] == pytest.approx([0.0, 3.0, 0.0], abs=1e-6)
+    assert intensities == [0.25, 0.75]
+
+
+def test_lidar_gmo_extractor_truncates_cartesian_points():
+    service = _load_validation_sensor_service()
+
+    class Coord:
+        name = "CARTESIAN"
+
+    class Elements:
+        x = [1.0, 4.0]
+        y = [2.0, 5.0]
+        z = [3.0, 6.0]
+        scalar = []
+
+    class Gmo:
+        numElements = 2
+        elementsCoordsType = Coord()
+        elements = Elements()
+
+    points, intensities, _raw_keys, truncated = service._extract_gmo_points(Gmo(), 1)
+
+    assert truncated is True
+    assert points == [[1.0, 2.0, 3.0]]
+    assert intensities == []
+
+
+def test_lidar_scan_dict_extractor_converts_degrees_to_cartesian():
+    service = _load_validation_sensor_service()
+
+    points, intensities, raw_keys, truncated, warning = service._extract_scan_dict_points(
+        {
+            "azimuth": [0.0, 90.0],
+            "elevation": [0.0, 0.0],
+            "distance": [2.0, 3.0],
+            "intensity": [0.25, 0.75],
+        },
+        10,
+    )
+
+    assert warning is None
+    assert truncated is False
+    assert raw_keys == ["azimuth", "distance", "elevation", "intensity"]
+    assert points[0] == pytest.approx([2.0, 0.0, 0.0])
+    assert points[1] == pytest.approx([0.0, 3.0, 0.0], abs=1e-6)
+    assert intensities == [0.25, 0.75]
+
+
+def test_lidar_scan_dict_extractor_reports_empty_polar_arrays():
+    service = _load_validation_sensor_service()
+
+    points, intensities, raw_keys, truncated, warning = service._extract_scan_dict_points(
+        {
+            "azimuth": [],
+            "elevation": [],
+            "distance": [],
+            "channelId": [],
+        },
+        10,
+    )
+
+    assert points == []
+    assert intensities == []
+    assert truncated is False
+    assert raw_keys == ["azimuth", "channelId", "distance", "elevation"]
+    assert warning == "polar arrays contained 0 elements"
+
+
+def _load_validation_sensor_service():
+    path = (
+        PROJECT / "kkr-extensions" / "omni.mycompany.validation_api"
+        / "omni" / "mycompany" / "validation_api" / "services"
+        / "sensor_service.py"
+    )
+    spec = importlib.util.spec_from_file_location("_validation_sensor_service", path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
