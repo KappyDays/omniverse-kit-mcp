@@ -109,12 +109,7 @@ def _has_diagnostic_summary(data_summary: dict[str, Any]) -> bool:
 
 def _format_data_summary_highlight(data_summary: dict[str, Any]) -> str:
     parts = _diagnostic_summary_parts(data_summary)
-    emitted = {
-        path[0]
-        for _key, paths in _DIAGNOSTIC_SUMMARY_PATHS
-        for path in paths
-        if _lookup_summary_path(data_summary, path)[0]
-    }
+    emitted = _emitted_summary_roots(data_summary)
     for key, value in data_summary.items():
         if len(parts) >= _MAX_HIGHLIGHT_PARTS:
             break
@@ -125,17 +120,60 @@ def _format_data_summary_highlight(data_summary: dict[str, Any]) -> str:
     return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
 
 
+def _emitted_summary_roots(data_summary: dict[str, Any]) -> set[str]:
+    emitted: set[str] = set()
+    for key, paths in _DIAGNOSTIC_SUMMARY_PATHS:
+        for path in paths:
+            found, _value = _lookup_diagnostic_summary_path(data_summary, key, path)
+            if found:
+                emitted.add(path[0])
+                break
+    return emitted
+
+
 def _diagnostic_summary_parts(data_summary: dict[str, Any]) -> list[str]:
     parts: list[str] = []
     for key, paths in _DIAGNOSTIC_SUMMARY_PATHS:
         for path in paths:
-            found, value = _lookup_summary_path(data_summary, path)
+            found, value = _lookup_diagnostic_summary_path(data_summary, key, path)
             if found:
-                if value is None and key in {"empty_reason", "suggested_next"}:
+                if value is None and key in {
+                    "empty_reason",
+                    "suggested_next",
+                    "timeline_settled",
+                    "timeline_settle_updates",
+                }:
                     continue
                 parts.extend(_format_summary_pair(key, value))
                 break
     return parts
+
+
+def _lookup_diagnostic_summary_path(
+    data_summary: dict[str, Any],
+    key: str,
+    path: tuple[str, ...],
+) -> tuple[bool, Any]:
+    found, value = _lookup_summary_path(data_summary, path)
+    if not found:
+        return False, None
+    if (
+        key == "capture_path"
+        and path == ("path",)
+        and not _is_top_level_image_artifact(data_summary)
+    ):
+        return False, None
+    return True, value
+
+
+def _is_top_level_image_artifact(data_summary: dict[str, Any]) -> bool:
+    return (
+        isinstance(data_summary.get("path"), str)
+        and isinstance(data_summary.get("sha256"), str)
+        and isinstance(data_summary.get("artifact_id"), str)
+        and isinstance(data_summary.get("width"), int)
+        and isinstance(data_summary.get("height"), int)
+    )
 
 
 def _lookup_summary_path(

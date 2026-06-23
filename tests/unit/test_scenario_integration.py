@@ -148,6 +148,118 @@ def test_markdown_highlights_bounded_raw_key_samples():
     ) in markdown
 
 
+def test_markdown_does_not_label_stage_path_as_capture_path():
+    summary = ScenarioRunSummary(
+        scenario_id="stage_path_summary",
+        status=ExecutionStatus.PASSED,
+        passed_steps=2,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="reset_stage",
+                phase="arrange",
+                status=ExecutionStatus.PASSED,
+                data_summary={"path": "anon:0000021234567890:robot_sensor.usd"},
+            ),
+            StepResult(
+                step_id="capture_viewport",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "artifact": {
+                        "path": "<capture-artifact>/capture.png",
+                        "sha256": "abc123",
+                    },
+                    "non_empty": True,
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert "`reset_stage`:" not in markdown
+    assert "capture_path=anon:" not in markdown
+    assert (
+        "- `capture_viewport`: capture_path=<capture-artifact>/capture.png; "
+        "sha256=abc123; non_empty=True"
+    ) in markdown
+
+
+def test_markdown_labels_top_level_image_artifact_path_as_capture_path():
+    summary = ScenarioRunSummary(
+        scenario_id="capture_path_summary",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="capture_viewport",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "artifact_id": "capture-1",
+                    "path": "<capture-artifact>/capture.png",
+                    "width": 1280,
+                    "height": 720,
+                    "sha256": "abc123",
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert "- `capture_viewport`: capture_path=<capture-artifact>/capture.png" in markdown
+    assert "sha256=abc123" in markdown
+    assert "; path=<capture-artifact>/capture.png" not in markdown
+
+
+def test_markdown_omits_optional_timeline_nulls():
+    summary = ScenarioRunSummary(
+        scenario_id="timeline_null_summary",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="advance_sensor_frames",
+                phase="act",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "frames": 60,
+                    "status": {
+                        "is_playing": True,
+                        "is_stopped": False,
+                        "timeline_settled": None,
+                        "timeline_settle_updates": None,
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert (
+        "- `advance_sensor_frames`: is_playing=True; is_stopped=False; frames=60"
+    ) in markdown
+    assert "timeline_settled=null" not in markdown
+    assert "timeline_settle_updates=null" not in markdown
+
+
 def test_external_asset_actions_have_registry_builders():
     search = build_request(
         ModuleName.ASSET,
