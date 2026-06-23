@@ -846,6 +846,111 @@ def test_report_preserves_failed_step_next_action_error_code():
     }]
 
 
+def test_report_promotes_viewport_capture_assert_diagnostics():
+    summary = ScenarioRunSummary(
+        scenario_id="viewport_capture_assert_failure",
+        status=ExecutionStatus.FAILED,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="capture_visible_result",
+                phase="assert",
+                status=ExecutionStatus.FAILED,
+                message="Viewport capture assertion failed",
+                error_code="VIEWPORT_CAPTURE_ASSERT_FAILED",
+                data_summary={
+                    "passed": False,
+                    "artifact": {
+                        "path": "/tmp/blank.png",
+                        "sha256": "abc123",
+                        "width": 1280,
+                        "height": 720,
+                        "pixel_mean": [0.0, 0.0, 0.0],
+                        "pixel_variance": [0.0, 0.0, 0.0],
+                        "warmup_frames_used": 8,
+                    },
+                    "pixel_mean_average": 0.0,
+                    "pixel_variance_average": 0.0,
+                    "failure_codes": [
+                        "PIXEL_MEAN_BELOW_THRESHOLD",
+                        "PIXEL_VARIANCE_BELOW_THRESHOLD",
+                    ],
+                    "diagnostics": {
+                        "reason": "capture_blank_or_flat",
+                        "failure_codes": [
+                            "PIXEL_MEAN_BELOW_THRESHOLD",
+                            "PIXEL_VARIANCE_BELOW_THRESHOLD",
+                        ],
+                        "pixel_mean_average": 0.0,
+                        "pixel_variance_average": 0.0,
+                        "min_mean": 8.0,
+                        "min_variance": 1.0,
+                        "suggested_next": [
+                            "Frame the target prims with viewport_frame_prims, then retry viewport_capture_assert with warmup_frames > 0.",
+                            "Add or brighten a DomeLight or DistantLight before retrying if the frame remains dark.",
+                        ],
+                        "fallback_tool_order": [
+                            "simulation_get_status",
+                            "viewport_frame_prims",
+                            "viewport_capture_assert",
+                            "extension_capture_logs",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+    step_result = report["step_results"][0]
+
+    assert step_result["diagnostic_next_actions"] == {
+        "diagnostics.reason": "capture_blank_or_flat",
+        "suggested_next": [
+            "Frame the target prims with viewport_frame_prims, then retry viewport_capture_assert with warmup_frames > 0.",
+            "Add or brighten a DomeLight or DistantLight before retrying if the frame remains dark.",
+        ],
+        "diagnostics.fallback_tool_order": [
+            "simulation_get_status",
+            "viewport_frame_prims",
+            "viewport_capture_assert",
+            "extension_capture_logs",
+        ],
+        "diagnostics.failure_codes": [
+            "PIXEL_MEAN_BELOW_THRESHOLD",
+            "PIXEL_VARIANCE_BELOW_THRESHOLD",
+        ],
+        "diagnostics.pixel_mean_average": 0.0,
+        "diagnostics.pixel_variance_average": 0.0,
+        "diagnostics.min_mean": 8.0,
+        "diagnostics.min_variance": 1.0,
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "capture_visible_result",
+        "phase": "assert",
+        "source": "step",
+        "status": "failed",
+        "error_code": "VIEWPORT_CAPTURE_ASSERT_FAILED",
+        **step_result["diagnostic_next_actions"],
+    }]
+    assert "## Diagnostic Next Actions" in markdown
+    assert "diagnostics.reason=capture_blank_or_flat" in markdown
+    assert (
+        "diagnostics.fallback_tool_order=[simulation_get_status, "
+        "viewport_frame_prims, viewport_capture_assert, extension_capture_logs]"
+    ) in markdown
+    assert "diagnostics.pixel_mean_average=0.0" in markdown
+    assert "diagnostics.pixel_variance_average=0.0" in markdown
+    assert "diagnostics.min_mean=8.0" in markdown
+    assert "diagnostics.min_variance=1.0" in markdown
+
+
 def test_markdown_reports_cleanup_failures_as_non_fatal():
     summary = ScenarioRunSummary(
         scenario_id="cleanup_shape",
@@ -1634,6 +1739,74 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "passed=True; pixel_mean_average=34.0; pixel_variance_average=9.0; "
         "failure_codes=[]"
     ) in markdown
+
+
+@pytest.mark.asyncio
+async def test_robot_rtx_sensor_golden_workflow_reports_capture_assert_diagnostics():
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["viewport_capture"] = {
+        "artifact_id": "blank_robot_sensor",
+        "path": "/tmp/blank_robot_sensor.png",
+        "width": 1280,
+        "height": 720,
+        "sha256": "abc123",
+        "created_at_epoch_ms": 0,
+        "pixel_mean": [0.0, 0.0, 0.0],
+        "pixel_variance": [0.0, 0.0, 0.0],
+        "warmup_frames_used": 8,
+    }
+    isaac_client.responses["simulation_step"] = {
+        "ok": True,
+        "is_playing": True,
+        "is_stopped": False,
+        "current_time": 1.0,
+        "start_time": 0.0,
+        "end_time": 10.0,
+        "time_codes_per_second": 24.0,
+        "timeline_settled": True,
+        "timeline_settle_updates": 1,
+        "frames": 60,
+        "start_time_before_step": 0.0,
+        "advance_mode": "play_burst",
+        "was_playing": True,
+    }
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    scenario = compile_scenario(
+        load_scenario(
+            PROJECT / "scenarios" / "smoke" / "robot_rtx_sensor_golden_workflow.yaml"
+        )
+    )
+
+    summary = await runner.run(scenario)
+    report = json.loads(to_json(summary))
+    failed_capture = next(
+        result for result in report["step_results"]
+        if result["step_id"] == "capture_visible_result"
+    )
+
+    assert summary.status == ExecutionStatus.FAILED, summary
+    assert failed_capture["error_code"] == "VIEWPORT_CAPTURE_ASSERT_FAILED"
+    assert failed_capture["data_summary"]["diagnostics"]["reason"] == (
+        "capture_blank_or_flat"
+    )
+    assert failed_capture["diagnostic_next_actions"][
+        "diagnostics.fallback_tool_order"
+    ] == [
+        "simulation_get_status",
+        "viewport_frame_prims",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "capture_visible_result",
+        "phase": "assert",
+        "source": "step",
+        "status": "failed",
+        "error_code": "VIEWPORT_CAPTURE_ASSERT_FAILED",
+        **failed_capture["diagnostic_next_actions"],
+    }]
 
 
 def test_robot_rtx_sensor_golden_workflow_allows_lidar_point_overrides():

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
+
+from omniverse_kit_mcp.types.common import JsonValue
 
 
 @dataclass(slots=True, frozen=True)
@@ -114,6 +116,7 @@ class ViewportCaptureAssertResult:
     pixel_mean_average: float | None
     pixel_variance_average: float | None
     failure_codes: tuple[str, ...]
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

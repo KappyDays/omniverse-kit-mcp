@@ -112,8 +112,15 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `evidence_summary[].evidence_kind`,
 `evidence_summary[].pixel_mean_average`,
 `evidence_summary[].pixel_variance_average`,
-`evidence_summary[].pixel_mean`, and `evidence_summary[].pixel_variance` before
-opening logs.
+`evidence_summary[].pixel_mean`, `evidence_summary[].pixel_variance`,
+`data_summary.diagnostics.failure_codes`,
+`data_summary.diagnostics.pixel_mean_average`,
+`data_summary.diagnostics.pixel_variance_average`,
+`data_summary.diagnostics.min_mean`, and
+`data_summary.diagnostics.min_variance` before opening logs. If
+`viewport_capture_assert` fails, follow
+`simulation_get_status -> viewport_frame_prims -> viewport_capture_assert ->
+extension_capture_logs` before changing thresholds.
 Use `scenario_last_report(report_format="markdown", redact_local_paths=true)`
 for public-safe quick `Diagnostic Next Actions` and `Data Summary Highlights`;
 use default JSON for exact field values before copying anything into public docs.

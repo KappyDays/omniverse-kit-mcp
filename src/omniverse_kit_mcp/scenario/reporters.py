@@ -87,6 +87,17 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ),
     ("diagnostics.cached_lidar_instance", (("diagnostics", "cached_lidar_instance"),)),
     ("diagnostics.readback_paths_attempted", (("diagnostics", "readback_paths_attempted"),)),
+    ("diagnostics.failure_codes", (("diagnostics", "failure_codes"),)),
+    (
+        "diagnostics.pixel_mean_average",
+        (("diagnostics", "pixel_mean_average"),),
+    ),
+    (
+        "diagnostics.pixel_variance_average",
+        (("diagnostics", "pixel_variance_average"),),
+    ),
+    ("diagnostics.min_mean", (("diagnostics", "min_mean"),)),
+    ("diagnostics.min_variance", (("diagnostics", "min_variance"),)),
     ("raw_keys", (("raw_keys",),)),
     ("warning", (("warning",),)),
     ("truncated", (("truncated",),)),
@@ -778,6 +789,17 @@ def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, A
             "diagnostics.readback_paths_attempted",
             diagnostics.get("readback_paths_attempted"),
         ),
+        ("diagnostics.failure_codes", diagnostics.get("failure_codes")),
+        (
+            "diagnostics.pixel_mean_average",
+            diagnostics.get("pixel_mean_average"),
+        ),
+        (
+            "diagnostics.pixel_variance_average",
+            diagnostics.get("pixel_variance_average"),
+        ),
+        ("diagnostics.min_mean", diagnostics.get("min_mean")),
+        ("diagnostics.min_variance", diagnostics.get("min_variance")),
         ("diagnostics.asset_checks", diagnostics.get("asset_checks")),
         ("diagnostics.material_checks", diagnostics.get("material_checks")),
     ):

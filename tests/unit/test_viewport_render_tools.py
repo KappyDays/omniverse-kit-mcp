@@ -190,7 +190,30 @@ async def test_capture_assert_fails_blank_frame():
     assert result.ok is False
     assert isinstance(result.data, ViewportCaptureAssertResult)
     assert result.data.passed is False
-    assert "PIXEL_MEAN_BELOW_THRESHOLD" in result.data.failure_codes
+    assert result.error_code == "VIEWPORT_CAPTURE_ASSERT_FAILED"
+    assert result.data.failure_codes == (
+        "PIXEL_MEAN_BELOW_THRESHOLD",
+        "PIXEL_VARIANCE_BELOW_THRESHOLD",
+    )
+    assert result.data.diagnostics["reason"] == "capture_blank_or_flat"
+    assert result.data.diagnostics["failure_codes"] == [
+        "PIXEL_MEAN_BELOW_THRESHOLD",
+        "PIXEL_VARIANCE_BELOW_THRESHOLD",
+    ]
+    assert result.data.diagnostics["pixel_mean_average"] == 0.0
+    assert result.data.diagnostics["pixel_variance_average"] == 0.0
+    assert result.data.diagnostics["min_mean"] == 8.0
+    assert result.data.diagnostics["min_variance"] == 1.0
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "simulation_get_status",
+        "viewport_frame_prims",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]
+    assert any(
+        "viewport_frame_prims" in item
+        for item in result.data.diagnostics["suggested_next"]
+    )
 
 
 @pytest.mark.asyncio

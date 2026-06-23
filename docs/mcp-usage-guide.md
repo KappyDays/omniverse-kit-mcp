@@ -40,6 +40,11 @@ robot/RTX or visual workflow is proven. For `viewport_capture_assert`, inspect
 the visual-capture row's `passed`, `pixel_mean_average`,
 `pixel_variance_average`, `pixel_mean`, `pixel_variance`, and
 `warmup_frames_used` fields before relying on the image as nonblank evidence.
+If it fails, read `diagnostic_next_actions` for `diagnostics.reason`,
+`diagnostics.failure_codes`, pixel averages, threshold fields, and
+`diagnostics.fallback_tool_order`; the expected first recovery path is
+`simulation_get_status` -> `viewport_frame_prims` -> `viewport_capture_assert`
+-> `extension_capture_logs`.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict
 
 from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.modules.base import error_result, fail_result, ok_result
-from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
+from omniverse_kit_mcp.types.common import JsonValue, ModuleResult, OperationMeta
 from omniverse_kit_mcp.types.stage import ViewportActiveCameraResult
 from omniverse_kit_mcp.types.viewport import (
     ImageArtifact,
@@ -485,6 +484,15 @@ class ViewportModule:
             pixel_mean_average=mean_avg,
             pixel_variance_average=variance_avg,
             failure_codes=tuple(failures),
+            diagnostics=(
+                _capture_assert_diagnostics(
+                    request=request,
+                    failure_codes=tuple(failures),
+                    pixel_mean_average=mean_avg,
+                    pixel_variance_average=variance_avg,
+                )
+                if failures else {}
+            ),
         )
         if data.passed:
             return ok_result(data, started_ms=started, artifacts={"image": artifact.path})
@@ -494,3 +502,71 @@ class ViewportModule:
             data=data,
             error_code="VIEWPORT_CAPTURE_ASSERT_FAILED",
         )
+
+
+def _capture_assert_diagnostics(
+    *,
+    request: ViewportCaptureAssertRequest,
+    failure_codes: tuple[str, ...],
+    pixel_mean_average: float | None,
+    pixel_variance_average: float | None,
+) -> dict[str, JsonValue]:
+    reason = _capture_assert_failure_reason(failure_codes)
+    diagnostics: dict[str, JsonValue] = {
+        "reason": reason,
+        "failure_codes": list(failure_codes),
+        "pixel_mean_average": pixel_mean_average,
+        "pixel_variance_average": pixel_variance_average,
+        "min_mean": request.min_mean,
+        "min_variance": request.min_variance,
+        "suggested_next": _capture_assert_suggested_next(reason),
+        "fallback_tool_order": [
+            "simulation_get_status",
+            "viewport_frame_prims",
+            "viewport_capture_assert",
+            "extension_capture_logs",
+        ],
+    }
+    return diagnostics
+
+
+def _capture_assert_failure_reason(failure_codes: tuple[str, ...]) -> str:
+    codes = set(failure_codes)
+    if {"PIXEL_MEAN_MISSING", "PIXEL_VARIANCE_MISSING"} & codes:
+        return "capture_stats_missing"
+    if {
+        "PIXEL_MEAN_BELOW_THRESHOLD",
+        "PIXEL_VARIANCE_BELOW_THRESHOLD",
+    } <= codes:
+        return "capture_blank_or_flat"
+    if "PIXEL_MEAN_BELOW_THRESHOLD" in codes:
+        return "capture_too_dark"
+    if "PIXEL_VARIANCE_BELOW_THRESHOLD" in codes:
+        return "capture_flat_or_unframed"
+    return "capture_assert_failed"
+
+
+def _capture_assert_suggested_next(reason: str) -> list[str]:
+    suggestions = {
+        "capture_stats_missing": [
+            "Retry viewport_capture_assert so the capture path returns pixel statistics.",
+            "If stats stay missing, run viewport_capture(return_stats=true) and inspect the raw response.",
+        ],
+        "capture_blank_or_flat": [
+            "Frame the target prims with viewport_frame_prims, then retry viewport_capture_assert with warmup_frames > 0.",
+            "Add or brighten a DomeLight or DistantLight before retrying if the frame remains dark.",
+        ],
+        "capture_too_dark": [
+            "Add or brighten scene lighting, then retry viewport_capture_assert with warmup_frames > 0.",
+            "Inspect the capture artifact before lowering min_mean.",
+        ],
+        "capture_flat_or_unframed": [
+            "Use viewport_frame_prims on the target prims before retrying viewport_capture_assert.",
+            "Inspect the capture artifact for off-camera, occluded, or single-color frames before lowering min_variance.",
+        ],
+        "capture_assert_failed": [
+            "Inspect failure_codes, pixel_mean_average, and pixel_variance_average before adjusting thresholds.",
+            "Capture extension WARN/ERROR logs if repeated retries produce the same failure codes.",
+        ],
+    }
+    return suggestions.get(reason, suggestions["capture_assert_failed"])
