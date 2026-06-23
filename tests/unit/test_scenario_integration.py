@@ -3228,12 +3228,111 @@ async def test_official_asset_verify_failure_diagnostics_survive_runner_report(
     assert json_step["diagnostic_next_actions"][
         "diagnostics.asset_checks"
     ]["load_quality"] == "empty_content"
+    evidence_report = {
+        result["step_id"]: result for result in json_report["evidence_summary"]
+    }
+    assert evidence_report["verify_empty_asset"] == {
+        "step_id": "verify_empty_asset",
+        "phase": "assert",
+        "status": "passed",
+        "attempts": 1,
+        "max_attempts": 1,
+        "retry_failure_count": 0,
+        "evidence_kind": "official_asset_verify",
+        "id": asset_id,
+        "kind": "asset",
+        "name": "aluminumpallet_a01.usd",
+        "app_profile": "isaac-sim",
+        "verification_status": "failed",
+        "attempt": 2,
+        "timeout_s": 1.0,
+        "retry_count": 1,
+        "error": "no authored child, default prim, or prim_count evidence",
+        "diagnostics": {
+            "reason": "asset_load_quality_failed",
+            "target_status": "load_verified",
+            "current_catalog_status": "load_verified",
+            "stale_warning": None,
+            "suggested_next": json_report["diagnostic_next_actions"][0][
+                "suggested_next"
+            ],
+            "fallback_tool_order": json_report["diagnostic_next_actions"][0][
+                "diagnostics.fallback_tool_order"
+            ],
+            "asset_checks": json_report["diagnostic_next_actions"][0][
+                "diagnostics.asset_checks"
+            ],
+        },
+    }
 
     markdown = to_markdown(summary)
     assert "## Diagnostic Next Actions" in markdown
+    assert "## Evidence Summary" in markdown
+    assert (
+        "`verify_empty_asset`: evidence_kind=official_asset_verify; "
+        "status=passed; attempts=1/1"
+    ) in markdown
     assert "- `verify_empty_asset`: diagnostics.reason=asset_load_quality_failed" in markdown
     assert "diagnostics.asset_checks.load_quality=empty_content" in markdown
     assert "diagnostics.asset_checks.has_authored_children=False" in markdown
+
+
+def test_official_asset_verify_evidence_summary_preserves_error_type():
+    summary = ScenarioRunSummary(
+        scenario_id="official_verify_timeout",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=0,
+        ended_at_epoch_ms=1,
+        artifact_paths=(),
+        step_results=(
+            StepResult(
+                step_id="verify_timeout_asset",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "id": "url:https://example.invalid/asset.usd",
+                    "kind": "asset",
+                    "name": "asset.usd",
+                    "app_profile": "isaac-sim",
+                    "verification_status": "failed",
+                    "attempt": 2,
+                    "timeout_s": 0.001,
+                    "retry_count": 1,
+                    "error": "TimeoutError",
+                    "canonical_url": "https://example.invalid/asset.usd",
+                    "diagnostics": {
+                        "reason": "verify_timeout",
+                        "target_status": "load_verified",
+                        "current_catalog_status": "discovered",
+                        "error_type": "TimeoutError",
+                        "suggested_next": [
+                            "Retry official_asset_verify with a larger timeout_s.",
+                        ],
+                        "fallback_tool_order": [
+                            "official_asset_sync_status",
+                            "official_asset_verify",
+                        ],
+                        "asset_checks": {
+                            "load_quality": None,
+                            "bbox_valid": None,
+                        },
+                    },
+                },
+            ),
+        ),
+    )
+
+    report = json.loads(to_json(summary))
+    evidence = report["evidence_summary"][0]
+
+    assert evidence["evidence_kind"] == "official_asset_verify"
+    assert evidence["diagnostics"]["reason"] == "verify_timeout"
+    assert evidence["diagnostics"]["error_type"] == "TimeoutError"
+    markdown = to_markdown(summary)
+    assert "diagnostics.error_type=TimeoutError" in markdown
 
 
 @pytest.mark.asyncio

@@ -606,6 +606,7 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
                     "target_status",
                     "current_catalog_status",
                     "stale_warning",
+                    "error_type",
                     "suggested_next",
                     "fallback_tool_order",
                     "asset_checks",

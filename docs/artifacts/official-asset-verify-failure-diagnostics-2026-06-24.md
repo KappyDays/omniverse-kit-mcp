@@ -38,6 +38,9 @@ Failure reasons currently covered:
   `material_checks.create_prim_ok`, `material_checks.assign_ok`,
   `material_checks.bound_ok`, `suggested_next`, and the official fallback order
   in JSON and Markdown reports.
+- The scenario reporter now also preserves official verify failure diagnostics
+  in `evidence_summary`, including `asset_checks`, `material_checks`, and
+  timeout `error_type` when present.
 
 ## Public Boundary
 
