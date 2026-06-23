@@ -1544,6 +1544,65 @@ async def test_scenario_runner_reports_exhausted_hard_exception_retries(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_continued_hard_timeout_and_exception_report_as_continued(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+
+    async def raise_by_step(step, _ctx, _scenario_id, _timeout):
+        if step.id == "continued_timeout":
+            raise asyncio.TimeoutError()
+        raise RuntimeError("continued bridge error")
+
+    monkeypatch.setattr(runner, "_execute_step_with_retries", raise_by_step)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "test_continued_hard_failures",
+            "name": "continued hard failures",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "continued_timeout",
+                    "module": "asset",
+                    "action": "official_get",
+                    "continueOnFailure": True,
+                    "timeoutSeconds": 7,
+                    "args": {"asset_id": "url:https://example.invalid/a.usd"},
+                },
+                {
+                    "id": "continued_error",
+                    "module": "asset",
+                    "action": "official_resolve",
+                    "continueOnFailure": True,
+                    "args": {"name_or_id": "missing"},
+                },
+            ],
+        },
+    }
+
+    summary = await runner.run(compile_scenario(raw))
+
+    assert summary.status == ExecutionStatus.PASSED
+    assert summary.failed_steps == 2
+    steps = {step.step_id: step for step in summary.step_results}
+    assert steps["continued_timeout"].continue_on_failure is True
+    assert steps["continued_timeout"].status == ExecutionStatus.TIMEOUT
+    assert steps["continued_error"].continue_on_failure is True
+    assert steps["continued_error"].status == ExecutionStatus.ERROR
+    markdown = to_markdown(summary)
+    assert "**Steps**: 0 passed, 0 failed, 2 continued, 0 skipped" in markdown
+    assert "| continued_timeout | assert | timeout (continued) |" in markdown
+    assert "| continued_error | assert | error (continued) |" in markdown
+    json_report = json.loads(to_json(summary))
+    json_steps = {step["step_id"]: step for step in json_report["step_results"]}
+    assert json_steps["continued_timeout"]["continue_on_failure"] is True
+    assert json_steps["continued_error"]["continue_on_failure"] is True
+
+
+@pytest.mark.asyncio
 async def test_job_status_resolves_navigate_step_id_from_context():
     """job.status context-aware: navigate_step_id → prior RobotNavigateResult.job_id."""
     from tests.conftest import MockIsaacRestClient, MockLakehouseClient
