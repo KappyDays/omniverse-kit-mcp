@@ -74,6 +74,9 @@ runner-added safeguards, not YAML.
 `scenario_validate(..., dry_run=true)` returns the same plan fields plus
 `dry_run`, `steps`, and `compiled`, so it is safe as a one-call preflight when
 you are already on the validation tool path.
+After editing `src/omniverse_kit_mcp`, use
+`scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
+inspect the same plan shape before restarting a cached MCP host.
 When using `input_overrides`, pass the same override dict to `scenario_plan` and
 `scenario_validate` so the plan preview reflects the exact variable-substituted
 prim paths and asset URLs that will run.

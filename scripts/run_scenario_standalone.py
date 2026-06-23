@@ -5,11 +5,15 @@ runner / schema take effect without restarting the Claude Code session.
 
 Usage:
     .venv/Scripts/python.exe scripts/run_scenario_standalone.py <scenario_path>
+    .venv/Scripts/python.exe scripts/run_scenario_standalone.py --dry-run <scenario_path>
 """
+# ruff: noqa: E402
 
 from __future__ import annotations
 
+import argparse
 import asyncio
+import json
 import os
 import sys
 from pathlib import Path
@@ -42,12 +46,35 @@ from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
+from omniverse_kit_mcp.tools.scenario_tools import (
+    _apply_input_overrides,
+    _scenario_plan_payload,
+)
 
 
-async def run(scenario_path: str) -> int:
+async def run(
+    scenario_path: str,
+    *,
+    dry_run: bool = False,
+    input_overrides: dict[str, object] | None = None,
+) -> int:
     os.chdir(PROJECT_ROOT)
     config = AppConfig()
     resolved_path = _resolve_scenario_path(scenario_path, config)
+    raw = load_scenario(resolved_path)
+    _apply_input_overrides(raw, input_overrides)
+    scenario = compile_scenario(raw)
+    if dry_run:
+        plan = _scenario_plan_payload(scenario)
+        print("===== DRY RUN PLAN =====")
+        print(json.dumps({
+            **plan,
+            "dry_run": True,
+            "steps": plan["total_steps"],
+            "compiled": True,
+        }, indent=2, ensure_ascii=False))
+        return 0
+
     isaac_client = IsaacRestClient(config.isaac_sim)
     lakehouse_client = LakehouseClient(config.lakehouse)
     try:
@@ -77,8 +104,6 @@ async def run(scenario_path: str) -> int:
             material, replicator, omnigraph, content,
         )
 
-        raw = load_scenario(resolved_path)
-        scenario = compile_scenario(raw)
         summary = await runner.run(scenario)
 
         print("===== JSON REPORT =====")
@@ -113,8 +138,41 @@ def _resolve_scenario_path(user_path: str, config) -> str:
     return str(candidate)  # let loader raise with a sensible path
 
 
+def _parse_input_overrides(raw_json: str | None) -> dict[str, object] | None:
+    if raw_json is None:
+        return None
+    parsed = json.loads(raw_json)
+    if not isinstance(parsed, dict):
+        raise ValueError("--input-overrides-json must decode to a JSON object")
+    return parsed
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("scenario_path")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compile only and print the scenario_plan-compatible payload.",
+    )
+    parser.add_argument(
+        "--input-overrides-json",
+        help="JSON object merged into spec.variables before compile/run.",
+    )
+    args = parser.parse_args(argv)
+    try:
+        input_overrides = _parse_input_overrides(args.input_overrides_json)
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"Invalid --input-overrides-json: {exc}", file=sys.stderr)
+        return 2
+    return asyncio.run(
+        run(
+            args.scenario_path,
+            dry_run=args.dry_run,
+            input_overrides=input_overrides,
+        )
+    )
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python run_scenario_standalone.py <scenario_path>")
-        sys.exit(2)
-    sys.exit(asyncio.run(run(sys.argv[1])))
+    sys.exit(main())
