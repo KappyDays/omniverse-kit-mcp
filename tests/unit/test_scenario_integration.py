@@ -1131,6 +1131,14 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "readback_paths_attempted=cached_lidar_sensor,replicator_annotator"
         in str(retry_failure["message"])
     )
+    assert retry_failure["data_summary"]["num_points"] == 0
+    assert retry_failure["data_summary"]["diagnostics"]["cached_lidar_instance"] is True
+    assert retry_failure["data_summary"]["diagnostics"][
+        "readback_paths_attempted"
+    ] == [
+        "cached_lidar_sensor",
+        "replicator_annotator",
+    ]
     assert step_result.data_summary["num_points"] == 2
     assert step_result.data_summary["empty_reason"] is None
     report = json.loads(to_json(summary))
@@ -1143,6 +1151,12 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     assert lidar_report["retry_failures"][0]["error_code"] == (
         "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
     )
+    assert lidar_report["retry_failures"][0]["data_summary"]["diagnostics"][
+        "readback_paths_attempted"
+    ] == [
+        "cached_lidar_sensor",
+        "replicator_annotator",
+    ]
     markdown = to_markdown(summary)
     assert "| Step | Phase | Status | Attempts | Duration | Message |" in markdown
     assert "| read_lidar | assert | passed | 2/2 |" in markdown
@@ -1165,6 +1179,10 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "readback_paths_attempted=cached_lidar_sensor,replicator_annotator"
         in markdown
     )
+    assert (
+        "[num_points=0; backend=omni.replicator.core; "
+        "frames_waited=12; empty_reason=empty_scan_buffer"
+    ) in markdown
 
 
 @pytest.mark.asyncio

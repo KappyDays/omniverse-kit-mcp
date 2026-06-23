@@ -168,10 +168,21 @@ def to_markdown(
             failure_message = failure.get("message") or ""
             if redact_local_paths:
                 failure_message = _redact_local_path_string(str(failure_message))
+            failure_detail = ""
+            data_summary = failure.get("data_summary")
+            if isinstance(data_summary, dict) and _has_diagnostic_summary(data_summary):
+                data_summary = (
+                    _redact_local_paths(data_summary)
+                    if redact_local_paths
+                    else data_summary
+                )
+                failure_detail = (
+                    f" [{_format_data_summary_highlight(data_summary)}]"
+                )
             lines.append(
                 f"- {_markdown_code_span(step_id)} attempt {failure.get('attempt')}: "
                 f"{failure.get('status')} {failure.get('error_code')} - "
-                f"{_markdown_inline(failure_message)}"
+                f"{_markdown_inline(failure_message)}{_markdown_inline(failure_detail)}"
             )
 
     if summary.artifact_paths:

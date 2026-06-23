@@ -612,12 +612,15 @@ def _retry_failure_summary(
     attempt: int,
     result: ModuleResult[Any],
 ) -> dict[str, JsonValue]:
-    return _failure_summary(
+    summary = _failure_summary(
         attempt,
         result.status,
         result.error_code,
         result.message,
     )
+    if result.data is not None:
+        summary["data_summary"] = _summarize_step_data(result.data)
+    return summary
 
 
 def _failure_summary(
