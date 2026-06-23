@@ -24,6 +24,12 @@ The generated signature reference remains `docs/tool-catalog.md`.
 Standalone scenario runs print JSON plus Markdown; follow the scenario
 validation invariant for report-field triage.
 
+Robot + RTX live proof wrapper:
+`mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
+`extension_clear_logs` -> `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
+`scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
+`scenario_last_report(report_format="markdown")` -> `extension_capture_logs`.
+
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.suggested_next`, and
 `diagnostics.fallback_tool_order` before falling back to `asset_search`.

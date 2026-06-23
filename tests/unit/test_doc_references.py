@@ -218,6 +218,41 @@ def test_f3_phase_report_artifacts_exist():
 
 
 # ---------------------------------------------------------------------------
+# F3b: robot + RTX live proof route keeps the required diagnostic wrapper
+# ---------------------------------------------------------------------------
+
+def test_f3b_robot_rtx_live_proof_wrapper_order():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    invariant = (
+        PROJECT / "docs" / "invariants" / "scenario-validation.md"
+    ).read_text(encoding="utf-8")
+    sequence = [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "extension_clear_logs",
+        "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)",
+        "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)",
+        'scenario_last_report(report_format="markdown")',
+        "extension_capture_logs",
+    ]
+
+    start = guide.index("Robot + RTX live proof wrapper:")
+    end = guide.index("For `official_asset_*`", start)
+    wrapper = guide[start:end]
+    positions = [wrapper.find(token) for token in sequence]
+    missing = [token for token, pos in zip(sequence, positions) if pos < 0]
+    assert not missing, "mcp-usage-guide.md missing robot+RTX wrapper tokens: " + ", ".join(
+        missing
+    )
+    assert positions == sorted(positions), (
+        "Robot + RTX live proof wrapper is out of order in mcp-usage-guide.md"
+    )
+    assert "extension_clear_logs" in invariant
+    assert "extension_capture_logs" in invariant
+
+
+# ---------------------------------------------------------------------------
 # F4: scenario YAML usd_url values are S3 (not file://)
 # ---------------------------------------------------------------------------
 
