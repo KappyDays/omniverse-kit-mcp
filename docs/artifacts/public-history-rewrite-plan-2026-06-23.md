@@ -16,6 +16,9 @@ Current evidence:
 - Local `main` is ahead of `origin/main`; re-check the exact count with
   `git rev-list --count origin/main..HEAD`. The pending range passes
   `scripts/review_public_hygiene.py --base origin/main --head HEAD`.
+- Public-safe approval summaries can now use
+  `scripts/review_public_hygiene.py --today --head HEAD --format json --redact-samples`
+  to preserve counts and commit IDs without printing raw local path samples.
 
 ## Affected Commits
 
@@ -56,6 +59,7 @@ Only after explicit approval:
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD --format json
+.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD --format json --redact-samples
 .\.venv\Scripts\python.exe -m pytest tests\unit\test_public_repo_hygiene.py -q
 git diff --check
 ```
@@ -82,8 +86,13 @@ Additional validation after the latest local-only diagnostics batches:
 
 - `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --base origin/main --head HEAD --format json`:
   passed with `finding_count=0`
-- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD --format json`:
-  still failed as expected with the same `finding_count=7`
+- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD --format json --redact-samples`:
+  still failed as expected with the same `finding_count=7`, all
+  `already_public`, with local path samples masked.
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_public_repo_hygiene.py -q`:
+  `14 passed`
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q`:
+  `754 passed, 16 skipped`
 
 ## Push Impact
 
@@ -94,6 +103,6 @@ the rewritten history.
 
 ## Boundary
 
-This plan intentionally omits the original local paths. Use the JSON output from
-`scripts/review_public_hygiene.py --today --head HEAD --format json` only as a
-local diagnostic source, not as public artifact content.
+This plan intentionally omits the original local paths. Use raw JSON output only
+as a local diagnostic source; use `--redact-samples` before copying audit output
+into approval notes or public artifacts.
