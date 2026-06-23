@@ -46,6 +46,7 @@ from omniverse_kit_mcp.tools.tool_profiles import (
 
 # Module-level store for last run reports
 _last_reports: dict[str, str] = {}
+_last_report_id: str | None = None
 
 
 def _resolve_safe_path(user_path: str, scenarios_root: str) -> str:
@@ -115,6 +116,7 @@ def register_scenario_tools(
         input_overrides: dict[str, Any] | None = None,
     ) -> str:
         """Execute YAML validation scenario (Arrange→Act→Assert→Cleanup). Returns step-level pass/fail summary. input_overrides substitutes scenario variables."""
+        global _last_report_id
         safe_path = _resolve_safe_path(scenario_path, config.scenario.scenarios_dir)
         raw = load_scenario(safe_path)
 
@@ -141,6 +143,7 @@ def register_scenario_tools(
         )
         report = to_json(summary)
         _last_reports[scenario.scenario_id] = report
+        _last_report_id = scenario.scenario_id
         return report
 
     @tool()
@@ -176,12 +179,15 @@ def register_scenario_tools(
 
     @tool()
     async def scenario_last_report(
-        scenario_id: str,
+        scenario_id: str | None = None,
     ) -> str:
-        """Get last execution report for a scenario_id from the most recent scenario_validate run."""
-        report = _last_reports.get(scenario_id)
+        """Get the latest scenario_validate report, or a specific report by scenario_id."""
+        target_id = scenario_id or _last_report_id
+        if target_id is None:
+            return json.dumps({"error": "No scenario reports have been recorded"})
+        report = _last_reports.get(target_id)
         if report is None:
-            return json.dumps({"error": f"No report found for scenario '{scenario_id}'"})
+            return json.dumps({"error": f"No report found for scenario '{target_id}'"})
         return report
 
 

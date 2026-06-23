@@ -16,6 +16,7 @@ from mcp.server.fastmcp import FastMCP
 from omniverse_kit_mcp.config import AppConfig, MCPServerConfig
 from omniverse_kit_mcp.mcp.server import create_mcp_server
 from omniverse_kit_mcp.modules.robot_module import RobotModule
+from omniverse_kit_mcp.tools import scenario_tools
 from omniverse_kit_mcp.tools.module_tools import register_module_tools
 from omniverse_kit_mcp.tools.tool_profiles import (
     PROFILE_APP,
@@ -364,6 +365,32 @@ def test_scenario_tools_present(mcp_server):
     tools = mcp_server._tool_manager._tools
     for name in EXPECTED_SCENARIO_TOOLS:
         assert name in tools, f"Missing scenario tool: {name}"
+
+
+@pytest.mark.asyncio
+async def test_scenario_last_report_defaults_to_latest(mcp_server, monkeypatch):
+    latest = json.dumps({"scenario_id": "latest_scenario"})
+    older = json.dumps({"scenario_id": "older_scenario"})
+    monkeypatch.setattr(scenario_tools, "_last_reports", {
+        "latest_scenario": latest,
+        "older_scenario": older,
+    })
+    monkeypatch.setattr(scenario_tools, "_last_report_id", "latest_scenario")
+    tool = mcp_server._tool_manager._tools["scenario_last_report"]
+
+    assert await tool.fn() == latest
+    assert await tool.fn("older_scenario") == older
+
+
+@pytest.mark.asyncio
+async def test_scenario_last_report_no_latest_error(mcp_server, monkeypatch):
+    monkeypatch.setattr(scenario_tools, "_last_reports", {})
+    monkeypatch.setattr(scenario_tools, "_last_report_id", None)
+    tool = mcp_server._tool_manager._tools["scenario_last_report"]
+
+    payload = json.loads(await tool.fn())
+
+    assert payload == {"error": "No scenario reports have been recorded"}
 
 
 def test_no_inject_cleanup_tools(mcp_server):

@@ -2627,16 +2627,16 @@ is unavailable.
 ### `scenario_last_report`
 
 ```python
-scenario_last_report(scenario_id: 'str') -> 'str'
+scenario_last_report(scenario_id: 'str | None' = None) -> 'str'
 ```
 
-Get last execution report for a scenario_id from the most recent scenario_validate run.
+Get the latest scenario_validate report, or a specific report by scenario_id.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
-| `scenario_id` | `string` | `'—'` | ✓ |
+| `scenario_id` | `string \| None` | `None` |  |
 
 ### `scenario_plan`
 
