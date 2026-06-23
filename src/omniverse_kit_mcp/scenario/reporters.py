@@ -21,6 +21,14 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ("diagnostics.available_profiles", (("diagnostics", "available_profiles"),)),
     ("diagnostics.available_providers", (("diagnostics", "available_providers"),)),
     ("diagnostics.matching_item_count", (("diagnostics", "matching_item_count"),)),
+    ("diagnostics.available_kinds", (("diagnostics", "available_kinds"),)),
+    ("diagnostics.status_counts", (("diagnostics", "status_counts"),)),
+    ("diagnostics.catalog_status_counts", (("diagnostics", "catalog_status_counts"),)),
+    (
+        "diagnostics.matching_status_counts",
+        (("diagnostics", "matching_status_counts"),),
+    ),
+    ("diagnostics.sample_names", (("diagnostics", "sample_names"),)),
     (
         "diagnostics.candidate_counts.total_entries",
         (("diagnostics", "candidate_counts", "total_entries"),),
@@ -35,6 +43,48 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ),
     ("suggested_next", (("diagnostics", "suggested_next"),)),
     ("diagnostics.fallback_tool_order", (("diagnostics", "fallback_tool_order"),)),
+    ("diagnostics.target_status", (("diagnostics", "target_status"),)),
+    (
+        "diagnostics.current_catalog_status",
+        (("diagnostics", "current_catalog_status"),),
+    ),
+    ("diagnostics.error_type", (("diagnostics", "error_type"),)),
+    (
+        "diagnostics.asset_checks.load_quality",
+        (("diagnostics", "asset_checks", "load_quality"),),
+    ),
+    (
+        "diagnostics.asset_checks.bbox_valid",
+        (("diagnostics", "asset_checks", "bbox_valid"),),
+    ),
+    (
+        "diagnostics.asset_checks.bbox_validation_reasons",
+        (("diagnostics", "asset_checks", "bbox_validation_reasons"),),
+    ),
+    (
+        "diagnostics.asset_checks.has_authored_children",
+        (("diagnostics", "asset_checks", "has_authored_children"),),
+    ),
+    (
+        "diagnostics.asset_checks.has_default_prim",
+        (("diagnostics", "asset_checks", "has_default_prim"),),
+    ),
+    (
+        "diagnostics.asset_checks.prim_count_valid",
+        (("diagnostics", "asset_checks", "prim_count_valid"),),
+    ),
+    (
+        "diagnostics.material_checks.create_prim_ok",
+        (("diagnostics", "material_checks", "create_prim_ok"),),
+    ),
+    (
+        "diagnostics.material_checks.assign_ok",
+        (("diagnostics", "material_checks", "assign_ok"),),
+    ),
+    (
+        "diagnostics.material_checks.bound_ok",
+        (("diagnostics", "material_checks", "bound_ok"),),
+    ),
     ("diagnostics.cached_lidar_instance", (("diagnostics", "cached_lidar_instance"),)),
     ("diagnostics.readback_paths_attempted", (("diagnostics", "readback_paths_attempted"),)),
     ("raw_keys", (("raw_keys",),)),

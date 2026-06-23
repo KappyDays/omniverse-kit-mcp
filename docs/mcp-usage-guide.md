@@ -64,6 +64,9 @@ For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.sample_names`, `diagnostics.suggested_next`, and
 `diagnostics.fallback_tool_order` before changing `kind` / `app_profile` /
 `provider` / `min_status` or falling back to `asset_search`.
+Markdown `Data Summary Highlights` surfaces those bounded catalog details, so
+use it for first-pass triage and switch to JSON when exact nested values are
+needed.
 For `official_asset_sync_status` profile diagnostics, compare
 `diagnostics.catalog_status_counts` with
 `diagnostics.matching_status_counts` and use `diagnostics.sample_names` only as

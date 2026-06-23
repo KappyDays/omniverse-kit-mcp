@@ -505,6 +505,107 @@ def test_markdown_highlights_sync_status_profile_diagnostics():
     assert report["diagnostic_next_actions"][0]["source"] == "step"
 
 
+def test_markdown_highlights_official_asset_bounded_diagnostic_details():
+    summary = ScenarioRunSummary(
+        scenario_id="official_asset_bounded_diagnostics",
+        status=ExecutionStatus.FAILED,
+        passed_steps=1,
+        failed_steps=2,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="search_assets",
+                phase="arrange",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "count": 0,
+                    "diagnostics": {
+                        "reason": "query_no_match",
+                        "available_kinds": ["asset", "material"],
+                        "status_counts": {"failed": 2, "load_verified": 1},
+                        "sample_names": ["Pallet", "Brushed Metal"],
+                        "suggested_next": ["Retry with a broader query."],
+                        "fallback_tool_order": [
+                            "official_asset_sync_status",
+                            "official_asset_search",
+                            "asset_search",
+                        ],
+                    },
+                },
+            ),
+            StepResult(
+                step_id="verify_asset",
+                phase="assert",
+                status=ExecutionStatus.FAILED,
+                data_summary={
+                    "diagnostics": {
+                        "reason": "asset_load_quality_failed",
+                        "target_status": "load_verified",
+                        "current_catalog_status": "failed",
+                        "error_type": "TimeoutError",
+                        "asset_checks": {
+                            "load_quality": "invalid_empty_content",
+                            "bbox_valid": False,
+                            "bbox_validation_reasons": ["bbox_invalid"],
+                            "has_authored_children": False,
+                            "has_default_prim": False,
+                            "prim_count_valid": False,
+                        },
+                        "suggested_next": ["Inspect load_quality before retry."],
+                        "fallback_tool_order": ["official_asset_get", "asset_search"],
+                    },
+                },
+            ),
+            StepResult(
+                step_id="verify_material",
+                phase="assert",
+                status=ExecutionStatus.FAILED,
+                data_summary={
+                    "diagnostics": {
+                        "reason": "material_assign_or_binding_failed",
+                        "target_status": "assign_verified",
+                        "current_catalog_status": "url_validated",
+                        "material_checks": {
+                            "create_prim_ok": True,
+                            "assign_ok": True,
+                            "bound_ok": False,
+                        },
+                        "suggested_next": ["Check material binding readback."],
+                        "fallback_tool_order": ["official_asset_get", "asset_search"],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert "diagnostics.available_kinds=[asset, material]" in markdown
+    assert (
+        'diagnostics.status_counts={"failed":2,"load_verified":1}'
+        in markdown
+    )
+    assert "diagnostics.sample_names=[Pallet, Brushed Metal]" in markdown
+    assert "diagnostics.target_status=load_verified" in markdown
+    assert "diagnostics.current_catalog_status=failed" in markdown
+    assert "diagnostics.error_type=TimeoutError" in markdown
+    assert "diagnostics.asset_checks.load_quality=invalid_empty_content" in markdown
+    assert "diagnostics.asset_checks.bbox_valid=False" in markdown
+    assert (
+        "diagnostics.asset_checks.bbox_validation_reasons=[bbox_invalid]"
+        in markdown
+    )
+    assert "diagnostics.asset_checks.has_authored_children=False" in markdown
+    assert "diagnostics.asset_checks.has_default_prim=False" in markdown
+    assert "diagnostics.asset_checks.prim_count_valid=False" in markdown
+    assert "diagnostics.material_checks.create_prim_ok=True" in markdown
+    assert "diagnostics.material_checks.assign_ok=True" in markdown
+    assert "diagnostics.material_checks.bound_ok=False" in markdown
+
+
 def test_report_does_not_promote_reason_only_diagnostics_to_next_actions():
     summary = ScenarioRunSummary(
         scenario_id="reason_only_diagnostics",
