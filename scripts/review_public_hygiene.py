@@ -54,6 +54,7 @@ SECRET_LIKE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("openai_token", re.compile(r"\bsk-" + r"[A-Za-z0-9_-]{20,}\b")),
     ("slack_token", re.compile(r"\bxox" + r"[baprs]-[A-Za-z0-9-]{20,}\b")),
 )
+SECRET_LIKE_LABELS = frozenset(label for label, _ in SECRET_LIKE_PATTERNS)
 
 DISALLOWED_GENERATED_REFERENCES = (
     "docs/references/extensions.json",
@@ -101,6 +102,36 @@ class Finding:
         if self.sample:
             return f"[{source}] {self.detail}: matches {self.label}: {self.sample}"
         return f"[{source}] {self.detail}: matches {self.label}"
+
+
+def _redact_output_text(value: str) -> str:
+    redacted = value
+    for label, pattern in DISALLOWED_PATH_PATTERNS + SECRET_LIKE_PATTERNS:
+        replacement = (
+            f"<secret-like:{label}>"
+            if label in SECRET_LIKE_LABELS
+            else "<local-user-path>"
+        )
+        redacted = pattern.sub(replacement, redacted)
+    for user_name in LOCAL_USER_NAMES:
+        redacted = re.sub(
+            rf"(['\"]){re.escape(user_name)}(['\"])",
+            r"\1<local-user>\2",
+            redacted,
+            flags=re.IGNORECASE,
+        )
+    return redacted
+
+
+def _redact_finding_for_output(finding: Finding) -> Finding:
+    return Finding(
+        source=finding.source,
+        label=finding.label,
+        detail=_redact_output_text(finding.detail),
+        sample=_redact_output_text(finding.sample),
+        commit=finding.commit,
+        reachability=finding.reachability,
+    )
 
 
 def _git(project: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -430,6 +461,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default="text",
         help="output format",
     )
+    parser.add_argument(
+        "--redact-samples",
+        action="store_true",
+        help=(
+            "redact project path, finding details, and samples in output for "
+            "public-safe review summaries; scan logic is unchanged"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -467,16 +506,24 @@ def main(argv: list[str] | None = None) -> int:
         range_text = f"{base}..{head} (since {since})" if base else "none"
     else:
         range_text = f"{base}..{head}" if base else "none"
+    output_findings = (
+        [_redact_finding_for_output(finding) for finding in findings]
+        if args.redact_samples
+        else findings
+    )
+    output_project = (
+        _redact_output_text(str(project)) if args.redact_samples else str(project)
+    )
     if args.format == "json":
         print(json.dumps(
             {
                 "ok": not findings,
-                "project": str(project),
+                "project": output_project,
                 "history_range": range_text,
                 "public_ref": public_ref,
                 "finding_count": len(findings),
                 "reachability_counts": _reachability_counts(findings),
-                "findings": [asdict(finding) for finding in findings],
+                "findings": [asdict(finding) for finding in output_findings],
             },
             indent=2,
         ))
@@ -484,7 +531,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if findings:
         print("Public repository hygiene review failed:")
-        print(f"  project: {project}")
+        print(f"  project: {output_project}")
         print(f"  history range: {range_text}")
         if public_ref:
             print(f"  public ref: {public_ref}")
@@ -494,14 +541,14 @@ def main(argv: list[str] | None = None) -> int:
                 f"{key}={value}" for key, value in reachability_counts.items()
             )
             print(f"  reachability: {counts_text}")
-        for finding in findings[:100]:
+        for finding in output_findings[:100]:
             print(f"  - {finding.format()}")
         if len(findings) > 100:
             print(f"  ... {len(findings) - 100} more finding(s)")
         return 1
 
     print("Public repository hygiene review OK")
-    print(f"  project: {project}")
+    print(f"  project: {output_project}")
     print(f"  history range: {range_text}")
     if public_ref:
         print(f"  public ref: {public_ref}")

@@ -494,6 +494,77 @@ def test_public_hygiene_script_json_format_reports_findings(tmp_path: Path) -> N
     )
 
 
+def test_public_hygiene_script_redacts_samples_for_public_json(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "leak local path")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--skip-history",
+            "--format",
+            "json",
+            "--redact-samples",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "localuser" not in result.stdout
+    payload = json.loads(result.stdout)
+    assert payload["findings"][0]["sample"] == (
+        "capture: <local-user-path>AppData/Local/Temp/capture.png"
+    )
+
+
+def test_public_hygiene_script_redacts_samples_for_public_text(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "leak local path")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--skip-history",
+            "--redact-samples",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "localuser" not in result.stdout
+    assert "<local-user-path>AppData/Local/Temp/capture.png" in result.stdout
+
+
 def test_public_hygiene_script_json_classifies_history_reachability(
     tmp_path: Path,
 ) -> None:

@@ -23,6 +23,10 @@ For a session/day audit after commits may already have been pushed, use:
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "2026-06-23 00:00" --head HEAD
 ```
 
+For output that may be copied into a public-safe review note, add
+`--redact-samples` so project paths and finding samples are masked while the
+scan logic and finding counts stay unchanged.
+
 The current-tree scan includes tracked files plus untracked, non-ignored files
 from `git ls-files --others --exclude-standard`; ignored local evidence caches
 stay outside the public gate. The default history scan uses the current branch
