@@ -135,7 +135,7 @@ Read resource isaacsim://scenarios                               # available sce
 scenario_last_report(report_format="markdown")                   # quick triage; omit arg for JSON
 scenario_last_report(report_format="markdown", redact_local_paths=true) # public-safe evidence copy
 ```
-`scenario_last_report` includes diagnostics/retry data; use Markdown for triage, default JSON for exact fields, and `redact_local_paths=true` for public evidence. `scenario_plan` exposes `idempotent`, `retries`, and `continueOnFailure`; check these before live runs.
+`scenario_last_report` includes diagnostics/retry data; use Markdown for triage, default JSON for exact fields, and `redact_local_paths=true` for public evidence. `scenario_plan` exposes override `timeoutSeconds`, `idempotent`, `retries`, and `continueOnFailure`; check these before live runs.
 
 ## Procedure for creating a new scenario
 

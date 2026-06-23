@@ -181,10 +181,22 @@ def register_scenario_tools(
             },
             "variables": scenario.variables,
             "phases": {
-                "arrange": [_plan_step(s) for s in scenario.arrange_steps],
-                "act": [_plan_step(s) for s in scenario.act_steps],
-                "assert": [_plan_step(s) for s in scenario.assert_steps],
-                "cleanup": [_plan_step(s) for s in scenario.cleanup_steps],
+                "arrange": [
+                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+                    for s in scenario.arrange_steps
+                ],
+                "act": [
+                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+                    for s in scenario.act_steps
+                ],
+                "assert": [
+                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+                    for s in scenario.assert_steps
+                ],
+                "cleanup": [
+                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+                    for s in scenario.cleanup_steps
+                ],
             },
         }
         return json.dumps(plan, indent=2, ensure_ascii=False)
@@ -238,13 +250,19 @@ def register_scenario_tools(
         return report
 
 
-def _plan_step(step: CompiledStep) -> dict[str, Any]:
+def _plan_step(
+    step: CompiledStep,
+    *,
+    default_timeout_s: float | None = None,
+) -> dict[str, Any]:
     planned: dict[str, Any] = {
         "id": step.id,
         "module": step.module.value,
         "action": step.action,
         "args": dict(step.args),
     }
+    if step.timeout_s is not None and step.timeout_s != default_timeout_s:
+        planned["timeoutSeconds"] = step.timeout_s
     if step.idempotent:
         planned["idempotent"] = True
     if step.continue_on_failure:

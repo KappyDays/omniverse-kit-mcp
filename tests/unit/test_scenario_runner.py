@@ -76,6 +76,7 @@ def test_plan_step_includes_idempotent_retry_metadata():
                     "id": "read_lidar",
                     "module": "sensor",
                     "action": "lidar_get_point_cloud",
+                    "timeoutSeconds": 12.5,
                     "idempotent": True,
                     "continueOnFailure": True,
                     "retries": {
@@ -93,6 +94,7 @@ def test_plan_step_includes_idempotent_retry_metadata():
     planned = _plan_step(scenario.assert_steps[0])
 
     assert planned["args"] == {"sensor_prim": "/World/Lidar"}
+    assert planned["timeoutSeconds"] == 12.5
     assert planned["idempotent"] is True
     assert planned["continueOnFailure"] is True
     assert planned["retries"] == {
@@ -100,3 +102,30 @@ def test_plan_step_includes_idempotent_retry_metadata():
         "initialBackoffSeconds": 0.25,
         "maxBackoffSeconds": 1.0,
     }
+
+
+def test_plan_step_elides_inherited_default_timeout():
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "plan_default_timeout", "name": "plan default timeout"},
+        "spec": {
+            "defaults": {"stepTimeoutSeconds": 45.0},
+            "assert": [
+                {
+                    "id": "cube_exists",
+                    "module": "stage",
+                    "action": "assert_prim_exists",
+                    "args": {"prim_path": "/World/Cube"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    planned = _plan_step(
+        scenario.assert_steps[0],
+        default_timeout_s=scenario.defaults.step_timeout_s,
+    )
+
+    assert "timeoutSeconds" not in planned
