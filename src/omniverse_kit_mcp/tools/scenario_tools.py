@@ -386,6 +386,12 @@ def _plan_retry_steps(
                 "module": step["module"],
                 "action": step["action"],
             }
+            spec = _EVIDENCE_STEP_SPECS.get((step["module"], step["action"]))
+            if spec is not None:
+                _, arg_keys = spec
+                key_args = _selected_plan_args(step.get("args"), arg_keys)
+                if key_args:
+                    planned["key_args"] = key_args
             _copy_plan_control_fields(step, planned)
             retry_steps.append(planned)
     return retry_steps

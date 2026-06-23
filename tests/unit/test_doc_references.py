@@ -253,6 +253,11 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "extension_capture_logs" in invariant
     assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
+    assert "retry_steps[].key_args" in guide
+    assert "min_points" in guide
+    assert "max_points" in guide
+    assert "frames_to_wait" in guide
+    assert "fail_on_warning" in guide
     assert (
         "scenario_last_report(report_format=\"markdown\", redact_local_paths=true)"
         in invariant
@@ -323,12 +328,13 @@ def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
     assert "`module`/`action` to distinguish" in guide
 
 
-def test_f3b_scenario_authoring_guide_mentions_official_verify_evidence():
+def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     guide = (PROJECT / "scenarios" / "CLAUDE.md").read_text(encoding="utf-8")
 
     assert "evidence_summary` for official verify, lidar" in guide
     assert "redact_local_paths=true" in guide
     assert "scenario_plan` exposes `total_steps`" in guide
+    assert "`retry_steps` with key args for retried evidence steps" in guide
 
 
 def test_f3c_simulation_guidance_uses_settled_timeline_readback():

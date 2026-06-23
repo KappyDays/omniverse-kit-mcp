@@ -1640,6 +1640,13 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
             "phase": "act",
             "module": "sensor",
             "action": "lidar_get_point_cloud",
+            "key_args": {
+                "sensor_prim": "/World/Robot/NovaCarter/TopLidar",
+                "frames_to_wait": 180,
+                "min_points": 1,
+                "max_points": 512,
+                "fail_on_warning": True,
+            },
             "idempotent": True,
             "retries": {
                 "maxAttempts": 3,
@@ -2129,6 +2136,25 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         },
     }
     scenario = compile_scenario(raw)
+    plan = _scenario_plan_payload(scenario)
+    assert plan["retry_steps"] == [{
+        "id": "read_lidar",
+        "phase": "assert",
+        "module": "sensor",
+        "action": "lidar_get_point_cloud",
+        "key_args": {
+            "sensor_prim": "/World/Robot/Lidar",
+            "frames_to_wait": 12,
+            "min_points": 1,
+            "fail_on_warning": True,
+        },
+        "idempotent": True,
+        "retries": {
+            "maxAttempts": 2,
+            "initialBackoffSeconds": 0.0,
+            "maxBackoffSeconds": 0.0,
+        },
+    }]
 
     summary = await runner.run(scenario)
 

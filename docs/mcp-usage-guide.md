@@ -61,8 +61,11 @@ Robot + RTX live proof wrapper:
 Before validation, check `scenario_plan.phase_counts`, `total_steps`,
 `evidence_steps`, and `retry_steps` so a missing setup, sensor, viewport,
 cleanup, lidar evidence, capture evidence, or idempotent retry gate is caught
-before live stage mutation. `automatic: true` cleanup steps are runner-added
-safeguards, not YAML.
+before live stage mutation. For retried evidence steps, inspect
+`retry_steps[].key_args` next to the retry policy so thresholds such as
+`min_points`, `max_points`, `frames_to_wait`, and `fail_on_warning` match the
+intended failure or success proof. `automatic: true` cleanup steps are
+runner-added safeguards, not YAML.
 When using `input_overrides`, pass the same override dict to `scenario_plan` and
 `scenario_validate` so the plan preview reflects the exact variable-substituted
 prim paths and asset URLs that will run.

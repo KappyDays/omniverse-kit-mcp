@@ -27,12 +27,17 @@ reported:
     `action=capture_assert`, `1280x720`, `warmup_frames=8`,
     `min_mean=8.0`, `min_variance=1.0`
 - `retry_steps`:
-  - `read_lidar_point_cloud`: idempotent retry gate with `maxAttempts=3`
+  - `read_lidar_point_cloud`: idempotent retry gate with `maxAttempts=3`,
+    `frames_to_wait=180`, `min_points=1`, `max_points=512`,
+    `fail_on_warning=true`
 
 `visual_capture` is intentionally report-compatible: `scenario_plan` keeps the
 specific `module` / `action` (`viewport.capture`, `viewport.capture_assert`, or
 `window.capture`) while using the same evidence kind that later appears in
 `scenario_last_report.evidence_summary`.
+Retry rows now also preserve `key_args` for retried evidence steps, so an agent
+can compare planned retry thresholds with `retry_failures[].data_summary` and
+`diagnostic_next_actions` after `scenario_validate`.
 
 ## Validation
 
@@ -40,6 +45,8 @@ specific `module` / `action` (`viewport.capture`, `viewport.capture_assert`, or
   - `3 passed`
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py::test_scenario_plan_visual_capture_evidence_kinds_match_report_rows tests\unit\test_scenario_integration.py::test_robot_rtx_sensor_golden_workflow_routes_through_runner tests\unit\test_doc_references.py::test_f3b_usage_guide_explains_visual_capture_plan_alignment -q`
   - `3 passed`
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py::test_scenario_runner_retries_transient_lidar_read_failure tests\unit\test_scenario_integration.py::test_robot_rtx_sensor_golden_workflow_routes_through_runner tests\unit\test_doc_references.py::test_f3b_robot_rtx_live_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence -q`
+  - `4 passed`
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py -q`
   - `62 passed`
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py tests\unit\test_tools_registration.py -q`
