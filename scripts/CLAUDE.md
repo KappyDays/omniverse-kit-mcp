@@ -9,7 +9,7 @@
 |----------|------|-----------|
 | `generate_tool_catalog.py` | Regenerate `docs/tool-catalog.md` | Register a new MCP tool via the selected wrapper / change the existing tool signature **must be done immediately** |
 | `verify_mcp_sync.py` | regen + drift test 1 command | Pre-block drift by executing tool changes before committing them |
-| `review_public_hygiene.py` | Scan current tracked files and pending commit history for public path/secret/generated-reference leaks | Run before public commit/push; pass `--base <base> --head HEAD` for explicit review ranges |
+| `review_public_hygiene.py` | Scan current tracked files and pending/session commit history for public path/secret/generated-reference leaks | Run before public commit/push; pass `--base <base> --head HEAD` for explicit ranges or `--since "YYYY-MM-DD 00:00"` for already-pushed session/day audits |
 | `run_process_module_standalone.py <start\|stop\|restart>` | Low-level ProcessModule control without MCP server import cache | Recovery/diagnosis/import-cache bypass only. Normal app launch requests must use a `workspaces/<app>/instance-N` live worker and `kit_app_start`. |
 | `run_scenario_standalone.py <scenario_path>` | Run scenario runner with the latest `src/` code | Bypass MCP import cache and modify scenario live verification |
 | `live_test_extension_ui.py` | Phase D — Extension UI automation (ui_invoke/ui_tree) + carb log capture live | Phase verification — `docs/artifacts/phase-d/` |

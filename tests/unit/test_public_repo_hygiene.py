@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -102,19 +103,25 @@ def test_tracked_text_files_do_not_embed_secret_like_literals() -> None:
     )
 
 
-def _git(repo: Path, *args: str) -> None:
+def _git(repo: Path, *args: str, env: dict[str, str] | None = None) -> None:
     subprocess.run(
         ["git", "-C", str(repo), *args],
         check=True,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env={**os.environ, **(env or {})},
     )
 
 
-def _commit_all(repo: Path, message: str) -> None:
+def _commit_all(
+    repo: Path,
+    message: str,
+    *,
+    env: dict[str, str] | None = None,
+) -> None:
     _git(repo, "add", ".")
-    _git(repo, "commit", "-m", message)
+    _git(repo, "commit", "-m", message, env=env)
 
 
 def test_public_hygiene_script_flags_new_history_added_local_paths(tmp_path: Path) -> None:
@@ -139,6 +146,95 @@ def test_public_hygiene_script_flags_new_history_added_local_paths(tmp_path: Pat
             str(repo),
             "--base",
             "HEAD~1",
+            "--head",
+            "HEAD",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "history-added-line" in result.stdout
+    assert "windows_user_path" in result.stdout
+
+
+def test_public_hygiene_script_since_scans_pushed_session_history(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    before_session = {
+        "GIT_AUTHOR_DATE": "2026-06-21T00:00:00+0000",
+        "GIT_COMMITTER_DATE": "2026-06-21T00:00:00+0000",
+    }
+    during_session = {
+        "GIT_AUTHOR_DATE": "2026-06-23T01:00:00+0000",
+        "GIT_COMMITTER_DATE": "2026-06-23T01:00:00+0000",
+    }
+    after_redaction = {
+        "GIT_AUTHOR_DATE": "2026-06-23T02:00:00+0000",
+        "GIT_COMMITTER_DATE": "2026-06-23T02:00:00+0000",
+    }
+
+    (repo / "evidence.md").write_text("capture: redacted\n", encoding="utf-8")
+    _commit_all(repo, "baseline", env=before_session)
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "leak local path", env=during_session)
+
+    (repo / "evidence.md").write_text(
+        "capture: local validation capture path redacted\n",
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact current tree", env=after_redaction)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--since",
+            "2026-06-22T00:00:00+0000",
+            "--head",
+            "HEAD",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "history-added-line" in result.stdout
+    assert "windows_user_path" in result.stdout
+    assert "leak local path" in result.stdout
+
+
+def test_public_hygiene_script_since_scans_root_commit(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "root leak")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--since",
+            "1970-01-01T00:00:00+0000",
             "--head",
             "HEAD",
         ],

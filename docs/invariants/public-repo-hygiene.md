@@ -16,6 +16,12 @@ For an explicit review range, use:
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --base <base> --head HEAD
 ```
 
+For a session/day audit after commits may already have been pushed, use:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "2026-06-23 00:00" --head HEAD
+```
+
 The default history scan uses the current branch upstream merge-base through
 `HEAD`, so local commits that are about to be pushed are reviewed.
 

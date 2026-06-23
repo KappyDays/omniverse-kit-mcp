@@ -6,7 +6,8 @@ Default use before push:
 
 The default history range is the merge-base with the current upstream through
 HEAD, so local commits that are about to be pushed are scanned. Pass --base and
---head for an explicit audit range.
+--head for an explicit audit range, or --since for a session/day audit after
+commits have already been pushed.
 """
 
 from __future__ import annotations
@@ -162,6 +163,29 @@ def _default_base(project: Path, head: str) -> str | None:
     return None
 
 
+def _base_and_commits_since(
+    project: Path,
+    head: str,
+    since: str,
+) -> tuple[str | None, list[str]]:
+    result = _git(
+        project,
+        "rev-list",
+        "--reverse",
+        f"--since={since}",
+        head,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ValueError(result.stderr.strip() or f"invalid --since value: {since}")
+    commits = result.stdout.splitlines()
+    if not commits:
+        return head, []
+    parent_result = _git(project, "rev-parse", f"{commits[0]}^", check=False)
+    parent = parent_result.stdout.strip() if parent_result.returncode == 0 else None
+    return parent, commits
+
+
 def _changed_files_in_range(project: Path, base: str, head: str) -> list[str]:
     output = _git_output(project, "diff", "--name-only", f"{base}..{head}")
     return output.splitlines()
@@ -170,6 +194,21 @@ def _changed_files_in_range(project: Path, base: str, head: str) -> list[str]:
 def _commits_in_range(project: Path, base: str, head: str) -> list[str]:
     output = _git_output(project, "rev-list", "--reverse", f"{base}..{head}")
     return output.splitlines()
+
+
+def _changed_files_in_commits(project: Path, commits: list[str]) -> list[str]:
+    files: set[str] = set()
+    for commit in commits:
+        output = _git_output(
+            project,
+            "show",
+            "--format=",
+            "--name-only",
+            "--no-renames",
+            commit,
+        )
+        files.update(line for line in output.splitlines() if line)
+    return sorted(files)
 
 
 def _scan_commit_added_lines(project: Path, commit: str) -> list[Finding]:
@@ -197,21 +236,36 @@ def _scan_commit_added_lines(project: Path, commit: str) -> list[Finding]:
     return findings
 
 
-def scan_history(project: Path, base: str | None, head: str) -> list[Finding]:
-    if not base:
+def scan_history(
+    project: Path,
+    base: str | None,
+    head: str,
+    *,
+    commits: list[str] | None = None,
+) -> list[Finding]:
+    if commits is None and not base:
         return []
-    if _git_output(project, "rev-parse", base).strip() == _git_output(
+    if commits is None and _git_output(project, "rev-parse", base).strip() == _git_output(
         project, "rev-parse", head
     ).strip():
         return []
 
+    history_commits = commits if commits is not None else _commits_in_range(project, base, head)
+    if not history_commits:
+        return []
+
     findings: list[Finding] = []
-    for rel in _changed_files_in_range(project, base, head):
+    changed_files = (
+        _changed_files_in_range(project, base, head)
+        if base
+        else _changed_files_in_commits(project, history_commits)
+    )
+    for rel in changed_files:
         if _is_generated_reference(rel):
             findings.append(
                 Finding("history-path", "generated_reference", f"{base}..{head} {rel}")
             )
-    for commit in _commits_in_range(project, base, head):
+    for commit in history_commits:
         findings.extend(_scan_commit_added_lines(project, commit))
     return findings
 
@@ -219,7 +273,18 @@ def scan_history(project: Path, base: str | None, head: str) -> list[Finding]:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, default=PROJECT)
-    parser.add_argument("--base", help="exclusive lower bound commit for history scan")
+    range_group = parser.add_mutually_exclusive_group()
+    range_group.add_argument(
+        "--base",
+        help="exclusive lower bound commit for history scan",
+    )
+    range_group.add_argument(
+        "--since",
+        help=(
+            "scan history since this git date expression, e.g. "
+            "'2026-06-23 00:00'"
+        ),
+    )
     parser.add_argument("--head", default="HEAD", help="inclusive upper bound commit")
     parser.add_argument(
         "--skip-history",
@@ -233,11 +298,19 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(list(argv or []))
     project = args.project.resolve()
     head = args.head
-    base = args.base if args.base else _default_base(project, head)
+    history_commits: list[str] | None = None
+    try:
+        if args.since:
+            base, history_commits = _base_and_commits_since(project, head, args.since)
+        else:
+            base = args.base if args.base else _default_base(project, head)
+    except ValueError as exc:
+        print(f"Public repository hygiene review error: {exc}", file=sys.stderr)
+        return 2
 
     findings = scan_current_tree(project)
     if not args.skip_history:
-        findings.extend(scan_history(project, base, head))
+        findings.extend(scan_history(project, base, head, commits=history_commits))
 
     if findings:
         print("Public repository hygiene review failed:")
@@ -247,7 +320,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  ... {len(findings) - 100} more finding(s)")
         return 1
 
-    range_text = "skipped" if args.skip_history else (f"{base}..{head}" if base else "none")
+    if args.skip_history:
+        range_text = "skipped"
+    elif args.since:
+        range_text = f"{base}..{head} (since {args.since})" if base else "none"
+    else:
+        range_text = f"{base}..{head}" if base else "none"
     print("Public repository hygiene review OK")
     print(f"  project: {project}")
     print(f"  history range: {range_text}")
