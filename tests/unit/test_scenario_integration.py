@@ -196,6 +196,55 @@ def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
     ) in markdown
 
 
+def test_markdown_highlights_sync_status_profile_diagnostics():
+    summary = ScenarioRunSummary(
+        scenario_id="sync_status_diagnostics",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="check_catalog_profile",
+                phase="arrange",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "app_profile": "kit-app",
+                    "profile_count": 0,
+                    "diagnostics": {
+                        "reason": "app_profile_not_covered",
+                        "requested_app_profile": "kit-app",
+                        "available_profiles": ["isaac-sim", "usd-composer"],
+                        "matching_item_count": 0,
+                        "suggested_next": [
+                            "Call official_asset_sync_status without app_profile.",
+                        ],
+                        "fallback_tool_order": [
+                            "official_asset_sync_status",
+                            "official_asset_search",
+                            "asset_search",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert (
+        "- `check_catalog_profile`: "
+        "diagnostics.reason=app_profile_not_covered; "
+        "diagnostics.requested_app_profile=kit-app; "
+        "diagnostics.available_profiles=[isaac-sim, usd-composer]; "
+        "diagnostics.matching_item_count=0"
+    ) in markdown
+    assert "profile_count=0" in markdown
+
+
 def test_markdown_does_not_label_stage_path_as_capture_path():
     summary = ScenarioRunSummary(
         scenario_id="stage_path_summary",
