@@ -332,6 +332,8 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     guide = (PROJECT / "scenarios" / "CLAUDE.md").read_text(encoding="utf-8")
 
     assert "evidence_summary` for official verify, lidar" in guide
+    assert "`failure_summary`" in guide
+    assert "Markdown `Failure Summary`" in guide
     assert "redact_local_paths=true" in guide
     assert "scenario_plan` exposes `total_steps`" in guide
     assert "`retry_steps` with key args for retried evidence steps" in guide

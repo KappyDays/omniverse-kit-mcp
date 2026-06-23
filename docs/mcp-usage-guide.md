@@ -33,6 +33,11 @@ scenario timing. Prefer the JSON root queue when exact routing matters: it
 includes `phase`, source `status`, final step `error_code`, retry
 `error_code`, retry `attempt`, and `final_step_status` when those fields are
 available.
+Failed reports also include JSON `failure_summary` and Markdown `Failure
+Summary` before the full step table. Start there to identify final fatal,
+continued, cleanup, and exhausted-retry rows, then drill into
+`diagnostic_next_actions`, `retry_failures`, and `evidence_summary` for exact
+tool-order and evidence details.
 Reports also include JSON `evidence_summary` and Markdown `Evidence Summary`
 when executed steps produced compact official-asset-verify, lidar,
 viewport-framing, or visual-capture evidence; compare it with

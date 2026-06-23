@@ -193,6 +193,14 @@ def to_markdown(
     ]
     if cleanup_failures:
         lines.append(f"**Cleanup**: {cleanup_failures} non-fatal failure(s)")
+    failure_rows = _failure_summary_payloads(
+        summary,
+        redact_local_paths=redact_local_paths,
+    )
+    if failure_rows:
+        lines.extend(["", "## Failure Summary", ""])
+        for row in failure_rows:
+            lines.append(_format_failure_summary_row(row))
     lines.extend([
         "",
         "## Step Results",
@@ -333,6 +341,7 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
         step_result["retry_failures"] = retry_failures
         step_results.append(step_result)
     d["step_results"] = step_results
+    d["failure_summary"] = _failure_summary_payloads(summary)
     d["diagnostic_next_actions"] = diagnostic_next_actions
     d["evidence_summary"] = _evidence_summary_payloads(summary)
     return d
@@ -501,6 +510,95 @@ def _summary_fatal_failed_steps(
     if summary.fatal_failed_steps:
         return summary.fatal_failed_steps
     return max(0, summary.failed_steps - cleanup_failures - continued_failures)
+
+
+def _failure_summary_payloads(
+    summary: ScenarioRunSummary,
+    *,
+    redact_local_paths: bool = False,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for step in summary.step_results:
+        if step.status.value not in _FAILED_STATUS_VALUES:
+            continue
+        row: dict[str, Any] = {
+            "step_id": step.step_id,
+            "phase": step.phase,
+            "status": step.status.value,
+            "display_status": _display_step_status(step),
+            "continued": bool(step.continue_on_failure),
+            "cleanup": step.phase == "cleanup",
+            "attempts": step.attempts,
+            "max_attempts": step.max_attempts,
+            "retry_failure_count": len(step.retry_failures),
+        }
+        if step.error_code:
+            row["error_code"] = step.error_code
+        if step.message:
+            row["message"] = (
+                _redact_local_path_string(step.message)
+                if redact_local_paths
+                else step.message
+            )
+        data_summary = (
+            _redact_local_paths(step.data_summary)
+            if redact_local_paths
+            else step.data_summary
+        )
+        if data_summary and _has_diagnostic_summary(data_summary):
+            row["data_highlight"] = _format_data_summary_highlight(data_summary)
+        if step.retry_failures:
+            last_retry = dict(step.retry_failures[-1])
+            retry_message = last_retry.get("message")
+            if retry_message and redact_local_paths:
+                last_retry["message"] = _redact_local_path_string(str(retry_message))
+            retry_data_summary = last_retry.get("data_summary")
+            if isinstance(retry_data_summary, dict):
+                if redact_local_paths:
+                    retry_data_summary = _redact_local_paths(retry_data_summary)
+                if _has_diagnostic_summary(retry_data_summary):
+                    last_retry["data_highlight"] = _format_data_summary_highlight(
+                        retry_data_summary
+                    )
+                last_retry.pop("data_summary", None)
+            row["last_retry_failure"] = last_retry
+        rows.append(row)
+    return rows
+
+
+def _format_failure_summary_row(row: dict[str, Any]) -> str:
+    parts = [
+        f"phase={row['phase']}",
+        f"status={row['display_status']}",
+        f"attempts={row['attempts']}/{row['max_attempts']}",
+    ]
+    if row.get("error_code"):
+        parts.append(f"error_code={row['error_code']}")
+    if row.get("message"):
+        parts.append(f"message={row['message']}")
+    if row.get("data_highlight"):
+        parts.append(f"data={row['data_highlight']}")
+    if row.get("cleanup"):
+        parts.append("cleanup=true")
+    if row.get("continued"):
+        parts.append("continued=true")
+    retry = row.get("last_retry_failure")
+    if isinstance(retry, dict):
+        retry_parts = [
+            f"attempt={retry.get('attempt')}",
+            f"status={retry.get('status')}",
+        ]
+        if retry.get("error_code"):
+            retry_parts.append(f"error_code={retry['error_code']}")
+        if retry.get("message"):
+            retry_parts.append(f"message={retry['message']}")
+        if retry.get("data_highlight"):
+            retry_parts.append(f"data={retry['data_highlight']}")
+        parts.append(f"last_retry=({'; '.join(retry_parts)})")
+    return (
+        f"- {_markdown_code_span(row['step_id'])}: "
+        f"{_markdown_inline('; '.join(parts))}"
+    )
 
 
 def _display_step_status(step: StepResult) -> str:

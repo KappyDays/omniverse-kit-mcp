@@ -217,7 +217,15 @@ def test_markdown_escapes_step_result_table_cells():
     )
 
     markdown = to_markdown(summary)
+    report = json.loads(to_json(summary))
 
+    assert "## Failure Summary" in markdown
+    assert (
+        "- `read|lidar`: phase=assert; status=failed; attempts=1/1; "
+        "message=bridge | retry<br>line two; last_retry=(attempt=1; "
+        "status=failed; error_code=ERR_PIPE; message=first | "
+        "failure<br>with detail)"
+    ) in markdown
     assert (
         "| read\\|lidar | assert | failed | 1/1 | 5ms | "
         "bridge \\| retry<br>line two |"
@@ -226,6 +234,24 @@ def test_markdown_escapes_step_result_table_cells():
         "- `read|lidar` attempt 1: failed ERR_PIPE - "
         "first | failure<br>with detail"
     ) in markdown
+    assert report["failure_summary"] == [{
+        "step_id": "read|lidar",
+        "phase": "assert",
+        "status": "failed",
+        "display_status": "failed",
+        "continued": False,
+        "cleanup": False,
+        "attempts": 1,
+        "max_attempts": 1,
+        "retry_failure_count": 1,
+        "message": "bridge | retry\nline two",
+        "last_retry_failure": {
+            "attempt": 1,
+            "status": "failed",
+            "error_code": "ERR_PIPE",
+            "message": "first | failure\nwith detail",
+        },
+    }]
 
 
 def test_markdown_escapes_list_code_spans_and_highlight_newlines():
@@ -2372,6 +2398,25 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
         "diagnostics.readback_paths_attempted": ["cached_lidar_sensor"],
     }
     report = json.loads(to_json(summary))
+    assert len(report["failure_summary"]) == 1
+    failure = report["failure_summary"][0]
+    assert failure["step_id"] == "read_lidar"
+    assert failure["phase"] == "assert"
+    assert failure["status"] == "failed"
+    assert failure["attempts"] == 3
+    assert failure["max_attempts"] == 3
+    assert failure["retry_failure_count"] == 3
+    assert failure["error_code"] == "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    assert "diagnostics.reason=point_count_below_minimum" in failure["data_highlight"]
+    assert "diagnostics.cached_lidar_instance=True" in failure["data_highlight"]
+    assert failure["last_retry_failure"]["attempt"] == 3
+    assert failure["last_retry_failure"]["error_code"] == (
+        "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    )
+    assert (
+        "diagnostics.readback_paths_attempted=[cached_lidar_sensor]"
+        in failure["last_retry_failure"]["data_highlight"]
+    )
     assert report["diagnostic_next_actions"] == [
         {
             "step_id": "read_lidar",
@@ -2432,6 +2477,12 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
     }
 
     markdown = to_markdown(summary)
+    assert "## Failure Summary" in markdown
+    assert (
+        "- `read_lidar`: phase=assert; status=failed; attempts=3/3; "
+        "error_code=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    ) in markdown
+    assert "last_retry=(attempt=3; status=failed" in markdown
     assert "## Diagnostic Next Actions" in markdown
     assert (
         "- `read_lidar`: evidence_kind=rtx_lidar_point_cloud; status=failed; "
