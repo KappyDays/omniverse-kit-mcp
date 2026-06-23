@@ -40,8 +40,9 @@ and WARN/ERROR counts, confirm artifact paths look like
 `<validation-api-capture>/capture_<id>.png`, and run the public hygiene checks.
 
 For `official_asset_*` zero-result or not-found responses, inspect
-`diagnostics.reason`, `diagnostics.suggested_next`, and
-`diagnostics.fallback_tool_order` before falling back to `asset_search`.
+`diagnostics.reason`, `diagnostics.candidate_counts`,
+`diagnostics.suggested_next`, and `diagnostics.fallback_tool_order` before
+falling back to `asset_search`.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

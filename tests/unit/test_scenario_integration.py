@@ -1758,11 +1758,22 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
         "query_no_match"
     )
     assert steps["search_pallet_asset"].data_summary["count"] == 1
+    assert steps["get_pallet_wrong_profile"].status == ExecutionStatus.ERROR
+    mismatch_diagnostics = steps["get_pallet_wrong_profile"].data_summary[
+        "diagnostics"
+    ]
+    assert mismatch_diagnostics["reason"] == "app_profile_not_covered"
+    assert mismatch_diagnostics["candidate_counts"]["total_entries"] == 1
+    assert mismatch_diagnostics["candidate_counts"]["after_app_profile"] == 0
 
     markdown = to_markdown(summary)
     assert "search_known_miss" in markdown
     assert "diagnostics.reason=query_no_match" in markdown
     assert "search_pallet_asset" in markdown
+    assert "get_pallet_wrong_profile" in markdown
+    assert "diagnostics.reason=app_profile_not_covered" in markdown
+    assert "diagnostics.candidate_counts.total_entries=1" in markdown
+    assert "diagnostics.candidate_counts.after_app_profile=0" in markdown
 
 
 @pytest.mark.asyncio

@@ -35,3 +35,11 @@ spec:
         app_profile: isaac-sim
         min_status: url_validated
         limit: 3
+
+    - id: get_pallet_wrong_profile
+      module: asset
+      action: official_get
+      continueOnFailure: true
+      args:
+        asset_id: https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/common_assets/props/aluminumpallet_a01/aluminumpallet_a01.usd
+        app_profile: kit-app
