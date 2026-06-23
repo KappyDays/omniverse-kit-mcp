@@ -466,6 +466,23 @@ async def test_mcp_runtime_info_reports_probe_result_freshness(mcp_server):
     assert payload["source_modules"]
     source_module_names = {entry["module"] for entry in payload["source_modules"]}
     assert "omniverse_kit_mcp.robot_arm_profiles" in source_module_names
+    scenario_freshness_modules = {
+        "omniverse_kit_mcp.scenario.runner",
+        "omniverse_kit_mcp.scenario.reporters",
+        "omniverse_kit_mcp.scenario.schema",
+        "omniverse_kit_mcp.types.scenario",
+        "omniverse_kit_mcp.tools.scenario_tools",
+    }
+    assert scenario_freshness_modules <= source_module_names
+    source_modules_by_name = {
+        entry["module"]: entry for entry in payload["source_modules"]
+    }
+    for name in scenario_freshness_modules:
+        entry = source_modules_by_name[name]
+        assert entry["loaded"] is True
+        assert entry["source"]
+        assert not Path(entry["source"]).is_absolute()
+        assert entry["source"].endswith(".py")
     assert "process_id" not in payload
     assert "cwd" not in payload
     assert "python_executable" not in payload

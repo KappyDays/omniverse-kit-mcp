@@ -176,6 +176,11 @@ _MCP_FRESHNESS_MODULES = (
     "omniverse_kit_mcp.robot_arm_profiles",
     "omniverse_kit_mcp.types.robot",
     "omniverse_kit_mcp.mcp.prompts",
+    "omniverse_kit_mcp.scenario.runner",
+    "omniverse_kit_mcp.scenario.reporters",
+    "omniverse_kit_mcp.scenario.schema",
+    "omniverse_kit_mcp.tools.scenario_tools",
+    "omniverse_kit_mcp.types.scenario",
 )
 
 
