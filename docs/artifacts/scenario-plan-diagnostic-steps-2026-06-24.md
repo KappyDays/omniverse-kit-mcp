@@ -3,7 +3,7 @@
 ## Objective
 
 Make official asset read-only diagnostics visible before live scenario execution,
-so agents can confirm the intended catalog/status/search/get probes at
+so agents can confirm the intended catalog/status/search/resolve/get probes at
 `scenario_plan` or `scenario_validate(..., dry_run=true)` time.
 
 ## Change

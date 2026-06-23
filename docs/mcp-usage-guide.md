@@ -74,7 +74,7 @@ runner-added safeguards, not YAML.
 `scenario_validate(..., dry_run=true)` returns the same plan fields plus
 `dry_run`, `steps`, and `compiled`, so it is safe as a one-call preflight when
 you are already on the validation tool path. Inspect `diagnostic_steps` for
-read-only official asset catalog/status/search/get probes, `evidence_steps` for
+read-only official asset catalog/status/search/resolve/get probes, `evidence_steps` for
 proof rows, and `retry_steps` for retry gates.
 After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
@@ -136,6 +136,9 @@ Official asset scenario proof wrapper:
 Before live execution, confirm `scenario_plan.evidence_steps` includes
 `evidence_kind=official_asset_verify` for the verify step and
 `scenario_plan.diagnostic_steps` includes the preceding sync/search/get probes.
+Use `scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)` when you need
+the read-only sync/search/resolve/get catalog diagnostic chain without a live
+asset load.
 After validation, compare JSON `evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
 `diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or
@@ -147,6 +150,7 @@ Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
 `extension_clear_logs` -> `official_asset_sync_status(app_profile=...)` ->
 `official_asset_search(app_profile=..., min_status="load_verified")` ->
+`official_asset_resolve(app_profile=..., prefer_loadable=true)` ->
 `official_asset_get(app_profile=...)` ->
 `official_asset_verify(app_profile=..., timeout_s=180)` ->
 `simulation_get_status` -> `extension_capture_logs(level="WARN")` and
