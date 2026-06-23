@@ -10,10 +10,92 @@ import pytest
 import scripts.run_process_module_standalone as process_script
 import scripts.run_scenario_standalone as scenario_script
 from omniverse_kit_mcp.config import AppConfig, ScenarioConfig
+from omniverse_kit_mcp.types.common import ExecutionStatus
+from omniverse_kit_mcp.types.scenario import ScenarioRunSummary, StepResult
 
 
 class _CwdChecked(RuntimeError):
     pass
+
+
+def _write_standalone_minimal_scenario(scenarios: Path) -> None:
+    scenario_path = scenarios / "smoke" / "dry.yaml"
+    scenario_path.parent.mkdir(parents=True)
+    scenario_path.write_text(
+        """
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: standalone_dry_run
+  name: Standalone dry run
+spec:
+  variables:
+    lidar_min_points: 1
+  assert:
+    - id: read_lidar
+      module: sensor
+      action: lidar_get_point_cloud
+      idempotent: true
+      retries:
+        maxAttempts: 2
+        initialBackoffSeconds: 0
+        maxBackoffSeconds: 0
+      args:
+        sensor_prim: /World/Robot/Lidar
+        frames_to_wait: 12
+        min_points: ${variables.lidar_min_points}
+        max_points: 16
+""".strip(),
+        encoding="utf-8",
+    )
+
+
+def _host_local_capture_path() -> str:
+    return (
+        "C:"
+        + "/Users/"
+        + "localuser"
+        + "/AppData/Local/Temp/validation_api_captures/capture_script.png"
+    )
+
+
+def _standalone_summary(scenario_id: str = "standalone_dry_run") -> ScenarioRunSummary:
+    capture_path = _host_local_capture_path()
+    return ScenarioRunSummary(
+        scenario_id=scenario_id,
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="capture",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                message=f"capture saved at {capture_path}",
+                data_summary={
+                    "artifact": {
+                        "path": capture_path,
+                        "sha256": "abc123",
+                        "width": 320,
+                        "height": 180,
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(capture_path,),
+    )
+
+
+class _FakeStandaloneClient:
+    def __init__(self, config):
+        self.config = config
+        self.closed = False
+
+    async def close(self) -> None:
+        self.closed = True
 
 
 @pytest.mark.asyncio
@@ -53,35 +135,7 @@ async def test_scenario_standalone_dry_run_prints_plan_without_rest_clients(
     monkeypatch, tmp_path, capsys,
 ):
     scenarios = tmp_path / "scenarios"
-    scenario_path = scenarios / "smoke" / "dry.yaml"
-    scenario_path.parent.mkdir(parents=True)
-    scenario_path.write_text(
-        """
-apiVersion: isaacsim.validation/v1
-kind: Scenario
-metadata:
-  id: standalone_dry_run
-  name: Standalone dry run
-spec:
-  variables:
-    lidar_min_points: 1
-  assert:
-    - id: read_lidar
-      module: sensor
-      action: lidar_get_point_cloud
-      idempotent: true
-      retries:
-        maxAttempts: 2
-        initialBackoffSeconds: 0
-        maxBackoffSeconds: 0
-      args:
-        sensor_prim: /World/Robot/Lidar
-        frames_to_wait: 12
-        min_points: ${variables.lidar_min_points}
-        max_points: 16
-""".strip(),
-        encoding="utf-8",
-    )
+    _write_standalone_minimal_scenario(scenarios)
     config = AppConfig(scenario=ScenarioConfig(SCENARIOS_DIR=str(scenarios)))
     monkeypatch.setattr(scenario_script, "AppConfig", lambda: config)
 
@@ -107,6 +161,84 @@ spec:
     assert payload["evidence_steps"][0]["key_args"]["min_points"] == 4
     assert payload["retry_steps"][0]["key_args"]["frames_to_wait"] == 12
     assert payload["retry_steps"][0]["retries"]["maxAttempts"] == 2
+
+
+@pytest.mark.asyncio
+async def test_scenario_standalone_normal_run_can_emit_public_safe_markdown(
+    monkeypatch, tmp_path, capsys,
+):
+    scenarios = tmp_path / "scenarios"
+    _write_standalone_minimal_scenario(scenarios)
+    config = AppConfig(scenario=ScenarioConfig(SCENARIOS_DIR=str(scenarios)))
+    monkeypatch.setattr(scenario_script, "AppConfig", lambda: config)
+
+    created_isaac_clients: list[_FakeStandaloneClient] = []
+    created_lakehouse_clients: list[_FakeStandaloneClient] = []
+
+    def fake_isaac_client(config):
+        client = _FakeStandaloneClient(config)
+        created_isaac_clients.append(client)
+        return client
+
+    def fake_lakehouse_client(config):
+        client = _FakeStandaloneClient(config)
+        created_lakehouse_clients.append(client)
+        return client
+
+    class FakeScenarioRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def run(self, scenario):
+            return _standalone_summary(scenario.scenario_id)
+
+    monkeypatch.setattr(scenario_script, "IsaacRestClient", fake_isaac_client)
+    monkeypatch.setattr(scenario_script, "LakehouseClient", fake_lakehouse_client)
+    monkeypatch.setattr(scenario_script, "ScenarioRunner", FakeScenarioRunner)
+
+    exit_code = await scenario_script.run(
+        "smoke/dry.yaml",
+        report_format="markdown",
+        redact_local_paths=True,
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "===== JSON REPORT =====" not in output
+    assert "===== MARKDOWN REPORT =====" in output
+    assert _host_local_capture_path() not in output
+    assert "<validation-api-capture>/capture_script.png" in output
+    assert created_isaac_clients[0].closed is True
+    assert created_lakehouse_clients[0].closed is True
+
+
+@pytest.mark.asyncio
+async def test_scenario_standalone_normal_run_defaults_to_both_raw_reports(
+    monkeypatch, tmp_path, capsys,
+):
+    scenarios = tmp_path / "scenarios"
+    _write_standalone_minimal_scenario(scenarios)
+    config = AppConfig(scenario=ScenarioConfig(SCENARIOS_DIR=str(scenarios)))
+    monkeypatch.setattr(scenario_script, "AppConfig", lambda: config)
+
+    class FakeScenarioRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def run(self, scenario):
+            return _standalone_summary(scenario.scenario_id)
+
+    monkeypatch.setattr(scenario_script, "IsaacRestClient", _FakeStandaloneClient)
+    monkeypatch.setattr(scenario_script, "LakehouseClient", _FakeStandaloneClient)
+    monkeypatch.setattr(scenario_script, "ScenarioRunner", FakeScenarioRunner)
+
+    exit_code = await scenario_script.run("smoke/dry.yaml")
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "===== JSON REPORT =====" in output
+    assert "===== MARKDOWN REPORT =====" in output
+    assert _host_local_capture_path() in output
 
 
 def test_scenario_standalone_rejects_non_object_input_overrides(capsys):

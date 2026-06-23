@@ -343,6 +343,16 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     assert "`retry_steps` with key args for retried evidence steps" in guide
     assert "`scenario_validate(..., dry_run=true)` returns the same plan fields" in guide
     assert "scripts/run_scenario_standalone.py --dry-run" in guide
+    assert "--report-format markdown --redact-local-paths" in guide
+
+
+def test_f3b_standalone_script_docs_mention_public_safe_reports():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    script_docs = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
+
+    assert "--report-format markdown --redact-local-paths" in guide
+    assert "--report-format markdown --redact-local-paths" in script_docs
+    assert "raw JSON+Markdown" in script_docs
 
 
 def test_f3c_simulation_guidance_uses_settled_timeline_readback():

@@ -57,6 +57,8 @@ async def run(
     *,
     dry_run: bool = False,
     input_overrides: dict[str, object] | None = None,
+    report_format: str = "both",
+    redact_local_paths: bool = False,
 ) -> int:
     os.chdir(PROJECT_ROOT)
     config = AppConfig()
@@ -64,6 +66,7 @@ async def run(
     raw = load_scenario(resolved_path)
     _apply_input_overrides(raw, input_overrides)
     scenario = compile_scenario(raw)
+    normalized_report_format = _normalize_report_format(report_format)
     if dry_run:
         plan = _scenario_plan_payload(scenario)
         print("===== DRY RUN PLAN =====")
@@ -106,14 +109,19 @@ async def run(
 
         summary = await runner.run(scenario)
 
-        print("===== JSON REPORT =====")
-        print(to_json(summary))
-        print("===== MARKDOWN REPORT =====")
-        print(to_markdown(summary))
+        if normalized_report_format in {"json", "both"}:
+            print("===== JSON REPORT =====")
+            print(to_json(summary, redact_local_paths=redact_local_paths))
+        if normalized_report_format in {"markdown", "both"}:
+            print("===== MARKDOWN REPORT =====")
+            print(to_markdown(summary, redact_local_paths=redact_local_paths))
 
         return 0 if summary.status.value == "passed" else 1
     finally:
-        await isaac_client.close()
+        try:
+            await isaac_client.close()
+        finally:
+            await lakehouse_client.close()
 
 
 def _resolve_scenario_path(user_path: str, config) -> str:
@@ -147,6 +155,15 @@ def _parse_input_overrides(raw_json: str | None) -> dict[str, object] | None:
     return parsed
 
 
+def _normalize_report_format(report_format: str) -> str:
+    normalized = report_format.strip().lower()
+    if normalized == "md":
+        return "markdown"
+    if normalized in {"json", "markdown", "both"}:
+        return normalized
+    raise ValueError("--report-format must be 'json', 'markdown', 'md', or 'both'")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("scenario_path")
@@ -159,17 +176,30 @@ def main(argv: list[str] | None = None) -> int:
         "--input-overrides-json",
         help="JSON object merged into spec.variables before compile/run.",
     )
+    parser.add_argument(
+        "--report-format",
+        default="both",
+        help="Normal-run report output: json, markdown, md, or both.",
+    )
+    parser.add_argument(
+        "--redact-local-paths",
+        action="store_true",
+        help="Redact local paths and process/thread identifiers in normal reports.",
+    )
     args = parser.parse_args(argv)
     try:
         input_overrides = _parse_input_overrides(args.input_overrides_json)
+        report_format = _normalize_report_format(args.report_format)
     except (TypeError, ValueError, json.JSONDecodeError) as exc:
-        print(f"Invalid --input-overrides-json: {exc}", file=sys.stderr)
+        print(f"Invalid standalone scenario option: {exc}", file=sys.stderr)
         return 2
     return asyncio.run(
         run(
             args.scenario_path,
             dry_run=args.dry_run,
             input_overrides=input_overrides,
+            report_format=report_format,
+            redact_local_paths=args.redact_local_paths,
         )
     )
 

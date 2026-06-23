@@ -77,6 +77,9 @@ you are already on the validation tool path.
 After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
 inspect the same plan shape before restarting a cached MCP host.
+If you run the standalone script normally and plan to copy its report into a
+public artifact, add `--report-format markdown --redact-local-paths`; the
+default standalone report remains raw JSON+Markdown for local triage.
 When using `input_overrides`, pass the same override dict to `scenario_plan` and
 `scenario_validate` so the plan preview reflects the exact variable-substituted
 prim paths and asset URLs that will run.
