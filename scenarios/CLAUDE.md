@@ -135,7 +135,7 @@ Read resource isaacsim://scenarios                               # available sce
 scenario_last_report(report_format="markdown")                   # quick triage; omit arg for JSON
 scenario_last_report(report_format="markdown", redact_local_paths=true) # public-safe evidence copy
 ```
-`scenario_last_report` includes per-step `attempts`, `max_attempts`, `retry_failures`, and `data_summary` telemetry such as lidar `num_points`, `backend`, `frames_waited`, `empty_reason`, `diagnostics.reason`, `diagnostics.suggested_next`, `diagnostics.fallback_tool_order`, `raw_keys`, `warning`, and timeline/capture highlights; use Markdown for quick triage and JSON before logs for exact fields.
+`scenario_last_report` includes `diagnostic_next_actions`, `attempts`, `retry_failures`, and lidar/timeline/capture `data_summary`; use Markdown for triage, default JSON for exact fields, and `redact_local_paths=true` for public evidence.
 
 ## Procedure for creating a new scenario
 

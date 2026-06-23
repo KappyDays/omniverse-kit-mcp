@@ -86,6 +86,9 @@ before reattaching the same sensor path; otherwise an old render product can
 hold the new scan buffer at zero points until the process is restarted.
 Transient zero-point RTX buffers should be absorbed with step-level retries only
 on idempotent sensor reads; inspect `scenario_last_report` fields
+`diagnostic_next_actions`,
+`step_results[].diagnostic_next_actions`,
+`step_results[].retry_failures[].diagnostic_next_actions`,
 `attempts`, `max_attempts`, `retry_failures`,
 `retry_failures[].data_summary.num_points`,
 `retry_failures[].data_summary.empty_reason`,
@@ -99,8 +102,8 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `data_summary.diagnostics.readback_paths_attempted`,
 `data_summary.raw_keys`, and `data_summary.warning` before opening logs.
 Use `scenario_last_report(report_format="markdown", redact_local_paths=true)`
-for public-safe quick `Data Summary Highlights`; use default JSON for exact
-field values before copying anything into public docs.
+for public-safe quick `Diagnostic Next Actions` and `Data Summary Highlights`;
+use default JSON for exact field values before copying anything into public docs.
 For idempotent retry steps, the scenario runner retries returned non-pass
 results, hard step timeouts, and hard step exceptions; each failed attempt is
 recorded in `retry_failures`.
