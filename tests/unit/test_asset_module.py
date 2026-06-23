@@ -257,6 +257,9 @@ def synthetic_official_catalog(tmp_path: Path) -> Path:
                         "provider": "omni.simready.explorer",
                         "extension_id": "omni.simready.explorer",
                         "extension_version": "1.1.4",
+                        "extension_dir": str(
+                            d / "extscache" / "omni.simready.explorer-1.1.4"
+                        ),
                         "source_roots": [sim_root],
                     }
                 ],
@@ -787,8 +790,34 @@ async def test_official_asset_sync_status_reports_profile_counts(
     assert result.data["catalog_path"] == "<external-catalog>/latest.json"
     assert result.data["catalog_identity"]["path"] == "<external-catalog>/latest.json"
     assert result.data["profiles"][0]["app_profile"] == "usd-composer"
+    assert (
+        result.data["profiles"][0]["providers"][0].get("extension_dir") is None
+    )
     assert result.data["counts"]["material"] == 1
     assert result.data["counts"]["assign_verified"] == 1
+    _assert_no_local_path_fragment(result.data, synthetic_official_catalog)
+
+
+@pytest.mark.asyncio
+async def test_official_asset_sync_status_redacts_provider_extension_dirs(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_sync_status(_meta(), app_profile="isaac-sim")
+
+    assert result.ok, result.message
+    provider = result.data["profiles"][0]["providers"][0]
+    assert (
+        provider["extension_dir"]
+        == "<external-extension>/omni.simready.explorer-1.1.4"
+    )
+    assert provider["source_roots"] == [
+        "https://omniverse-content-staging.s3.us-west-2.amazonaws.com"
+        "/Assets/simready_content/props"
+    ]
     _assert_no_local_path_fragment(result.data, synthetic_official_catalog)
 
 

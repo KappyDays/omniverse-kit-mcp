@@ -186,3 +186,6 @@ Runtime result fields that identify the catalog location are public-safe.
 Catalogs inside this repository are reported as project-relative POSIX paths;
 catalogs injected from an external or temporary directory are reported as
 `<external-catalog>/<filename>` instead of a host-local absolute path.
+`official_asset_sync_status` also redacts provider extension directories as
+`<external-extension>/<directory-name>` while preserving public source-root
+URLs.

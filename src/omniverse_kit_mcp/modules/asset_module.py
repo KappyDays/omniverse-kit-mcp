@@ -506,7 +506,9 @@ class AssetModule:
                         "kit_version": snapshot.get("kit_version"),
                         "generated_at": snapshot.get("generated_at")
                         or catalog.get("generated_at"),
-                        "providers": snapshot.get("providers") or [],
+                        "providers": _official_public_providers(
+                            snapshot.get("providers") or []
+                        ),
                         "counts": snapshot.get("counts")
                         or _official_counts(profile_entries, profile),
                         "stale": _official_snapshot_is_stale(catalog, snapshot),
@@ -1091,6 +1093,33 @@ def _official_public_catalog_path(path: Path | str) -> str:
     if not candidate.is_absolute():
         return candidate.as_posix()
     return f"<external-catalog>/{candidate.name or 'catalog'}"
+
+
+def _official_public_external_path(path: Path | str, marker: str) -> str:
+    candidate = Path(path)
+    try:
+        resolved = candidate.resolve()
+        return resolved.relative_to(_PROJECT_ROOT.resolve()).as_posix()
+    except (OSError, ValueError):
+        pass
+    if not candidate.is_absolute():
+        return candidate.as_posix()
+    return f"{marker}/{candidate.name or 'path'}"
+
+
+def _official_public_providers(providers: list[Any]) -> list[dict[str, Any]]:
+    public: list[dict[str, Any]] = []
+    for provider in providers:
+        if not isinstance(provider, dict):
+            continue
+        item = dict(provider)
+        extension_dir = item.get("extension_dir")
+        if extension_dir:
+            item["extension_dir"] = _official_public_external_path(
+                str(extension_dir), "<external-extension>"
+            )
+        public.append(item)
+    return public
 
 
 def _official_public_catalog_identity(catalog: dict[str, Any]) -> dict[str, Any]:
