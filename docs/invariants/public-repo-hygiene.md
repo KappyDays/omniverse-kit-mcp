@@ -20,6 +20,7 @@ For a session/day audit after commits may already have been pushed, use:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD
+.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --date 2026-06-23 --head HEAD
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "2026-06-23 00:00" --head HEAD
 ```
 
@@ -33,6 +34,8 @@ stay outside the public gate. The default history scan uses the current branch
 upstream merge-base through `HEAD`, so local commits that are about to be pushed
 are reviewed. `--today` expands to local midnight for the current day and is the
 preferred quick command for "all commits pushed or prepared today" reviews.
+Use `--date YYYY-MM-DD` when reviewing a named day after local midnight has
+already moved on.
 History findings are classified against the current upstream or `origin/main`:
 `already_public` means the commit is reachable from that public ref, and
 `pending_push` means it is still only in the scanned local range.

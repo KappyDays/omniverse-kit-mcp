@@ -304,6 +304,83 @@ def test_public_hygiene_script_today_scans_current_day_history(
     assert "leak local path" in result.stdout
 
 
+def test_public_hygiene_script_date_scans_named_day_history(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    before_day = {
+        "GIT_AUTHOR_DATE": "2026-06-22T23:00:00+0900",
+        "GIT_COMMITTER_DATE": "2026-06-22T23:00:00+0900",
+    }
+    during_day = {
+        "GIT_AUTHOR_DATE": "2026-06-23T01:00:00+0900",
+        "GIT_COMMITTER_DATE": "2026-06-23T01:00:00+0900",
+    }
+    after_day = {
+        "GIT_AUTHOR_DATE": "2026-06-24T01:00:00+0900",
+        "GIT_COMMITTER_DATE": "2026-06-24T01:00:00+0900",
+    }
+
+    (repo / "evidence.md").write_text("capture: redacted\n", encoding="utf-8")
+    _commit_all(repo, "baseline", env=before_day)
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "leak named day path", env=during_day)
+
+    (repo / "evidence.md").write_text(
+        "capture: local validation capture path redacted\n",
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact after named day", env=after_day)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--date",
+            "2026-06-23",
+            "--head",
+            "HEAD",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "since 2026-06-23 00:00" in result.stdout
+    assert "history-added-line" in result.stdout
+    assert "windows_user_path" in result.stdout
+    assert "leak named day path" in result.stdout
+
+
+def test_public_hygiene_script_date_rejects_invalid_date() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--date",
+            "2026-13-40",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 2
+    assert "invalid --date value" in result.stderr
+
+
 def test_public_hygiene_script_since_scans_root_commit(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

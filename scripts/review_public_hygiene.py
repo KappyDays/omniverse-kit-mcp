@@ -7,7 +7,8 @@ Default use before push:
 The default history range is the merge-base with the current upstream through
 HEAD, so local commits that are about to be pushed are scanned. Pass --base and
 --head for an explicit audit range, --since for a session/day audit after
-commits have already been pushed, or --today for the current local day.
+commits have already been pushed, --date for a named local day, or --today for
+the current local day.
 """
 
 from __future__ import annotations
@@ -324,6 +325,16 @@ def _today_since_expression() -> str:
     return f"{date.today().isoformat()} 00:00"
 
 
+def _date_since_expression(value: str) -> str:
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(
+            f"invalid --date value: {value}; expected YYYY-MM-DD"
+        ) from exc
+    return f"{parsed.isoformat()} 00:00"
+
+
 def _changed_files_in_range(project: Path, base: str, head: str) -> list[str]:
     output = _git_output(project, "diff", "--name-only", f"{base}..{head}")
     return output.splitlines()
@@ -442,6 +453,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="scan history since local midnight today",
     )
+    range_group.add_argument(
+        "--date",
+        help="scan history since local midnight for YYYY-MM-DD",
+    )
     parser.add_argument("--head", default="HEAD", help="inclusive upper bound commit")
     parser.add_argument(
         "--public-ref",
@@ -477,8 +492,13 @@ def main(argv: list[str] | None = None) -> int:
     project = args.project.resolve()
     head = args.head
     history_commits: list[str] | None = None
-    since = _today_since_expression() if args.today else args.since
     try:
+        if args.today:
+            since = _today_since_expression()
+        elif args.date:
+            since = _date_since_expression(args.date)
+        else:
+            since = args.since
         if since:
             base, history_commits = _base_and_commits_since(project, head, since)
         else:
