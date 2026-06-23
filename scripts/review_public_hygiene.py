@@ -57,6 +57,20 @@ SECRET_LIKE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 SECRET_LIKE_LABELS = frozenset(label for label, _ in SECRET_LIKE_PATTERNS)
 
+SENSITIVE_IDENTIFIER_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "worker_thread_uuid",
+        re.compile(
+            r"\b(?:thread[_ -]?id|worker[_ -]?id|worker[_ -]?thread[_ -]?id|"
+            r"pendingWorktreeId|pending[_ -]?worktree[_ -]?id)\b"
+            r"['\"]?\s*[:=]\s*['\"]?"
+            r"(?:019[0-9A-Fa-f]{5}|[0-9A-Fa-f]{8})"
+            r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"
+            r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\b"
+        ),
+    ),
+)
+
 DISALLOWED_GENERATED_REFERENCES = (
     "docs/references/extensions.json",
     "docs/references/extensions-catalog.md",
@@ -107,12 +121,17 @@ class Finding:
 
 def _redact_output_text(value: str) -> str:
     redacted = value
-    for label, pattern in DISALLOWED_PATH_PATTERNS + SECRET_LIKE_PATTERNS:
-        replacement = (
-            f"<secret-like:{label}>"
-            if label in SECRET_LIKE_LABELS
-            else "<local-user-path>"
-        )
+    for label, pattern in (
+        DISALLOWED_PATH_PATTERNS
+        + SECRET_LIKE_PATTERNS
+        + SENSITIVE_IDENTIFIER_PATTERNS
+    ):
+        if label in SECRET_LIKE_LABELS:
+            replacement = f"<secret-like:{label}>"
+        elif label.startswith("worker_thread"):
+            replacement = f"<sensitive-id:{label}>"
+        else:
+            replacement = "<local-user-path>"
         redacted = pattern.sub(replacement, redacted)
     for user_name in LOCAL_USER_NAMES:
         redacted = re.sub(
@@ -179,7 +198,11 @@ def _scan_text(
 ) -> list[Finding]:
     findings: list[Finding] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
-        for label, pattern in DISALLOWED_PATH_PATTERNS + SECRET_LIKE_PATTERNS:
+        for label, pattern in (
+            DISALLOWED_PATH_PATTERNS
+            + SECRET_LIKE_PATTERNS
+            + SENSITIVE_IDENTIFIER_PATTERNS
+        ):
             if pattern.search(line):
                 findings.append(
                     Finding(

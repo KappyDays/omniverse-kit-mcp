@@ -44,6 +44,8 @@ History findings are classified against the current upstream or `origin/main`:
 
 - User-specific paths such as real Windows/MSYS user-home paths, Codex local
   worktree paths, and sanitized local path slugs.
+- Labeled worker/thread UUIDs such as `thread_id`, `worker_id`,
+  `worker_thread_id`, or `pendingWorktreeId` values.
 - Secret-like literals such as private keys and common token prefixes.
 - Tracked generated local references under `docs/references/extensions*`,
   `docs/references/app-specific/`, `docs/references/testbed-snapshot/`, or

@@ -48,6 +48,19 @@ _SECRET_LIKE_PATTERNS = (
     ("openai_token", re.compile(r"\bsk-" + r"[A-Za-z0-9_-]{20,}\b")),
     ("slack_token", re.compile(r"\bxox" + r"[baprs]-[A-Za-z0-9-]{20,}\b")),
 )
+_SENSITIVE_IDENTIFIER_PATTERNS = (
+    (
+        "worker_thread_uuid",
+        re.compile(
+            r"\b(?:thread[_ -]?id|worker[_ -]?id|worker[_ -]?thread[_ -]?id|"
+            r"pendingWorktreeId|pending[_ -]?worktree[_ -]?id)\b"
+            r"['\"]?\s*[:=]\s*['\"]?"
+            r"(?:019[0-9A-Fa-f]{5}|[0-9A-Fa-f]{8})"
+            r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"
+            r"-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\b"
+        ),
+    ),
+)
 
 
 def _local_user_names() -> tuple[str, ...]:
@@ -98,6 +111,9 @@ def test_tracked_text_files_do_not_embed_user_specific_paths() -> None:
     offenders: list[str] = []
     for rel, text in tracked:
         for label, pattern in _DISALLOWED_PATH_PATTERNS:
+            if pattern.search(text):
+                offenders.append(f"{rel}: matches {label}")
+        for label, pattern in _SENSITIVE_IDENTIFIER_PATTERNS:
             if pattern.search(text):
                 offenders.append(f"{rel}: matches {label}")
         for line_no, line in enumerate(text.splitlines(), start=1):
@@ -454,6 +470,98 @@ def test_public_hygiene_script_flags_split_user_path_literals(tmp_path: Path) ->
     assert result.returncode == 1
     assert "history-added-line" in result.stdout
     assert "split_windows_user_path" in result.stdout
+
+
+def test_public_hygiene_script_flags_labeled_worker_thread_uuid(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    thread_id = "12345678" + "-1234-4234-9234-123456789abc"
+    (repo / "evidence.md").write_text(
+        f"scenario worker thread_id={thread_id}\n",
+        encoding="utf-8",
+    )
+    _commit_all(repo, "worker thread id leak")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--skip-history",
+            "--redact-samples",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "worker_thread_uuid" in result.stdout
+    assert thread_id not in result.stdout
+    assert "<sensitive-id:worker_thread_uuid>" in result.stdout
+
+
+def test_public_hygiene_script_flags_labeled_worker_thread_uuid_history(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    (repo / "evidence.md").write_text("baseline\n", encoding="utf-8")
+    _commit_all(repo, "baseline")
+
+    thread_id = "12345678" + "-1234-4234-9234-123456789abc"
+    (repo / "evidence.md").write_text(
+        f'{{"pendingWorktreeId": "{thread_id}"}}\n',
+        encoding="utf-8",
+    )
+    _commit_all(repo, "worker thread id leak")
+
+    (repo / "evidence.md").write_text(
+        '{"pendingWorktreeId": "<worker-thread-id>"}\n',
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact worker thread id")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--base",
+            "HEAD~2",
+            "--head",
+            "HEAD",
+            "--format",
+            "json",
+            "--redact-samples",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    payload = json.loads(result.stdout)
+    assert payload["finding_count"] == 1
+    finding = payload["findings"][0]
+    assert finding["source"] == "history-added-line"
+    assert finding["label"] == "worker_thread_uuid"
+    assert thread_id not in finding["sample"]
+    assert "<sensitive-id:worker_thread_uuid>" in finding["sample"]
 
 
 def test_public_hygiene_script_flags_untracked_local_paths(tmp_path: Path) -> None:
