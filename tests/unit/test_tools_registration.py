@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 from mcp.server.fastmcp import FastMCP
 
-from omniverse_kit_mcp.config import AppConfig, MCPServerConfig
+from omniverse_kit_mcp.config import AppConfig, MCPServerConfig, ScenarioConfig
 from omniverse_kit_mcp.mcp.server import create_mcp_server
 from omniverse_kit_mcp.modules.robot_module import RobotModule
 from omniverse_kit_mcp.tools import scenario_tools
@@ -458,7 +458,9 @@ async def test_scenario_last_report_can_return_markdown(mcp_server, monkeypatch)
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("report_format", ["markdown", "md"])
-async def test_scenario_validate_can_return_markdown(monkeypatch, report_format):
+async def test_scenario_validate_can_return_markdown(
+    monkeypatch, tmp_path, report_format,
+):
     class FakeScenarioRunner:
         def __init__(self, *args, **kwargs):
             pass
@@ -467,7 +469,9 @@ async def test_scenario_validate_can_return_markdown(monkeypatch, report_format)
             return _single_lidar_summary(scenario.scenario_id)
 
     monkeypatch.setattr(scenario_tools, "ScenarioRunner", FakeScenarioRunner)
-    config = AppConfig()
+    config = AppConfig(
+        scenario=ScenarioConfig(SCENARIOS_DIR=str(tmp_path / "scenarios")),
+    )
     _write_minimal_scenario(config)
     mcp = create_mcp_server(config)
     tool = mcp._tool_manager._tools["scenario_validate"]

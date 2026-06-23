@@ -76,7 +76,9 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
     if data_rows:
         lines.extend(["", "## Data Summary Highlights", ""])
         for step_id, detail in data_rows:
-            lines.append(f"- `{step_id}`: {detail}")
+            lines.append(
+                f"- {_markdown_code_span(step_id)}: {_markdown_inline(detail)}"
+            )
 
     retry_rows = [
         (sr.step_id, failure)
@@ -87,7 +89,7 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
         lines.extend(["", "## Retry Failures", ""])
         for step_id, failure in retry_rows:
             lines.append(
-                f"- `{step_id}` attempt {failure.get('attempt')}: "
+                f"- {_markdown_code_span(step_id)} attempt {failure.get('attempt')}: "
                 f"{failure.get('status')} {failure.get('error_code')} - "
                 f"{_markdown_inline(failure.get('message') or '')}"
             )
@@ -95,7 +97,7 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
     if summary.artifact_paths:
         lines.extend(["", "## Artifacts", ""])
         for path in summary.artifact_paths:
-            lines.append(f"- `{path}`")
+            lines.append(f"- {_markdown_code_span(path)}")
 
     return "\n".join(lines)
 
@@ -117,6 +119,21 @@ def _markdown_table_cell(value: Any) -> str:
 
 def _markdown_inline(value: Any) -> str:
     return str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>")
+
+
+def _markdown_code_span(value: Any) -> str:
+    text = _markdown_inline(value)
+    longest_run = 0
+    current_run = 0
+    for char in text:
+        if char == "`":
+            current_run += 1
+            longest_run = max(longest_run, current_run)
+        else:
+            current_run = 0
+    delimiter = "`" * (longest_run + 1)
+    padding = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{delimiter}{padding}{text}{padding}{delimiter}"
 
 
 def _has_diagnostic_summary(data_summary: dict[str, Any]) -> bool:
@@ -225,7 +242,7 @@ def _format_summary_value(value: Any) -> str:
         return compact[:117] + "..." if len(compact) > 120 else compact
     if value is None:
         return "null"
-    return str(value)
+    return _markdown_inline(value)
 
 
 def _is_compact_scalar(value: Any) -> bool:

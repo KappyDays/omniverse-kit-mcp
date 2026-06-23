@@ -189,6 +189,38 @@ def test_markdown_escapes_step_result_table_cells():
     ) in markdown
 
 
+def test_markdown_escapes_list_code_spans_and_highlight_newlines():
+    summary = ScenarioRunSummary(
+        scenario_id="list_escape",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read`lidar",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "num_points": 1,
+                    "warning": "first line\nsecond line",
+                },
+            ),
+        ),
+        artifact_paths=("capture`path\nframe.png",),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert (
+        "- ``read`lidar``: num_points=1; "
+        "warning=first line<br>second line"
+    ) in markdown
+    assert "- ``capture`path<br>frame.png``" in markdown
+
+
 def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
     summary = ScenarioRunSummary(
         scenario_id="official_asset_diagnostics",
