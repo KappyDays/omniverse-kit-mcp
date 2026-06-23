@@ -267,6 +267,57 @@ async def test_lidar_get_point_cloud_fails_when_below_min_points():
 
 
 @pytest.mark.asyncio
+async def test_lidar_get_point_cloud_adds_too_few_points_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    client.responses["sensor_lidar_get_point_cloud"] = {
+        "ok": True,
+        "sensor_prim": "/World/Lidar",
+        "annotator": "RtxSensorCpuIsaacCreateRTXLidarScanBuffer",
+        "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
+        "num_points": 2,
+        "points": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+        "intensities": [1.0, 1.0],
+        "truncated": False,
+        "frames_waited": 180,
+        "raw_keys": ["cached_lidar_sensor"],
+        "warning": None,
+        "diagnostics": {
+            "cached_lidar_instance": True,
+            "readback_paths_attempted": ["cached_lidar_sensor"],
+        },
+    }
+    module = SensorModule(client)
+    request = SensorLidarGetPointCloudRequest(
+        sensor_prim="/World/Lidar",
+        min_points=4,
+    )
+
+    result = await module.lidar_get_point_cloud(_meta(), request)
+
+    assert not result.ok
+    assert result.error_code == "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    assert result.data is not None
+    assert result.data.diagnostics["reason"] == "point_count_below_minimum"
+    assert result.data.diagnostics["num_points"] == 2
+    assert result.data.diagnostics["min_points"] == 4
+    assert result.data.diagnostics["cached_lidar_instance"] is True
+    assert result.data.diagnostics["readback_paths_attempted"] == [
+        "cached_lidar_sensor"
+    ]
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "simulation_step",
+        "sensor_lidar_get_point_cloud",
+        "extension_capture_logs",
+    ]
+    assert any(
+        "Step more simulation frames" in item
+        for item in result.data.diagnostics["suggested_next"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_lidar_get_point_cloud_fails_on_warning_when_requested():
     from tests.conftest import MockIsaacRestClient
 

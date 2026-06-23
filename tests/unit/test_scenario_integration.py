@@ -1317,7 +1317,8 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     raw_cloud = next(
         step for step in raw["spec"]["act"] if step["id"] == "read_lidar_point_cloud"
     )
-    assert raw_cloud["args"]["min_points"] == 1
+    assert raw_cloud["args"]["min_points"] == "${variables.lidar_min_points}"
+    assert raw_cloud["args"]["max_points"] == "${variables.lidar_max_points}"
     assert raw_cloud["args"]["fail_on_warning"] is True
     assert raw_cloud["idempotent"] is True
     assert raw_cloud["retries"]["maxAttempts"] == 3
@@ -1602,6 +1603,28 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     ) in markdown
 
 
+def test_robot_rtx_sensor_golden_workflow_allows_lidar_point_overrides():
+    raw = load_scenario(
+        PROJECT / "scenarios" / "smoke" / "robot_rtx_sensor_golden_workflow.yaml"
+    )
+    raw["spec"]["variables"]["lidar_min_points"] = 513
+    raw["spec"]["variables"]["lidar_max_points"] = 1024
+
+    scenario = compile_scenario(raw)
+    read_lidar = next(
+        step for step in scenario.act_steps if step.id == "read_lidar_point_cloud"
+    )
+    plan = _scenario_plan_payload(scenario)
+    evidence_steps = {step["id"]: step for step in plan["evidence_steps"]}
+
+    assert read_lidar.args["min_points"] == 513
+    assert isinstance(read_lidar.args["min_points"], int)
+    assert read_lidar.args["max_points"] == 1024
+    assert isinstance(read_lidar.args["max_points"], int)
+    assert evidence_steps["read_lidar_point_cloud"]["key_args"]["min_points"] == 513
+    assert evidence_steps["read_lidar_point_cloud"]["key_args"]["max_points"] == 1024
+
+
 @pytest.mark.asyncio
 async def test_scenario_runner_retries_transient_lidar_read_failure():
     """Scenario step retries must absorb transient RTX lidar empty-buffer reads."""
@@ -1735,8 +1758,14 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "replicator_annotator",
     ]
     assert lidar_report["retry_failures"][0]["diagnostic_next_actions"] == {
+        "diagnostics.reason": "point_count_below_minimum",
         "empty_reason": "empty_scan_buffer",
         "suggested_next": "step more frames and retry idempotently",
+        "diagnostics.fallback_tool_order": [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
         "diagnostics.readback_paths_attempted": [
             "cached_lidar_sensor",
             "replicator_annotator",
@@ -1750,8 +1779,14 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
         "final_step_status": "passed",
         "attempt": 1,
+        "diagnostics.reason": "point_count_below_minimum",
         "empty_reason": "empty_scan_buffer",
         "suggested_next": "step more frames and retry idempotently",
+        "diagnostics.fallback_tool_order": [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
         "diagnostics.readback_paths_attempted": [
             "cached_lidar_sensor",
             "replicator_annotator",
@@ -1785,8 +1820,12 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     ) in markdown
     assert "## Diagnostic Next Actions" in markdown
     assert (
-        "- `read_lidar attempt 1`: empty_reason=empty_scan_buffer; "
+        "- `read_lidar attempt 1`: "
+        "diagnostics.reason=point_count_below_minimum; "
+        "empty_reason=empty_scan_buffer; "
         "suggested_next=step more frames and retry idempotently; "
+        "diagnostics.fallback_tool_order=[simulation_step, "
+        "sensor_lidar_get_point_cloud, extension_capture_logs]; "
         "diagnostics.readback_paths_attempted=[cached_lidar_sensor, "
         "replicator_annotator]"
     ) in markdown

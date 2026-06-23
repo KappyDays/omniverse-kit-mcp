@@ -429,9 +429,39 @@ SCENARIO_SCHEMA: dict = {
             "additionalProperties": False,
             "properties": {
                 "sensor_prim": {"type": "string", "minLength": 1},
-                "max_points": {"type": "integer", "minimum": 1},
-                "frames_to_wait": {"type": "integer", "minimum": 1},
-                "min_points": {"type": "integer", "minimum": 0},
+                "max_points": {
+                    "oneOf": [
+                        {"type": "integer", "minimum": 1},
+                        {
+                            "type": "string",
+                            "pattern": (
+                                r"^\$\{variables\.[A-Za-z_][A-Za-z0-9_]*\}$"
+                            ),
+                        },
+                    ]
+                },
+                "frames_to_wait": {
+                    "oneOf": [
+                        {"type": "integer", "minimum": 1},
+                        {
+                            "type": "string",
+                            "pattern": (
+                                r"^\$\{variables\.[A-Za-z_][A-Za-z0-9_]*\}$"
+                            ),
+                        },
+                    ]
+                },
+                "min_points": {
+                    "oneOf": [
+                        {"type": "integer", "minimum": 0},
+                        {
+                            "type": "string",
+                            "pattern": (
+                                r"^\$\{variables\.[A-Za-z_][A-Za-z0-9_]*\}$"
+                            ),
+                        },
+                    ]
+                },
                 "fail_on_warning": {"type": "boolean"},
             },
         },

@@ -64,7 +64,8 @@ Combined robot/sensor smoke uses `scenarios/smoke/robot_rtx_sensor_golden_workfl
 warm-up -> attach RTX camera -> set camera annotators -> play ->
 step(frames=5) -> attach RTX lidar -> lidar visualization -> step(frames=180) ->
 sensor.lidar_get_point_cloud(idempotent=true, retries.maxAttempts=3,
-frames_to_wait=180, min_points=1, fail_on_warning=true) -> pause ->
+frames_to_wait=180, min_points=${variables.lidar_min_points} default 1,
+fail_on_warning=true) -> pause ->
 viewport.frame_prims -> viewport.capture_assert -> cleanup`.
 
 Live proof wrapper: `mcp_runtime_info -> kit_app_start ->
@@ -73,6 +74,10 @@ scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
 scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
 scenario_last_report(report_format="markdown", redact_local_paths=true) ->
 extension_capture_logs`.
+For controlled failure diagnostics, pass the same
+`input_overrides={"lidar_min_points": 513}` to `scenario_plan` and
+`scenario_validate`; this should fail only `read_lidar_point_cloud`, preserve
+cleanup, and surface `error_code`, `suggested_next`, and fallback order.
 
 Do not use an RTX lidar prim as a viewport camera. Frame the robot/sensor prims
 with a normal viewport camera and use `sensor.lidar_get_point_cloud` for lidar data.

@@ -268,6 +268,7 @@ class SensorModule:
                 ),
             )
             if data.num_points < request.min_points:
+                _add_lidar_too_few_points_diagnostics(data, request)
                 return fail_result(
                     (
                         f"Lidar point cloud has {data.num_points} points; "
@@ -347,3 +348,28 @@ def _format_lidar_failure_detail(
     if include_warning and data.warning:
         details.append(f"warning={data.warning}")
     return f" ({'; '.join(details)})" if details else ""
+
+
+def _add_lidar_too_few_points_diagnostics(
+    data: SensorLidarGetPointCloudResult,
+    request: SensorLidarGetPointCloudRequest,
+) -> None:
+    data.diagnostics.setdefault("reason", "point_count_below_minimum")
+    data.diagnostics.setdefault("num_points", data.num_points)
+    data.diagnostics.setdefault("min_points", request.min_points)
+    data.diagnostics.setdefault(
+        "suggested_next",
+        [
+            "Step more simulation frames before retrying the lidar read.",
+            "Lower min_points only for bounded diagnostics if the scan is otherwise healthy.",
+            "Inspect readback_paths_attempted and WARN/ERROR logs if the buffer stays short.",
+        ],
+    )
+    data.diagnostics.setdefault(
+        "fallback_tool_order",
+        [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
+    )

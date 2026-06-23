@@ -25,6 +25,8 @@ spec:
     lidar_target_back: "/World/LidarTargets/TargetBack"
     lidar_target_left: "/World/LidarTargets/TargetLeft"
     lidar_target_right: "/World/LidarTargets/TargetRight"
+    lidar_max_points: 512
+    lidar_min_points: 1
 
   arrange:
     - id: reset_stage
@@ -167,9 +169,9 @@ spec:
         maxBackoffSeconds: 1.0
       args:
         sensor_prim: ${variables.lidar_prim}
-        max_points: 512
+        max_points: ${variables.lidar_max_points}
         frames_to_wait: 180
-        min_points: 1
+        min_points: ${variables.lidar_min_points}
         fail_on_warning: true
 
     - id: pause_after_sensor_data

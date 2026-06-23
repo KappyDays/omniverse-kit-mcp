@@ -53,6 +53,10 @@ safeguards, not YAML.
 When using `input_overrides`, pass the same override dict to `scenario_plan` and
 `scenario_validate` so the plan preview reflects the exact variable-substituted
 prim paths and asset URLs that will run.
+For bounded RTX lidar failure-shape checks, override
+`lidar_min_points` above `lidar_max_points` instead of editing the scenario; the
+expected failure is `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS` on
+`read_lidar_point_cloud` with cleanup preserved.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 
