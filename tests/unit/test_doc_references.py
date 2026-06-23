@@ -254,6 +254,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "retry_steps[].key_args" in guide
+    assert "retry_steps[].key_args" in invariant
+    assert "`scenario_validate(..., dry_run=true)`" in invariant
+    assert "`failure_summary`" in invariant
+    assert "failure_summary[].last_retry_failure" in invariant
     assert "min_points" in guide
     assert "max_points" in guide
     assert "frames_to_wait" in guide

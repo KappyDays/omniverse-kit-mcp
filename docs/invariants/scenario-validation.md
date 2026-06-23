@@ -74,6 +74,10 @@ scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
 scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
 scenario_last_report(report_format="markdown", redact_local_paths=true) ->
 extension_capture_logs`.
+Before stage mutation, `scenario_plan` or
+`scenario_validate(..., dry_run=true)` must expose matching `phase_counts`,
+`evidence_steps`, and `retry_steps`; check `retry_steps[].key_args` so lidar
+thresholds match the intended proof.
 For controlled failure diagnostics, pass the same
 `input_overrides={"lidar_min_points": 513}` to `scenario_plan` and
 `scenario_validate`; this should fail only `read_lidar_point_cloud`, preserve
@@ -91,6 +95,8 @@ before reattaching the same sensor path; otherwise an old render product can
 hold the new scan buffer at zero points until the process is restarted.
 Transient zero-point RTX buffers should be absorbed with step-level retries only
 on idempotent sensor reads; inspect `scenario_last_report` fields
+`failure_summary`, `failure_summary[].step_id`,
+`failure_summary[].error_code`, `failure_summary[].last_retry_failure`,
 `diagnostic_next_actions`,
 `diagnostic_next_actions[].phase`, `diagnostic_next_actions[].status`,
 `diagnostic_next_actions[].error_code`,
