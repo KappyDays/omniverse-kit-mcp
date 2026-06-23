@@ -775,6 +775,56 @@ def test_report_preserves_retry_next_action_status_and_error_code():
     ) in markdown
 
 
+def test_report_preserves_failed_step_next_action_error_code():
+    summary = ScenarioRunSummary(
+        scenario_id="failed_step_next_action_metadata",
+        status=ExecutionStatus.FAILED,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read_lidar",
+                phase="act",
+                status=ExecutionStatus.FAILED,
+                message="point cloud contained fewer points than min_points",
+                error_code="SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+                data_summary={
+                    "num_points": 0,
+                    "empty_reason": "empty_scan_buffer",
+                    "diagnostics": {
+                        "reason": "point_count_below_minimum",
+                        "suggested_next": [
+                            "Step simulation frames before another read."
+                        ],
+                        "fallback_tool_order": [
+                            "simulation_step",
+                            "sensor_lidar_get_point_cloud",
+                            "extension_capture_logs",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    step_result = report["step_results"][0]
+
+    assert step_result["error_code"] == "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "read_lidar",
+        "phase": "act",
+        "source": "step",
+        "status": "failed",
+        "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+        **step_result["diagnostic_next_actions"],
+    }]
+
+
 def test_markdown_reports_cleanup_failures_as_non_fatal():
     summary = ScenarioRunSummary(
         scenario_id="cleanup_shape",
@@ -1777,10 +1827,16 @@ async def test_scenario_runner_rejects_retries_without_idempotent_flag():
     assert create_calls == []
     step_result = next(r for r in summary.step_results if r.step_id == "unsafe_retry")
     assert step_result.status == ExecutionStatus.ERROR
+    assert step_result.error_code == "SCENARIO_RETRY_REQUIRES_IDEMPOTENT_STEP"
     assert step_result.attempts == 0
     assert step_result.max_attempts == 2
     assert step_result.retry_failures == ()
     assert "idempotent=true" in (step_result.message or "")
+    unsafe_report = next(
+        result for result in json.loads(to_json(summary))["step_results"]
+        if result["step_id"] == "unsafe_retry"
+    )
+    assert unsafe_report["error_code"] == "SCENARIO_RETRY_REQUIRES_IDEMPOTENT_STEP"
 
 
 @pytest.mark.asyncio
@@ -1875,6 +1931,7 @@ async def test_scenario_runner_reports_retry_context_on_hard_timeout(monkeypatch
     assert "**Steps**: 1 passed, 1 failed, 0 skipped" in to_markdown(summary)
     result = next(r for r in summary.step_results if r.step_id == "timeout_lidar")
     assert result.status == ExecutionStatus.TIMEOUT
+    assert result.error_code == "SCENARIO_STEP_TIMEOUT"
     assert result.attempts == 1
     assert result.max_attempts == 3
     assert result.retry_failures == ({

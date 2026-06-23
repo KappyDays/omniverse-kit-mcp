@@ -53,6 +53,7 @@ class StepResult:
     phase: Literal["arrange", "act", "assert", "cleanup"]
     status: ExecutionStatus
     message: str | None = None
+    error_code: str | None = None
     duration_ms: int | None = None
     artifacts: dict[str, str] = field(default_factory=dict)
     data_summary: dict[str, JsonValue] = field(default_factory=dict)

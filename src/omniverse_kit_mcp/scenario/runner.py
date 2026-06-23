@@ -210,6 +210,7 @@ class ScenarioRunner:
                     phase=step.phase,
                     status=status,
                     message=module_result.message if module_result else None,
+                    error_code=module_result.error_code if module_result else None,
                     duration_ms=int(time.time() * 1000) - step_started,
                     artifacts=module_result.artifacts if module_result else {},
                     data_summary=(
@@ -230,6 +231,7 @@ class ScenarioRunner:
                     phase=step.phase,
                     status=ExecutionStatus.TIMEOUT,
                     message=f"Step timed out after {timeout}s",
+                    error_code="SCENARIO_STEP_TIMEOUT",
                     duration_ms=int(time.time() * 1000) - step_started,
                     attempts=1,
                     max_attempts=_step_max_attempts(step),
@@ -250,6 +252,7 @@ class ScenarioRunner:
                     phase=step.phase,
                     status=ExecutionStatus.ERROR,
                     message=str(exc),
+                    error_code="SCENARIO_STEP_EXCEPTION",
                     duration_ms=int(time.time() * 1000) - step_started,
                     attempts=1,
                     max_attempts=_step_max_attempts(step),
@@ -549,6 +552,7 @@ class ScenarioRunner:
                     phase="cleanup",
                     status=ExecutionStatus.ERROR,
                     message=f"User cleanup error: {exc}",
+                    error_code="SCENARIO_CLEANUP_EXCEPTION",
                 ))
 
         if not _scenario_needs_fallback_cleanup(scenario):
@@ -564,6 +568,7 @@ class ScenarioRunner:
                 phase="cleanup",
                 status=result.status,
                 message=result.message,
+                error_code=result.error_code,
                 duration_ms=int(time.time() * 1000) - started,
             ))
         except Exception as exc:
@@ -573,6 +578,7 @@ class ScenarioRunner:
                 phase="cleanup",
                 status=ExecutionStatus.ERROR,
                 message=f"Cleanup error (secondary): {exc}",
+                error_code="SCENARIO_CLEANUP_EXCEPTION",
                 duration_ms=int(time.time() * 1000) - started,
             ))
 

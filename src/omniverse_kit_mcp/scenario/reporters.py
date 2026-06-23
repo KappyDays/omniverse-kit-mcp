@@ -286,6 +286,8 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
     diagnostic_next_actions: list[dict[str, Any]] = []
     for sr in summary.step_results:
         step_result = {**asdict(sr), "status": sr.status.value}  # type: ignore[arg-type]
+        if step_result.get("error_code") is None:
+            step_result.pop("error_code", None)
         action = _diagnostic_next_action_payload(sr.data_summary)
         if action:
             step_result["diagnostic_next_actions"] = action

@@ -30,8 +30,9 @@ Reports include `diagnostic_next_actions` in JSON and `Diagnostic Next Actions`
 in Markdown when diagnostic payloads carry `suggested_next` or
 `fallback_tool_order`; follow that section before opening logs or changing
 scenario timing. Prefer the JSON root queue when exact routing matters: it
-includes `phase`, source `status`, `error_code`, retry `attempt`, and
-`final_step_status` for retried failures when those fields are available.
+includes `phase`, source `status`, final step `error_code`, retry
+`error_code`, retry `attempt`, and `final_step_status` when those fields are
+available.
 Reports also include JSON `evidence_summary` and Markdown `Evidence Summary`
 when executed steps produced compact lidar, viewport-framing, or visual-capture
 evidence; compare it with `scenario_plan.evidence_steps` before claiming a
