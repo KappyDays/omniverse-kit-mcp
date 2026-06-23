@@ -71,7 +71,8 @@ Live proof wrapper: `mcp_runtime_info -> kit_app_start ->
 simulation_get_status -> extension_clear_logs ->
 scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
 scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
-scenario_last_report(report_format="markdown") -> extension_capture_logs`.
+scenario_last_report(report_format="markdown", redact_local_paths=true) ->
+extension_capture_logs`.
 
 Do not use an RTX lidar prim as a viewport camera. Frame the robot/sensor prims
 with a normal viewport camera and use `sensor.lidar_get_point_cloud` for lidar data.
@@ -90,9 +91,9 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `data_summary.diagnostics.suggested_next`,
 `data_summary.diagnostics.fallback_tool_order`, `data_summary.raw_keys`, and
 `data_summary.warning` before opening logs.
-Use `scenario_last_report(report_format="markdown")` or the Markdown
-section printed by `scripts/run_scenario_standalone.py` for quick
-`Data Summary Highlights`; use default JSON for exact field values.
+Use `scenario_last_report(report_format="markdown", redact_local_paths=true)`
+for public-safe quick `Data Summary Highlights`; use default JSON for exact
+field values before copying anything into public docs.
 For idempotent retry steps, the scenario runner retries returned non-pass
 results, hard step timeouts, and hard step exceptions; each failed attempt is
 recorded in `retry_failures`.
