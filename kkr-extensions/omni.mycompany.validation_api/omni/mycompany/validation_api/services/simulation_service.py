@@ -19,21 +19,42 @@ class SimulationService:
 
         timeline = omni.timeline.get_timeline_interface()
         timeline.play()
-        return self._status_dict(timeline)
+        settle = await self._wait_for_timeline_state(
+            timeline,
+            is_playing=True,
+            is_stopped=False,
+        )
+        status = self._status_dict(timeline)
+        status.update(settle)
+        return status
 
     async def pause(self) -> dict[str, Any]:
         import omni.timeline  # lazy
 
         timeline = omni.timeline.get_timeline_interface()
         timeline.pause()
-        return self._status_dict(timeline)
+        settle = await self._wait_for_timeline_state(
+            timeline,
+            is_playing=False,
+            is_stopped=False,
+        )
+        status = self._status_dict(timeline)
+        status.update(settle)
+        return status
 
     async def stop(self) -> dict[str, Any]:
         import omni.timeline  # lazy
 
         timeline = omni.timeline.get_timeline_interface()
         timeline.stop()
-        return self._status_dict(timeline)
+        settle = await self._wait_for_timeline_state(
+            timeline,
+            is_playing=False,
+            is_stopped=True,
+        )
+        status = self._status_dict(timeline)
+        status.update(settle)
+        return status
 
     async def get_status(self) -> dict[str, Any]:
         import omni.timeline  # lazy
@@ -193,6 +214,32 @@ class SimulationService:
             "start_time": timeline.get_start_time(),
             "end_time": timeline.get_end_time(),
             "time_codes_per_second": timeline.get_time_codes_per_seconds(),
+        }
+
+    @staticmethod
+    async def _wait_for_timeline_state(
+        timeline: Any,
+        *,
+        is_playing: bool,
+        is_stopped: bool,
+        max_updates: int = 5,
+    ) -> dict[str, Any]:
+        import omni.kit.app  # lazy
+
+        app = omni.kit.app.get_app()
+        for updates in range(1, max_updates + 1):
+            await app.next_update_async()
+            if (
+                bool(timeline.is_playing()) is is_playing
+                and bool(timeline.is_stopped()) is is_stopped
+            ):
+                return {
+                    "timeline_settled": True,
+                    "timeline_settle_updates": updates,
+                }
+        return {
+            "timeline_settled": False,
+            "timeline_settle_updates": max_updates,
         }
 
 

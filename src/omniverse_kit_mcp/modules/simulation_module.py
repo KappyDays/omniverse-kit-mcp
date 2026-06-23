@@ -373,6 +373,8 @@ def _parse_status(raw: dict) -> SimulationStatus:
         start_time=raw.get("start_time", 0.0),
         end_time=raw.get("end_time", 0.0),
         time_codes_per_second=raw.get("time_codes_per_second", 24.0),
+        timeline_settled=raw.get("timeline_settled"),
+        timeline_settle_updates=raw.get("timeline_settle_updates"),
     )
 
 

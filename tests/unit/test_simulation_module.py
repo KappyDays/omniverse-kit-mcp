@@ -15,6 +15,28 @@ def meta():
 
 
 @pytest.mark.asyncio
+async def test_simulation_play_preserves_settle_diagnostics(meta):
+    client = MockIsaacRestClient()
+    client.responses["simulation_play"] = {
+        "is_playing": True,
+        "is_stopped": False,
+        "current_time": 0.1,
+        "start_time": 0.0,
+        "end_time": 10.0,
+        "time_codes_per_second": 60.0,
+        "timeline_settled": True,
+        "timeline_settle_updates": 2,
+    }
+    mod = SimulationModule(client)
+    result = await mod.play(meta)
+
+    assert result.ok is True
+    assert result.data is not None
+    assert result.data.timeline_settled is True
+    assert result.data.timeline_settle_updates == 2
+
+
+@pytest.mark.asyncio
 async def test_stage_new_stops_when_playing(meta):
     client = MockIsaacRestClient()
     client.responses["simulation_status"] = {

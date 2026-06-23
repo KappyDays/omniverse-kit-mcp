@@ -21,6 +21,15 @@ The generated signature reference remains `docs/tool-catalog.md`.
 | Capture GUI or menu evidence | `window_capture`, `window_list`, `window_menu_list`, `window_menu_trigger` | `docs/invariants/visual-validation.md`, `src/omniverse_kit_mcp/tools/CLAUDE.md` |
 | Find a missing capability to wrap | `extension_search`, then duplicate-check `docs/tool-catalog.md` | `docs/references/CLAUDE.md`, `docs/invariants/mcp-tool-add.md` |
 
+## Timeline Control
+
+`simulation_play`, `simulation_pause`, and `simulation_stop` return timeline
+state after the Kit update loop has accepted the command. Treat their
+`is_playing` / `is_stopped` fields as the settled post-action state; check
+`timeline_settled` and `timeline_settle_updates` when diagnosing slow or stale
+timeline transitions. Use `simulation_get_status` when a later step needs an
+independent read-back.
+
 ## Profile Selection
 
 `MCP_SERVER_TOOL_PROFILE` controls registration-time tool exposure:

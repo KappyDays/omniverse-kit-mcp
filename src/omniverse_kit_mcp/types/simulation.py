@@ -15,6 +15,8 @@ class SimulationStatus:
     start_time: float
     end_time: float
     time_codes_per_second: float
+    timeline_settled: bool | None = None
+    timeline_settle_updates: int | None = None
 
 
 @dataclass(slots=True, frozen=True)
