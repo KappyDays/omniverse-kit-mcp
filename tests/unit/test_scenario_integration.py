@@ -3679,6 +3679,26 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
         PROJECT / "scenarios" / "smoke" / "official_asset_verify_live.yaml"
     )
     plan = _scenario_plan_payload(compile_scenario(raw))
+    diagnostic_steps = {step["id"]: step for step in plan["diagnostic_steps"]}
+    assert list(diagnostic_steps) == [
+        "check_isaac_catalog",
+        "search_pallet_asset",
+        "resolve_pallet_asset",
+        "get_pallet_entry",
+    ]
+    assert diagnostic_steps["resolve_pallet_asset"] == {
+        "id": "resolve_pallet_asset",
+        "phase": "assert",
+        "module": "asset",
+        "action": "official_resolve",
+        "diagnostic_kind": "official_asset_resolve",
+        "key_args": {
+            "name_or_id": "pallet",
+            "kind": "asset",
+            "app_profile": "isaac-sim",
+            "prefer_loadable": True,
+        },
+    }
     evidence_steps = {step["id"]: step for step in plan["evidence_steps"]}
     assert evidence_steps["verify_pallet_asset"] == {
         "id": "verify_pallet_asset",
@@ -3703,6 +3723,9 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
     steps = {step.step_id: step for step in summary.step_results}
     assert "__fallback_cleanup_reset" not in steps
     assert steps["search_pallet_asset"].data_summary["count"] == 1
+    assert steps["resolve_pallet_asset"].data_summary["name"] == (
+        "aluminumpallet_a01.usd"
+    )
     assert steps["verify_pallet_asset"].data_summary["verification_status"] == (
         "load_verified"
     )

@@ -135,7 +135,7 @@ Official asset scenario proof wrapper:
 `extension_capture_logs(level="ERROR")`.
 Before live execution, confirm `scenario_plan.evidence_steps` includes
 `evidence_kind=official_asset_verify` for the verify step and
-`scenario_plan.diagnostic_steps` includes the preceding sync/search/get probes.
+`scenario_plan.diagnostic_steps` includes the preceding sync/search/resolve/get probes.
 Use `scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)` when you need
 the read-only sync/search/resolve/get catalog diagnostic chain without a live
 asset load.

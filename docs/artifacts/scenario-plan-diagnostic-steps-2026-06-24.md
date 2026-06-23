@@ -32,6 +32,6 @@ so agents can confirm the intended catalog/status/search/resolve/get probes at
     `get_pallet_wrong_profile.continueOnFailure=true`
 - `.\.venv\Scripts\python.exe scripts\run_scenario_standalone.py --dry-run smoke\official_asset_verify_live.yaml`
   - Result: exit 0
-  - `diagnostic_steps`: sync/search/get rows before verify
+  - `diagnostic_steps`: sync/search/resolve/get rows before verify
   - `evidence_steps`: `verify_pallet_asset` with
     `evidence_kind=official_asset_verify`

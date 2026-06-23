@@ -26,6 +26,15 @@ spec:
         min_status: load_verified
         limit: 3
 
+    - id: resolve_pallet_asset
+      module: asset
+      action: official_resolve
+      args:
+        name_or_id: pallet
+        kind: asset
+        app_profile: isaac-sim
+        prefer_loadable: true
+
     - id: get_pallet_entry
       module: asset
       action: official_get
