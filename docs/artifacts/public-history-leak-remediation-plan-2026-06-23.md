@@ -1,9 +1,10 @@
 # Public history leak remediation plan - 2026-06-23
 
-Status at 2026-06-23T19:38:31+09:00:
+Status at 2026-06-23T20:47:51+09:00:
 
 - Pending local range `75e032b..HEAD`: public hygiene guard passes.
-- Current tracked tree: no public hygiene findings from `scripts/review_public_hygiene.py`.
+- Current tracked tree plus untracked, non-ignored files: no public hygiene
+  findings from `scripts/review_public_hygiene.py`.
 - Day/session range `204cb83..HEAD`: public hygiene guard reports 7 findings.
 - Already-pushed range `204cb83..origin/main`: same 7 findings, so push remains blocked until the user explicitly approves a history rewrite / force-push plan.
 
