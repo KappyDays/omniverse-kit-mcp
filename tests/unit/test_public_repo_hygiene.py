@@ -7,14 +7,27 @@ import subprocess
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[2]
-_LOCAL_USER = "ka" + "ng"
 
-_DISALLOWED_LITERALS = (
-    "C:" + f"/Users/{_LOCAL_USER}",
-    "C:" + f"\\Users\\{_LOCAL_USER}",
-    "C--Users-" + _LOCAL_USER,
-    ".codex" + "\\worktrees",
-    ".codex" + "/worktrees",
+_DISALLOWED_PATH_PATTERNS = (
+    (
+        "windows_user_path",
+        re.compile(
+            r"\b[A-Za-z]:[\\/]+Users[\\/]+(?![$%<{])"
+            r"[A-Za-z0-9._-]+(?:[\\/]|$)"
+        ),
+    ),
+    (
+        "msys_user_path",
+        re.compile(
+            r"(?<![A-Za-z0-9_])/[A-Za-z]/Users/(?![$%<{])"
+            r"[A-Za-z0-9._-]+(?:/|$)"
+        ),
+    ),
+    (
+        "sanitized_windows_user_path",
+        re.compile(r"\b[A-Za-z]--Users-(?![$%<{])[A-Za-z0-9._-]+\b"),
+    ),
+    ("codex_worktree_path", re.compile(r"\.codex[\\/]+worktrees")),
 )
 _DISALLOWED_GENERATED_REFERENCES = (
     "docs/references/extensions.json",
@@ -56,9 +69,9 @@ def test_tracked_text_files_do_not_embed_user_specific_paths() -> None:
     tracked = _tracked_text_files()
     offenders: list[str] = []
     for rel, text in tracked:
-        for literal in _DISALLOWED_LITERALS:
-            if literal in text:
-                offenders.append(f"{rel}: contains {literal!r}")
+        for label, pattern in _DISALLOWED_PATH_PATTERNS:
+            if pattern.search(text):
+                offenders.append(f"{rel}: matches {label}")
     assert not offenders, "User-specific public path literals found:\n" + "\n".join(
         offenders[:50]
     )
