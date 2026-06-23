@@ -134,6 +134,76 @@ SCENARIO_SCHEMA: dict = {
                 {
                     "if": {
                         "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "official_sync_status"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/officialAssetSyncStatusArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "official_search"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/officialAssetSearchArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "official_resolve"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/officialAssetResolveArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "official_get"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/officialAssetGetArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "module": {"const": "asset"},
+                            "action": {"const": "official_verify"},
+                        },
+                        "required": ["module", "action"],
+                    },
+                    "then": {
+                        "properties": {
+                            "args": {"$ref": "#/$defs/officialAssetVerifyArgs"}
+                        }
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
                             "module": {"const": "viewport"},
                             "action": {"const": "capture"},
                         },
@@ -219,6 +289,69 @@ SCENARIO_SCHEMA: dict = {
             "properties": {
                 "manifest_path": {"type": "string", "minLength": 1},
                 "output_format": {"type": "string", "enum": ["usd"]},
+                "timeout_s": {"type": "number", "minimum": 1},
+            },
+        },
+        "officialAssetStatus": {
+            "type": "string",
+            "enum": [
+                "failed",
+                "stale",
+                "discovered",
+                "url_validated",
+                "inspect_verified",
+                "load_verified",
+                "assign_verified",
+            ],
+        },
+        "officialAssetSyncStatusArgs": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "app_profile": {"type": "string", "minLength": 1},
+            },
+        },
+        "officialAssetSearchArgs": {
+            "type": "object",
+            "required": ["query"],
+            "additionalProperties": False,
+            "properties": {
+                "query": {"type": "string", "minLength": 1},
+                "kind": {"type": "string", "enum": ["asset", "material"]},
+                "app_profile": {"type": "string", "minLength": 1},
+                "provider": {"type": "string", "minLength": 1},
+                "min_status": {"$ref": "#/$defs/officialAssetStatus"},
+                "allow_stale": {"type": "boolean"},
+                "limit": {"type": "integer", "minimum": 1},
+            },
+        },
+        "officialAssetResolveArgs": {
+            "type": "object",
+            "required": ["name_or_id"],
+            "additionalProperties": False,
+            "properties": {
+                "name_or_id": {"type": "string", "minLength": 1},
+                "kind": {"type": "string", "enum": ["asset", "material"]},
+                "app_profile": {"type": "string", "minLength": 1},
+                "prefer_loadable": {"type": "boolean"},
+            },
+        },
+        "officialAssetGetArgs": {
+            "type": "object",
+            "required": ["asset_id"],
+            "additionalProperties": False,
+            "properties": {
+                "asset_id": {"type": "string", "minLength": 1},
+                "app_profile": {"type": "string", "minLength": 1},
+            },
+        },
+        "officialAssetVerifyArgs": {
+            "type": "object",
+            "required": ["asset_id"],
+            "additionalProperties": False,
+            "properties": {
+                "asset_id": {"type": "string", "minLength": 1},
+                "app_profile": {"type": "string", "minLength": 1},
                 "timeout_s": {"type": "number", "minimum": 1},
             },
         },

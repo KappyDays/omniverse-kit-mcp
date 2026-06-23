@@ -46,6 +46,13 @@ from omniverse_kit_mcp.types.scenario import (
 )
 
 logger = logging.getLogger(__name__)
+
+_READ_ONLY_NO_FALLBACK_CLEANUP_ACTIONS = frozenset({
+    (ModuleName.ASSET, "official_sync_status"),
+    (ModuleName.ASSET, "official_search"),
+    (ModuleName.ASSET, "official_resolve"),
+    (ModuleName.ASSET, "official_get"),
+})
 _RETRY_FAILURE_MESSAGE_LIMIT = 240
 
 
@@ -538,7 +545,10 @@ class ScenarioRunner:
                     message=f"User cleanup error: {exc}",
                 ))
 
-        # Always run extension reset as final fallback
+        if not _scenario_needs_fallback_cleanup(scenario):
+            return results
+
+        # Run extension reset as final fallback for scenarios that touch live app state.
         started = int(time.time() * 1000)
         try:
             meta = make_meta(ModuleName.EXTENSION, scenario_id=scenario.scenario_id, step_id="__fallback_cleanup_reset")
@@ -618,6 +628,19 @@ def _is_failed_step_status(status: ExecutionStatus) -> bool:
         ExecutionStatus.ERROR,
         ExecutionStatus.TIMEOUT,
     }
+
+
+def _scenario_needs_fallback_cleanup(scenario: CompiledScenario) -> bool:
+    steps = (
+        scenario.arrange_steps
+        + scenario.act_steps
+        + scenario.assert_steps
+        + scenario.cleanup_steps
+    )
+    return any(
+        (step.module, step.action) not in _READ_ONLY_NO_FALLBACK_CLEANUP_ACTIONS
+        for step in steps
+    )
 
 
 def _timeout_result(message: str, started_ms: int) -> ModuleResult[Any]:

@@ -28,6 +28,7 @@ scenarios/
     ├── usd_load_robot.yaml            # local USD load → prim/position validation
     ├── robot_joint_control.yaml       # Phase B+: asset_list → load → warm-up → joints → navigate → viewport
     ├── robot_rtx_sensor_golden_workflow.yaml # NovaCarter + RTX camera/lidar + capture_assert
+    ├── official_asset_catalog_diagnostics.yaml # official_asset_* status/search diagnostics, read-only
     └── character_control.yaml         # Character load → play → navigate → cleanup (canonical shutdown-hang prevention)
 ```
 

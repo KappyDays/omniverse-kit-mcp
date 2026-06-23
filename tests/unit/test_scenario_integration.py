@@ -1625,6 +1625,42 @@ async def test_official_asset_sync_status_diagnostics_survive_runner(
     assert "diagnostics.matching_item_count=0" in markdown
 
 
+@pytest.mark.asyncio
+async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
+    tmp_path: Path,
+):
+    """The official asset diagnostics smoke scenario must compile and route."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    catalog_dir = _write_minimal_official_catalog(tmp_path)
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    raw = load_scenario(
+        PROJECT / "scenarios" / "smoke" / "official_asset_catalog_diagnostics.yaml"
+    )
+
+    summary = await runner.run(compile_scenario(raw))
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    steps = {step.step_id: step for step in summary.step_results}
+    assert "__fallback_cleanup_reset" not in steps
+    assert steps["check_isaac_catalog"].status == ExecutionStatus.PASSED
+    assert steps["search_known_miss"].data_summary["count"] == 0
+    assert steps["search_known_miss"].data_summary["diagnostics"]["reason"] == (
+        "query_no_match"
+    )
+    assert steps["search_pallet_asset"].data_summary["count"] == 1
+
+    markdown = to_markdown(summary)
+    assert "search_known_miss" in markdown
+    assert "diagnostics.reason=query_no_match" in markdown
+    assert "search_pallet_asset" in markdown
+
+
 def _write_minimal_official_catalog(tmp_path: Path) -> Path:
     catalog_dir = tmp_path / "official-assets"
     catalog_dir.mkdir()

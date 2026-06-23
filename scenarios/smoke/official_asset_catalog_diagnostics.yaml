@@ -1,0 +1,37 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: official_asset_catalog_diagnostics
+  name: Official Asset Catalog Diagnostics
+  tags: [smoke, asset, official, diagnostics]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 60
+    failFast: true
+  assert:
+    - id: check_isaac_catalog
+      module: asset
+      action: official_sync_status
+      args:
+        app_profile: isaac-sim
+
+    - id: search_known_miss
+      module: asset
+      action: official_search
+      args:
+        query: definitely-not-a-real-official-asset-name-zzzz
+        kind: asset
+        app_profile: isaac-sim
+        min_status: discovered
+        limit: 5
+
+    - id: search_pallet_asset
+      module: asset
+      action: official_search
+      args:
+        query: pallet
+        kind: asset
+        app_profile: isaac-sim
+        min_status: url_validated
+        limit: 3
