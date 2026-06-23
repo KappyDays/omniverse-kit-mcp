@@ -19,6 +19,7 @@ For an explicit review range, use:
 For a session/day audit after commits may already have been pushed, use:
 
 ```powershell
+.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "2026-06-23 00:00" --head HEAD
 ```
 
@@ -26,7 +27,8 @@ The current-tree scan includes tracked files plus untracked, non-ignored files
 from `git ls-files --others --exclude-standard`; ignored local evidence caches
 stay outside the public gate. The default history scan uses the current branch
 upstream merge-base through `HEAD`, so local commits that are about to be pushed
-are reviewed.
+are reviewed. `--today` expands to local midnight for the current day and is the
+preferred quick command for "all commits pushed or prepared today" reviews.
 
 ## Blocking Findings
 

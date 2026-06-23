@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[2]
@@ -239,6 +240,65 @@ def test_public_hygiene_script_since_scans_pushed_session_history(tmp_path: Path
     )
 
     assert result.returncode == 1
+    assert "history-added-line" in result.stdout
+    assert "windows_user_path" in result.stdout
+    assert "leak local path" in result.stdout
+
+
+def test_public_hygiene_script_today_scans_current_day_history(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    today = date.today().isoformat()
+    before_today = {
+        "GIT_AUTHOR_DATE": "2000-01-01T00:00:00+0000",
+        "GIT_COMMITTER_DATE": "2000-01-01T00:00:00+0000",
+    }
+    during_today = {
+        "GIT_AUTHOR_DATE": f"{today}T12:00:00+0000",
+        "GIT_COMMITTER_DATE": f"{today}T12:00:00+0000",
+    }
+    after_redaction = {
+        "GIT_AUTHOR_DATE": f"{today}T13:00:00+0000",
+        "GIT_COMMITTER_DATE": f"{today}T13:00:00+0000",
+    }
+
+    (repo / "evidence.md").write_text("capture: redacted\n", encoding="utf-8")
+    _commit_all(repo, "baseline", env=before_today)
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "leak local path", env=during_today)
+
+    (repo / "evidence.md").write_text(
+        "capture: local validation capture path redacted\n",
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact current tree", env=after_redaction)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--today",
+            "--head",
+            "HEAD",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert f"since {today} 00:00" in result.stdout
     assert "history-added-line" in result.stdout
     assert "windows_user_path" in result.stdout
     assert "leak local path" in result.stdout

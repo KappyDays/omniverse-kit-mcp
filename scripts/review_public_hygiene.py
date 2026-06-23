@@ -6,8 +6,8 @@ Default use before push:
 
 The default history range is the merge-base with the current upstream through
 HEAD, so local commits that are about to be pushed are scanned. Pass --base and
---head for an explicit audit range, or --since for a session/day audit after
-commits have already been pushed.
+--head for an explicit audit range, --since for a session/day audit after
+commits have already been pushed, or --today for the current local day.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ import re
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
+from datetime import date
 from pathlib import Path
 
 
@@ -235,6 +236,10 @@ def _base_and_commits_since(
     return parent, commits
 
 
+def _today_since_expression() -> str:
+    return f"{date.today().isoformat()} 00:00"
+
+
 def _changed_files_in_range(project: Path, base: str, head: str) -> list[str]:
     output = _git_output(project, "diff", "--name-only", f"{base}..{head}")
     return output.splitlines()
@@ -326,6 +331,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "'2026-06-23 00:00'"
         ),
     )
+    range_group.add_argument(
+        "--today",
+        action="store_true",
+        help="scan history since local midnight today",
+    )
     parser.add_argument("--head", default="HEAD", help="inclusive upper bound commit")
     parser.add_argument(
         "--skip-history",
@@ -346,9 +356,10 @@ def main(argv: list[str] | None = None) -> int:
     project = args.project.resolve()
     head = args.head
     history_commits: list[str] | None = None
+    since = _today_since_expression() if args.today else args.since
     try:
-        if args.since:
-            base, history_commits = _base_and_commits_since(project, head, args.since)
+        if since:
+            base, history_commits = _base_and_commits_since(project, head, since)
         else:
             base = args.base if args.base else _default_base(project, head)
     except ValueError as exc:
@@ -361,8 +372,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.skip_history:
         range_text = "skipped"
-    elif args.since:
-        range_text = f"{base}..{head} (since {args.since})" if base else "none"
+    elif since:
+        range_text = f"{base}..{head} (since {since})" if base else "none"
     else:
         range_text = f"{base}..{head}" if base else "none"
     if args.format == "json":
@@ -380,6 +391,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if findings:
         print("Public repository hygiene review failed:")
+        print(f"  project: {project}")
+        print(f"  history range: {range_text}")
         for finding in findings[:100]:
             print(f"  - {finding.format()}")
         if len(findings) > 100:
