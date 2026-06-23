@@ -1464,6 +1464,95 @@ async def test_official_asset_diagnostics_survive_runner_failure(tmp_path: Path)
     """asset.official_resolve failures must keep diagnostics in scenario reports."""
     from tests.conftest import MockIsaacRestClient, MockLakehouseClient
 
+    catalog_dir = _write_minimal_official_catalog(tmp_path)
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "official_asset_diag", "name": "official asset diag"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "resolve_missing",
+                    "module": "asset",
+                    "action": "official_resolve",
+                    "args": {
+                        "name_or_id": "forklift",
+                        "kind": "asset",
+                        "app_profile": "isaac-sim",
+                    },
+                }
+            ]
+        },
+    }
+
+    summary = await runner.run(compile_scenario(raw))
+
+    step = summary.step_results[0]
+    assert step.status == ExecutionStatus.ERROR
+    assert step.data_summary["diagnostics"]["reason"] == "query_no_match"
+    assert step.data_summary["diagnostics"]["candidate_counts"]["query_matches"] == 0
+    markdown = to_markdown(summary)
+    assert "diagnostics.reason=query_no_match" in markdown
+    assert "diagnostics.fallback_tool_order=[official_asset_sync_status" in markdown
+
+
+@pytest.mark.asyncio
+async def test_official_asset_sync_status_diagnostics_survive_runner(
+    tmp_path: Path,
+):
+    """asset.official_sync_status diagnostics must survive successful steps."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    catalog_dir = _write_minimal_official_catalog(tmp_path)
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "official_asset_sync_status_diag",
+            "name": "official asset sync status diag",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "check_profile",
+                    "module": "asset",
+                    "action": "official_sync_status",
+                    "args": {"app_profile": "kit-app"},
+                }
+            ]
+        },
+    }
+
+    summary = await runner.run(compile_scenario(raw))
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    step = summary.step_results[0]
+    assert step.status == ExecutionStatus.PASSED
+    diagnostics = step.data_summary["diagnostics"]
+    assert diagnostics["reason"] == "app_profile_not_covered"
+    assert diagnostics["requested_app_profile"] == "kit-app"
+    assert diagnostics["available_profiles"] == ["isaac-sim"]
+    assert diagnostics["matching_item_count"] == 0
+    markdown = to_markdown(summary)
+    assert "diagnostics.reason=app_profile_not_covered" in markdown
+    assert "diagnostics.requested_app_profile=kit-app" in markdown
+    assert "diagnostics.available_profiles=[isaac-sim]" in markdown
+    assert "diagnostics.matching_item_count=0" in markdown
+
+
+def _write_minimal_official_catalog(tmp_path: Path) -> Path:
     catalog_dir = tmp_path / "official-assets"
     catalog_dir.mkdir()
     url = "https://example.com/Assets/pallet/pallet.usd"
@@ -1502,41 +1591,7 @@ async def test_official_asset_diagnostics_survive_runner_failure(tmp_path: Path)
         ),
         encoding="utf-8",
     )
-    isaac_client = MockIsaacRestClient()
-    runner = _build_runner(isaac_client, MockLakehouseClient())
-    runner._modules[ModuleName.ASSET] = AssetModule(
-        isaac_client,
-        official_catalog_dir=catalog_dir,
-    )
-    raw = {
-        "apiVersion": "isaacsim.validation/v1",
-        "kind": "Scenario",
-        "metadata": {"id": "official_asset_diag", "name": "official asset diag"},
-        "spec": {
-            "assert": [
-                {
-                    "id": "resolve_missing",
-                    "module": "asset",
-                    "action": "official_resolve",
-                    "args": {
-                        "name_or_id": "forklift",
-                        "kind": "asset",
-                        "app_profile": "isaac-sim",
-                    },
-                }
-            ]
-        },
-    }
-
-    summary = await runner.run(compile_scenario(raw))
-
-    step = summary.step_results[0]
-    assert step.status == ExecutionStatus.ERROR
-    assert step.data_summary["diagnostics"]["reason"] == "query_no_match"
-    assert step.data_summary["diagnostics"]["candidate_counts"]["query_matches"] == 0
-    markdown = to_markdown(summary)
-    assert "diagnostics.reason=query_no_match" in markdown
-    assert "diagnostics.fallback_tool_order=[official_asset_sync_status" in markdown
+    return catalog_dir
 
 
 @pytest.mark.asyncio
