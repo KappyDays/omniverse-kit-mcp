@@ -41,6 +41,17 @@ For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.suggested_next`, and
 `diagnostics.fallback_tool_order` before falling back to `asset_search`.
 
+Official asset on-demand live verify wrapper:
+`mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
+`extension_clear_logs` -> `official_asset_sync_status(app_profile=...)` ->
+`official_asset_search(app_profile=..., min_status="load_verified")` ->
+`official_asset_get(app_profile=...)` ->
+`official_asset_verify(app_profile=..., timeout_s=180)` ->
+`simulation_get_status` -> `extension_capture_logs(level="WARN")` and
+`extension_capture_logs(level="ERROR")`. Capture logs in the same live MCP host
+session that ran `official_asset_verify`; one-shot stdio hosts do not preserve
+the previous host's in-memory/log-capture state.
+
 ## Timeline Control
 
 `simulation_play`, `simulation_pause`, and `simulation_stop` return timeline
