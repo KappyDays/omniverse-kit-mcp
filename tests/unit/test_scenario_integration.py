@@ -382,6 +382,112 @@ def test_reporters_can_redact_host_local_artifact_paths():
     assert '"process_id": "<process-id>"' in markdown
 
 
+def test_official_verify_evidence_summary_redacts_public_sensitive_fields():
+    capture_path = (
+        "C:" + "/Users/" + "localuser"
+        + "/AppData/Local/Temp/validation_api_captures/capture_material_verify.png"
+    )
+    log_path = (
+        "C:" + "/Users/" + "localuser"
+        + "/AppData/Local/Temp/omniverse_kit_mcp/kit_456.log"
+    )
+    thread_id = "12345678" + "-1234-4234-9234-123456789abc"
+    pending_id = "019ef2d4" + "-51c3-7533-9c65-decd64e4fa40"
+    summary = ScenarioRunSummary(
+        scenario_id="official_verify_public_safe_report",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="verify_unbound_material",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "id": (
+                        "url:https://omniverse-content-production.s3-us-west-2."
+                        "amazonaws.com/Assets/Materials/2023_2_1/Base/Metals/"
+                        "Brushed_Aluminum.mdl"
+                    ),
+                    "kind": "material",
+                    "name": "Brushed_Aluminum.mdl",
+                    "canonical_url": (
+                        "https://omniverse-content-production.s3-us-west-2."
+                        "amazonaws.com/Assets/Materials/2023_2_1/Base/Metals/"
+                        "Brushed_Aluminum.mdl"
+                    ),
+                    "material_name": "Brushed_Aluminum",
+                    "app_profile": "usd-composer",
+                    "verification_status": "failed",
+                    "attempt": 2,
+                    "timeout_s": 1.0,
+                    "error": (
+                        f"binding failed at {capture_path}; process_id=<process-id>; "
+                        f"thread_id={thread_id}"
+                    ),
+                    "diagnostics": {
+                        "reason": "material_assign_or_binding_failed",
+                        "target_status": "assign_verified",
+                        "current_catalog_status": "assign_verified",
+                        "suggested_next": [
+                            f"inspect {log_path}",
+                            f"retry pendingWorktreeId={pending_id}",
+                        ],
+                        "fallback_tool_order": [
+                            "official_asset_sync_status",
+                            "official_asset_search",
+                            "official_asset_resolve",
+                            "official_asset_verify",
+                            "asset_search",
+                        ],
+                        "material_checks": {
+                            "create_prim_ok": True,
+                            "assign_ok": True,
+                            "bound_ok": False,
+                            "worker_thread_id": "worker-thread-material-123",
+                        },
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary, redact_local_paths=True))
+    serialized = json.dumps(report)
+    markdown = to_markdown(summary, redact_local_paths=True)
+    evidence = report["evidence_summary"][0]
+
+    assert evidence["evidence_kind"] == "official_asset_verify"
+    assert evidence["verification_status"] == "failed"
+    assert evidence["kind"] == "material"
+    assert "<validation-api-capture>/capture_material_verify.png" in serialized
+    assert "<local-kit-log>/kit_456.log" in serialized
+    assert "process_id=<process-id>" in evidence["error"]
+    assert "thread_id=<worker-thread-id>" in evidence["error"]
+    assert evidence["diagnostics"]["material_checks"]["worker_thread_id"] == (
+        "<worker-thread-id>"
+    )
+    for leaked in (
+        capture_path,
+        log_path,
+        "42130",
+        thread_id,
+        pending_id,
+        "worker-thread-material-123",
+    ):
+        assert leaked not in serialized
+        assert leaked not in markdown
+    assert "## Evidence Summary" in markdown
+    assert "evidence_kind=official_asset_verify" in markdown
+    assert "<validation-api-capture>/capture_material_verify.png" in markdown
+    assert "process_id=<process-id>" in markdown
+    assert "thread_id=<worker-thread-id>" in markdown
+
+
 def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
     summary = ScenarioRunSummary(
         scenario_id="official_asset_diagnostics",

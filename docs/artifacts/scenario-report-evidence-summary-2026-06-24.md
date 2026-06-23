@@ -48,6 +48,9 @@ This batch also fixed two review findings before push:
   `scenario_last_report(..., redact_local_paths=true)`.
 - `official_asset_verify` material timeout diagnostics now report unexecuted
   material checks as `unknown` instead of implying success.
+- `official_asset_verify` evidence rows now have explicit unit coverage for
+  redacting capture paths, Kit temp logs, process IDs, worker/thread IDs, and
+  nested material-check identifiers before public evidence copy.
 
 ## Validation
 
