@@ -946,6 +946,7 @@ def _lidar_readback_diagnostics(
     if warning:
         diagnostics["warning"] = warning
     if empty_reason:
+        diagnostics["reason"] = empty_reason
         diagnostics["empty_reason"] = empty_reason
         diagnostics["suggested_next"] = _lidar_empty_suggested_next(empty_reason)
     return diagnostics

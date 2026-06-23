@@ -261,6 +261,7 @@ def test_lidar_readback_diagnostics_suggests_retry_for_empty_scan_buffer():
     )
 
     assert diagnostics["empty_reason"] == "empty_scan_buffer"
+    assert diagnostics["reason"] == "empty_scan_buffer"
     assert diagnostics["frames_waited"] == 60
     assert diagnostics["cached_lidar_instance"] is True
     assert diagnostics["raw_key_count"] == 3
@@ -302,6 +303,7 @@ def test_lidar_readback_diagnostics_omits_empty_guidance_for_nonempty_points():
     )
 
     assert "empty_reason" not in diagnostics
+    assert "reason" not in diagnostics
     assert "suggested_next" not in diagnostics
 
 
