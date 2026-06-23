@@ -30,6 +30,11 @@ Robot + RTX live proof wrapper:
 `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
 `scenario_last_report(report_format="markdown")` -> `extension_capture_logs`.
 
+Raw live reports can include host-local capture paths and Kit log filenames.
+Before committing public evidence, redact artifact paths such as
+`<validation-api-capture>/capture_<id>.png`, preserve SHA256/pixel stats and
+WARN/ERROR counts, and run the public hygiene checks.
+
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.suggested_next`, and
 `diagnostics.fallback_tool_order` before falling back to `asset_search`.

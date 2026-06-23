@@ -252,6 +252,16 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "extension_capture_logs" in invariant
 
 
+def test_f3b_robot_rtx_public_evidence_redaction_guidance():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+
+    assert "Raw live reports can include host-local capture paths" in guide
+    assert "<validation-api-capture>/capture_<id>.png" in guide
+    assert "preserve SHA256/pixel stats" in guide
+    assert "WARN/ERROR counts" in guide
+    assert "public hygiene checks" in guide
+
+
 # ---------------------------------------------------------------------------
 # F4: scenario YAML usd_url values are S3 (not file://)
 # ---------------------------------------------------------------------------
