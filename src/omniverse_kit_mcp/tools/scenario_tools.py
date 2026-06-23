@@ -138,11 +138,7 @@ def register_scenario_tools(
         safe_path = _resolve_safe_path(scenario_path, config.scenario.scenarios_dir)
         raw = load_scenario(safe_path)
 
-        # Apply variable overrides before compilation
-        if input_overrides:
-            spec_vars = raw.get("spec", {}).get("variables", {})
-            spec_vars.update(input_overrides)
-            raw.setdefault("spec", {})["variables"] = spec_vars
+        _apply_input_overrides(raw, input_overrides)
 
         scenario = compile_scenario(raw)
 
@@ -175,10 +171,15 @@ def register_scenario_tools(
     @tool()
     async def scenario_plan(
         scenario_path: str,
+        input_overrides: dict[str, Any] | None = None,
     ) -> str:
-        """Compile scenario YAML and show execution plan (variables, phases, step graph) without running it."""
+        """Compile scenario YAML and show execution plan without running it.
+
+        input_overrides substitutes scenario variables.
+        """
         safe_path = _resolve_safe_path(scenario_path, config.scenario.scenarios_dir)
         raw = load_scenario(safe_path)
+        _apply_input_overrides(raw, input_overrides)
         scenario = compile_scenario(raw)
 
         plan = _scenario_plan_payload(scenario)
@@ -231,6 +232,17 @@ def register_scenario_tools(
         if report is None:
             return json.dumps({"error": f"No report found for scenario '{target_id}'"})
         return report
+
+
+def _apply_input_overrides(
+    raw: dict[str, Any],
+    input_overrides: dict[str, Any] | None,
+) -> None:
+    if not input_overrides:
+        return
+    spec_vars = raw.get("spec", {}).get("variables", {})
+    spec_vars.update(input_overrides)
+    raw.setdefault("spec", {})["variables"] = spec_vars
 
 
 def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:

@@ -2648,17 +2648,18 @@ Set redact_local_paths=true before copying live evidence into public artifacts.
 ### `scenario_plan`
 
 ```python
-scenario_plan(scenario_path: 'str') -> 'str'
+scenario_plan(scenario_path: 'str', input_overrides: 'dict[str, Any] | None' = None) -> 'str'
 ```
 
-Compile scenario YAML and show execution plan (variables, phases, step graph) without running
-it.
+Compile scenario YAML and show execution plan without running it.  input_overrides substitutes
+scenario variables.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
 | `scenario_path` | `string` | `'—'` | ✓ |
+| `input_overrides` | `object \| None` | `None` |  |
 
 ### `scenario_validate`
 

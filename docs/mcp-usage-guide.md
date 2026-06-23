@@ -41,6 +41,9 @@ Robot + RTX live proof wrapper:
 Before validation, check `scenario_plan.phase_counts` and `total_steps` so a
 missing setup, sensor, viewport, or cleanup phase is caught before live stage
 mutation. `automatic: true` cleanup steps are runner-added safeguards, not YAML.
+When using `input_overrides`, pass the same override dict to `scenario_plan` and
+`scenario_validate` so the plan preview reflects the exact variable-substituted
+prim paths and asset URLs that will run.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 

@@ -453,6 +453,31 @@ spec:
     )
 
 
+def _write_override_scenario(config: AppConfig) -> None:
+    scenario_path = Path(config.scenario.scenarios_dir) / "smoke" / "override.yaml"
+    scenario_path.parent.mkdir(parents=True, exist_ok=True)
+    scenario_path.write_text(
+        """
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: override_plan_report
+  name: Override plan report
+spec:
+  variables:
+    prim_path: /World/Default
+  assert:
+    - id: prim_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: ${variables.prim_path}
+        should_exist: true
+""".strip(),
+        encoding="utf-8",
+    )
+
+
 @pytest.mark.asyncio
 async def test_scenario_validate_dry_run_uses_plan_step_counts(tmp_path):
     config = AppConfig(
@@ -468,6 +493,31 @@ async def test_scenario_validate_dry_run_uses_plan_step_counts(tmp_path):
     assert payload["scenario_id"] == "minimal_markdown_report"
     assert payload["compiled"] is True
     assert payload["steps"] == payload["total_steps"] == 2
+    assert payload["phase_counts"] == {
+        "arrange": 0,
+        "act": 0,
+        "assert": 1,
+        "cleanup": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_scenario_plan_accepts_input_overrides(tmp_path):
+    config = AppConfig(
+        scenario=ScenarioConfig(SCENARIOS_DIR=str(tmp_path / "scenarios")),
+    )
+    _write_override_scenario(config)
+    mcp = create_mcp_server(config)
+    tool = mcp._tool_manager._tools["scenario_plan"]
+
+    payload = json.loads(await tool.fn(
+        "smoke/override.yaml",
+        input_overrides={"prim_path": "/World/Override"},
+    ))
+
+    assert payload["variables"]["prim_path"] == "/World/Override"
+    assert payload["phases"]["assert"][0]["args"]["prim_path"] == "/World/Override"
+    assert payload["total_steps"] == 2
     assert payload["phase_counts"] == {
         "arrange": 0,
         "act": 0,
