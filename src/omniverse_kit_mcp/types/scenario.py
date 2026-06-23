@@ -59,6 +59,7 @@ class StepResult:
     attempts: int = 1
     max_attempts: int = 1
     retry_failures: tuple[dict[str, JsonValue], ...] = field(default_factory=tuple)
+    continue_on_failure: bool = False
 
 
 @dataclass(slots=True, frozen=True)

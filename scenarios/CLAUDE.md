@@ -122,7 +122,7 @@ If `expected_status` is not specified, only `error` termination is FAIL. termina
 
 ##Other rules
 
-- **`continueOnFailure: true`** — Optional step (e.g. `robot_set_joint_positions` in USD without articulation). Even if it is FAILED, it is excluded from the phase terminal status → the final scenario remains PASSED. Not related to `failFast`
+- **`continueOnFailure: true`** — Optional step; non-passed results do not poison the scenario terminal status, and Markdown labels them as `error (continued)` / `failed (continued)`. Not related to `failFast`
 - **Float Comparison** — Default tolerance `0.001`. action star `args.tolerance` override
 - **Lakehouse** — `lakehouse_query` is only for pulling expected values (no inject/cleanup possible)
 

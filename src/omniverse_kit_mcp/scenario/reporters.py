@@ -7,9 +7,10 @@ import re
 from dataclasses import asdict
 from typing import Any
 
-from omniverse_kit_mcp.types.scenario import ScenarioRunSummary
+from omniverse_kit_mcp.types.scenario import ScenarioRunSummary, StepResult
 
 _MAX_HIGHLIGHT_PARTS = 16
+_FAILED_STATUS_VALUES = {"failed", "error", "timeout"}
 _DIAGNOSTIC_SUMMARY_PATHS = (
     ("num_points", (("num_points",),)),
     ("backend", (("backend",),)),
@@ -87,15 +88,25 @@ def to_markdown(
     """Render summary as Markdown report."""
     cleanup_failures = _cleanup_failed_steps(summary)
     main_failures = max(0, summary.failed_steps - cleanup_failures)
+    continued_failures = _continued_failed_steps(summary)
+    fatal_main_failures = max(0, main_failures - continued_failures)
+    if continued_failures:
+        steps_text = (
+            f"**Steps**: {summary.passed_steps} passed, "
+            f"{fatal_main_failures} failed, {continued_failures} continued, "
+            f"{summary.skipped_steps} skipped"
+        )
+    else:
+        steps_text = (
+            f"**Steps**: {summary.passed_steps} passed, {main_failures} failed, "
+            f"{summary.skipped_steps} skipped"
+        )
     lines = [
         f"# Scenario Report: {summary.scenario_id}",
         "",
         f"**Status**: {summary.status.value.upper()}",
         f"**Duration**: {summary.ended_at_epoch_ms - summary.started_at_epoch_ms}ms",
-        (
-            f"**Steps**: {summary.passed_steps} passed, {main_failures} failed, "
-            f"{summary.skipped_steps} skipped"
-        ),
+        steps_text,
     ]
     if cleanup_failures:
         lines.append(f"**Cleanup**: {cleanup_failures} non-fatal failure(s)")
@@ -115,7 +126,7 @@ def to_markdown(
         lines.append(
             f"| {_markdown_table_cell(sr.step_id)} | "
             f"{_markdown_table_cell(sr.phase)} | "
-            f"{_markdown_table_cell(sr.status.value)} | "
+            f"{_markdown_table_cell(_display_step_status(sr))} | "
             f"{_markdown_table_cell(attempts)} | "
             f"{_markdown_table_cell(dur)} | "
             f"{_markdown_table_cell(message)} |"
@@ -211,6 +222,22 @@ def _cleanup_failed_steps(summary: ScenarioRunSummary) -> int:
         for step in summary.step_results
         if step.phase == "cleanup" and step.status.value in {"failed", "error", "timeout"}
     )
+
+
+def _continued_failed_steps(summary: ScenarioRunSummary) -> int:
+    return sum(
+        1
+        for step in summary.step_results
+        if step.phase != "cleanup"
+        and step.continue_on_failure
+        and step.status.value in _FAILED_STATUS_VALUES
+    )
+
+
+def _display_step_status(step: StepResult) -> str:
+    if step.continue_on_failure and step.status.value in _FAILED_STATUS_VALUES:
+        return f"{step.status.value} (continued)"
+    return step.status.value
 
 
 def _markdown_table_cell(value: Any) -> str:

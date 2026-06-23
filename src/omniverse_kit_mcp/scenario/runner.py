@@ -220,6 +220,7 @@ class ScenarioRunner:
                     attempts=execution.attempts,
                     max_attempts=execution.max_attempts,
                     retry_failures=execution.retry_failures,
+                    continue_on_failure=step.continue_on_failure,
                 ))
                 if status != ExecutionStatus.PASSED and fail_fast and not step.continue_on_failure:
                     break
@@ -239,6 +240,7 @@ class ScenarioRunner:
                         f"Step timed out after {timeout}s",
                         step,
                     ),
+                    continue_on_failure=step.continue_on_failure,
                 ))
                 if fail_fast and not step.continue_on_failure:
                     break
@@ -258,6 +260,7 @@ class ScenarioRunner:
                         str(exc),
                         step,
                     ),
+                    continue_on_failure=step.continue_on_failure,
                 ))
                 if fail_fast and not step.continue_on_failure:
                     break
@@ -727,6 +730,7 @@ def _skip_steps(*step_groups: tuple[CompiledStep, ...]) -> list[StepResult]:
                 message="Skipped due to prior phase failure",
                 attempts=0,
                 max_attempts=_step_max_attempts(step),
+                continue_on_failure=step.continue_on_failure,
             ))
     return results
 

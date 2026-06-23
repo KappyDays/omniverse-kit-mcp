@@ -1759,6 +1759,7 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     )
     assert steps["search_pallet_asset"].data_summary["count"] == 1
     assert steps["get_pallet_wrong_profile"].status == ExecutionStatus.ERROR
+    assert steps["get_pallet_wrong_profile"].continue_on_failure is True
     mismatch_diagnostics = steps["get_pallet_wrong_profile"].data_summary[
         "diagnostics"
     ]
@@ -1771,9 +1772,14 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     assert "diagnostics.reason=query_no_match" in markdown
     assert "search_pallet_asset" in markdown
     assert "get_pallet_wrong_profile" in markdown
+    assert "**Steps**: 3 passed, 0 failed, 1 continued, 0 skipped" in markdown
+    assert "| get_pallet_wrong_profile | assert | error (continued) |" in markdown
     assert "diagnostics.reason=app_profile_not_covered" in markdown
     assert "diagnostics.candidate_counts.total_entries=1" in markdown
     assert "diagnostics.candidate_counts.after_app_profile=0" in markdown
+    json_report = json.loads(to_json(summary))
+    json_steps = {step["step_id"]: step for step in json_report["step_results"]}
+    assert json_steps["get_pallet_wrong_profile"]["continue_on_failure"] is True
 
 
 @pytest.mark.asyncio
