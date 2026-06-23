@@ -87,6 +87,9 @@ hold the new scan buffer at zero points until the process is restarted.
 Transient zero-point RTX buffers should be absorbed with step-level retries only
 on idempotent sensor reads; inspect `scenario_last_report` fields
 `diagnostic_next_actions`,
+`diagnostic_next_actions[].phase`, `diagnostic_next_actions[].status`,
+`diagnostic_next_actions[].error_code`,
+`diagnostic_next_actions[].final_step_status`,
 `step_results[].diagnostic_next_actions`,
 `step_results[].retry_failures[].diagnostic_next_actions`,
 `attempts`, `max_attempts`, `retry_failures`,

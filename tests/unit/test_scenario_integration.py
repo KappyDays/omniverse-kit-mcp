@@ -442,7 +442,9 @@ def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
     }
     assert report["diagnostic_next_actions"] == [{
         "step_id": "find_asset",
+        "phase": "arrange",
         "source": "step",
+        "status": "failed",
         **find_asset["diagnostic_next_actions"],
     }]
 
@@ -690,6 +692,87 @@ def test_report_does_not_promote_reason_only_diagnostics_to_next_actions():
     assert report["diagnostic_next_actions"] == []
     assert "diagnostic_next_actions" not in report["step_results"][0]
     assert "## Diagnostic Next Actions" not in markdown
+
+
+def test_report_preserves_retry_next_action_status_and_error_code():
+    summary = ScenarioRunSummary(
+        scenario_id="retry_next_action_metadata",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read_lidar",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                attempts=2,
+                max_attempts=3,
+                data_summary={
+                    "num_points": 12,
+                    "diagnostics": {"reason": "scan_buffer_ready"},
+                },
+                retry_failures=(
+                    {
+                        "attempt": 1,
+                        "status": "failed",
+                        "error_code": "SENSOR_LIDAR_EMPTY",
+                        "message": "first scan returned zero points",
+                        "data_summary": {
+                            "num_points": 0,
+                            "empty_reason": "empty_scan_buffer",
+                            "diagnostics": {
+                                "reason": "empty_scan_buffer",
+                                "suggested_next": [
+                                    "Step simulation frames before another read."
+                                ],
+                                "fallback_tool_order": [
+                                    "simulation_step",
+                                    "sensor_lidar_get_point_cloud",
+                                    "extension_capture_logs",
+                                ],
+                            },
+                        },
+                    },
+                ),
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+    retry_failure = report["step_results"][0]["retry_failures"][0]
+
+    assert retry_failure["diagnostic_next_actions"] == {
+        "diagnostics.reason": "empty_scan_buffer",
+        "empty_reason": "empty_scan_buffer",
+        "suggested_next": ["Step simulation frames before another read."],
+        "diagnostics.fallback_tool_order": [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "read_lidar",
+        "phase": "assert",
+        "source": "retry_failure",
+        "status": "failed",
+        "error_code": "SENSOR_LIDAR_EMPTY",
+        "final_step_status": "passed",
+        "attempt": 1,
+        **retry_failure["diagnostic_next_actions"],
+    }]
+    assert (
+        "- `read_lidar attempt 1`: diagnostics.reason=empty_scan_buffer; "
+        "empty_reason=empty_scan_buffer; "
+        "suggested_next=[Step simulation frames before another read.]; "
+        "diagnostics.fallback_tool_order=[simulation_step, "
+        "sensor_lidar_get_point_cloud, extension_capture_logs]"
+    ) in markdown
 
 
 def test_markdown_reports_cleanup_failures_as_non_fatal():
@@ -1611,14 +1694,18 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     }
     assert report["diagnostic_next_actions"] == [{
         "step_id": "read_lidar",
+        "phase": "assert",
         "source": "retry_failure",
+        "status": "failed",
+        "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+        "final_step_status": "passed",
+        "attempt": 1,
         "empty_reason": "empty_scan_buffer",
         "suggested_next": "step more frames and retry idempotently",
         "diagnostics.readback_paths_attempted": [
             "cached_lidar_sensor",
             "replicator_annotator",
         ],
-        "attempt": 1,
     }]
     markdown = to_markdown(summary)
     assert "| Step | Phase | Status | Attempts | Duration | Message |" in markdown

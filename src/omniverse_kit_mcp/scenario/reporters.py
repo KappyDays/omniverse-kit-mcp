@@ -289,11 +289,13 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
         action = _diagnostic_next_action_payload(sr.data_summary)
         if action:
             step_result["diagnostic_next_actions"] = action
-            diagnostic_next_actions.append({
-                "step_id": sr.step_id,
-                "source": "step",
-                **action,
-            })
+            diagnostic_next_actions.append(
+                _diagnostic_next_action_summary(
+                    sr,
+                    source="step",
+                    action=action,
+                )
+            )
 
         retry_failures: list[dict[str, Any]] = []
         for failure in sr.retry_failures:
@@ -303,14 +305,14 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
                 retry_action = _diagnostic_next_action_payload(data_summary)
                 if retry_action:
                     retry_failure["diagnostic_next_actions"] = retry_action
-                    summary_action = {
-                        "step_id": sr.step_id,
-                        "source": "retry_failure",
-                        **retry_action,
-                    }
-                    if retry_failure.get("attempt") is not None:
-                        summary_action["attempt"] = retry_failure["attempt"]
-                    diagnostic_next_actions.append(summary_action)
+                    diagnostic_next_actions.append(
+                        _diagnostic_next_action_summary(
+                            sr,
+                            source="retry_failure",
+                            action=retry_action,
+                            retry_failure=retry_failure,
+                        )
+                    )
             retry_failures.append(retry_failure)
         step_result["retry_failures"] = retry_failures
         step_results.append(step_result)
@@ -318,6 +320,36 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
     d["diagnostic_next_actions"] = diagnostic_next_actions
     d["evidence_summary"] = _evidence_summary_payloads(summary)
     return d
+
+
+def _diagnostic_next_action_summary(
+    step: StepResult,
+    *,
+    source: str,
+    action: dict[str, Any],
+    retry_failure: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "step_id": step.step_id,
+        "phase": step.phase,
+        "source": source,
+        "status": step.status.value,
+    }
+    step_error_code = getattr(step, "error_code", None)
+    if step_error_code:
+        row["error_code"] = step_error_code
+
+    if retry_failure is not None:
+        row["final_step_status"] = step.status.value
+        if retry_failure.get("attempt") is not None:
+            row["attempt"] = retry_failure["attempt"]
+        if retry_failure.get("status") is not None:
+            row["status"] = retry_failure["status"]
+        if retry_failure.get("error_code"):
+            row["error_code"] = retry_failure["error_code"]
+
+    row.update(action)
+    return row
 
 
 def _redact_local_paths(value: Any) -> Any:
