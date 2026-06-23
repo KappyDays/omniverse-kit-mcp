@@ -17,11 +17,6 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-_LOCAL_ISAAC_SIM_6_ROOT = Path(
-    "<local-kit-install>"
-)
-
-
 def _first_existing_root(*candidates: str | Path | None) -> Path:
     paths = [Path(c) for c in candidates if c]
     for path in paths:
@@ -32,7 +27,6 @@ def _first_existing_root(*candidates: str | Path | None) -> Path:
 
 ISAAC_SIM_ROOT = _first_existing_root(
     os.environ.get("ISAAC_SIM_ROOT"),
-    _LOCAL_ISAAC_SIM_6_ROOT,
     "C:/IsaacSim",
 )
 USD_COMPOSER_ROOT = Path(

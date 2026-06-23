@@ -9,6 +9,13 @@ import pytest
 from scripts import harvest_extension_metadata as harvest
 
 
+def test_harvest_script_has_public_safe_default_paths() -> None:
+    text = Path(harvest.__file__).read_text(encoding="utf-8")
+
+    assert "C:" + "/Users/" not in text
+    assert "C:" + "\\Users\\" not in text
+
+
 class TestStripVersionTag:
     @pytest.mark.parametrize(
         "raw,expected",
