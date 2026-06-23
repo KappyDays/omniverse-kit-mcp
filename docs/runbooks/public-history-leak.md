@@ -13,6 +13,7 @@ path from commits that may already be public.
    ```powershell
    .\.venv\Scripts\python.exe scripts\review_public_hygiene.py
    .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "YYYY-MM-DD 00:00" --head HEAD
+   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "YYYY-MM-DD 00:00" --head HEAD --format json
    ```
 3. Check whether the finding is only in pending local commits or already in
    `origin/<branch>`.
@@ -48,6 +49,7 @@ Safe inspection commands:
 git log --oneline --since "YYYY-MM-DD 00:00"
 git show --format= --unified=0 <commit> -- <path>
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "YYYY-MM-DD 00:00" --head HEAD
+.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "YYYY-MM-DD 00:00" --head HEAD --format json
 ```
 
 ## Approved rewrite checklist

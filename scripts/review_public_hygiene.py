@@ -13,11 +13,12 @@ commits have already been pushed.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 
@@ -320,6 +321,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="scan only the current tracked tree",
     )
+    parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="output format",
+    )
     return parser.parse_args(argv)
 
 
@@ -341,6 +348,25 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_history:
         findings.extend(scan_history(project, base, head, commits=history_commits))
 
+    if args.skip_history:
+        range_text = "skipped"
+    elif args.since:
+        range_text = f"{base}..{head} (since {args.since})" if base else "none"
+    else:
+        range_text = f"{base}..{head}" if base else "none"
+    if args.format == "json":
+        print(json.dumps(
+            {
+                "ok": not findings,
+                "project": str(project),
+                "history_range": range_text,
+                "finding_count": len(findings),
+                "findings": [asdict(finding) for finding in findings],
+            },
+            indent=2,
+        ))
+        return 1 if findings else 0
+
     if findings:
         print("Public repository hygiene review failed:")
         for finding in findings[:100]:
@@ -349,12 +375,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  ... {len(findings) - 100} more finding(s)")
         return 1
 
-    if args.skip_history:
-        range_text = "skipped"
-    elif args.since:
-        range_text = f"{base}..{head} (since {args.since})" if base else "none"
-    else:
-        range_text = f"{base}..{head}" if base else "none"
     print("Public repository hygiene review OK")
     print(f"  project: {project}")
     print(f"  history range: {range_text}")

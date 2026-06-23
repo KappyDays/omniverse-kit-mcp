@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -352,3 +353,47 @@ def test_public_hygiene_script_accepts_redacted_history(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_public_hygiene_script_json_format_reports_findings(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    (repo / "evidence.md").write_text("capture: redacted\n", encoding="utf-8")
+    _commit_all(repo, "baseline")
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "leak local path")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+            "--format",
+            "json",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    payload = json.loads(result.stdout)
+    assert payload["ok"] is False
+    assert payload["finding_count"] >= 1
+    assert any(
+        finding["source"] == "current-tree"
+        and finding["label"] == "windows_user_path"
+        for finding in payload["findings"]
+    )
