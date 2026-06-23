@@ -516,17 +516,29 @@ class AssetModule:
                 e for e in entries
                 if not app_profile or _official_entry_has_app(e, app_profile)
             ]
+            data = {
+                "catalog_path": str(
+                    catalog.get("_catalog_path")
+                    or _official_catalog_path(self._official_catalog_dir, app_profile)
+                ),
+                "catalog_identity": _official_public_catalog_identity(catalog),
+                "schema_version": catalog.get("schema_version"),
+                "generated_at": catalog.get("generated_at"),
+                "app_profile": app_profile,
+                "profile_count": len(profiles),
+                "profiles": profiles,
+                "counts": _official_counts(filtered_entries, app_profile),
+            }
+            diagnostics = _official_sync_status_diagnostics(
+                catalog,
+                app_profile=app_profile,
+                profiles=profiles,
+                filtered_entries=filtered_entries,
+            )
+            if diagnostics:
+                data["diagnostics"] = diagnostics
             return ok_result(
-                {
-                    "catalog_path": str(catalog.get("_catalog_path") or _official_catalog_path(self._official_catalog_dir, app_profile)),
-                    "catalog_identity": _official_public_catalog_identity(catalog),
-                    "schema_version": catalog.get("schema_version"),
-                    "generated_at": catalog.get("generated_at"),
-                    "app_profile": app_profile,
-                    "profile_count": len(profiles),
-                    "profiles": profiles,
-                    "counts": _official_counts(filtered_entries, app_profile),
-                },
+                data,
                 started_ms=started,
             )
         except FileNotFoundError as exc:
@@ -1158,6 +1170,41 @@ def _official_not_found_data(
             limit=20,
         ),
     }
+
+
+def _official_sync_status_diagnostics(
+    catalog: dict[str, Any],
+    *,
+    app_profile: str | None,
+    profiles: list[dict[str, Any]],
+    filtered_entries: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if not app_profile:
+        return None
+    if not profiles:
+        reason = "app_profile_not_covered"
+    elif not filtered_entries:
+        reason = "empty_catalog"
+    else:
+        return None
+    return {
+        "reason": reason,
+        "requested_app_profile": app_profile,
+        "available_profiles": _official_catalog_profiles(catalog),
+        "profile_count": len(profiles),
+        "matching_item_count": len(filtered_entries),
+        "suggested_next": _official_suggested_next(reason),
+        "fallback_tool_order": _official_fallback_tool_order(),
+    }
+
+
+def _official_catalog_profiles(catalog: dict[str, Any]) -> list[str]:
+    profiles = [
+        str(snapshot.get("app_profile"))
+        for snapshot in catalog.get("snapshots") or []
+        if snapshot.get("app_profile")
+    ]
+    return _dedupe_strs(profiles)
 
 
 def _official_search_diagnostics(

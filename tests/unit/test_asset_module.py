@@ -718,6 +718,30 @@ async def test_official_asset_sync_status_reports_profile_counts(
 
 
 @pytest.mark.asyncio
+async def test_official_asset_sync_status_missing_profile_reports_diagnostics(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_sync_status(_meta(), app_profile="kit-app")
+
+    assert result.ok, result.message
+    assert result.data["profile_count"] == 0
+    assert result.data["counts"]["items"] == 0
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "app_profile_not_covered"
+    assert diagnostics["requested_app_profile"] == "kit-app"
+    assert diagnostics["available_profiles"] == ["isaac-sim", "usd-composer"]
+    assert any(
+        "without app_profile" in item
+        for item in diagnostics["suggested_next"]
+    )
+    assert "official_asset_sync_status" in diagnostics["fallback_tool_order"]
+
+
+@pytest.mark.asyncio
 async def test_official_asset_get_missing_catalog_reports_unavailable(tmp_path: Path):
     module = AssetModule(_ExplodingClient(), official_catalog_dir=tmp_path / "missing")
     result = await module.official_get(_meta(), asset_id="url:https://missing")
