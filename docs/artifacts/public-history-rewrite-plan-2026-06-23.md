@@ -13,6 +13,8 @@ Current evidence:
 - Current-tree-only public hygiene gate: passed with `finding_count=0`.
 - `--today --head HEAD` history audit: failed with `finding_count=7`.
 - The affected commits are already contained in `origin/main`.
+- Local `main` is currently `origin/main` + 24 commits; the pending range
+  passes `scripts/review_public_hygiene.py --base origin/main --head HEAD`.
 
 ## Affected Commits
 
@@ -73,7 +75,14 @@ Expected result after approved rewrite: all public hygiene commands exit 0.
 - `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD --format json`:
   failed as expected with `finding_count=7`
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q`:
-  `748 passed, 16 skipped`
+  `750 passed, 16 skipped`
+
+Additional validation after the latest local-only diagnostics batches:
+
+- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --base origin/main --head HEAD --format json`:
+  passed with `finding_count=0`
+- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --today --head HEAD --format json`:
+  still failed as expected with the same `finding_count=7`
 
 ## Push Impact
 
