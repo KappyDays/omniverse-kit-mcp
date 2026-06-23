@@ -77,6 +77,7 @@ def test_plan_step_includes_idempotent_retry_metadata():
                     "module": "sensor",
                     "action": "lidar_get_point_cloud",
                     "idempotent": True,
+                    "continueOnFailure": True,
                     "retries": {
                         "maxAttempts": 3,
                         "initialBackoffSeconds": 0.25,
@@ -93,6 +94,7 @@ def test_plan_step_includes_idempotent_retry_metadata():
 
     assert planned["args"] == {"sensor_prim": "/World/Lidar"}
     assert planned["idempotent"] is True
+    assert planned["continueOnFailure"] is True
     assert planned["retries"] == {
         "maxAttempts": 3,
         "initialBackoffSeconds": 0.25,

@@ -247,6 +247,8 @@ def _plan_step(step: CompiledStep) -> dict[str, Any]:
     }
     if step.idempotent:
         planned["idempotent"] = True
+    if step.continue_on_failure:
+        planned["continueOnFailure"] = True
     if step.retry_policy is not None:
         planned["retries"] = {
             "maxAttempts": step.retry_policy.max_attempts,
