@@ -13,8 +13,9 @@ Current evidence:
 - Current-tree-only public hygiene gate: passed with `finding_count=0`.
 - `--today --head HEAD` history audit: failed with `finding_count=7`.
 - The affected commits are already contained in `origin/main`.
-- Local `main` is currently `origin/main` + 24 commits; the pending range
-  passes `scripts/review_public_hygiene.py --base origin/main --head HEAD`.
+- Local `main` is ahead of `origin/main`; re-check the exact count with
+  `git rev-list --count origin/main..HEAD`. The pending range passes
+  `scripts/review_public_hygiene.py --base origin/main --head HEAD`.
 
 ## Affected Commits
 
