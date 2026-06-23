@@ -25,11 +25,11 @@
 Validation route:
 
 - The normal live path is a workspace-local MCP worker.
-- Two Codex worker threads failed before this smoke (`systemError`) and this
-  batch changed `omni.mycompany.validation_api` itself, so the self-change
-  required a fresh Kit process per `docs/invariants/ext-reload.md`.
-- The root-thread standalone route below was used as the documented
-  import-cache / low-level diagnosis bypass from `scripts/CLAUDE.md` and
+- A workspace-worker route was unavailable during this smoke, and this batch
+  changed `omni.mycompany.validation_api` itself, so the self-change required a
+  fresh Kit process per `docs/invariants/ext-reload.md`.
+- The standalone route below was used as the documented import-cache /
+  low-level diagnosis bypass from `scripts/CLAUDE.md` and
   `docs/invariants/live-worker-coordination.md`, targeting only
   `workspaces/isaac/instance-1` / port `8111`.
 
@@ -64,7 +64,7 @@ Observed settled control payloads:
 WARN log capture:
 
 - `count=0`
-- `truncated=false`
+- `log_truncated=false`
 
 Cleanup:
 

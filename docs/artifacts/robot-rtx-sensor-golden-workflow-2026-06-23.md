@@ -5,9 +5,10 @@
 - Scenario: `scenarios/smoke/robot_rtx_sensor_golden_workflow.yaml`
 - Final validation workspace: `workspaces/isaac/instance-1`
 - Validation route: `.venv\Scripts\python.exe scripts\run_scenario_standalone.py smoke\robot_rtx_sensor_golden_workflow.yaml`
-- Reason for standalone route: live worker thread creation/continuation returned `systemError`; standalone runner bypasses MCP import cache while still using the workspace-local Isaac REST profile.
+- Reason for standalone route: bounded import-cache bypass for live validation,
+  while still using the workspace-local Isaac REST profile.
 - Scenario result: `31 passed / 0 failed / 0 skipped`
-- WARN count after validation: `0`, `truncated=false`
+- WARN log capture after validation: `count=0`, `log_truncated=false`
 
 ## Evidence
 
@@ -17,7 +18,7 @@
   - `.\\.venv\\Scripts\\python.exe -m pytest tests\\unit\\test_sensor_tools.py tests\\unit\\test_sensor_ext_tools.py -q`: `22 passed`.
   - `.\\.venv\\Scripts\\python.exe scripts\\verify_mcp_sync.py`: OK, `25 passed`.
   - `git diff --check`: OK.
-- Live diagnostic worker `019ef246-dc83-7530-8f27-71b0027bc283` isolated the failure:
+- A live diagnostic pass isolated the failure:
   - cold `TopLidar` before camera annotators: `0` points, warning `polar arrays contained 0 elements`;
   - same `TopLidar` after camera annotators: `0` points, same warning;
   - fresh `PostCameraLidar` attached while timeline was playing in the same scene: `64` points, warning `null`.
@@ -28,9 +29,9 @@
   - `frames_waited=60`
   - `raw_keys.count=17`, sample `azimuth`, `channelId`, `data`
   - `warning=null`
-  - `truncated=true`
+  - `lidar_data_truncated=true`
 - `capture_visible_result` passed with:
-  - artifact path: `<validation-api-capture>/capture_5bb7fc671209.png`
+  - artifact path: local validation capture path redacted
   - SHA256: `072ba6ed768621c11506f9875131c68943aca1949282b3e3171629f52614d34e`
   - average pixel mean: `145.58`
   - average pixel variance: `1107.94`
