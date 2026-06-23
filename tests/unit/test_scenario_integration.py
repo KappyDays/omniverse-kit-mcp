@@ -2300,8 +2300,41 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
         assert failure["data_summary"]["diagnostics"]["num_points"] == 2
         assert failure["data_summary"]["diagnostics"]["min_points"] == 4
 
+    evidence_report = {
+        result["step_id"]: result for result in report["evidence_summary"]
+    }
+    assert evidence_report["read_lidar"] == {
+        "step_id": "read_lidar",
+        "phase": "assert",
+        "status": "failed",
+        "attempts": 3,
+        "max_attempts": 3,
+        "retry_failure_count": 3,
+        "evidence_kind": "rtx_lidar_point_cloud",
+        "num_points": 2,
+        "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
+        "frames_waited": 180,
+        "empty_reason": None,
+        "warning": None,
+        "truncated": True,
+        "diagnostics": {
+            "reason": "point_count_below_minimum",
+            "min_points": 4,
+            "cached_lidar_instance": True,
+            "readback_paths_attempted": ["cached_lidar_sensor"],
+            "suggested_next": expected_action["suggested_next"],
+            "fallback_tool_order": expected_action["diagnostics.fallback_tool_order"],
+        },
+    }
+
     markdown = to_markdown(summary)
     assert "## Diagnostic Next Actions" in markdown
+    assert (
+        "- `read_lidar`: evidence_kind=rtx_lidar_point_cloud; status=failed; "
+        "attempts=3/3; retry_failure_count=3"
+    ) in markdown
+    assert '"reason":"point_count_below_minimum"' in markdown
+    assert '"min_points":4' in markdown
     assert "- `read_lidar`: diagnostics.reason=point_count_below_minimum" in markdown
     assert "- `read_lidar attempt 3`: diagnostics.reason=point_count_below_minimum" in markdown
 

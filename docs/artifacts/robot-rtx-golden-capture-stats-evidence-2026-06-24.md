@@ -60,3 +60,9 @@ secret, or raw Kit log snippet is recorded here.
 `viewport_capture_assert` reports to preserve `passed=false`, pixel mean and
 variance arrays, pixel averages, and the two blank-frame failure codes in both
 JSON and Markdown report output.
+
+The same test file also locks exhausted RTX lidar retry evidence. Failed
+`rtx_lidar_point_cloud` rows now preserve the compact failure reason, requested
+`min_points`, readback path, suggested next actions, fallback order, and retry
+failure count in `evidence_summary`, so agents can triage controlled
+zero/too-few-point runs without opening raw logs first.

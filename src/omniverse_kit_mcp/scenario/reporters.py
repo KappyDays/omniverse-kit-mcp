@@ -631,6 +631,8 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
             row["diagnostics"] = {
                 key: diagnostics[key]
                 for key in (
+                    "reason",
+                    "min_points",
                     "cached_lidar_instance",
                     "readback_paths_attempted",
                     "suggested_next",
