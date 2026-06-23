@@ -68,15 +68,15 @@ _EVIDENCE_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
         ("prim_paths", "margin", "view_direction", "set_camera"),
     ),
     ("viewport", "capture"): (
-        "viewport_capture",
+        "visual_capture",
         ("width", "height", "warmup_frames", "return_stats"),
     ),
     ("viewport", "capture_assert"): (
-        "viewport_capture_assert",
+        "visual_capture",
         ("width", "height", "warmup_frames", "min_mean", "min_variance"),
     ),
     ("window", "capture"): (
-        "window_capture",
+        "visual_capture",
         ("window_title", "wait_stable", "timeout_s"),
     ),
 }

@@ -37,10 +37,14 @@ Reports also include JSON `evidence_summary` and Markdown `Evidence Summary`
 when executed steps produced compact official-asset-verify, lidar,
 viewport-framing, or visual-capture evidence; compare it with
 `scenario_plan.evidence_steps` before claiming an official asset, robot/RTX, or
-visual workflow is proven. For `viewport_capture_assert`, inspect
-the visual-capture row's `passed`, `pixel_mean_average`,
-`pixel_variance_average`, `pixel_mean`, `pixel_variance`, and
-`warmup_frames_used` fields before relying on the image as nonblank evidence.
+visual workflow is proven. `scenario_plan.evidence_steps` uses
+report-compatible evidence kinds: viewport/window `capture` and viewport
+`capture_assert` plan rows use `evidence_kind=visual_capture`; use
+`module`/`action` to distinguish raw capture from assertion gates. For
+`viewport_capture_assert`, inspect the visual-capture row's `passed`,
+`pixel_mean_average`, `pixel_variance_average`, `pixel_mean`,
+`pixel_variance`, and `warmup_frames_used` fields before relying on the image
+as nonblank evidence.
 If it fails, read `diagnostic_next_actions` for `diagnostics.reason`,
 `diagnostics.failure_codes`, pixel averages, threshold fields, and
 `diagnostics.fallback_tool_order`; the expected first recovery path is

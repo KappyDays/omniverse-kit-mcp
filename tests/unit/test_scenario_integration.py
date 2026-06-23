@@ -1625,7 +1625,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "phase": "assert",
         "module": "viewport",
         "action": "capture_assert",
-        "evidence_kind": "viewport_capture_assert",
+        "evidence_kind": "visual_capture",
         "key_args": {
             "width": 1280,
             "height": 720,
@@ -1845,6 +1845,84 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "passed=True; pixel_mean_average=34.0; pixel_variance_average=9.0; "
         "failure_codes=[]"
     ) in markdown
+
+
+def test_scenario_plan_visual_capture_evidence_kinds_match_report_rows():
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "visual_capture_plan_alignment",
+            "name": "visual capture plan alignment",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "capture_viewport",
+                    "module": "viewport",
+                    "action": "capture",
+                    "args": {
+                        "width": 640,
+                        "height": 360,
+                        "warmup_frames": 4,
+                        "return_stats": True,
+                    },
+                },
+                {
+                    "id": "assert_viewport_capture",
+                    "module": "viewport",
+                    "action": "capture_assert",
+                    "args": {
+                        "width": 640,
+                        "height": 360,
+                        "warmup_frames": 4,
+                        "min_mean": 8.0,
+                        "min_variance": 1.0,
+                    },
+                },
+                {
+                    "id": "capture_window",
+                    "module": "window",
+                    "action": "capture",
+                    "args": {
+                        "window_title": "Viewport",
+                        "wait_stable": True,
+                        "timeout_s": 1.0,
+                    },
+                },
+            ],
+        },
+    }
+
+    plan = _scenario_plan_payload(compile_scenario(raw))
+    evidence_steps = {step["id"]: step for step in plan["evidence_steps"]}
+
+    assert evidence_steps["capture_viewport"]["evidence_kind"] == "visual_capture"
+    assert evidence_steps["capture_viewport"]["action"] == "capture"
+    assert evidence_steps["capture_viewport"]["key_args"] == {
+        "width": 640,
+        "height": 360,
+        "warmup_frames": 4,
+        "return_stats": True,
+    }
+    assert evidence_steps["assert_viewport_capture"]["evidence_kind"] == (
+        "visual_capture"
+    )
+    assert evidence_steps["assert_viewport_capture"]["action"] == "capture_assert"
+    assert evidence_steps["assert_viewport_capture"]["key_args"] == {
+        "width": 640,
+        "height": 360,
+        "warmup_frames": 4,
+        "min_mean": 8.0,
+        "min_variance": 1.0,
+    }
+    assert evidence_steps["capture_window"]["evidence_kind"] == "visual_capture"
+    assert evidence_steps["capture_window"]["module"] == "window"
+    assert evidence_steps["capture_window"]["key_args"] == {
+        "window_title": "Viewport",
+        "wait_stable": True,
+        "timeout_s": 1.0,
+    }
 
 
 @pytest.mark.asyncio

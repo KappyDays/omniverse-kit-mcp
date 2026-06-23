@@ -313,6 +313,16 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "redacted Markdown" in wrapper
 
 
+def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+
+    assert "report-compatible evidence kinds" in guide
+    assert "evidence_kind=visual_capture" in guide
+    assert "viewport/window `capture`" in guide
+    assert "`capture_assert` plan rows" in guide
+    assert "`module`/`action` to distinguish" in guide
+
+
 def test_f3b_scenario_authoring_guide_mentions_official_verify_evidence():
     guide = (PROJECT / "scenarios" / "CLAUDE.md").read_text(encoding="utf-8")
 

@@ -23,23 +23,31 @@ reported:
     `fail_on_warning=true`, `idempotent=true`, `retries.maxAttempts=3`
   - `frame_robot_and_sensors`: `evidence_kind=viewport_framing`,
     frames robot, RTX camera, RTX lidar, and lidar targets
-  - `capture_visible_result`: `evidence_kind=viewport_capture_assert`,
-    `1280x720`, `warmup_frames=8`, `min_mean=8.0`, `min_variance=1.0`
+  - `capture_visible_result`: `evidence_kind=visual_capture`,
+    `action=capture_assert`, `1280x720`, `warmup_frames=8`,
+    `min_mean=8.0`, `min_variance=1.0`
 - `retry_steps`:
   - `read_lidar_point_cloud`: idempotent retry gate with `maxAttempts=3`
+
+`visual_capture` is intentionally report-compatible: `scenario_plan` keeps the
+specific `module` / `action` (`viewport.capture`, `viewport.capture_assert`, or
+`window.capture`) while using the same evidence kind that later appears in
+`scenario_last_report.evidence_summary`.
 
 ## Validation
 
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py::test_robot_rtx_sensor_golden_workflow_routes_through_runner tests\unit\test_tools_registration.py::test_scenario_validate_dry_run_uses_plan_step_counts tests\unit\test_tools_registration.py::test_scenario_plan_accepts_input_overrides -q`
   - `3 passed`
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py::test_scenario_plan_visual_capture_evidence_kinds_match_report_rows tests\unit\test_scenario_integration.py::test_robot_rtx_sensor_golden_workflow_routes_through_runner tests\unit\test_doc_references.py::test_f3b_usage_guide_explains_visual_capture_plan_alignment -q`
+  - `3 passed`
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py -q`
+  - `62 passed`
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py tests\unit\test_tools_registration.py -q`
+  - `44 passed, 1 skipped`
 - `.\.venv\Scripts\python.exe -m ruff check src\omniverse_kit_mcp\tools\scenario_tools.py tests\unit\test_scenario_integration.py`
   - passed
 - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py`
   - passed; generated catalog stayed up to date and 36 sync tests passed
-- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py tests\unit\test_tools_registration.py -q`
-  - `80 passed`
-- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py tests\unit\test_doc_integrity.py -q`
-  - `19 passed, 2 skipped`
 - `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --base origin/main --head HEAD --format json --redact-samples`
   - `finding_count=0`
 
