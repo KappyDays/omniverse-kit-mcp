@@ -23,6 +23,9 @@ The generated signature reference remains `docs/tool-catalog.md`.
 
 Standalone scenario runs print JSON plus Markdown; follow the scenario
 validation invariant for report-field triage.
+For retried sensor steps, check `retry_failures[].data_summary` before relying
+on the retry failure message string; it preserves bounded machine-readable
+diagnostics for failed attempts.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
@@ -38,6 +41,9 @@ Raw live reports can include host-local capture paths and Kit log filenames.
 For public evidence, request `redact_local_paths=true`, preserve SHA256/pixel stats
 and WARN/ERROR counts, confirm artifact paths look like
 `<validation-api-capture>/capture_<id>.png`, and run the public hygiene checks.
+When retrying RTX lidar reads, preserve `retry_failures[].data_summary` fields
+such as `diagnostics.cached_lidar_instance` and
+`diagnostics.readback_paths_attempted` in evidence notes.
 
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.candidate_counts`,

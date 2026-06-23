@@ -86,8 +86,13 @@ before reattaching the same sensor path; otherwise an old render product can
 hold the new scan buffer at zero points until the process is restarted.
 Transient zero-point RTX buffers should be absorbed with step-level retries only
 on idempotent sensor reads; inspect `scenario_last_report` fields
-`attempts`, `max_attempts`, `retry_failures`, `data_summary.num_points`,
-`data_summary.empty_reason`, `data_summary.diagnostics.reason`,
+`attempts`, `max_attempts`, `retry_failures`,
+`retry_failures[].data_summary.num_points`,
+`retry_failures[].data_summary.empty_reason`,
+`retry_failures[].data_summary.diagnostics.cached_lidar_instance`,
+`retry_failures[].data_summary.diagnostics.readback_paths_attempted`,
+`data_summary.num_points`, `data_summary.empty_reason`,
+`data_summary.diagnostics.reason`,
 `data_summary.diagnostics.suggested_next`,
 `data_summary.diagnostics.fallback_tool_order`,
 `data_summary.diagnostics.cached_lidar_instance`,
