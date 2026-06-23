@@ -11,7 +11,7 @@ limited to host-local path strings.
 
 - Redact structured keys such as `pid`, `process_id`, and `*_pid` only when
   `redact_local_paths=true`.
-- Redact inline text patterns such as `pid=<process-id>`.
+- Redact inline text patterns such as `pid=<number>`.
 - Preserve exact JSON report data when redaction is not requested.
 
 ## Validation

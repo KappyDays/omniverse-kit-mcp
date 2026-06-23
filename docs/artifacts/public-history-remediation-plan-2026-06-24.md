@@ -9,9 +9,10 @@ reachable from `origin/main`.
 ## Current Review State
 
 - Current working tree public hygiene: clean.
-- Commits created on 2026-06-24: clean under the fixed-date history audit.
 - Pending local range `origin/main..HEAD`: clean under the pending-push audit.
-- Older history since 2026-06-23: 7 findings, all classified as
+- Commits created on 2026-06-24: 1 process-ID example finding, classified as
+  `already_public`.
+- Older history since 2026-06-23: 10 findings, all classified as
   `already_public`.
 
 Because the remaining findings are already public, do not rewrite history,
@@ -24,8 +25,9 @@ approval.
 | --- | --- | --- | ---: | --- |
 | `ee5150e263d89f8f4cfd16cd7b7b6f2ae3d3b21e` | `feat(scenarios): harden robot RTX sensor workflow` | `docs/artifacts/robot-rtx-sensor-golden-workflow-2026-06-23.md` | 1 | Replace local validation capture path with `<validation-api-capture>/capture_197e66404343.png`. |
 | `a04c4424fbeeea4a27a8136f0d0b5479783a0b4a` | `fix(scenarios): stabilize robot RTX lidar workflow` | `docs/artifacts/robot-rtx-sensor-golden-workflow-2026-06-23.md` | 1 | Replace local validation capture path with `<validation-api-capture>/capture_5bb7fc671209.png`. |
-| `688c661a64b7c0b1801cf9a0b1a79f276d821ba6` | `fix(scripts): load root env for standalone workspace runs` | `docs/artifacts/standalone-workspace-env-and-lidar-live-smoke-2026-06-23.md` | 4 | Replace local Kit install, Kit app file, temp Kit log, and validation capture paths with `<local-kit-install>/...`, `<local-kit-log>/kit_1782189205.log`, and `<validation-api-capture>/capture_3f1cfaca4517.png`. |
+| `688c661a64b7c0b1801cf9a0b1a79f276d821ba6` | `fix(scripts): load root env for standalone workspace runs` | `docs/artifacts/standalone-workspace-env-and-lidar-live-smoke-2026-06-23.md` | 6 | Replace local Kit install, Kit app file, temp Kit log, validation capture paths, and process IDs with `<local-kit-install>/...`, `<local-kit-log>/kit_1782189205.log`, `<validation-api-capture>/capture_3f1cfaca4517.png`, and `pid=<process-id>` placeholders. |
 | `83beec817f7d476c2a33832f3c6a4cf715d7086b` | `test(repo): guard public history hygiene` | `tests/unit/test_public_repo_hygiene.py` | 1 | Rewrite the split-path fixture to use a stable placeholder user such as `localuser`, not the current OS account name. |
+| `c844e4388615d8351b51b02f0bde904c75d5960d` | `feat(scenarios): redact process ids in public reports` | `docs/artifacts/scenario-public-redacts-process-ids-2026-06-24.md` | 1 | Replace the numeric process-ID example with a placeholder such as `pid=<number>`. |
 
 ## Approved-Only Remediation Steps
 

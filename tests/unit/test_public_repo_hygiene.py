@@ -50,6 +50,14 @@ _SECRET_LIKE_PATTERNS = (
 )
 _SENSITIVE_IDENTIFIER_PATTERNS = (
     (
+        "process_id_number",
+        re.compile(
+            r"\b(?:pid|process[_ -]?id)\b"
+            r"['\"]?\s*[:=]\s*['\"]?"
+            r"\d+\b"
+        ),
+    ),
+    (
         "worker_thread_uuid",
         re.compile(
             r"\b(?:thread[_ -]?id|worker[_ -]?id|worker[_ -]?thread[_ -]?id|"
@@ -114,6 +122,8 @@ def test_tracked_text_files_do_not_embed_user_specific_paths() -> None:
             if pattern.search(text):
                 offenders.append(f"{rel}: matches {label}")
         for label, pattern in _SENSITIVE_IDENTIFIER_PATTERNS:
+            if label == "process_id_number" and rel.lower().endswith(".py"):
+                continue
             if pattern.search(text):
                 offenders.append(f"{rel}: matches {label}")
         for line_no, line in enumerate(text.splitlines(), start=1):
@@ -562,6 +572,98 @@ def test_public_hygiene_script_flags_labeled_worker_thread_uuid_history(
     assert finding["label"] == "worker_thread_uuid"
     assert thread_id not in finding["sample"]
     assert "<sensitive-id:worker_thread_uuid>" in finding["sample"]
+
+
+def test_public_hygiene_script_flags_labeled_process_id_number(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    process_id = "<process-id>"
+    (repo / "evidence.md").write_text(
+        f"kit start pid={process_id}\n",
+        encoding="utf-8",
+    )
+    _commit_all(repo, "process id leak")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--skip-history",
+            "--redact-samples",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "process_id_number" in result.stdout
+    assert process_id not in result.stdout
+    assert "<sensitive-id:process_id_number>" in result.stdout
+
+
+def test_public_hygiene_script_flags_labeled_process_id_number_history(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    (repo / "evidence.md").write_text("baseline\n", encoding="utf-8")
+    _commit_all(repo, "baseline")
+
+    process_id = "<process-id>"
+    (repo / "evidence.md").write_text(
+        f'{{"process_id": {process_id}}}\n',
+        encoding="utf-8",
+    )
+    _commit_all(repo, "process id leak")
+
+    (repo / "evidence.md").write_text(
+        '{"process_id": "<process-id>"}\n',
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact process id")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--base",
+            "HEAD~2",
+            "--head",
+            "HEAD",
+            "--format",
+            "json",
+            "--redact-samples",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    payload = json.loads(result.stdout)
+    assert payload["finding_count"] == 1
+    finding = payload["findings"][0]
+    assert finding["source"] == "history-added-line"
+    assert finding["label"] == "process_id_number"
+    assert process_id not in finding["sample"]
+    assert "<sensitive-id:process_id_number>" in finding["sample"]
 
 
 def test_public_hygiene_script_flags_untracked_local_paths(tmp_path: Path) -> None:

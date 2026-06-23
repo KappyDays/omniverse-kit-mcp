@@ -59,6 +59,14 @@ SECRET_LIKE_LABELS = frozenset(label for label, _ in SECRET_LIKE_PATTERNS)
 
 SENSITIVE_IDENTIFIER_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
+        "process_id_number",
+        re.compile(
+            r"\b(?:pid|process[_ -]?id)\b"
+            r"['\"]?\s*[:=]\s*['\"]?"
+            r"\d+\b"
+        ),
+    ),
+    (
         "worker_thread_uuid",
         re.compile(
             r"\b(?:thread[_ -]?id|worker[_ -]?id|worker[_ -]?thread[_ -]?id|"
@@ -128,7 +136,7 @@ def _redact_output_text(value: str) -> str:
     ):
         if label in SECRET_LIKE_LABELS:
             replacement = f"<secret-like:{label}>"
-        elif label.startswith("worker_thread"):
+        elif label.startswith(("process_id", "worker_thread")):
             replacement = f"<sensitive-id:{label}>"
         else:
             replacement = "<local-user-path>"
@@ -193,6 +201,7 @@ def _scan_text(
     detail: str,
     text: str,
     *,
+    path: str | None = None,
     commit: str | None = None,
     reachability: str | None = None,
 ) -> list[Finding]:
@@ -203,6 +212,8 @@ def _scan_text(
             + SECRET_LIKE_PATTERNS
             + SENSITIVE_IDENTIFIER_PATTERNS
         ):
+            if label == "process_id_number" and _is_python_source_path(path):
+                continue
             if pattern.search(line):
                 findings.append(
                     Finding(
@@ -228,6 +239,10 @@ def _scan_text(
     return findings
 
 
+def _is_python_source_path(path: str | None) -> bool:
+    return bool(path and path.lower().endswith(".py"))
+
+
 def _looks_like_split_user_path(line: str) -> bool:
     if "/Users/" not in line and "\\Users\\" not in line:
         return False
@@ -249,7 +264,7 @@ def _scan_worktree_file(project: Path, source: str, rel: str) -> list[Finding]:
         return findings
     except FileNotFoundError:
         return findings
-    findings.extend(_scan_text(source, rel, text))
+    findings.extend(_scan_text(source, rel, text, path=rel))
     return findings
 
 
@@ -405,6 +420,7 @@ def _scan_commit_added_lines(
                 "history-added-line",
                 f"{subject} {current_file}",
                 line[1:],
+                path=current_file,
                 commit=full_commit,
                 reachability=reachability,
             )

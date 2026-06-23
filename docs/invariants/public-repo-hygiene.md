@@ -44,6 +44,7 @@ History findings are classified against the current upstream or `origin/main`:
 
 - User-specific paths such as real Windows/MSYS user-home paths, Codex local
   worktree paths, and sanitized local path slugs.
+- Labeled process IDs such as `pid` or `process_id` numeric values.
 - Labeled worker/thread UUIDs such as `thread_id`, `worker_id`,
   `worker_thread_id`, or `pendingWorktreeId` values.
 - Secret-like literals such as private keys and common token prefixes.
