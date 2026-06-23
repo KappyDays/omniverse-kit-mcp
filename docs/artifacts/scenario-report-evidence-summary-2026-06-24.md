@@ -3,10 +3,10 @@
 ## Scope
 
 `scenario_last_report` JSON/Markdown now surfaces a compact `evidence_summary`
-for executed steps that produced lidar point-cloud, viewport-framing, or visual
-capture evidence. This lets an agent compare `scenario_plan.evidence_steps`
-with the executed report before claiming the robot + RTX sensor workflow is
-proven.
+for executed steps that produced official asset verify, lidar point-cloud,
+viewport-framing, or visual capture evidence. This lets an agent compare
+`scenario_plan.evidence_steps` with the executed report before claiming an
+official asset, robot + RTX sensor, or visual workflow is proven.
 
 No live Kit app was launched for this batch. The change is a static reporter
 shape improvement over the already live-smoked golden workflow.
@@ -25,6 +25,20 @@ The unit-backed golden workflow report now exposes:
 - `capture_visible_result`: `evidence_kind=visual_capture`,
   `status=passed`, redaction-compatible `capture_path`, `sha256=abc123`,
   `passed=true`
+
+## Official Asset Verify Evidence
+
+The unit-backed official verify smoke report now exposes:
+
+- `verify_pallet_asset`: `evidence_kind=official_asset_verify`,
+  `status=passed`, `verification_status=load_verified`, `kind=asset`,
+  `app_profile=isaac-sim`
+- `verify_unbound_material`: `evidence_kind=official_asset_verify`,
+  `status=passed`, `verification_status=failed`, `kind=material`,
+  `app_profile=usd-composer`, and bounded `diagnostics.material_checks`
+
+`scenario_plan.evidence_steps` also lists `asset.official_verify` with
+`asset_id`, `app_profile`, and `timeout_s` key args before live execution.
 
 ## Public Review Fixes
 

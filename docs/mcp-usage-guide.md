@@ -34,9 +34,10 @@ includes `phase`, source `status`, final step `error_code`, retry
 `error_code`, retry `attempt`, and `final_step_status` when those fields are
 available.
 Reports also include JSON `evidence_summary` and Markdown `Evidence Summary`
-when executed steps produced compact lidar, viewport-framing, or visual-capture
-evidence; compare it with `scenario_plan.evidence_steps` before claiming a
-robot/RTX or visual workflow is proven. For `viewport_capture_assert`, inspect
+when executed steps produced compact official-asset-verify, lidar,
+viewport-framing, or visual-capture evidence; compare it with
+`scenario_plan.evidence_steps` before claiming an official asset, robot/RTX, or
+visual workflow is proven. For `viewport_capture_assert`, inspect
 the visual-capture row's `passed`, `pixel_mean_average`,
 `pixel_variance_average`, `pixel_mean`, `pixel_variance`, and
 `warmup_frames_used` fields before relying on the image as nonblank evidence.
@@ -96,7 +97,10 @@ For `official_asset_verify` failed records, inspect `diagnostics.reason` plus
 `diagnostics.asset_checks` or `diagnostics.material_checks` before retrying or
 placing the asset in a user scene. JSON `diagnostic_next_actions` carries the
 target/current status plus the relevant check dict when a verify failure also
-provides `suggested_next` or a fallback order.
+provides `suggested_next` or a fallback order. JSON `evidence_summary` and
+Markdown `Evidence Summary` also expose `evidence_kind=official_asset_verify`,
+`verification_status`, `kind`, `app_profile`, and bounded diagnostics, so use
+them as the compact proof row for `scenario_validate(smoke/official_asset_verify_live.yaml)`.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

@@ -581,7 +581,39 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
         "retry_failure_count": len(step.retry_failures),
         "evidence_kind": evidence_kind,
     }
-    if evidence_kind == "rtx_lidar_point_cloud":
+    if evidence_kind == "official_asset_verify":
+        _copy_if_present(
+            data_summary,
+            row,
+            (
+                "id",
+                "kind",
+                "name",
+                "app_profile",
+                "verification_status",
+                "attempt",
+                "timeout_s",
+                "retry_count",
+                "error",
+            ),
+        )
+        diagnostics = data_summary.get("diagnostics")
+        if isinstance(diagnostics, dict):
+            row["diagnostics"] = {
+                key: diagnostics[key]
+                for key in (
+                    "reason",
+                    "target_status",
+                    "current_catalog_status",
+                    "stale_warning",
+                    "suggested_next",
+                    "fallback_tool_order",
+                    "asset_checks",
+                    "material_checks",
+                )
+                if key in diagnostics
+            }
+    elif evidence_kind == "rtx_lidar_point_cloud":
         _copy_if_present(
             data_summary,
             row,
@@ -656,6 +688,20 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
 
 
 def _evidence_kind(data_summary: dict[str, Any]) -> str | None:
+    if (
+        "verification_status" in data_summary
+        and (
+            "attempt" in data_summary
+            or "timeout_s" in data_summary
+            or "cleanup" in data_summary
+        )
+        and (
+            "canonical_url" in data_summary
+            or "material_name" in data_summary
+            or "load_quality" in data_summary
+        )
+    ):
+        return "official_asset_verify"
     if "num_points" in data_summary:
         return "rtx_lidar_point_cloud"
     if (

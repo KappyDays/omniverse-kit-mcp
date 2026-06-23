@@ -3153,9 +3153,26 @@ async def test_official_asset_verify_material_failure_diagnostics_survive_runner
     assert json_step["diagnostic_next_actions"][
         "diagnostics.material_checks"
     ]["bound_ok"] is False
+    evidence_report = {
+        result["step_id"]: result for result in json_report["evidence_summary"]
+    }
+    material_evidence = evidence_report["verify_unbound_material"]
+    assert material_evidence["evidence_kind"] == "official_asset_verify"
+    assert material_evidence["verification_status"] == "failed"
+    assert material_evidence["kind"] == "material"
+    assert material_evidence["app_profile"] == "usd-composer"
+    assert material_evidence["diagnostics"]["reason"] == (
+        "material_assign_or_binding_failed"
+    )
+    assert material_evidence["diagnostics"]["material_checks"]["bound_ok"] is False
 
     markdown = to_markdown(summary)
     assert "## Diagnostic Next Actions" in markdown
+    assert "## Evidence Summary" in markdown
+    assert (
+        "`verify_unbound_material`: "
+        "evidence_kind=official_asset_verify; status=passed"
+    ) in markdown
     assert (
         "- `verify_unbound_material`: "
         "diagnostics.reason=material_assign_or_binding_failed"
@@ -3182,6 +3199,24 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
     raw = load_scenario(
         PROJECT / "scenarios" / "smoke" / "official_asset_verify_live.yaml"
     )
+    plan = _scenario_plan_payload(compile_scenario(raw))
+    evidence_steps = {step["id"]: step for step in plan["evidence_steps"]}
+    assert evidence_steps["verify_pallet_asset"] == {
+        "id": "verify_pallet_asset",
+        "phase": "assert",
+        "module": "asset",
+        "action": "official_verify",
+        "evidence_kind": "official_asset_verify",
+        "key_args": {
+            "asset_id": (
+                "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com/"
+                "Assets/simready_content/common_assets/props/aluminumpallet_a01/"
+                "aluminumpallet_a01.usd"
+            ),
+            "app_profile": "isaac-sim",
+            "timeout_s": 180,
+        },
+    }
 
     summary = await runner.run(compile_scenario(raw))
 
@@ -3193,6 +3228,24 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
         "load_verified"
     )
     assert steps["verify_pallet_asset"].data_summary["load_quality"] == "valid"
+    json_report = json.loads(to_json(summary))
+    evidence_report = {
+        result["step_id"]: result for result in json_report["evidence_summary"]
+    }
+    assert evidence_report["verify_pallet_asset"]["evidence_kind"] == (
+        "official_asset_verify"
+    )
+    assert evidence_report["verify_pallet_asset"]["verification_status"] == (
+        "load_verified"
+    )
+    assert evidence_report["verify_pallet_asset"]["kind"] == "asset"
+    assert evidence_report["verify_pallet_asset"]["app_profile"] == "isaac-sim"
+    markdown = to_markdown(summary)
+    assert "## Evidence Summary" in markdown
+    assert (
+        "`verify_pallet_asset`: "
+        "evidence_kind=official_asset_verify; status=passed"
+    ) in markdown
     assert ("stage_load_usd", {
         "usd_url": (
             "https://omniverse-content-staging.s3.us-west-2.amazonaws.com/"

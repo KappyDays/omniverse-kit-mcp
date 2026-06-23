@@ -55,6 +55,10 @@ _last_report_summaries: dict[str, ScenarioRunSummary] = {}
 _last_report_id: str | None = None
 
 _EVIDENCE_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
+    ("asset", "official_verify"): (
+        "official_asset_verify",
+        ("asset_id", "app_profile", "timeout_s"),
+    ),
     ("sensor", "lidar_get_point_cloud"): (
         "rtx_lidar_point_cloud",
         ("sensor_prim", "frames_to_wait", "min_points", "max_points", "fail_on_warning"),
