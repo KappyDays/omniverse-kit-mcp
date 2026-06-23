@@ -35,6 +35,8 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ),
     ("suggested_next", (("diagnostics", "suggested_next"),)),
     ("diagnostics.fallback_tool_order", (("diagnostics", "fallback_tool_order"),)),
+    ("diagnostics.cached_lidar_instance", (("diagnostics", "cached_lidar_instance"),)),
+    ("diagnostics.readback_paths_attempted", (("diagnostics", "readback_paths_attempted"),)),
     ("raw_keys", (("raw_keys",),)),
     ("warning", (("warning",),)),
     ("truncated", (("truncated",),)),

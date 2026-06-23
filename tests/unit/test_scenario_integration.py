@@ -1063,7 +1063,10 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
             "raw_keys": ["azimuth", "distance"],
             "warning": None,
             "empty_reason": None,
-            "diagnostics": {"readback_paths_attempted": ["cached_lidar_sensor"]},
+            "diagnostics": {
+                "cached_lidar_instance": True,
+                "readback_paths_attempted": ["cached_lidar_sensor"],
+            },
         },
     ]
     runner = _build_runner(isaac_client, MockLakehouseClient())
@@ -1136,7 +1139,9 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     assert "## Data Summary Highlights" in markdown
     assert (
         "- `read_lidar`: num_points=2; backend=omni.replicator.core; "
-        "frames_waited=12; raw_keys=[azimuth, distance]; warning=null; "
+        "frames_waited=12; diagnostics.cached_lidar_instance=True; "
+        "diagnostics.readback_paths_attempted=[cached_lidar_sensor]; "
+        "raw_keys=[azimuth, distance]; warning=null; "
         "truncated=False"
     ) in markdown
     assert "empty_reason=null" not in markdown
