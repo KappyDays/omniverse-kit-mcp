@@ -34,7 +34,11 @@ from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
-from omniverse_kit_mcp.types.scenario import CompiledStep, ScenarioRunSummary
+from omniverse_kit_mcp.types.scenario import (
+    CompiledScenario,
+    CompiledStep,
+    ScenarioRunSummary,
+)
 from omniverse_kit_mcp.tools.tool_profiles import (
     PROFILE_FULL,
     ToolSelection,
@@ -171,34 +175,7 @@ def register_scenario_tools(
         raw = load_scenario(safe_path)
         scenario = compile_scenario(raw)
 
-        plan: dict[str, Any] = {
-            "scenario_id": scenario.scenario_id,
-            "name": scenario.name,
-            "tags": list(scenario.tags),
-            "defaults": {
-                "step_timeout_s": scenario.defaults.step_timeout_s,
-                "fail_fast": scenario.defaults.fail_fast,
-            },
-            "variables": scenario.variables,
-            "phases": {
-                "arrange": [
-                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
-                    for s in scenario.arrange_steps
-                ],
-                "act": [
-                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
-                    for s in scenario.act_steps
-                ],
-                "assert": [
-                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
-                    for s in scenario.assert_steps
-                ],
-                "cleanup": [
-                    _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
-                    for s in scenario.cleanup_steps
-                ],
-            },
-        }
+        plan = _scenario_plan_payload(scenario)
         return json.dumps(plan, indent=2, ensure_ascii=False)
 
     # Note: scenario_list and scenario_schema are MCP resources, not tools
@@ -248,6 +225,41 @@ def register_scenario_tools(
         if report is None:
             return json.dumps({"error": f"No report found for scenario '{target_id}'"})
         return report
+
+
+def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
+    phases = {
+        "arrange": [
+            _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+            for s in scenario.arrange_steps
+        ],
+        "act": [
+            _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+            for s in scenario.act_steps
+        ],
+        "assert": [
+            _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+            for s in scenario.assert_steps
+        ],
+        "cleanup": [
+            _plan_step(s, default_timeout_s=scenario.defaults.step_timeout_s)
+            for s in scenario.cleanup_steps
+        ],
+    }
+    phase_counts = {phase: len(steps) for phase, steps in phases.items()}
+    return {
+        "scenario_id": scenario.scenario_id,
+        "name": scenario.name,
+        "tags": list(scenario.tags),
+        "defaults": {
+            "step_timeout_s": scenario.defaults.step_timeout_s,
+            "fail_fast": scenario.defaults.fail_fast,
+        },
+        "variables": scenario.variables,
+        "total_steps": sum(phase_counts.values()),
+        "phase_counts": phase_counts,
+        "phases": phases,
+    }
 
 
 def _plan_step(

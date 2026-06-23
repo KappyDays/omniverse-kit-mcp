@@ -11,7 +11,7 @@ from omniverse_kit_mcp.exceptions import ScenarioSchemaError
 from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import validate_schema
 from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
-from omniverse_kit_mcp.tools.scenario_tools import _plan_step
+from omniverse_kit_mcp.tools.scenario_tools import _plan_step, _scenario_plan_payload
 
 PROJECT = Path(__file__).resolve().parents[2]
 
@@ -129,3 +129,19 @@ def test_plan_step_elides_inherited_default_timeout():
     )
 
     assert "timeoutSeconds" not in planned
+
+
+def test_scenario_plan_payload_includes_phase_counts(sync_add_cube_scenario_raw):
+    scenario = compile_scenario(sync_add_cube_scenario_raw)
+
+    planned = _scenario_plan_payload(scenario)
+
+    assert planned["total_steps"] == sum(planned["phase_counts"].values())
+    assert planned["phase_counts"] == {
+        "arrange": len(scenario.arrange_steps),
+        "act": len(scenario.act_steps),
+        "assert": len(scenario.assert_steps),
+        "cleanup": len(scenario.cleanup_steps),
+    }
+    assert len(planned["phases"]["arrange"]) == len(scenario.arrange_steps)
+    assert len(planned["phases"]["assert"]) == len(scenario.assert_steps)

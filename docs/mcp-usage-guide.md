@@ -38,6 +38,9 @@ Robot + RTX live proof wrapper:
 `scenario_last_report(report_format="markdown")` or
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
 `extension_capture_logs`.
+Before validation, check `scenario_plan.phase_counts` and `total_steps` so a
+missing setup, sensor, viewport, or cleanup phase is caught before live stage
+mutation.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 

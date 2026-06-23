@@ -30,6 +30,7 @@ from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
+from omniverse_kit_mcp.tools.scenario_tools import _scenario_plan_payload
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, ModuleResult
 from omniverse_kit_mcp.types.scenario import ScenarioRunSummary, StepResult
 
@@ -1058,6 +1059,14 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     assert raw_capture["args"]["min_mean"] == 8.0
     assert raw_capture["args"]["min_variance"] == 1.0
     scenario = compile_scenario(raw)
+    plan = _scenario_plan_payload(scenario)
+    assert plan["total_steps"] == 31
+    assert plan["phase_counts"] == {
+        "arrange": 11,
+        "act": 9,
+        "assert": 5,
+        "cleanup": 6,
+    }
 
     summary = await runner.run(scenario)
 
