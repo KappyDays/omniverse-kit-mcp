@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -1136,6 +1137,56 @@ async def test_official_asset_verify_asset_rejects_empty_content(
     assert result.data["verification_status"] == "failed"
     assert result.data["load_quality"] == "empty_content"
     assert result.data["error"] == "no authored child, default prim, or prim_count evidence"
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "asset_load_quality_failed"
+    assert diagnostics["target_status"] == "load_verified"
+    assert diagnostics["asset_checks"]["load_quality"] == "empty_content"
+    assert diagnostics["asset_checks"]["has_authored_children"] is False
+    assert any(
+        "load_quality" in item
+        for item in diagnostics["suggested_next"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_official_asset_verify_timeout_reports_diagnostics(
+    synthetic_official_catalog: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+    asset_id = (
+        "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com"
+        "/Assets/simready_content/props/aluminumpallet_a01/aluminumpallet_a01.usd"
+    )
+
+    async def slow_verify(
+        meta: OperationMeta,
+        entry: dict[str, object],
+        app_profile: str | None,
+    ) -> dict[str, object]:
+        await asyncio.sleep(0.05)
+        return {}
+
+    monkeypatch.setattr(module, "_verify_official_entry", slow_verify)
+
+    result = await module.official_verify(
+        _meta(),
+        asset_id=asset_id,
+        app_profile="isaac-sim",
+        timeout_s=0.001,
+    )
+
+    assert result.ok, result.message
+    assert result.data["verification_status"] == "failed"
+    assert result.data["error_type"] == "TimeoutError"
+    assert result.data["error"] == "TimeoutError"
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "verify_timeout"
+    assert diagnostics["error_type"] == "TimeoutError"
+    assert diagnostics["retry_count"] == 1
 
 
 @pytest.mark.asyncio
@@ -1194,6 +1245,14 @@ async def test_official_asset_verify_material_requires_created_test_prim(
     assert result.data["assign"]["ok"] is True
     assert result.data["bound"]["material_path"]
     assert result.data["error"] == "material assign or binding readback failed"
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "material_assign_or_binding_failed"
+    assert diagnostics["target_status"] == "assign_verified"
+    assert diagnostics["material_checks"] == {
+        "create_prim_ok": False,
+        "assign_ok": True,
+        "bound_ok": True,
+    }
 
 
 # ---------------------------------------------------------------------------

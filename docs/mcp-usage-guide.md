@@ -68,6 +68,9 @@ For `official_asset_sync_status` profile diagnostics, compare
 `diagnostics.catalog_status_counts` with
 `diagnostics.matching_status_counts` and use `diagnostics.sample_names` only as
 bounded retry hints.
+For `official_asset_verify` failed records, inspect `diagnostics.reason` plus
+`diagnostics.asset_checks` or `diagnostics.material_checks` before retrying or
+placing the asset in a user scene.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

@@ -614,12 +614,14 @@ class AssetModule:
                     if record.get("verification_status") != "failed":
                         break
                 except Exception as exc:  # noqa: BLE001 - preserve retry evidence
+                    error_message = str(exc) or type(exc).__name__
                     last_record = _official_verify_record(
                         entry,
                         app_profile,
                         status="failed",
-                        error=str(exc),
+                        error=error_message,
                     )
+                    last_record["error_type"] = type(exc).__name__
                     last_record["attempt"] = attempt
                     last_record["timeout_s"] = timeout
                     last_record["elapsed_ms"] = int(
@@ -629,6 +631,13 @@ class AssetModule:
                 entry, app_profile, status="failed", error="verification did not run"
             )
             record["retry_count"] = attempts - 1
+            if record.get("verification_status") == "failed":
+                record["diagnostics"] = _official_verify_diagnostics(
+                    catalog,
+                    entry,
+                    app_profile,
+                    record,
+                )
             _append_official_verify_record(self._official_catalog_dir, record)
             return ok_result(record, started_ms=started)
         except FileNotFoundError as exc:
@@ -1916,6 +1925,84 @@ def _official_verify_required(
     ):
         return True
     return False
+
+
+def _official_verify_diagnostics(
+    catalog: dict[str, Any],
+    entry: dict[str, Any],
+    app_profile: str | None,
+    record: dict[str, Any],
+) -> dict[str, Any]:
+    reason = _official_verify_failure_reason(entry, record)
+    target_status = (
+        "assign_verified" if entry.get("kind") == "material" else "load_verified"
+    )
+    diagnostics: dict[str, Any] = {
+        "reason": reason,
+        "target_status": target_status,
+        "current_catalog_status": _official_entry_status(entry, app_profile),
+        "stale_warning": _official_stale_warning(catalog, entry, app_profile),
+        "retry_count": record.get("retry_count", 0),
+        "suggested_next": _official_verify_suggested_next(reason),
+        "fallback_tool_order": _official_fallback_tool_order(),
+    }
+    if entry.get("kind") == "material":
+        diagnostics["material_checks"] = {
+            "create_prim_ok": bool((record.get("create_prim") or {}).get("ok", True)),
+            "assign_ok": bool((record.get("assign") or {}).get("ok", True)),
+            "bound_ok": bool(
+                (record.get("bound") or {}).get("ok", True)
+                and (record.get("bound") or {}).get("material_path")
+            ),
+        }
+    else:
+        diagnostics["asset_checks"] = {
+            "load_quality": record.get("load_quality"),
+            "load_quality_warning": record.get("load_quality_warning"),
+            "bbox_valid": record.get("bbox_valid"),
+            "bbox_validation_reasons": record.get("bbox_validation_reasons") or [],
+            "has_authored_children": record.get("has_authored_children"),
+            "has_default_prim": record.get("has_default_prim"),
+            "prim_count_valid": record.get("prim_count_valid"),
+        }
+    if record.get("error_type"):
+        diagnostics["error_type"] = record.get("error_type")
+    return diagnostics
+
+
+def _official_verify_failure_reason(
+    entry: dict[str, Any],
+    record: dict[str, Any],
+) -> str:
+    if record.get("error_type") == "TimeoutError":
+        return "verify_timeout"
+    if entry.get("kind") == "material":
+        return "material_assign_or_binding_failed"
+    if record.get("load_quality"):
+        return "asset_load_quality_failed"
+    return "verify_failed"
+
+
+def _official_verify_suggested_next(reason: str) -> list[str]:
+    suggestions = {
+        "verify_timeout": [
+            "Retry official_asset_verify with a larger timeout_s after confirming the Kit app is responsive.",
+            "If the retry also times out, restart the workspace-local Kit worker before using the asset.",
+        ],
+        "asset_load_quality_failed": [
+            "Inspect load_quality, load_quality_warning, and bbox_validation_reasons before stage placement.",
+            "Use content_inspect or regenerate the official catalog if the source URL or app version changed.",
+        ],
+        "material_assign_or_binding_failed": [
+            "Inspect create_prim, assign, and bound fields to locate the material binding failure.",
+            "Retry in the app_profile that provides the material before assigning it in a user scene.",
+        ],
+        "verify_failed": [
+            "Inspect error, stage_load or material assignment fields, then retry official_asset_verify once.",
+            "Use asset_search or a regenerated official catalog only after the verify failure is understood.",
+        ],
+    }
+    return suggestions.get(reason, suggestions["verify_failed"])
 
 
 def _official_stale_warning(
