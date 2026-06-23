@@ -63,9 +63,42 @@ passed
 
 ## Live Evidence
 
-No live Isaac Sim smoke was required for this batch. The change is limited to
-module result-shape diagnostics and scenario report promotion; it does not add
-new Kit commands or mutate a stage.
+Bounded Isaac Sim MCP smoke was run from the workspace-local
+`workspaces/isaac/instance-1` entry, not from the repo root. The scratch-stage
+sequence was:
+
+```text
+mcp_runtime_info
+kit_app_start
+simulation_get_status
+extension_clear_logs
+stage_new
+viewport_capture_assert(
+  width=320, height=180, warmup_frames=4,
+  min_mean=8.0, min_variance=1.0
+)
+extension_capture_logs(level=WARN, limit=200)
+```
+
+The scratch stage produced an intentionally blank frame:
+
+- `error_code`: `VIEWPORT_CAPTURE_ASSERT_FAILED`
+- `pixel_mean_average`: `0.0`
+- `pixel_variance_average`: `0.0`
+- `failure_codes`: `PIXEL_MEAN_BELOW_THRESHOLD`,
+  `PIXEL_VARIANCE_BELOW_THRESHOLD`
+- `diagnostics.reason`: `capture_blank_or_flat`
+- `diagnostics.fallback_tool_order`: `simulation_get_status`,
+  `viewport_frame_prims`, `viewport_capture_assert`, `extension_capture_logs`
+- capture size: `320x180`
+- capture hash:
+  `686b412ef127822d0f9d992a9c452cfb31b5a0cd2a39d706981c40e07ba0c5ac`
+
+Visual inspection of the PNG confirmed a black frame, matching the `0.0` mean
+and variance stats. `extension_capture_logs(level=WARN)` returned three WARN
+entries and no ERROR entries in the smoke transcript; the WARNs were associated
+with stage replacement/plugin-release noise after `stage_new`, not the capture
+diagnostic payload.
 
 ## Public Hygiene
 
