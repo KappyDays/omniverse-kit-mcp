@@ -25,13 +25,31 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
         "",
         "## Step Results",
         "",
-        "| Step | Phase | Status | Duration | Message |",
-        "|------|-------|--------|----------|---------|",
+        "| Step | Phase | Status | Attempts | Duration | Message |",
+        "|------|-------|--------|----------|----------|---------|",
     ]
     for sr in summary.step_results:
         dur = f"{sr.duration_ms}ms" if sr.duration_ms is not None else "-"
+        attempts = f"{sr.attempts}/{sr.max_attempts}"
         msg = sr.message or ""
-        lines.append(f"| {sr.step_id} | {sr.phase} | {sr.status.value} | {dur} | {msg} |")
+        lines.append(
+            f"| {sr.step_id} | {sr.phase} | {sr.status.value} | "
+            f"{attempts} | {dur} | {msg} |"
+        )
+
+    retry_rows = [
+        (sr.step_id, failure)
+        for sr in summary.step_results
+        for failure in sr.retry_failures
+    ]
+    if retry_rows:
+        lines.extend(["", "## Retry Failures", ""])
+        for step_id, failure in retry_rows:
+            lines.append(
+                f"- `{step_id}` attempt {failure.get('attempt')}: "
+                f"{failure.get('status')} {failure.get('error_code')} - "
+                f"{failure.get('message') or ''}"
+            )
 
     if summary.artifact_paths:
         lines.extend(["", "## Artifacts", ""])

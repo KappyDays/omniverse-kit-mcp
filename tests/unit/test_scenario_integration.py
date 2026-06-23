@@ -7,6 +7,7 @@ Guards against regressions of the Phase-A fixes (B1/B2/B3) and the
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -27,7 +28,7 @@ from omniverse_kit_mcp.scenario.action_registry import (
 )
 from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import load_scenario
-from omniverse_kit_mcp.scenario.reporters import to_json
+from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName
 
@@ -604,7 +605,35 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     assert len(lidar_calls) == 2
     step_result = next(r for r in summary.step_results if r.step_id == "read_lidar")
     assert step_result.status == ExecutionStatus.PASSED
+    assert step_result.attempts == 2
+    assert step_result.max_attempts == 2
+    assert len(step_result.retry_failures) == 1
+    retry_failure = step_result.retry_failures[0]
+    assert retry_failure["attempt"] == 1
+    assert retry_failure["status"] == "failed"
+    assert retry_failure["error_code"] == "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    assert "warning=polar arrays contained 0 elements" in str(
+        retry_failure["message"]
+    )
     assert step_result.data_summary["num_points"] == 2
+    report = json.loads(to_json(summary))
+    lidar_report = next(
+        result for result in report["step_results"]
+        if result["step_id"] == "read_lidar"
+    )
+    assert lidar_report["attempts"] == 2
+    assert lidar_report["max_attempts"] == 2
+    assert lidar_report["retry_failures"][0]["error_code"] == (
+        "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    )
+    markdown = to_markdown(summary)
+    assert "| Step | Phase | Status | Attempts | Duration | Message |" in markdown
+    assert "| read_lidar | assert | passed | 2/2 |" in markdown
+    assert "## Retry Failures" in markdown
+    assert (
+        "- `read_lidar` attempt 1: failed "
+        "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS -"
+    ) in markdown
 
 
 @pytest.mark.asyncio
@@ -642,7 +671,154 @@ async def test_scenario_runner_rejects_retries_without_idempotent_flag():
     assert create_calls == []
     step_result = next(r for r in summary.step_results if r.step_id == "unsafe_retry")
     assert step_result.status == ExecutionStatus.ERROR
+    assert step_result.attempts == 0
+    assert step_result.max_attempts == 2
+    assert step_result.retry_failures == ()
     assert "idempotent=true" in (step_result.message or "")
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_reports_skipped_retry_steps_as_unattempted():
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_skipped_retry", "name": "skipped retry"},
+        "spec": {
+            "arrange": [
+                {
+                    "id": "unsafe_retry",
+                    "module": "simulation",
+                    "action": "stage_create_prim",
+                    "retries": {
+                        "maxAttempts": 2,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"prim_path": "/World/Unsafe", "prim_type": "Cube"},
+                }
+            ],
+            "assert": [
+                {
+                    "id": "skipped_lidar",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "retries": {
+                        "maxAttempts": 3,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"sensor_prim": "/World/Missing/Lidar"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    skipped = next(r for r in summary.step_results if r.step_id == "skipped_lidar")
+    assert skipped.status == ExecutionStatus.SKIPPED
+    assert skipped.attempts == 0
+    assert skipped.max_attempts == 3
+    assert skipped.retry_failures == ()
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_reports_retry_context_on_hard_timeout(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+
+    async def raise_timeout(_step, _ctx, _scenario_id, _timeout):
+        raise asyncio.TimeoutError()
+
+    monkeypatch.setattr(runner, "_execute_step_with_retries", raise_timeout)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_retry_timeout", "name": "retry timeout"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "timeout_lidar",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "timeoutSeconds": 7,
+                    "retries": {
+                        "maxAttempts": 3,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"sensor_prim": "/World/Timeout/Lidar"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    result = next(r for r in summary.step_results if r.step_id == "timeout_lidar")
+    assert result.status == ExecutionStatus.TIMEOUT
+    assert result.attempts == 1
+    assert result.max_attempts == 3
+    assert result.retry_failures == ({
+        "attempt": 1,
+        "status": "timeout",
+        "error_code": None,
+        "message": "Step timed out after 7s",
+    },)
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_bounds_hard_error_retry_messages(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+
+    async def raise_long_error(_step, _ctx, _scenario_id, _timeout):
+        raise RuntimeError("x" * 400)
+
+    monkeypatch.setattr(runner, "_execute_step_with_retries", raise_long_error)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_retry_error", "name": "retry error"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "error_lidar",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "retries": {
+                        "maxAttempts": 3,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"sensor_prim": "/World/Error/Lidar"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    result = next(r for r in summary.step_results if r.step_id == "error_lidar")
+    assert result.status == ExecutionStatus.ERROR
+    assert result.attempts == 1
+    assert result.max_attempts == 3
+    assert len(result.retry_failures) == 1
+    message = str(result.retry_failures[0]["message"])
+    assert len(message) == 243
+    assert message.endswith("...")
 
 
 @pytest.mark.asyncio

@@ -56,6 +56,9 @@ class StepResult:
     duration_ms: int | None = None
     artifacts: dict[str, str] = field(default_factory=dict)
     data_summary: dict[str, JsonValue] = field(default_factory=dict)
+    attempts: int = 1
+    max_attempts: int = 1
+    retry_failures: tuple[dict[str, JsonValue], ...] = field(default_factory=tuple)
 
 
 @dataclass(slots=True, frozen=True)

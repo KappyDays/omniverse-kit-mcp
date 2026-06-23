@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from enum import Enum
 from typing import Any
 
@@ -46,6 +46,15 @@ from omniverse_kit_mcp.types.scenario import (
 )
 
 logger = logging.getLogger(__name__)
+_RETRY_FAILURE_MESSAGE_LIMIT = 240
+
+
+@dataclass(slots=True, frozen=True)
+class _StepExecution:
+    module_result: ModuleResult[Any]
+    attempts: int
+    max_attempts: int
+    retry_failures: tuple[dict[str, JsonValue], ...] = ()
 
 
 class ScenarioRunner:
@@ -175,9 +184,10 @@ class ScenarioRunner:
             step_started = int(time.time() * 1000)
             try:
                 timeout = step.timeout_s or 60.0
-                module_result = await self._execute_step_with_retries(
+                execution = await self._execute_step_with_retries(
                     step, ctx, scenario_id, timeout
                 )
+                module_result = execution.module_result
                 status = module_result.status if module_result else ExecutionStatus.ERROR
                 if module_result and module_result.artifacts:
                     for k, v in module_result.artifacts.items():
@@ -197,6 +207,9 @@ class ScenarioRunner:
                         if module_result and module_result.data is not None
                         else {}
                     ),
+                    attempts=execution.attempts,
+                    max_attempts=execution.max_attempts,
+                    retry_failures=execution.retry_failures,
                 ))
                 if status != ExecutionStatus.PASSED and fail_fast and not step.continue_on_failure:
                     break
@@ -205,8 +218,17 @@ class ScenarioRunner:
                     step_id=step.id,
                     phase=step.phase,
                     status=ExecutionStatus.TIMEOUT,
-                    message=f"Step timed out after {step.timeout_s}s",
+                    message=f"Step timed out after {timeout}s",
                     duration_ms=int(time.time() * 1000) - step_started,
+                    attempts=1,
+                    max_attempts=_step_max_attempts(step),
+                    retry_failures=_hard_failure_retry_summary(
+                        1,
+                        ExecutionStatus.TIMEOUT,
+                        None,
+                        f"Step timed out after {timeout}s",
+                        step,
+                    ),
                 ))
                 if fail_fast and not step.continue_on_failure:
                     break
@@ -217,6 +239,15 @@ class ScenarioRunner:
                     status=ExecutionStatus.ERROR,
                     message=str(exc),
                     duration_ms=int(time.time() * 1000) - step_started,
+                    attempts=1,
+                    max_attempts=_step_max_attempts(step),
+                    retry_failures=_hard_failure_retry_summary(
+                        1,
+                        ExecutionStatus.ERROR,
+                        None,
+                        str(exc),
+                        step,
+                    ),
                 ))
                 if fail_fast and not step.continue_on_failure:
                     break
@@ -228,21 +259,27 @@ class ScenarioRunner:
         ctx: ScenarioContext,
         scenario_id: str,
         timeout: float,
-    ) -> ModuleResult[Any]:
+    ) -> _StepExecution:
         policy = step.retry_policy
         if policy is not None and policy.max_attempts > 1 and not step.idempotent:
-            return error_result(
-                (
-                    f"Step '{step.id}' declares retries but is not marked "
-                    "idempotent=true"
+            return _StepExecution(
+                module_result=error_result(
+                    (
+                        f"Step '{step.id}' declares retries but is not marked "
+                        "idempotent=true"
+                    ),
+                    started_ms=int(time.time() * 1000),
+                    error_code="SCENARIO_RETRY_REQUIRES_IDEMPOTENT_STEP",
                 ),
-                started_ms=int(time.time() * 1000),
-                error_code="SCENARIO_RETRY_REQUIRES_IDEMPOTENT_STEP",
+                attempts=0,
+                max_attempts=policy.max_attempts,
             )
 
         max_attempts = max(1, policy.max_attempts if policy is not None else 1)
         backoff_s = policy.initial_backoff_s if policy is not None else 0.0
         max_backoff_s = policy.max_backoff_s if policy is not None else 0.0
+        record_retry_failures = max_attempts > 1
+        retry_failures: list[dict[str, JsonValue]] = []
 
         for attempt in range(1, max_attempts + 1):
             module_result = await asyncio.wait_for(
@@ -251,7 +288,16 @@ class ScenarioRunner:
             )
             status = module_result.status if module_result else ExecutionStatus.ERROR
             if status == ExecutionStatus.PASSED or attempt == max_attempts:
-                return module_result
+                if status != ExecutionStatus.PASSED and record_retry_failures:
+                    retry_failures.append(_retry_failure_summary(attempt, module_result))
+                return _StepExecution(
+                    module_result=module_result,
+                    attempts=attempt,
+                    max_attempts=max_attempts,
+                    retry_failures=tuple(retry_failures),
+                )
+            if record_retry_failures:
+                retry_failures.append(_retry_failure_summary(attempt, module_result))
             if backoff_s > 0:
                 await asyncio.sleep(backoff_s)
                 backoff_s = min(max_backoff_s, backoff_s * policy.multiplier)
@@ -496,6 +542,46 @@ class ScenarioRunner:
         )
 
 
+def _retry_failure_summary(
+    attempt: int,
+    result: ModuleResult[Any],
+) -> dict[str, JsonValue]:
+    return {
+        "attempt": attempt,
+        "status": result.status.value,
+        "error_code": result.error_code,
+        "message": _truncate_retry_message(result.message),
+    }
+
+
+def _hard_failure_retry_summary(
+    attempt: int,
+    status: ExecutionStatus,
+    error_code: str | None,
+    message: str | None,
+    step: CompiledStep,
+) -> tuple[dict[str, JsonValue], ...]:
+    if _step_max_attempts(step) <= 1:
+        return ()
+    return ({
+        "attempt": attempt,
+        "status": status.value,
+        "error_code": error_code,
+        "message": _truncate_retry_message(message),
+    },)
+
+
+def _step_max_attempts(step: CompiledStep) -> int:
+    policy = step.retry_policy
+    return max(1, policy.max_attempts if policy is not None else 1)
+
+
+def _truncate_retry_message(message: str | None) -> str | None:
+    if message is None or len(message) <= _RETRY_FAILURE_MESSAGE_LIMIT:
+        return message
+    return f"{message[:_RETRY_FAILURE_MESSAGE_LIMIT]}..."
+
+
 def _phase_has_fatal_failure(
     results: list[StepResult],
     steps: tuple[CompiledStep, ...],
@@ -526,6 +612,8 @@ def _skip_steps(*step_groups: tuple[CompiledStep, ...]) -> list[StepResult]:
                 phase=step.phase,
                 status=ExecutionStatus.SKIPPED,
                 message="Skipped due to prior phase failure",
+                attempts=0,
+                max_attempts=_step_max_attempts(step),
             ))
     return results
 

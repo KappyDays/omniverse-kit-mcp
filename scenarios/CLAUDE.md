@@ -132,10 +132,9 @@ scenario_plan(scenario_path="smoke/state_check_property.yaml")   # plan preview
 Read resource isaacsim://scenarios                               # available scenario list
 scenario_last_report()                                           # last execution report
 ```
-`scenario_last_report` includes per-step `data_summary` for bounded telemetry
-such as lidar `num_points`, `backend`, `frames_waited`, `raw_keys`, and
-`warning`; use it before opening logs when a scenario step passed but needs
-diagnostics.
+`scenario_last_report` includes per-step `attempts`, `max_attempts`,
+`retry_failures`, and `data_summary` telemetry such as lidar `num_points`,
+`backend`, `frames_waited`, `raw_keys`, and `warning`; use it before logs.
 
 ## Procedure for creating a new scenario
 

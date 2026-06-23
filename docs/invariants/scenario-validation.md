@@ -75,8 +75,9 @@ Attach RTX lidar after the timeline is already playing; live Isaac Sim 6.0
 evidence showed cold-attached lidar can stay on an empty GMO/scan buffer while a
 fresh lidar attached during play returns points in the same stage.
 Transient zero-point RTX buffers should be absorbed with step-level retries only
-on idempotent sensor reads; inspect `scenario_last_report.data_summary` before
-opening logs.
+on idempotent sensor reads; inspect `scenario_last_report` fields
+`attempts`, `max_attempts`, `retry_failures`, and `data_summary` before opening
+logs.
 
 ## R3. Viewport capture visual verification obligation
 
