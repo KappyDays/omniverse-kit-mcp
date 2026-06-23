@@ -73,7 +73,9 @@ intended failure or success proof. `automatic: true` cleanup steps are
 runner-added safeguards, not YAML.
 `scenario_validate(..., dry_run=true)` returns the same plan fields plus
 `dry_run`, `steps`, and `compiled`, so it is safe as a one-call preflight when
-you are already on the validation tool path.
+you are already on the validation tool path. Inspect `diagnostic_steps` for
+read-only official asset catalog/status/search/get probes, `evidence_steps` for
+proof rows, and `retry_steps` for retry gates.
 After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
 inspect the same plan shape before restarting a cached MCP host.
@@ -132,8 +134,9 @@ Official asset scenario proof wrapper:
 `extension_capture_logs(level="WARN")` and
 `extension_capture_logs(level="ERROR")`.
 Before live execution, confirm `scenario_plan.evidence_steps` includes
-`evidence_kind=official_asset_verify` for the verify step. After validation,
-compare JSON `evidence_summary[]` with that plan row and check
+`evidence_kind=official_asset_verify` for the verify step and
+`scenario_plan.diagnostic_steps` includes the preceding sync/search/get probes.
+After validation, compare JSON `evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
 `diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or
 exception failures, also check `diagnostics.error_type` before deciding whether

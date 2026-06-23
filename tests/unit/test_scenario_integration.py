@@ -3225,8 +3225,39 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     raw = load_scenario(
         PROJECT / "scenarios" / "smoke" / "official_asset_catalog_diagnostics.yaml"
     )
+    scenario = compile_scenario(raw)
+    plan = _scenario_plan_payload(scenario)
+    diagnostic_steps = {step["id"]: step for step in plan["diagnostic_steps"]}
+    assert list(diagnostic_steps) == [
+        "check_isaac_catalog",
+        "search_known_miss",
+        "search_pallet_asset",
+        "get_pallet_wrong_profile",
+    ]
+    assert diagnostic_steps["check_isaac_catalog"] == {
+        "id": "check_isaac_catalog",
+        "phase": "assert",
+        "module": "asset",
+        "action": "official_sync_status",
+        "diagnostic_kind": "official_asset_sync_status",
+        "key_args": {"app_profile": "isaac-sim"},
+    }
+    assert diagnostic_steps["search_known_miss"]["diagnostic_kind"] == (
+        "official_asset_search"
+    )
+    assert diagnostic_steps["search_known_miss"]["key_args"] == {
+        "query": "definitely-not-a-real-official-asset-name-zzzz",
+        "kind": "asset",
+        "app_profile": "isaac-sim",
+        "min_status": "discovered",
+        "limit": 5,
+    }
+    assert diagnostic_steps["get_pallet_wrong_profile"]["diagnostic_kind"] == (
+        "official_asset_get"
+    )
+    assert diagnostic_steps["get_pallet_wrong_profile"]["continueOnFailure"] is True
 
-    summary = await runner.run(compile_scenario(raw))
+    summary = await runner.run(scenario)
 
     assert summary.status == ExecutionStatus.PASSED, summary
     assert summary.failed_steps == 1

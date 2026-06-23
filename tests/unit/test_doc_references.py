@@ -255,6 +255,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
+    assert "diagnostic_steps" in guide
+    assert "diagnostic_steps" in invariant
     assert "`scenario_validate(..., dry_run=true)`" in invariant
     assert "`failure_summary`" in invariant
     assert "failure_summary[].last_retry_failure" in invariant
@@ -312,6 +314,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "Official asset scenario proof wrapper is out of order in mcp-usage-guide.md"
     )
     assert "scenario_plan.evidence_steps" in wrapper
+    assert "scenario_plan.diagnostic_steps" in wrapper
     assert "evidence_kind=official_asset_verify" in wrapper
     assert "evidence_summary[]" in wrapper
     assert "verification_status" in wrapper
@@ -340,6 +343,7 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     assert "Markdown `Failure Summary`" in guide
     assert "redact_local_paths=true" in guide
     assert "scenario_plan` exposes `total_steps`" in guide
+    assert "`diagnostic_steps`" in guide
     assert "`retry_steps` with key args for retried evidence steps" in guide
     assert "`scenario_validate(..., dry_run=true)` returns the same plan fields" in guide
     assert "scripts/run_scenario_standalone.py --dry-run" in guide

@@ -80,6 +80,24 @@ _EVIDENCE_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
         ("window_title", "wait_stable", "timeout_s"),
     ),
 }
+_DIAGNOSTIC_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
+    ("asset", "official_sync_status"): (
+        "official_asset_sync_status",
+        ("app_profile",),
+    ),
+    ("asset", "official_search"): (
+        "official_asset_search",
+        ("query", "kind", "app_profile", "provider", "min_status", "allow_stale", "limit"),
+    ),
+    ("asset", "official_resolve"): (
+        "official_asset_resolve",
+        ("name_or_id", "kind", "app_profile", "provider", "min_status"),
+    ),
+    ("asset", "official_get"): (
+        "official_asset_get",
+        ("asset_id", "app_profile"),
+    ),
+}
 
 
 def _resolve_safe_path(user_path: str, scenarios_root: str) -> str:
@@ -302,6 +320,7 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         "variables": scenario.variables,
         "total_steps": sum(phase_counts.values()),
         "phase_counts": phase_counts,
+        "diagnostic_steps": _plan_diagnostic_steps(phases),
         "evidence_steps": _plan_evidence_steps(phases),
         "retry_steps": _plan_retry_steps(phases),
         "phases": phases,
@@ -367,6 +386,31 @@ def _plan_evidence_steps(
             _copy_plan_control_fields(step, planned)
             evidence_steps.append(planned)
     return evidence_steps
+
+
+def _plan_diagnostic_steps(
+    phases: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    diagnostic_steps: list[dict[str, Any]] = []
+    for phase, steps in phases.items():
+        for step in steps:
+            spec = _DIAGNOSTIC_STEP_SPECS.get((step["module"], step["action"]))
+            if spec is None:
+                continue
+            diagnostic_kind, arg_keys = spec
+            planned: dict[str, Any] = {
+                "id": step["id"],
+                "phase": phase,
+                "module": step["module"],
+                "action": step["action"],
+                "diagnostic_kind": diagnostic_kind,
+            }
+            key_args = _selected_plan_args(step.get("args"), arg_keys)
+            if key_args:
+                planned["key_args"] = key_args
+            _copy_plan_control_fields(step, planned)
+            diagnostic_steps.append(planned)
+    return diagnostic_steps
 
 
 def _plan_retry_steps(
