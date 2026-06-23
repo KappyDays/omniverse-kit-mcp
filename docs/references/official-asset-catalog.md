@@ -168,7 +168,10 @@ assignment.
 Carry the same `app_profile` through `official_asset_search`,
 `official_asset_resolve`, `official_asset_get`, and `official_asset_verify` when
 the workflow starts from a profile-specific latest pointer such as
-`latest-isaac-sim.json`.
+`latest-isaac-sim.json`. Exact id/URL lookups are still profile-scoped when an
+`app_profile` is supplied; a hit from a different app profile must be treated as
+not found and recovered through the reported diagnostics rather than verified or
+used directly.
 
 When `official_asset_search` returns zero candidates, or when
 `official_asset_resolve`, `official_asset_get`, or `official_asset_verify`

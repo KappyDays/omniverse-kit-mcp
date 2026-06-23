@@ -675,6 +675,43 @@ async def test_official_asset_get_uses_profile_latest_pointer(tmp_path: Path):
 
 
 @pytest.mark.asyncio
+async def test_official_asset_exact_lookup_respects_requested_app_profile(
+    tmp_path: Path,
+):
+    catalog_item = _minimal_official_item("composer_only_asset", "usd-composer")
+    asset_id = str(catalog_item["id"])
+    catalog = _catalog_with_items(
+        run_id="composer-run",
+        app_profile="usd-composer",
+        generated_at="2099-01-01T00:00:00Z",
+        items=[catalog_item],
+    )
+    tmp_path.joinpath("latest.json").write_text(json.dumps(catalog), encoding="utf-8")
+    module = AssetModule(_ExplodingClient(), official_catalog_dir=tmp_path)
+
+    get_result = await module.official_get(
+        _meta(), asset_id=asset_id, app_profile="isaac-sim"
+    )
+    resolve_result = await module.official_resolve(
+        _meta(), name_or_id=asset_id, app_profile="isaac-sim"
+    )
+    verify_result = await module.official_verify(
+        _meta(), asset_id=asset_id, app_profile="isaac-sim", timeout_s=1.0
+    )
+
+    for result in (get_result, resolve_result, verify_result):
+        assert not result.ok
+        assert result.error_code == "OFFICIAL_ASSET_NOT_FOUND"
+        diagnostics = result.data["diagnostics"]
+        assert diagnostics["reason"] == "app_profile_not_covered"
+        assert diagnostics["candidate_counts"]["total_entries"] == 1
+        assert diagnostics["candidate_counts"]["after_app_profile"] == 0
+        assert diagnostics["filters"]["app_profile"] == "isaac-sim"
+
+    assert not tmp_path.joinpath("verification-on-demand.jsonl").exists()
+
+
+@pytest.mark.asyncio
 async def test_official_asset_search_reloads_when_profile_latest_changes(tmp_path: Path):
     path = tmp_path / "latest-isaac-sim.json"
     path.write_text(

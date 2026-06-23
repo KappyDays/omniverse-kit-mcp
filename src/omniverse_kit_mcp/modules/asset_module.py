@@ -1773,6 +1773,8 @@ def _find_official_entry(
         e for e in _official_entries(catalog)
         if not kind or str(e.get("kind", "")).lower() == kind.lower()
     ]
+    if app_profile:
+        entries = [e for e in entries if _official_entry_has_app(e, app_profile)]
     exact = [
         e for e in entries
         if needle in {str(e.get("id")), str(e.get("canonical_url"))}
@@ -1791,8 +1793,6 @@ def _find_official_entry(
         ]
         scored.sort(key=lambda item: (-item[0], str(item[1].get("name", "")).lower()))
         exact = [item[1] for item in scored[:5]]
-    if app_profile:
-        exact = [e for e in exact if _official_entry_has_app(e, app_profile)] or exact
     if prefer_loadable and app_profile:
         loadable = [
             e for e in exact
