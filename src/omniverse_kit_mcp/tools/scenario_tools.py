@@ -147,10 +147,13 @@ def register_scenario_tools(
         scenario = compile_scenario(raw)
 
         if dry_run:
+            plan = _scenario_plan_payload(scenario)
             return json.dumps({
                 "dry_run": True,
                 "scenario_id": scenario.scenario_id,
-                "steps": len(scenario.arrange_steps) + len(scenario.act_steps) + len(scenario.assert_steps),
+                "steps": plan["total_steps"],
+                "total_steps": plan["total_steps"],
+                "phase_counts": plan["phase_counts"],
                 "variables": scenario.variables,
                 "compiled": True,
             }, indent=2)

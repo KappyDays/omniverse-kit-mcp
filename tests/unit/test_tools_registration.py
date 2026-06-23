@@ -454,6 +454,29 @@ spec:
 
 
 @pytest.mark.asyncio
+async def test_scenario_validate_dry_run_uses_plan_step_counts(tmp_path):
+    config = AppConfig(
+        scenario=ScenarioConfig(SCENARIOS_DIR=str(tmp_path / "scenarios")),
+    )
+    _write_minimal_scenario(config)
+    mcp = create_mcp_server(config)
+    tool = mcp._tool_manager._tools["scenario_validate"]
+
+    payload = json.loads(await tool.fn("smoke/minimal.yaml", dry_run=True))
+
+    assert payload["dry_run"] is True
+    assert payload["scenario_id"] == "minimal_markdown_report"
+    assert payload["compiled"] is True
+    assert payload["steps"] == payload["total_steps"] == 2
+    assert payload["phase_counts"] == {
+        "arrange": 0,
+        "act": 0,
+        "assert": 1,
+        "cleanup": 1,
+    }
+
+
+@pytest.mark.asyncio
 async def test_scenario_last_report_defaults_to_latest(mcp_server, monkeypatch):
     latest = json.dumps({"scenario_id": "latest_scenario"})
     older = json.dumps({"scenario_id": "older_scenario"})
