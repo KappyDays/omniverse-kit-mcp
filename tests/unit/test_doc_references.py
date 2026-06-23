@@ -250,6 +250,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     )
     assert "extension_clear_logs" in invariant
     assert "extension_capture_logs" in invariant
+    assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
+    assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "scenario_last_report(report_format=\"markdown\")" in invariant
     assert "scenario_last_report(markdown)" not in invariant
 
