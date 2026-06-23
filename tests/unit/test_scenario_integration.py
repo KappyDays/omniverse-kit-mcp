@@ -285,7 +285,11 @@ def test_reporters_can_redact_host_local_artifact_paths():
                 step_id="capture_visible_result",
                 phase="assert",
                 status=ExecutionStatus.PASSED,
-                message=f"capture saved at {capture_path}; pid=<process-id>",
+                message=(
+                    f"capture saved at {capture_path}; pid=<process-id>; "
+                    "thread_id=thread-example-7f3a; "
+                    "pending_worktree_id=pw_message"
+                ),
                 artifacts={"image": capture_path},
                 data_summary={
                     "artifact": {
@@ -299,6 +303,10 @@ def test_reporters_can_redact_host_local_artifact_paths():
                     "process_id": "<process-id>",
                     "child_pids": [42125, 42126],
                     "nested": {"kit_pid": 42127},
+                    "thread_id": "thread-example-7f3a",
+                    "worker_id": "worker-example",
+                    "pendingWorktreeId": "pw_12345",
+                    "nested_ids": {"worker_thread_id": "worker-thread-123"},
                     "passed": True,
                 },
             ),
@@ -319,8 +327,16 @@ def test_reporters_can_redact_host_local_artifact_paths():
     assert "42125" not in serialized
     assert "42126" not in serialized
     assert "42127" not in serialized
+    assert "thread-example-7f3a" not in serialized
+    assert "worker-example" not in serialized
+    assert "pw_12345" not in serialized
+    assert "pw_message" not in serialized
+    assert "worker-thread-123" not in serialized
     assert '"pid": "<process-id>"' in serialized
     assert '"process_id": "<process-id>"' in serialized
+    assert '"thread_id": "<worker-thread-id>"' in serialized
+    assert '"worker_id": "<worker-thread-id>"' in serialized
+    assert '"pendingWorktreeId": "<worker-thread-id>"' in serialized
     assert "<validation-api-capture>/capture_abcd1234.png" in markdown
     assert "<local-kit-log>/kit_123.log" in markdown
     assert "<local-user-path>" in markdown
@@ -330,7 +346,14 @@ def test_reporters_can_redact_host_local_artifact_paths():
     assert "42125" not in markdown
     assert "42126" not in markdown
     assert "42127" not in markdown
+    assert "thread-example-7f3a" not in markdown
+    assert "worker-example" not in markdown
+    assert "pw_12345" not in markdown
+    assert "pw_message" not in markdown
+    assert "worker-thread-123" not in markdown
     assert "pid=<process-id>" in markdown
+    assert "thread_id=<worker-thread-id>" in markdown
+    assert "pending_worktree_id=<worker-thread-id>" in markdown
 
 
 def test_markdown_highlights_nested_diagnostic_reason_and_fallback():

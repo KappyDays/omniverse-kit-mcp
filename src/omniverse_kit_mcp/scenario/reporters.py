@@ -78,6 +78,13 @@ _PROCESS_ID_TEXT_RE = re.compile(
     r"\b(?P<label>pid|process[_ -]?id)\s*(?P<sep>[:=])\s*\d+\b",
     re.IGNORECASE,
 )
+_WORKER_THREAD_ID_TEXT_RE = re.compile(
+    r"\b(?P<label>"
+    r"thread[_ -]?id|worker[_ -]?id|pendingWorktreeId|pending[_ -]?worktree[_ -]?id"
+    r")"
+    r"\s*(?P<sep>[:=])\s*[A-Za-z0-9._:-]+\b",
+    re.IGNORECASE,
+)
 
 
 def to_json(
@@ -260,20 +267,45 @@ def _redact_local_paths(value: Any) -> Any:
         redacted: dict[str, Any] = {}
         for key, item in value.items():
             key_text = str(key)
-            redacted[key_text] = (
-                _redact_process_id_value(item)
-                if _is_process_id_key(key_text)
-                else _redact_local_paths(item)
-            )
+            if _is_process_id_key(key_text):
+                redacted[key_text] = _redact_process_id_value(item)
+            elif _is_worker_thread_id_key(key_text):
+                redacted[key_text] = _redact_worker_thread_id_value(item)
+            else:
+                redacted[key_text] = _redact_local_paths(item)
         return redacted
     return value
 
 
+def _normalized_identifier_key(key: str) -> str:
+    camel_split = re.sub(r"(?<!^)(?=[A-Z])", "_", key.strip())
+    return camel_split.lower().replace("-", "_")
+
+
 def _is_process_id_key(key: str) -> bool:
-    normalized = key.strip().lower().replace("-", "_")
+    normalized = _normalized_identifier_key(key)
     return normalized in {"pid", "process_id"} or normalized.endswith((
         "_pid",
         "_pids",
+    ))
+
+
+def _is_worker_thread_id_key(key: str) -> bool:
+    normalized = _normalized_identifier_key(key)
+    return normalized in {
+        "thread_id",
+        "thread_ids",
+        "worker_id",
+        "worker_ids",
+        "worker_thread_id",
+        "worker_thread_ids",
+        "pending_worktree_id",
+        "pending_worktree_ids",
+    } or normalized.endswith((
+        "_thread_id",
+        "_thread_ids",
+        "_worker_id",
+        "_worker_ids",
     ))
 
 
@@ -289,6 +321,21 @@ def _redact_process_id_value(value: Any) -> Any:
     return "<process-id>"
 
 
+def _redact_worker_thread_id_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return [_redact_worker_thread_id_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [_redact_worker_thread_id_value(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key): _redact_worker_thread_id_value(item)
+            for key, item in value.items()
+        }
+    return "<worker-thread-id>"
+
+
 def _redact_local_path_string(value: str) -> str:
     redacted = _VALIDATION_CAPTURE_RE.sub(
         r"<validation-api-capture>/\1", value
@@ -299,8 +346,11 @@ def _redact_local_path_string(value: str) -> str:
     redacted = _SANITIZED_WINDOWS_USER_PATH_RE.sub(
         "<local-user-path>", redacted
     )
-    return _PROCESS_ID_TEXT_RE.sub(
+    redacted = _PROCESS_ID_TEXT_RE.sub(
         r"\g<label>\g<sep><process-id>", redacted
+    )
+    return _WORKER_THREAD_ID_TEXT_RE.sub(
+        r"\g<label>\g<sep><worker-thread-id>", redacted
     )
 
 
