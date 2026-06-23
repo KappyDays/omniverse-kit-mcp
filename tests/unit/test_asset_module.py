@@ -959,6 +959,17 @@ async def test_official_asset_sync_status_missing_profile_reports_diagnostics(
         "omni.simready.explorer",
         "omni.kit.browser.material",
     ]
+    assert diagnostics["available_kinds"] == ["asset", "material"]
+    assert diagnostics["catalog_status_counts"] == {
+        "assign_verified": 1,
+        "url_validated": 2,
+    }
+    assert diagnostics["matching_status_counts"] == {}
+    assert diagnostics["sample_names"] == [
+        "aluminumpallet_a01.usd",
+        "aluminumpallet_a02.usd",
+        "Brushed_Aluminum.mdl",
+    ]
     assert any(
         "without app_profile" in item
         for item in diagnostics["suggested_next"]

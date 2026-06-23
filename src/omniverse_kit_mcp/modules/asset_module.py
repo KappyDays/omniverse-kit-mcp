@@ -539,6 +539,7 @@ class AssetModule:
                 catalog,
                 app_profile=app_profile,
                 profiles=profiles,
+                all_entries=entries,
                 filtered_entries=filtered_entries,
             )
             if diagnostics:
@@ -1233,6 +1234,7 @@ def _official_sync_status_diagnostics(
     *,
     app_profile: str | None,
     profiles: list[dict[str, Any]],
+    all_entries: list[dict[str, Any]],
     filtered_entries: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
     if not app_profile:
@@ -1250,6 +1252,15 @@ def _official_sync_status_diagnostics(
         "available_providers": _official_catalog_provider_names(catalog),
         "profile_count": len(profiles),
         "matching_item_count": len(filtered_entries),
+        "available_kinds": _official_available_kinds(all_entries),
+        "catalog_status_counts": _official_status_counts(all_entries, None),
+        "matching_status_counts": _official_status_counts(
+            filtered_entries, app_profile
+        ),
+        "sample_names": _official_sample_names(
+            filtered_entries or all_entries,
+            limit=5,
+        ),
         "suggested_next": _official_suggested_next(reason),
         "fallback_tool_order": _official_fallback_tool_order(),
     }

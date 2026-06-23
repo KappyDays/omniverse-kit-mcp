@@ -64,6 +64,10 @@ For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.sample_names`, `diagnostics.suggested_next`, and
 `diagnostics.fallback_tool_order` before changing `kind` / `app_profile` /
 `provider` / `min_status` or falling back to `asset_search`.
+For `official_asset_sync_status` profile diagnostics, compare
+`diagnostics.catalog_status_counts` with
+`diagnostics.matching_status_counts` and use `diagnostics.sample_names` only as
+bounded retry hints.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
