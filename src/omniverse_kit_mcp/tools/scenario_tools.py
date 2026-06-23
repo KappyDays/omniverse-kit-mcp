@@ -172,14 +172,11 @@ def register_scenario_tools(
         if dry_run:
             plan = _scenario_plan_payload(scenario)
             return json.dumps({
+                **plan,
                 "dry_run": True,
-                "scenario_id": scenario.scenario_id,
                 "steps": plan["total_steps"],
-                "total_steps": plan["total_steps"],
-                "phase_counts": plan["phase_counts"],
-                "variables": scenario.variables,
                 "compiled": True,
-            }, indent=2)
+            }, indent=2, ensure_ascii=False)
 
         summary = await runner.run(
             scenario,

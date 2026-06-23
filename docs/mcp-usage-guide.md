@@ -71,6 +71,9 @@ before live stage mutation. For retried evidence steps, inspect
 `min_points`, `max_points`, `frames_to_wait`, and `fail_on_warning` match the
 intended failure or success proof. `automatic: true` cleanup steps are
 runner-added safeguards, not YAML.
+`scenario_validate(..., dry_run=true)` returns the same plan fields plus
+`dry_run`, `steps`, and `compiled`, so it is safe as a one-call preflight when
+you are already on the validation tool path.
 When using `input_overrides`, pass the same override dict to `scenario_plan` and
 `scenario_validate` so the plan preview reflects the exact variable-substituted
 prim paths and asset URLs that will run.

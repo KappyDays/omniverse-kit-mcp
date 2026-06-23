@@ -135,7 +135,7 @@ Read resource isaacsim://scenarios                               # available sce
 scenario_last_report(report_format="markdown")                   # quick triage; omit arg for JSON
 scenario_last_report(report_format="markdown", redact_local_paths=true) # public-safe evidence copy
 ```
-`scenario_last_report` includes `failure_summary`, diagnostics/retry data plus `evidence_summary` for official verify, lidar, viewport framing, and capture evidence; start failed triage from Markdown `Failure Summary`, use Markdown for quick report reading, default JSON for exact fields, and `redact_local_paths=true` for public evidence. `scenario_plan` exposes `total_steps`, `phase_counts`, `evidence_steps`, `retry_steps` with key args for retried evidence steps, automatic cleanup, override `timeoutSeconds`, `idempotent`, `retries`, and `continueOnFailure`; check these before live runs. `scenario_validate(..., dry_run=true)` uses the same executable count model.
+`scenario_last_report` includes `failure_summary`, diagnostics/retry data plus `evidence_summary` for official verify, lidar, viewport framing, and capture evidence; start failed triage from Markdown `Failure Summary`, use Markdown for quick report reading, default JSON for exact fields, and `redact_local_paths=true` for public evidence. `scenario_plan` exposes `total_steps`, `phase_counts`, `evidence_steps`, `retry_steps` with key args for retried evidence steps, automatic cleanup, override `timeoutSeconds`, `idempotent`, `retries`, and `continueOnFailure`; check these before live runs. `scenario_validate(..., dry_run=true)` returns the same plan fields plus `dry_run`, `steps`, and `compiled`.
 
 ## Procedure for creating a new scenario
 

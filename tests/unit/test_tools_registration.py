@@ -493,12 +493,19 @@ async def test_scenario_validate_dry_run_uses_plan_step_counts(tmp_path):
     assert payload["scenario_id"] == "minimal_markdown_report"
     assert payload["compiled"] is True
     assert payload["steps"] == payload["total_steps"] == 2
+    assert payload["name"] == "Minimal markdown report"
+    assert payload["defaults"]["step_timeout_s"] == 60.0
+    assert payload["variables"] == {}
+    assert payload["evidence_steps"] == []
+    assert payload["retry_steps"] == []
     assert payload["phase_counts"] == {
         "arrange": 0,
         "act": 0,
         "assert": 1,
         "cleanup": 1,
     }
+    assert payload["phases"]["assert"][0]["id"] == "world_exists"
+    assert payload["phases"]["cleanup"][0]["automatic"] is True
 
 
 @pytest.mark.asyncio

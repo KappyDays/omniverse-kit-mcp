@@ -337,6 +337,7 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     assert "redact_local_paths=true" in guide
     assert "scenario_plan` exposes `total_steps`" in guide
     assert "`retry_steps` with key args for retried evidence steps" in guide
+    assert "`scenario_validate(..., dry_run=true)` returns the same plan fields" in guide
 
 
 def test_f3c_simulation_guidance_uses_settled_timeline_readback():
