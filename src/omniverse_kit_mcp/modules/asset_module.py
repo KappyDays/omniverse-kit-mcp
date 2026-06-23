@@ -1263,6 +1263,20 @@ def _official_catalog_profiles(catalog: dict[str, Any]) -> list[str]:
     return _dedupe_strs(profiles)
 
 
+def _official_catalog_provider_names(catalog: dict[str, Any]) -> list[str]:
+    providers: list[Any] = []
+    for snapshot in catalog.get("snapshots") or []:
+        for provider in snapshot.get("providers") or []:
+            if isinstance(provider, dict):
+                providers.append(provider.get("provider"))
+    for entry in _official_entries(catalog):
+        providers.append(entry.get("provider"))
+        for provided in entry.get("provided_in") or []:
+            if isinstance(provided, dict):
+                providers.append(provided.get("provider"))
+    return _dedupe_strs(providers)
+
+
 def _official_search_diagnostics(
     catalog: dict[str, Any],
     *,
@@ -1350,6 +1364,8 @@ def _official_search_diagnostics(
             "limit": limit,
         },
         "candidate_counts": counts,
+        "available_profiles": _official_catalog_profiles(catalog),
+        "available_providers": _official_catalog_provider_names(catalog),
         "suggested_next": _official_suggested_next(reason),
         "fallback_tool_order": _official_fallback_tool_order(),
     }

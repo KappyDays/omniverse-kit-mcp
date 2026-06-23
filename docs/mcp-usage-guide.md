@@ -41,8 +41,9 @@ and WARN/ERROR counts, confirm artifact paths look like
 
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.candidate_counts`,
+`diagnostics.available_profiles`, `diagnostics.available_providers`,
 `diagnostics.suggested_next`, and `diagnostics.fallback_tool_order` before
-falling back to `asset_search`.
+changing `app_profile` / `provider` or falling back to `asset_search`.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

@@ -492,6 +492,11 @@ async def test_official_asset_search_no_results_reports_diagnostics(
     assert diagnostics["reason"] == "query_no_match"
     assert diagnostics["candidate_counts"]["total_entries"] == 3
     assert diagnostics["candidate_counts"]["query_matches"] == 0
+    assert diagnostics["available_profiles"] == ["isaac-sim", "usd-composer"]
+    assert diagnostics["available_providers"] == [
+        "omni.simready.explorer",
+        "omni.kit.browser.material",
+    ]
     assert "asset_search" in diagnostics["fallback_tool_order"]
     assert any("broader" in item for item in diagnostics["suggested_next"])
 
@@ -548,6 +553,60 @@ async def test_official_asset_search_zero_limit_reports_limit_diagnostics(
         "limit greater than 0" in item
         for item in diagnostics["suggested_next"]
     )
+
+
+@pytest.mark.asyncio
+async def test_official_asset_search_profile_miss_reports_available_filters(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_search(
+        _meta(),
+        query="pallet",
+        app_profile="kit-app",
+    )
+
+    assert result.ok, result.message
+    assert result.data["count"] == 0
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "app_profile_not_covered"
+    assert diagnostics["candidate_counts"]["after_app_profile"] == 0
+    assert diagnostics["available_profiles"] == ["isaac-sim", "usd-composer"]
+    assert diagnostics["available_providers"] == [
+        "omni.simready.explorer",
+        "omni.kit.browser.material",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_official_asset_search_provider_miss_reports_available_filters(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_search(
+        _meta(),
+        query="pallet",
+        app_profile="isaac-sim",
+        provider="missing.provider",
+    )
+
+    assert result.ok, result.message
+    assert result.data["count"] == 0
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "provider_not_covered"
+    assert diagnostics["candidate_counts"]["after_app_profile"] == 2
+    assert diagnostics["candidate_counts"]["after_provider"] == 0
+    assert diagnostics["available_profiles"] == ["isaac-sim", "usd-composer"]
+    assert diagnostics["available_providers"] == [
+        "omni.simready.explorer",
+        "omni.kit.browser.material",
+    ]
 
 
 def _catalog_with_items(

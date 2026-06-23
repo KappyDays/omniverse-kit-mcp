@@ -1789,8 +1789,14 @@ async def test_official_asset_diagnostics_survive_runner_failure(tmp_path: Path)
     assert step.status == ExecutionStatus.ERROR
     assert step.data_summary["diagnostics"]["reason"] == "query_no_match"
     assert step.data_summary["diagnostics"]["candidate_counts"]["query_matches"] == 0
+    assert step.data_summary["diagnostics"]["available_profiles"] == ["isaac-sim"]
+    assert step.data_summary["diagnostics"]["available_providers"] == [
+        "omni.simready.explorer"
+    ]
     markdown = to_markdown(summary)
     assert "diagnostics.reason=query_no_match" in markdown
+    assert "diagnostics.available_profiles=[isaac-sim]" in markdown
+    assert "diagnostics.available_providers=[omni.simready.explorer]" in markdown
     assert "diagnostics.fallback_tool_order=[official_asset_sync_status" in markdown
 
 
@@ -1885,6 +1891,8 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     assert mismatch_diagnostics["reason"] == "app_profile_not_covered"
     assert mismatch_diagnostics["candidate_counts"]["total_entries"] == 1
     assert mismatch_diagnostics["candidate_counts"]["after_app_profile"] == 0
+    assert mismatch_diagnostics["available_profiles"] == ["isaac-sim"]
+    assert mismatch_diagnostics["available_providers"] == ["omni.simready.explorer"]
 
     markdown = to_markdown(summary)
     assert "search_known_miss" in markdown
@@ -1894,6 +1902,8 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     assert "**Steps**: 3 passed, 0 failed, 1 continued, 0 skipped" in markdown
     assert "| get_pallet_wrong_profile | assert | error (continued) |" in markdown
     assert "diagnostics.reason=app_profile_not_covered" in markdown
+    assert "diagnostics.available_profiles=[isaac-sim]" in markdown
+    assert "diagnostics.available_providers=[omni.simready.explorer]" in markdown
     assert "diagnostics.candidate_counts.total_entries=1" in markdown
     assert "diagnostics.candidate_counts.after_app_profile=0" in markdown
     json_report = json.loads(to_json(summary))

@@ -19,6 +19,7 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ("diagnostics.reason", (("diagnostics", "reason"),)),
     ("diagnostics.requested_app_profile", (("diagnostics", "requested_app_profile"),)),
     ("diagnostics.available_profiles", (("diagnostics", "available_profiles"),)),
+    ("diagnostics.available_providers", (("diagnostics", "available_providers"),)),
     ("diagnostics.matching_item_count", (("diagnostics", "matching_item_count"),)),
     (
         "diagnostics.candidate_counts.total_entries",
