@@ -69,7 +69,8 @@ viewport.frame_prims -> viewport.capture_assert -> cleanup`.
 
 Live proof wrapper: `mcp_runtime_info -> kit_app_start ->
 simulation_get_status -> extension_clear_logs -> scenario_plan ->
-scenario_validate -> scenario_last_report(markdown) -> extension_capture_logs`.
+scenario_validate -> scenario_last_report(report_format="markdown") ->
+extension_capture_logs`.
 
 Do not use an RTX lidar prim as a viewport camera. Frame the robot/sensor prims
 with a normal viewport camera and use `sensor.lidar_get_point_cloud` for lidar data.
