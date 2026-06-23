@@ -2943,6 +2943,124 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
 
 
 @pytest.mark.asyncio
+async def test_official_asset_verify_failure_diagnostics_survive_runner_report(
+    tmp_path: Path,
+):
+    """official_asset_verify failed records must remain actionable in reports."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    catalog_dir = _write_minimal_official_catalog(tmp_path)
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["stage_load_usd"] = {
+        "ok": True,
+        "prim_path": "/World/OfficialAssetVerify/empty",
+        "type_name": "Xform",
+        "has_children": False,
+    }
+    isaac_client.responses["content_inspect"] = {
+        "ok": True,
+        "default_prim": "",
+        "prim_count": 0,
+    }
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    asset_id = (
+        "url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com/"
+        "Assets/simready_content/common_assets/props/aluminumpallet_a01/"
+        "aluminumpallet_a01.usd"
+    )
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "official_asset_verify_failed_diag",
+            "name": "official asset verify failed diag",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "verify_empty_asset",
+                    "module": "asset",
+                    "action": "official_verify",
+                    "args": {
+                        "asset_id": asset_id,
+                        "app_profile": "isaac-sim",
+                        "timeout_s": 1.0,
+                    },
+                }
+            ]
+        },
+    }
+
+    summary = await runner.run(compile_scenario(raw))
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    step = summary.step_results[0]
+    assert step.status == ExecutionStatus.PASSED
+    assert step.data_summary["verification_status"] == "failed"
+    diagnostics = step.data_summary["diagnostics"]
+    assert diagnostics["reason"] == "asset_load_quality_failed"
+    assert diagnostics["target_status"] == "load_verified"
+    assert diagnostics["asset_checks"]["load_quality"] == "empty_content"
+    assert diagnostics["asset_checks"]["has_authored_children"] is False
+    assert diagnostics["fallback_tool_order"] == [
+        "official_asset_sync_status",
+        "official_asset_search",
+        "official_asset_resolve",
+        "official_asset_verify",
+        "asset_search",
+    ]
+
+    json_report = json.loads(to_json(summary))
+    assert json_report["diagnostic_next_actions"] == [{
+        "step_id": "verify_empty_asset",
+        "phase": "assert",
+        "source": "step",
+        "status": "passed",
+        "diagnostics.reason": "asset_load_quality_failed",
+        "diagnostics.target_status": "load_verified",
+        "diagnostics.current_catalog_status": "load_verified",
+        "suggested_next": [
+            "Inspect load_quality, load_quality_warning, and "
+            "bbox_validation_reasons before stage placement.",
+            "Use content_inspect or regenerate the official catalog if the "
+            "source URL or app version changed.",
+        ],
+        "diagnostics.fallback_tool_order": [
+            "official_asset_sync_status",
+            "official_asset_search",
+            "official_asset_resolve",
+            "official_asset_verify",
+            "asset_search",
+        ],
+        "diagnostics.asset_checks": {
+            "load_quality": "empty_content",
+            "load_quality_warning": (
+                "no authored child, default prim, or prim_count evidence"
+            ),
+            "bbox_valid": True,
+            "bbox_validation_reasons": [],
+            "has_authored_children": False,
+            "has_default_prim": False,
+            "prim_count_valid": False,
+        },
+    }]
+    json_step = json_report["step_results"][0]
+    assert json_step["diagnostic_next_actions"][
+        "diagnostics.asset_checks"
+    ]["load_quality"] == "empty_content"
+
+    markdown = to_markdown(summary)
+    assert "## Diagnostic Next Actions" in markdown
+    assert "- `verify_empty_asset`: diagnostics.reason=asset_load_quality_failed" in markdown
+    assert "diagnostics.asset_checks.load_quality=empty_content" in markdown
+    assert "diagnostics.asset_checks.has_authored_children=False" in markdown
+
+
+@pytest.mark.asyncio
 async def test_official_asset_verify_live_smoke_routes_through_runner(
     tmp_path: Path,
 ):

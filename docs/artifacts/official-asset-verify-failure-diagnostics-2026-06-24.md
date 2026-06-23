@@ -28,6 +28,11 @@ Failure reasons currently covered:
   - `48 passed`
 - `.\.venv\Scripts\python.exe -m ruff check src\omniverse_kit_mcp\modules\asset_module.py tests\unit\test_asset_module.py`
   - passed
+- `tests/unit/test_scenario_integration.py::test_official_asset_verify_failure_diagnostics_survive_runner_report`
+  locks the scenario-report path: a failed `official_asset_verify` record still
+  leaves the scenario step `passed`, but JSON `diagnostic_next_actions` and
+  Markdown `Diagnostic Next Actions` preserve `asset_checks`, `suggested_next`,
+  and the official-asset fallback order for agent triage.
 
 ## Public Boundary
 
