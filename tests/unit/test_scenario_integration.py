@@ -148,6 +148,44 @@ def test_markdown_highlights_bounded_raw_key_samples():
     ) in markdown
 
 
+def test_markdown_stabilizes_python_object_repr_in_highlights():
+    render_product = (
+        "<omni.replicator.core.scripts.utils.viewport_manager.HydraTexture "
+        "object at 0x00000262619C1D00>"
+    )
+    summary = ScenarioRunSummary(
+        scenario_id="stable_object_repr",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="capture_visible_result",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "passed": True,
+                    "render_product": render_product,
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+    report = json.loads(to_json(summary))
+
+    assert "object at 0x" not in markdown
+    assert (
+        "render_product=<omni.replicator.core.scripts.utils.viewport_manager."
+        "HydraTexture object>"
+    ) in markdown
+    assert report["step_results"][0]["data_summary"]["render_product"] == render_product
+
+
 def test_markdown_escapes_step_result_table_cells():
     summary = ScenarioRunSummary(
         scenario_id="table_escape",

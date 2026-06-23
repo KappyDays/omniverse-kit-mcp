@@ -73,6 +73,7 @@ _MSYS_USER_PATH_RE = re.compile(
 _SANITIZED_WINDOWS_USER_PATH_RE = re.compile(
     r"\b[A-Za-z]--Users-[A-Za-z0-9._-]+(?:-[A-Za-z0-9._-]+)*\b"
 )
+_PY_OBJECT_REPR_RE = re.compile(r"<([^<>]*\bobject) at 0x[0-9A-Fa-f]+>")
 
 
 def to_json(
@@ -512,10 +513,15 @@ def _format_summary_value(value: Any) -> str:
         return _format_summary_value(list(value))
     if isinstance(value, dict):
         compact = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
-        return compact[:117] + "..." if len(compact) > 120 else compact
+        stable = _stable_summary_text(compact)
+        return stable[:117] + "..." if len(stable) > 120 else stable
     if value is None:
         return "null"
-    return _markdown_inline(value)
+    return _stable_summary_text(value)
+
+
+def _stable_summary_text(value: Any) -> str:
+    return _PY_OBJECT_REPR_RE.sub(r"<\1>", _markdown_inline(value))
 
 
 def _is_compact_scalar(value: Any) -> bool:
