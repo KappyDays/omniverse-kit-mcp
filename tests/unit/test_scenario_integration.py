@@ -879,6 +879,26 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     assert raw_cloud["args"]["fail_on_warning"] is True
     assert raw_cloud["idempotent"] is True
     assert raw_cloud["retries"]["maxAttempts"] == 3
+    raw_assert_steps = raw["spec"]["assert"]
+    raw_frame = next(
+        step for step in raw_assert_steps if step["id"] == "frame_robot_and_sensors"
+    )
+    raw_capture = next(
+        step for step in raw_assert_steps if step["id"] == "capture_visible_result"
+    )
+    assert raw_assert_steps.index(raw_frame) < raw_assert_steps.index(raw_capture)
+    assert raw_frame["args"]["set_camera"] is True
+    assert raw_frame["args"]["prim_paths"] == [
+        "${variables.robot_prim}",
+        "${variables.camera_prim}",
+        "${variables.lidar_prim}",
+        "${variables.lidar_targets_prim}",
+    ]
+    assert raw_capture["args"]["width"] == 1280
+    assert raw_capture["args"]["height"] == 720
+    assert raw_capture["args"]["warmup_frames"] == 8
+    assert raw_capture["args"]["min_mean"] == 8.0
+    assert raw_capture["args"]["min_variance"] == 1.0
     scenario = compile_scenario(raw)
 
     summary = await runner.run(scenario)
@@ -915,7 +935,18 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     assert call_names.index("simulation_step") < call_names.index(
         "sensor_lidar_get_point_cloud"
     )
+    assert call_names.index("sensor_lidar_get_point_cloud") < call_names.index(
+        "simulation_pause"
+    )
+    assert call_names.index("simulation_pause") < call_names.index(
+        "viewport_frame_prims"
+    )
     assert call_names.index("viewport_frame_prims") < call_names.index("viewport_capture")
+    stop_indices = [
+        idx for idx, name in enumerate(call_names) if name == "simulation_stop"
+    ]
+    assert stop_indices[-1] > call_names.index("viewport_capture")
+    assert stop_indices[-1] < call_names.index("stage_delete_prim")
     create_payloads = [
         payload for name, payload in isaac_client.calls if name == "stage_create_prim"
     ]
@@ -933,6 +964,8 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     capture_payload = next(
         payload for name, payload in isaac_client.calls if name == "viewport_capture"
     )
+    assert capture_payload["width"] == 1280
+    assert capture_payload["height"] == 720
     assert capture_payload["return_stats"] is True
     assert capture_payload["warmup_frames"] == 8
     cloud_step = next(
