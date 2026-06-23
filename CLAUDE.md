@@ -27,6 +27,7 @@
 | Scenario YAML Authoring | `docs/invariants/scenario-validation.md` |
 | `viewport_capture` / scene build / use new NVIDIA asset | `docs/invariants/visual-validation.md` |
 | Add multi-app / Modify kit app profile / rename repo/directory | `docs/invariants/multi-app.md` |
+| Public commit/push review | `docs/invariants/public-repo-hygiene.md` |
 | Catalog sync after kit/app version update | skill `/omniverse-kit-extension-catalog-sync` (`.claude/skills/omniverse-kit-extension-catalog-sync/SKILL.md`) |
 | Asset URL 404 / inventory update | skill `/omniverse-asset-inventory-sync` (`.claude/skills/omniverse-asset-inventory-sync/SKILL.md`) |
 | Document hierarchy sweep after session operation | skill `/omniverse-docs-sweep` (`.claude/skills/omniverse-docs-sweep/SKILL.md`) |
@@ -48,7 +49,11 @@ Fault diagnosis is `docs/runbooks/` (kit-stdin-deadlock · cold-boot-timeout · 
 - **R1a** NavMesh bake after recalling `simulation_stop` (`load → stop → bake → query → play → navigate`) — Body `kkr-extensions/docs/kit-sdk-pitfalls.md` NavMesh §
 - **R2** Robot operation (`set_joint_positions` / `navigate_*` / `drive_physics`) requires `simulation_play` state (except `robot_load`) — Detailed `src/omniverse_kit_mcp/modules/CLAUDE.md` Robot
 - **R3** After `viewport_capture`, `Read` tool visual verification obligation — blank/black, retry backlight/camera/asset adjustment
-- **R4** Before public commit/push, review for user-specific paths, secrets, and generated local references; `tests/unit/test_public_repo_hygiene.py` guards drift.
+- **R4** Before public commit/push, review current files and pending history for
+  user-specific paths, secrets, and generated local references. Use
+  `docs/invariants/public-repo-hygiene.md` and
+  `scripts/review_public_hygiene.py`; `tests/unit/test_public_repo_hygiene.py`
+  guards drift.
 
 ## Change Routing
 
