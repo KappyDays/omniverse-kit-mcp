@@ -1876,7 +1876,7 @@ def register_module_tools(
         min_points: int = 0,
         fail_on_warning: bool = False,
     ) -> str:
-        """Read one frame of RTX Lidar XYZ point cloud (symmetric readback for sensor_attach_rtx_lidar). Reuses annotator stamped on sensor prim. Empty cloud → response.warning explains (typically "call simulation_play & wait for spin"). Set min_points>0 or fail_on_warning=True to make live proof loops fail instead of silently accepting empty/warned data. Truncates to max_points (≤100000)."""
+        """Read one frame of RTX Lidar XYZ point cloud (symmetric readback for sensor_attach_rtx_lidar). Reuses annotator stamped on sensor prim. Empty cloud returns warning + empty_reason + diagnostics.suggested_next (typically "call simulation_play & wait for spin"). Set min_points>0 or fail_on_warning=True to make live proof loops fail instead of silently accepting empty/warned data. Truncates to max_points (≤100000)."""
         meta = make_meta(ModuleName.SENSOR)
         request = SensorLidarGetPointCloudRequest(
             sensor_prim=sensor_prim,

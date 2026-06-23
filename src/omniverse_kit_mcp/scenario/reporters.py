@@ -13,6 +13,8 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ("num_points", (("num_points",),)),
     ("backend", (("backend",),)),
     ("frames_waited", (("frames_waited",),)),
+    ("empty_reason", (("empty_reason",), ("diagnostics", "empty_reason"))),
+    ("suggested_next", (("diagnostics", "suggested_next"),)),
     ("raw_keys", (("raw_keys",),)),
     ("warning", (("warning",),)),
     ("truncated", (("truncated",),)),
@@ -116,6 +118,8 @@ def _format_data_summary_highlight(data_summary: dict[str, Any]) -> str:
     for key, value in data_summary.items():
         if len(parts) >= _MAX_HIGHLIGHT_PARTS:
             break
+        if value is None and key in {"empty_reason"}:
+            continue
         if key not in emitted and _is_compact_scalar(value):
             parts.extend(_format_summary_pair(key, value))
     return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
@@ -127,6 +131,8 @@ def _diagnostic_summary_parts(data_summary: dict[str, Any]) -> list[str]:
         for path in paths:
             found, value = _lookup_summary_path(data_summary, path)
             if found:
+                if value is None and key in {"empty_reason", "suggested_next"}:
+                    continue
                 parts.extend(_format_summary_pair(key, value))
                 break
     return parts

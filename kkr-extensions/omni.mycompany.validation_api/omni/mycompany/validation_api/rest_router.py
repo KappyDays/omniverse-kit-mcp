@@ -590,8 +590,9 @@ async def sensor_lidar_get_point_cloud(
 
     Reuses the annotator name stamped on the sensor prim by ``attach_rtx_lidar``.
     Returns Cartesian XYZ + intensities (truncated to ``max_points``).
-    Empty data → ``warning`` field explains why (typically "call simulation_play
-    and wait for the lidar to spin").
+    Empty data also returns ``empty_reason`` and ``diagnostics.suggested_next``
+    so agents can distinguish spin-up/empty-buffer cases from unsupported
+    payload or readback-stack failures.
     """
     require_sensor_rtx_stack()
     try:

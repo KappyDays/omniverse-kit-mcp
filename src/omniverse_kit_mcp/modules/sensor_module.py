@@ -256,6 +256,16 @@ class SensorModule:
                 frames_waited=int(raw.get("frames_waited", request.frames_to_wait)),
                 raw_keys=tuple(str(k) for k in raw.get("raw_keys") or ()),
                 warning=raw.get("warning"),
+                empty_reason=(
+                    str(raw["empty_reason"])
+                    if raw.get("empty_reason") is not None
+                    else None
+                ),
+                diagnostics=(
+                    dict(raw["diagnostics"])
+                    if isinstance(raw.get("diagnostics"), dict)
+                    else {}
+                ),
             )
             if data.num_points < request.min_points:
                 return fail_result(
@@ -315,6 +325,11 @@ def _format_lidar_failure_detail(
     details: list[str] = []
     if include_warning and data.warning:
         details.append(f"warning={data.warning}")
+    if data.empty_reason:
+        details.append(f"empty_reason={data.empty_reason}")
+    suggested_next = data.diagnostics.get("suggested_next")
+    if suggested_next:
+        details.append(f"suggested_next={suggested_next}")
     if data.backend:
         details.append(f"backend={data.backend}")
     details.append(f"frames_waited={data.frames_waited}")

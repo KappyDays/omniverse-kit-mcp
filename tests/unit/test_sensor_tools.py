@@ -164,6 +164,8 @@ async def test_lidar_get_point_cloud_default_mock():
     assert result.data.intensities == (1.0, 1.0, 1.0)
     assert result.data.backend == "omni.replicator.core"
     assert result.data.warning is None
+    assert result.data.empty_reason is None
+    assert result.data.diagnostics == {}
     assert result.data.frames_waited == 2
     calls = [c for c in client.calls if c[0] == "sensor_lidar_get_point_cloud"]
     assert len(calls) == 1
@@ -190,6 +192,11 @@ async def test_lidar_get_point_cloud_empty_with_warning():
         "frames_waited": 2,
         "raw_keys": [],
         "warning": "annotator.get_data() returned empty — call simulation_play and wait for the lidar to spin",
+        "empty_reason": "not_spun_up",
+        "diagnostics": {
+            "empty_reason": "not_spun_up",
+            "suggested_next": "ensure simulation_play is active, then retry",
+        },
     }
     module = SensorModule(client)
     request = SensorLidarGetPointCloudRequest(sensor_prim="/World/Lidar")
@@ -199,6 +206,10 @@ async def test_lidar_get_point_cloud_empty_with_warning():
     assert result.data.num_points == 0
     assert result.data.points == ()
     assert result.data.warning is not None
+    assert result.data.empty_reason == "not_spun_up"
+    assert result.data.diagnostics["suggested_next"].startswith(
+        "ensure simulation_play"
+    )
     assert "simulation_play" in result.data.warning
 
 
@@ -219,6 +230,11 @@ async def test_lidar_get_point_cloud_fails_when_below_min_points():
         "frames_waited": 2,
         "raw_keys": ["generic-model-output", "num_elements:0"],
         "warning": "parsed generic-model-output contained 0 elements",
+        "empty_reason": "empty_scan_buffer",
+        "diagnostics": {
+            "empty_reason": "empty_scan_buffer",
+            "suggested_next": "step more frames and retry",
+        },
     }
     module = SensorModule(client)
     request = SensorLidarGetPointCloudRequest(
@@ -233,6 +249,8 @@ async def test_lidar_get_point_cloud_fails_when_below_min_points():
     assert result.data is not None
     assert result.data.num_points == 0
     assert "backend=omni.replicator.core" in (result.message or "")
+    assert "empty_reason=empty_scan_buffer" in (result.message or "")
+    assert "suggested_next=step more frames and retry" in (result.message or "")
     assert "frames_waited=2" in (result.message or "")
     assert "raw_keys=generic-model-output,num_elements:0" in (result.message or "")
     assert "parsed generic-model-output" in (result.message or "")

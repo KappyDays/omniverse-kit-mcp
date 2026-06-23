@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 
 @dataclass(slots=True, frozen=True)
@@ -162,3 +162,5 @@ class SensorLidarGetPointCloudResult:
     frames_waited: int
     raw_keys: tuple[str, ...]
     warning: str | None
+    empty_reason: str | None
+    diagnostics: dict[str, Any]

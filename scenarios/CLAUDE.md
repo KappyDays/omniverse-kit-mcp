@@ -134,8 +134,8 @@ scenario_last_report(report_format="markdown")                   # quick triage;
 ```
 `scenario_last_report` includes per-step `attempts`, `max_attempts`,
 `retry_failures`, and `data_summary` telemetry such as lidar `num_points`,
-`backend`, `frames_waited`, `raw_keys`, `warning`, and timeline/capture
-highlights; use Markdown for quick triage and JSON before logs for exact fields.
+`backend`, `frames_waited`, `empty_reason`, `diagnostics.suggested_next`,
+`raw_keys`, `warning`, and timeline/capture highlights; use Markdown for quick triage and JSON before logs for exact fields.
 
 ## Procedure for creating a new scenario
 

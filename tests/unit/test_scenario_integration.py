@@ -582,6 +582,11 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
             "frames_waited": 12,
             "raw_keys": ["azimuth", "distance"],
             "warning": "polar arrays contained 0 elements",
+            "empty_reason": "empty_scan_buffer",
+            "diagnostics": {
+                "empty_reason": "empty_scan_buffer",
+                "suggested_next": "step more frames and retry idempotently",
+            },
         },
         {
             "ok": True,
@@ -595,6 +600,8 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
             "frames_waited": 12,
             "raw_keys": ["azimuth", "distance"],
             "warning": None,
+            "empty_reason": None,
+            "diagnostics": {"readback_paths_attempted": ["cached_lidar_sensor"]},
         },
     ]
     runner = _build_runner(isaac_client, MockLakehouseClient())
@@ -645,7 +652,12 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     assert "warning=polar arrays contained 0 elements" in str(
         retry_failure["message"]
     )
+    assert "empty_reason=empty_scan_buffer" in str(retry_failure["message"])
+    assert "suggested_next=step more frames and retry idempotently" in str(
+        retry_failure["message"]
+    )
     assert step_result.data_summary["num_points"] == 2
+    assert step_result.data_summary["empty_reason"] is None
     report = json.loads(to_json(summary))
     lidar_report = next(
         result for result in report["step_results"]
@@ -665,6 +677,7 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "frames_waited=12; raw_keys=[azimuth, distance]; warning=null; "
         "truncated=False"
     ) in markdown
+    assert "empty_reason=null" not in markdown
     assert "## Retry Failures" in markdown
     assert (
         "- `read_lidar` attempt 1: failed "

@@ -235,6 +235,42 @@ def test_lidar_scan_dict_extractor_reports_empty_polar_arrays():
     assert warning == "polar arrays contained 0 elements"
 
 
+def test_lidar_empty_reason_classifies_zero_gmo_buffer():
+    service = _load_validation_sensor_service()
+
+    reason = service._lidar_empty_reason(
+        points=[],
+        warning="parsed generic-model-output contained 0 elements but no usable point data",
+        raw_keys=["generic-model-output", "coords_type:CARTESIAN", "num_elements:0"],
+        backend="isaacsim.sensors.experimental.rtx.LidarSensor",
+    )
+
+    assert reason == "empty_scan_buffer"
+
+
+def test_lidar_readback_diagnostics_suggests_retry_for_empty_scan_buffer():
+    service = _load_validation_sensor_service()
+
+    diagnostics = service._lidar_readback_diagnostics(
+        empty_reason="empty_scan_buffer",
+        warning="polar arrays contained 0 elements",
+        raw_keys=["azimuth", "distance", "elevation"],
+        frames_waited=60,
+        cached_lidar_instance=True,
+        readback_paths_attempted=["cached_lidar_sensor", "replicator_annotator"],
+    )
+
+    assert diagnostics["empty_reason"] == "empty_scan_buffer"
+    assert diagnostics["frames_waited"] == 60
+    assert diagnostics["cached_lidar_instance"] is True
+    assert diagnostics["raw_key_count"] == 3
+    assert diagnostics["readback_paths_attempted"] == [
+        "cached_lidar_sensor",
+        "replicator_annotator",
+    ]
+    assert "retry an idempotent read" in diagnostics["suggested_next"]
+
+
 def _load_validation_sensor_service():
     path = (
         PROJECT / "kkr-extensions" / "omni.mycompany.validation_api"

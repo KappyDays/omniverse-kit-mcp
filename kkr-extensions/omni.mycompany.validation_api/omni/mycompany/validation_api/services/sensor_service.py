@@ -440,8 +440,9 @@ class SensorService:
         Returns Cartesian XYZ points + intensities (when available),
         truncated to *max_points* if the raw cloud is larger. ``backend``
         field reports which path won (``omni.replicator.core`` or fallback
-        with reason). Empty data → ``num_points=0`` with ``warning`` field
-        explaining why (typically "no data yet — call simulation_play").
+        with reason). Empty data -> ``num_points=0`` with ``warning``,
+        ``empty_reason``, and ``diagnostics.suggested_next`` fields for
+        machine-readable triage.
         """
         import omni.usd
 
@@ -481,6 +482,7 @@ class SensorService:
         intensities: list[float] = []
         raw_keys: list[str] = []
         truncated = False
+        readback_paths_attempted: list[str] = []
 
         # Preferred path: a cached live LidarSensor instance (kept alive from
         # attach) whose internal render product is bound to the GMO scan
@@ -489,6 +491,7 @@ class SensorService:
         # returns empty because the lidar runtime isn't bound to it.
         cached = self._lidar_instances.get(sensor_prim_path)
         if cached is not None:
+            readback_paths_attempted.append("cached_lidar_sensor")
             try:
                 import omni.kit.app
                 from isaacsim.sensors.experimental.rtx import parse_generic_model_output_data  # type: ignore[import-not-found]
@@ -538,6 +541,15 @@ class SensorService:
                                     "frames_waited": frames_to_wait,
                                     "raw_keys": raw_keys,
                                     "warning": None,
+                                    "empty_reason": None,
+                                    "diagnostics": _lidar_readback_diagnostics(
+                                        empty_reason=None,
+                                        warning=None,
+                                        raw_keys=raw_keys,
+                                        frames_waited=frames_to_wait,
+                                        cached_lidar_instance=True,
+                                        readback_paths_attempted=readback_paths_attempted,
+                                    ),
                                 }
                             warning = (
                                 "parsed generic-model-output contained "
@@ -576,6 +588,15 @@ class SensorService:
                         "frames_waited": frames_to_wait,
                         "raw_keys": raw_keys,
                         "warning": None,
+                        "empty_reason": None,
+                        "diagnostics": _lidar_readback_diagnostics(
+                            empty_reason=None,
+                            warning=None,
+                            raw_keys=raw_keys,
+                            frames_waited=frames_to_wait,
+                            cached_lidar_instance=True,
+                            readback_paths_attempted=readback_paths_attempted,
+                        ),
                     }
                 if warning is None:
                     warning = "cached LidarSensor get_data returned no points yet"
@@ -588,6 +609,8 @@ class SensorService:
                 warning = f"cached LidarSensor readback failed: {exc}"
 
         try:
+            readback_paths_attempted.append("replicator_annotator")
+
             import omni.kit.app
             import omni.replicator.core as rep  # type: ignore[import-not-found]
 
@@ -657,6 +680,12 @@ class SensorService:
             backend = f"fallback_noop:{type(exc).__name__}"
             warning = f"replicator path failed: {exc}"
 
+        empty_reason = _lidar_empty_reason(
+            points=points,
+            warning=warning,
+            raw_keys=raw_keys,
+            backend=backend,
+        )
         return {
             "ok": True,
             "sensor_prim": sensor_prim_path,
@@ -669,6 +698,15 @@ class SensorService:
             "frames_waited": frames_to_wait,
             "raw_keys": raw_keys,
             "warning": warning,
+            "empty_reason": empty_reason,
+            "diagnostics": _lidar_readback_diagnostics(
+                empty_reason=empty_reason,
+                warning=warning,
+                raw_keys=raw_keys,
+                frames_waited=frames_to_wait,
+                cached_lidar_instance=cached is not None,
+                readback_paths_attempted=readback_paths_attempted,
+            ),
         }
 
     async def set_visualization(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -862,6 +900,73 @@ def _extract_scan_dict_points(
                 warning = "polar arrays had no usable numeric point data"
 
     return points, intensities, raw_keys, truncated, warning
+
+
+def _lidar_empty_reason(
+    *,
+    points: list[list[float]],
+    warning: str | None,
+    raw_keys: list[str],
+    backend: str,
+) -> str | None:
+    if points:
+        return None
+    warning_text = (warning or "").lower()
+    keys_text = " ".join(str(k).lower() for k in raw_keys)
+    if backend.startswith("fallback_noop") or "replicator path failed" in warning_text:
+        return "readback_unavailable"
+    if "parse failed" in warning_text or "field extraction failed" in warning_text:
+        return "payload_parse_failed"
+    if "<non-dict>" in raw_keys or "expected dict" in warning_text:
+        return "unsupported_payload"
+    if "num_elements:0" in keys_text or "contained 0 elements" in warning_text:
+        return "empty_scan_buffer"
+    if "returned empty" in warning_text or "no points yet" in warning_text:
+        return "not_spun_up"
+    if "no usable point data" in warning_text:
+        return "no_usable_point_data"
+    return "unknown_empty"
+
+
+def _lidar_readback_diagnostics(
+    *,
+    empty_reason: str | None,
+    warning: str | None,
+    raw_keys: list[str],
+    frames_waited: int,
+    cached_lidar_instance: bool,
+    readback_paths_attempted: list[str],
+) -> dict[str, Any]:
+    diagnostics: dict[str, Any] = {
+        "cached_lidar_instance": cached_lidar_instance,
+        "frames_waited": frames_waited,
+        "raw_key_count": len(raw_keys),
+        "readback_paths_attempted": list(readback_paths_attempted),
+    }
+    if warning:
+        diagnostics["warning"] = warning
+    if empty_reason:
+        diagnostics["empty_reason"] = empty_reason
+        diagnostics["suggested_next"] = _lidar_empty_suggested_next(empty_reason)
+    return diagnostics
+
+
+def _lidar_empty_suggested_next(empty_reason: str) -> str:
+    if empty_reason in {
+        "empty_scan_buffer",
+        "not_spun_up",
+        "no_usable_point_data",
+        "unknown_empty",
+    }:
+        return (
+            "ensure simulation_play is active, step more frames, keep scan targets "
+            "near the lidar plane, then retry an idempotent read"
+        )
+    if empty_reason == "readback_unavailable":
+        return "check the RTX sensor stack, Replicator import, and extension logs"
+    if empty_reason in {"payload_parse_failed", "unsupported_payload"}:
+        return "capture raw_keys/backend and check the Kit lidar payload shape"
+    return "inspect warning/raw_keys and retry only if the read is idempotent"
 
 
 def _enum_token(value: Any) -> str:
