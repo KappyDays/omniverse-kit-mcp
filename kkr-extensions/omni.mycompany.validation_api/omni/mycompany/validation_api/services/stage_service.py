@@ -377,9 +377,11 @@ class StageService:
 
             load_mode = "payload"
             if not list(prim.GetChildren()) and prim.GetTypeName() in ("", "Xform"):
-                stage.RemovePrim(prim.GetPath())
-                ref_prim = UsdGeom.Xform.Define(stage, prim_path).GetPrim()
-                ref_prim.GetReferences().AddReference(usd_url)
+                # Keep the shell prim alive. Removing and redefining it can expire
+                # a prim handle while Kit property widgets are still reading it.
+                prim.SetInstanceable(False)
+                prim.GetPayloads().ClearPayloads()
+                prim.GetReferences().AddReference(usd_url)
                 await _wait_stage_loading()
                 prim = stage.GetPrimAtPath(prim_path)
                 load_mode = "reference_fallback"

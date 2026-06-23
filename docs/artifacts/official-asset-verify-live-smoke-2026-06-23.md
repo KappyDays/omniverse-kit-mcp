@@ -72,3 +72,33 @@ to call `extension_capture_logs` from a fresh one-shot stdio host failed with a
 connection error because that host did not preserve the previous live/log-capture
 state. For official asset live evidence, capture WARN/ERROR logs in the same MCP
 host session that performs `official_asset_verify`.
+
+## Scenario Regression Smoke
+
+After promoting the flow to `smoke/official_asset_verify_live.yaml`, a
+workspace-local Isaac Sim MCP smoke reran the same asset through
+`scenario_validate` after a `validation_api` restart.
+
+- Wrapper:
+  `mcp_runtime_info -> process_list_kit_instances -> kit_app_start ->
+  simulation_get_status -> kit_app_restart -> simulation_get_status ->
+  extension_clear_logs -> scenario_plan(smoke/official_asset_verify_live.yaml)
+  -> scenario_validate(smoke/official_asset_verify_live.yaml) ->
+  scenario_last_report(report_format="markdown") ->
+  extension_capture_logs(level="WARN") ->
+  extension_capture_logs(level="ERROR")`
+- External Kit instances before restart: `0`
+- `scenario_plan`: `arrange=0`, `act=0`, `assert=4`, `cleanup=0`
+- `scenario_validate`: `status=passed`, `4 passed`, `0 failed`, `0 skipped`
+- `verify_pallet_asset`: `status=passed`, `duration_ms=2976`,
+  `verification_status=load_verified`, `load_mode=reference_fallback`
+- Load-quality evidence: `load_quality=content_verified_no_bbox`,
+  `has_default_prim=true`, `prim_count_valid=true`, `prim_count=25`
+- Cleanup evidence: selection clear returned `ok=true`; temporary prim delete
+  returned `ok=true`
+- WARN capture after scenario: `count=0`
+- ERROR capture after scenario: `count=0`
+
+This smoke specifically covers the regression where the reference fallback used
+to remove and redefine the temporary Xform prim, which could leave Kit property
+widgets holding an expired prim handle.

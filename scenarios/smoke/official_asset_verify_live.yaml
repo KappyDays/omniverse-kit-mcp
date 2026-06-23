@@ -1,0 +1,42 @@
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: official_asset_verify_live
+  name: Official Asset Verify Live
+  tags: [smoke, asset, official, live]
+
+spec:
+  defaults:
+    stepTimeoutSeconds: 240
+    failFast: true
+  assert:
+    - id: check_isaac_catalog
+      module: asset
+      action: official_sync_status
+      args:
+        app_profile: isaac-sim
+
+    - id: search_pallet_asset
+      module: asset
+      action: official_search
+      args:
+        query: pallet
+        kind: asset
+        app_profile: isaac-sim
+        min_status: load_verified
+        limit: 3
+
+    - id: get_pallet_entry
+      module: asset
+      action: official_get
+      args:
+        asset_id: url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/common_assets/props/aluminumpallet_a01/aluminumpallet_a01.usd
+        app_profile: isaac-sim
+
+    - id: verify_pallet_asset
+      module: asset
+      action: official_verify
+      args:
+        asset_id: url:https://omniverse-content-staging.s3.us-west-2.amazonaws.com/Assets/simready_content/common_assets/props/aluminumpallet_a01/aluminumpallet_a01.usd
+        app_profile: isaac-sim
+        timeout_s: 180

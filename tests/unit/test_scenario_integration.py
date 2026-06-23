@@ -1697,10 +1697,62 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     assert "search_pallet_asset" in markdown
 
 
+@pytest.mark.asyncio
+async def test_official_asset_verify_live_smoke_routes_through_runner(
+    tmp_path: Path,
+):
+    """The official asset verify smoke scenario must route without fallback reset."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    catalog_dir = _write_minimal_official_catalog(tmp_path)
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    raw = load_scenario(
+        PROJECT / "scenarios" / "smoke" / "official_asset_verify_live.yaml"
+    )
+
+    summary = await runner.run(compile_scenario(raw))
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    steps = {step.step_id: step for step in summary.step_results}
+    assert "__fallback_cleanup_reset" not in steps
+    assert steps["search_pallet_asset"].data_summary["count"] == 1
+    assert steps["verify_pallet_asset"].data_summary["verification_status"] == (
+        "load_verified"
+    )
+    assert steps["verify_pallet_asset"].data_summary["load_quality"] == "valid"
+    assert ("stage_load_usd", {
+        "usd_url": (
+            "https://omniverse-content-staging.s3.us-west-2.amazonaws.com/"
+            "Assets/simready_content/common_assets/props/aluminumpallet_a01/"
+            "aluminumpallet_a01.usd"
+        ),
+        "prim_path": "/World/OfficialAssetVerify/aluminumpallet_a01",
+        "position": None,
+        "rotation": None,
+    }) in isaac_client.calls
+    assert ("stage_set_selection", {
+        "prim_paths": [],
+        "expand_in_stage": False,
+    }) in isaac_client.calls
+    assert ("stage_delete_prim", {
+        "prim_path": "/World/OfficialAssetVerify/aluminumpallet_a01",
+    }) in isaac_client.calls
+    assert not any(call[0] == "extension_reset" for call in isaac_client.calls)
+
+
 def _write_minimal_official_catalog(tmp_path: Path) -> Path:
     catalog_dir = tmp_path / "official-assets"
     catalog_dir.mkdir()
-    url = "https://example.com/Assets/pallet/pallet.usd"
+    url = (
+        "https://omniverse-content-staging.s3.us-west-2.amazonaws.com/"
+        "Assets/simready_content/common_assets/props/aluminumpallet_a01/"
+        "aluminumpallet_a01.usd"
+    )
     catalog_dir.joinpath("latest.json").write_text(
         json.dumps(
             {
@@ -1718,8 +1770,8 @@ def _write_minimal_official_catalog(tmp_path: Path) -> Path:
                     {
                         "id": f"url:{url}",
                         "kind": "asset",
-                        "name": "pallet.usd",
-                        "aliases": ["pallet"],
+                        "name": "aluminumpallet_a01.usd",
+                        "aliases": ["pallet", "aluminumpallet"],
                         "canonical_url": url,
                         "provider": "omni.simready.explorer",
                         "provided_in": [
@@ -1728,8 +1780,13 @@ def _write_minimal_official_catalog(tmp_path: Path) -> Path:
                                 "provider": "omni.simready.explorer",
                             }
                         ],
-                        "loadable_in": [],
-                        "verification_status": "url_validated",
+                        "loadable_in": [
+                            {
+                                "app_profile": "isaac-sim",
+                                "verification_status": "load_verified",
+                            }
+                        ],
+                        "verification_status": "load_verified",
                     }
                 ],
             }

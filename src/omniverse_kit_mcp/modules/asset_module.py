@@ -708,6 +708,7 @@ class AssetModule:
             )
             return record
         finally:
+            await self._prepare_official_verify_cleanup()
             try:
                 cleanup = await self._client.stage_delete_prim(prim_path)
             except Exception as exc:  # noqa: BLE001
@@ -755,11 +756,18 @@ class AssetModule:
             )
             return record
         finally:
+            await self._prepare_official_verify_cleanup()
             try:
                 cleanup = await self._client.stage_delete_prim(prim_path)
             except Exception as exc:  # noqa: BLE001
                 cleanup = {"ok": False, "error": str(exc)}
             record["cleanup"] = cleanup
+
+    async def _prepare_official_verify_cleanup(self) -> None:
+        try:
+            await self._client.stage_set_selection([], expand_in_stage=False)
+        except Exception:
+            logger.debug("official verify cleanup selection clear failed", exc_info=True)
 
     async def _ensure_timeline_stopped(self) -> None:
         status = await self._client.simulation_status()

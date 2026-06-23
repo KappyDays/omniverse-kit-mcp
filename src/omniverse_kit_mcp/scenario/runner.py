@@ -47,11 +47,14 @@ from omniverse_kit_mcp.types.scenario import (
 
 logger = logging.getLogger(__name__)
 
-_READ_ONLY_NO_FALLBACK_CLEANUP_ACTIONS = frozenset({
+_NO_FALLBACK_CLEANUP_ACTIONS = frozenset({
     (ModuleName.ASSET, "official_sync_status"),
     (ModuleName.ASSET, "official_search"),
     (ModuleName.ASSET, "official_resolve"),
     (ModuleName.ASSET, "official_get"),
+    # official_verify uses a temporary /World/Official* prim and deletes it in
+    # AssetModule finally blocks; extension reset adds no extra cleanup signal.
+    (ModuleName.ASSET, "official_verify"),
 })
 _RETRY_FAILURE_MESSAGE_LIMIT = 240
 
@@ -638,7 +641,7 @@ def _scenario_needs_fallback_cleanup(scenario: CompiledScenario) -> bool:
         + scenario.cleanup_steps
     )
     return any(
-        (step.module, step.action) not in _READ_ONLY_NO_FALLBACK_CLEANUP_ACTIONS
+        (step.module, step.action) not in _NO_FALLBACK_CLEANUP_ACTIONS
         for step in steps
     )
 
