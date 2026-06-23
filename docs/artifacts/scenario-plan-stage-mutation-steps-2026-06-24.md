@@ -9,19 +9,26 @@ before running Isaac Sim live validation.
 ## Evidence
 
 - `smoke/official_asset_catalog_diagnostics.yaml`
+  - `stage_mutation_summary.read_only`: `true`
   - `stage_mutation_steps`: `[]`
   - Confirms the sync/search/resolve/get catalog diagnostic chain is read-only.
 - `smoke/official_asset_verify_live.yaml`
+  - `stage_mutation_summary.read_only`: `false`
+  - `stage_mutation_summary.mutation_count`: `1`
   - `stage_mutation_steps`: 1 row
   - Row: `verify_pallet_asset`,
     `mutation_kind=official_asset_verify_stage_probe`
   - Confirms live verify is explicitly marked as a temporary stage probe.
 - `smoke/robot_rtx_sensor_golden_workflow.yaml`
+  - `stage_mutation_summary.read_only`: `false`
+  - `stage_mutation_summary.mutation_count`: `18`
   - `stage_mutation_steps`: 18 rows
   - Includes `stage_reset`, `stage_load_usd`, `lighting_create_dome`,
     `robot_load`, lidar target `stage_create_prim`, RTX camera/lidar attach,
     sensor visualization toggle, and cleanup `stage_delete_prim` rows.
 - `smoke/trigger_sync_cube.yaml`
+  - `stage_mutation_summary.read_only`: `false`
+  - `stage_mutation_summary.mutation_count`: `1`
   - `stage_mutation_steps`: 1 row
   - Row: `sync_extension`,
     `mutation_kind=extension_trigger_potential_stage_effect`

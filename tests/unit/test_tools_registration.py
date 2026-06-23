@@ -497,6 +497,18 @@ async def test_scenario_validate_dry_run_uses_plan_step_counts(tmp_path):
     assert payload["defaults"]["step_timeout_s"] == 60.0
     assert payload["variables"] == {}
     assert payload["diagnostic_steps"] == []
+    assert payload["stage_mutation_summary"] == {
+        "read_only": True,
+        "requires_scratch_stage": False,
+        "mutation_count": 0,
+        "phase_counts": {
+            "arrange": 0,
+            "act": 0,
+            "assert": 0,
+            "cleanup": 0,
+        },
+        "mutation_kinds": [],
+    }
     assert payload["stage_mutation_steps"] == []
     assert payload["evidence_steps"] == []
     assert payload["retry_steps"] == []

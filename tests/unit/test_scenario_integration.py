@@ -90,6 +90,18 @@ def test_extension_trigger_smoke_marks_potential_stage_mutation():
     plan = _scenario_plan_payload(compile_scenario(raw))
 
     mutation_steps = {step["id"]: step for step in plan["stage_mutation_steps"]}
+    assert plan["stage_mutation_summary"] == {
+        "read_only": False,
+        "requires_scratch_stage": True,
+        "mutation_count": 1,
+        "phase_counts": {
+            "arrange": 0,
+            "act": 1,
+            "assert": 0,
+            "cleanup": 0,
+        },
+        "mutation_kinds": ["extension_trigger_potential_stage_effect"],
+    }
     assert mutation_steps == {
         "sync_extension": {
             "id": "sync_extension",
@@ -3292,6 +3304,18 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
         },
     }
     assert diagnostic_steps["get_pallet_wrong_profile"]["continueOnFailure"] is True
+    assert plan["stage_mutation_summary"] == {
+        "read_only": True,
+        "requires_scratch_stage": False,
+        "mutation_count": 0,
+        "phase_counts": {
+            "arrange": 0,
+            "act": 0,
+            "assert": 0,
+            "cleanup": 0,
+        },
+        "mutation_kinds": [],
+    }
     assert plan["stage_mutation_steps"] == []
 
     summary = await runner.run(scenario)
@@ -3740,6 +3764,18 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
         },
     }
     mutation_steps = {step["id"]: step for step in plan["stage_mutation_steps"]}
+    assert plan["stage_mutation_summary"] == {
+        "read_only": False,
+        "requires_scratch_stage": True,
+        "mutation_count": 1,
+        "phase_counts": {
+            "arrange": 0,
+            "act": 0,
+            "assert": 1,
+            "cleanup": 0,
+        },
+        "mutation_kinds": ["official_asset_verify_stage_probe"],
+    }
     assert mutation_steps["verify_pallet_asset"] == {
         "id": "verify_pallet_asset",
         "phase": "assert",

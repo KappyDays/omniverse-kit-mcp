@@ -76,8 +76,10 @@ scenario_last_report(report_format="markdown", redact_local_paths=true) ->
 extension_capture_logs`.
 Before stage mutation, `scenario_plan` or
 `scenario_validate(..., dry_run=true)` must expose matching `phase_counts`,
-`stage_mutation_steps`, `diagnostic_steps`, `evidence_steps`, and `retry_steps`;
-check `stage_mutation_steps` against the scratch/test stage boundary and
+`stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`,
+`evidence_steps`, and `retry_steps`; `stage_mutation_summary.read_only=false`
+requires scratch/test stage routing. Check `stage_mutation_steps` against the
+scratch/test stage boundary and
 `retry_steps[].key_args` so lidar thresholds match the intended proof.
 For controlled failure diagnostics, pass the same
 `input_overrides={"lidar_min_points": 513}` to `scenario_plan` and

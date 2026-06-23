@@ -442,6 +442,7 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
     if _scenario_needs_fallback_cleanup(scenario):
         phases["cleanup"].append(_plan_fallback_cleanup_step())
     phase_counts = {phase: len(steps) for phase, steps in phases.items()}
+    stage_mutation_steps = _plan_stage_mutation_steps(phases)
     return {
         "scenario_id": scenario.scenario_id,
         "name": scenario.name,
@@ -454,7 +455,10 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         "total_steps": sum(phase_counts.values()),
         "phase_counts": phase_counts,
         "diagnostic_steps": _plan_diagnostic_steps(phases),
-        "stage_mutation_steps": _plan_stage_mutation_steps(phases),
+        "stage_mutation_summary": _plan_stage_mutation_summary(
+            stage_mutation_steps
+        ),
+        "stage_mutation_steps": stage_mutation_steps,
         "evidence_steps": _plan_evidence_steps(phases),
         "retry_steps": _plan_retry_steps(phases),
         "phases": phases,
@@ -572,6 +576,27 @@ def _plan_stage_mutation_steps(
             _copy_plan_control_fields(step, planned)
             mutation_steps.append(planned)
     return mutation_steps
+
+
+def _plan_stage_mutation_summary(
+    mutation_steps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    phase_counts = {phase: 0 for phase in ("arrange", "act", "assert", "cleanup")}
+    mutation_kinds: set[str] = set()
+    for step in mutation_steps:
+        phase = step.get("phase")
+        if isinstance(phase, str):
+            phase_counts[phase] = phase_counts.get(phase, 0) + 1
+        mutation_kind = step.get("mutation_kind")
+        if isinstance(mutation_kind, str):
+            mutation_kinds.add(mutation_kind)
+    return {
+        "read_only": not mutation_steps,
+        "requires_scratch_stage": bool(mutation_steps),
+        "mutation_count": len(mutation_steps),
+        "phase_counts": phase_counts,
+        "mutation_kinds": sorted(mutation_kinds),
+    }
 
 
 def _conditional_stage_mutation_spec(

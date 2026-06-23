@@ -255,6 +255,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
+    assert "stage_mutation_summary" in guide
+    assert "stage_mutation_summary" in invariant
+    assert "stage_mutation_summary.read_only=false" in invariant
     assert "stage_mutation_steps" in guide
     assert "stage_mutation_steps" in invariant
     assert "scratch/test stage boundary" in invariant
@@ -318,10 +321,13 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     )
     assert "scenario_plan.evidence_steps" in wrapper
     assert "scenario_plan.diagnostic_steps" in wrapper
+    assert "scenario_plan.stage_mutation_summary.read_only=false" in wrapper
     assert "scenario_plan.stage_mutation_steps" in wrapper
     assert "official_asset_verify_stage_probe" in wrapper
     assert "scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)" in wrapper
-    assert "`stage_mutation_steps` should be empty" in wrapper
+    assert "`stage_mutation_summary.read_only` should be `true`" in wrapper
+    assert "`stage_mutation_steps`" in wrapper
+    assert "should be empty" in wrapper
     assert "sync/search/resolve/get" in wrapper
     assert "evidence_kind=official_asset_verify" in wrapper
     assert "evidence_summary[]" in wrapper
@@ -351,6 +357,8 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     assert "Markdown `Failure Summary`" in guide
     assert "redact_local_paths=true" in guide
     assert "scenario_plan` exposes `total_steps`" in guide
+    assert "`stage_mutation_summary`" in guide
+    assert "stage_mutation_summary.read_only=false" in guide
     assert "`stage_mutation_steps`" in guide
     assert "scratch/test stage" in guide
     assert "`diagnostic_steps`" in guide
