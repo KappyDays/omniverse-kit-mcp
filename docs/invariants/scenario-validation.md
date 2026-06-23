@@ -78,6 +78,9 @@ Transient zero-point RTX buffers should be absorbed with step-level retries only
 on idempotent sensor reads; inspect `scenario_last_report` fields
 `attempts`, `max_attempts`, `retry_failures`, and `data_summary` before opening
 logs.
+For idempotent retry steps, the scenario runner retries returned non-pass
+results, hard step timeouts, and hard step exceptions; each failed attempt is
+recorded in `retry_failures`.
 
 ## R3. Viewport capture visual verification obligation
 

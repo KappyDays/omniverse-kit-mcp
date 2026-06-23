@@ -280,12 +280,57 @@ class ScenarioRunner:
         max_backoff_s = policy.max_backoff_s if policy is not None else 0.0
         record_retry_failures = max_attempts > 1
         retry_failures: list[dict[str, JsonValue]] = []
+        started = int(time.time() * 1000)
 
         for attempt in range(1, max_attempts + 1):
-            module_result = await asyncio.wait_for(
-                self._execute_step(step, ctx, scenario_id),
-                timeout=timeout,
-            )
+            try:
+                module_result = await asyncio.wait_for(
+                    self._execute_step(step, ctx, scenario_id),
+                    timeout=timeout,
+                )
+            except (asyncio.TimeoutError, TimeoutError):
+                message = f"Step timed out after {timeout}s"
+                if record_retry_failures:
+                    retry_failures.append(_failure_summary(
+                        attempt,
+                        ExecutionStatus.TIMEOUT,
+                        "SCENARIO_STEP_TIMEOUT",
+                        message,
+                    ))
+                if attempt == max_attempts:
+                    return _StepExecution(
+                        module_result=_timeout_result(message, started),
+                        attempts=attempt,
+                        max_attempts=max_attempts,
+                        retry_failures=tuple(retry_failures),
+                    )
+                await _sleep_retry_backoff(backoff_s)
+                backoff_s = _next_backoff(backoff_s, max_backoff_s, policy)
+                continue
+            except Exception as exc:
+                message = str(exc)
+                if record_retry_failures:
+                    retry_failures.append(_failure_summary(
+                        attempt,
+                        ExecutionStatus.ERROR,
+                        "SCENARIO_STEP_EXCEPTION",
+                        message,
+                    ))
+                if attempt == max_attempts:
+                    return _StepExecution(
+                        module_result=error_result(
+                            message,
+                            started_ms=started,
+                            error_code="SCENARIO_STEP_EXCEPTION",
+                        ),
+                        attempts=attempt,
+                        max_attempts=max_attempts,
+                        retry_failures=tuple(retry_failures),
+                    )
+                await _sleep_retry_backoff(backoff_s)
+                backoff_s = _next_backoff(backoff_s, max_backoff_s, policy)
+                continue
+
             status = module_result.status if module_result else ExecutionStatus.ERROR
             if status == ExecutionStatus.PASSED or attempt == max_attempts:
                 if status != ExecutionStatus.PASSED and record_retry_failures:
@@ -298,9 +343,8 @@ class ScenarioRunner:
                 )
             if record_retry_failures:
                 retry_failures.append(_retry_failure_summary(attempt, module_result))
-            if backoff_s > 0:
-                await asyncio.sleep(backoff_s)
-                backoff_s = min(max_backoff_s, backoff_s * policy.multiplier)
+            await _sleep_retry_backoff(backoff_s)
+            backoff_s = _next_backoff(backoff_s, max_backoff_s, policy)
 
         raise RuntimeError("unreachable retry loop exit")
 
@@ -546,12 +590,52 @@ def _retry_failure_summary(
     attempt: int,
     result: ModuleResult[Any],
 ) -> dict[str, JsonValue]:
+    return _failure_summary(
+        attempt,
+        result.status,
+        result.error_code,
+        result.message,
+    )
+
+
+def _failure_summary(
+    attempt: int,
+    status: ExecutionStatus,
+    error_code: str | None,
+    message: str | None,
+) -> dict[str, JsonValue]:
     return {
         "attempt": attempt,
-        "status": result.status.value,
-        "error_code": result.error_code,
-        "message": _truncate_retry_message(result.message),
+        "status": status.value,
+        "error_code": error_code,
+        "message": _truncate_retry_message(message),
     }
+
+
+def _timeout_result(message: str, started_ms: int) -> ModuleResult[Any]:
+    return ModuleResult(
+        ok=False,
+        status=ExecutionStatus.TIMEOUT,
+        data=None,
+        message=message,
+        error_code="SCENARIO_STEP_TIMEOUT",
+        duration_ms=int(time.time() * 1000) - started_ms,
+    )
+
+
+async def _sleep_retry_backoff(backoff_s: float) -> None:
+    if backoff_s > 0:
+        await asyncio.sleep(backoff_s)
+
+
+def _next_backoff(
+    backoff_s: float,
+    max_backoff_s: float,
+    policy: Any,
+) -> float:
+    if policy is None or backoff_s <= 0:
+        return backoff_s
+    return min(max_backoff_s, backoff_s * policy.multiplier)
 
 
 def _hard_failure_retry_summary(
@@ -563,12 +647,7 @@ def _hard_failure_retry_summary(
 ) -> tuple[dict[str, JsonValue], ...]:
     if _step_max_attempts(step) <= 1:
         return ()
-    return ({
-        "attempt": attempt,
-        "status": status.value,
-        "error_code": error_code,
-        "message": _truncate_retry_message(message),
-    },)
+    return (_failure_summary(attempt, status, error_code, message),)
 
 
 def _step_max_attempts(step: CompiledStep) -> int:

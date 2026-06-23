@@ -30,7 +30,7 @@ from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
-from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, ModuleResult
 
 PROJECT = Path(__file__).resolve().parents[2]
 
@@ -777,6 +777,127 @@ async def test_scenario_runner_reports_retry_context_on_hard_timeout(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_scenario_runner_retries_hard_timeout_for_idempotent_step(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+    calls = 0
+
+    async def timeout_then_pass(_step, _ctx, _scenario_id):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise asyncio.TimeoutError()
+        return ModuleResult(
+            ok=True,
+            status=ExecutionStatus.PASSED,
+            data=None,
+        )
+
+    monkeypatch.setattr(runner, "_execute_step", timeout_then_pass)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_retry_timeout_pass", "name": "retry timeout pass"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "timeout_then_pass",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "timeoutSeconds": 7,
+                    "retries": {
+                        "maxAttempts": 2,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"sensor_prim": "/World/Retry/Lidar"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    result = next(r for r in summary.step_results if r.step_id == "timeout_then_pass")
+    assert result.status == ExecutionStatus.PASSED
+    assert calls == 2
+    assert result.attempts == 2
+    assert result.max_attempts == 2
+    assert result.retry_failures == ({
+        "attempt": 1,
+        "status": "timeout",
+        "error_code": "SCENARIO_STEP_TIMEOUT",
+        "message": "Step timed out after 7s",
+    },)
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_reports_exhausted_hard_timeout_retries(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+    calls = 0
+
+    async def always_timeout(_step, _ctx, _scenario_id):
+        nonlocal calls
+        calls += 1
+        raise asyncio.TimeoutError()
+
+    monkeypatch.setattr(runner, "_execute_step", always_timeout)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "test_retry_timeout_exhausted",
+            "name": "retry timeout exhausted",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "always_timeout",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "timeoutSeconds": 7,
+                    "retries": {
+                        "maxAttempts": 2,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"sensor_prim": "/World/Retry/Lidar"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    result = next(r for r in summary.step_results if r.step_id == "always_timeout")
+    assert result.status == ExecutionStatus.TIMEOUT
+    assert calls == 2
+    assert result.attempts == 2
+    assert result.max_attempts == 2
+    assert result.retry_failures == (
+        {
+            "attempt": 1,
+            "status": "timeout",
+            "error_code": "SCENARIO_STEP_TIMEOUT",
+            "message": "Step timed out after 7s",
+        },
+        {
+            "attempt": 2,
+            "status": "timeout",
+            "error_code": "SCENARIO_STEP_TIMEOUT",
+            "message": "Step timed out after 7s",
+        },
+    )
+
+
+@pytest.mark.asyncio
 async def test_scenario_runner_bounds_hard_error_retry_messages(monkeypatch):
     from tests.conftest import MockIsaacRestClient, MockLakehouseClient
 
@@ -819,6 +940,125 @@ async def test_scenario_runner_bounds_hard_error_retry_messages(monkeypatch):
     message = str(result.retry_failures[0]["message"])
     assert len(message) == 243
     assert message.endswith("...")
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_retries_hard_exception_for_idempotent_step(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+    calls = 0
+
+    async def error_then_pass(_step, _ctx, _scenario_id):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("transient bridge error")
+        return ModuleResult(
+            ok=True,
+            status=ExecutionStatus.PASSED,
+            data=None,
+        )
+
+    monkeypatch.setattr(runner, "_execute_step", error_then_pass)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_retry_error_pass", "name": "retry error pass"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "error_then_pass",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "retries": {
+                        "maxAttempts": 2,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"sensor_prim": "/World/Retry/Lidar"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    result = next(r for r in summary.step_results if r.step_id == "error_then_pass")
+    assert result.status == ExecutionStatus.PASSED
+    assert calls == 2
+    assert result.attempts == 2
+    assert result.max_attempts == 2
+    assert result.retry_failures == ({
+        "attempt": 1,
+        "status": "error",
+        "error_code": "SCENARIO_STEP_EXCEPTION",
+        "message": "transient bridge error",
+    },)
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_reports_exhausted_hard_exception_retries(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+    calls = 0
+
+    async def always_error(_step, _ctx, _scenario_id):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("bridge stayed down")
+
+    monkeypatch.setattr(runner, "_execute_step", always_error)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "test_retry_error_exhausted",
+            "name": "retry error exhausted",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "always_error",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "retries": {
+                        "maxAttempts": 2,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {"sensor_prim": "/World/Retry/Lidar"},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    result = next(r for r in summary.step_results if r.step_id == "always_error")
+    assert result.status == ExecutionStatus.ERROR
+    assert calls == 2
+    assert result.attempts == 2
+    assert result.max_attempts == 2
+    assert result.retry_failures == (
+        {
+            "attempt": 1,
+            "status": "error",
+            "error_code": "SCENARIO_STEP_EXCEPTION",
+            "message": "bridge stayed down",
+        },
+        {
+            "attempt": 2,
+            "status": "error",
+            "error_code": "SCENARIO_STEP_EXCEPTION",
+            "message": "bridge stayed down",
+        },
+    )
 
 
 @pytest.mark.asyncio
