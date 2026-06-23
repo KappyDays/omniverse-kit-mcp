@@ -355,6 +355,7 @@ def test_markdown_highlights_sync_status_profile_diagnostics():
                         "reason": "app_profile_not_covered",
                         "requested_app_profile": "kit-app",
                         "available_profiles": ["isaac-sim", "usd-composer"],
+                        "available_providers": ["omni.simready.explorer"],
                         "matching_item_count": 0,
                         "suggested_next": [
                             "Call official_asset_sync_status without app_profile.",
@@ -378,6 +379,7 @@ def test_markdown_highlights_sync_status_profile_diagnostics():
         "diagnostics.reason=app_profile_not_covered; "
         "diagnostics.requested_app_profile=kit-app; "
         "diagnostics.available_profiles=[isaac-sim, usd-composer]; "
+        "diagnostics.available_providers=[omni.simready.explorer]; "
         "diagnostics.matching_item_count=0"
     ) in markdown
     assert "profile_count=0" in markdown
@@ -1842,11 +1844,13 @@ async def test_official_asset_sync_status_diagnostics_survive_runner(
     assert diagnostics["reason"] == "app_profile_not_covered"
     assert diagnostics["requested_app_profile"] == "kit-app"
     assert diagnostics["available_profiles"] == ["isaac-sim"]
+    assert diagnostics["available_providers"] == ["omni.simready.explorer"]
     assert diagnostics["matching_item_count"] == 0
     markdown = to_markdown(summary)
     assert "diagnostics.reason=app_profile_not_covered" in markdown
     assert "diagnostics.requested_app_profile=kit-app" in markdown
     assert "diagnostics.available_profiles=[isaac-sim]" in markdown
+    assert "diagnostics.available_providers=[omni.simready.explorer]" in markdown
     assert "diagnostics.matching_item_count=0" in markdown
 
 

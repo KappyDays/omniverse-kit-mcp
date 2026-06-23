@@ -184,8 +184,8 @@ catalog recovery steps before using legacy `asset_search`. In scenario runs,
 `diagnostics.candidate_counts` values, `suggested_next`, and
 `diagnostics.fallback_tool_order`.
 If `official_asset_sync_status(app_profile=...)` reports `profile_count=0`,
-inspect `data.diagnostics.available_profiles` before assuming the catalog is
-empty.
+inspect `data.diagnostics.available_profiles` and
+`data.diagnostics.available_providers` before assuming the catalog is empty.
 
 Runtime result fields that identify the catalog location are public-safe.
 Catalogs inside this repository are reported as project-relative POSIX paths;

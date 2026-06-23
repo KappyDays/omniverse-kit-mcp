@@ -1247,6 +1247,7 @@ def _official_sync_status_diagnostics(
         "reason": reason,
         "requested_app_profile": app_profile,
         "available_profiles": _official_catalog_profiles(catalog),
+        "available_providers": _official_catalog_provider_names(catalog),
         "profile_count": len(profiles),
         "matching_item_count": len(filtered_entries),
         "suggested_next": _official_suggested_next(reason),

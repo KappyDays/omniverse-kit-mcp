@@ -934,6 +934,10 @@ async def test_official_asset_sync_status_missing_profile_reports_diagnostics(
     assert diagnostics["reason"] == "app_profile_not_covered"
     assert diagnostics["requested_app_profile"] == "kit-app"
     assert diagnostics["available_profiles"] == ["isaac-sim", "usd-composer"]
+    assert diagnostics["available_providers"] == [
+        "omni.simready.explorer",
+        "omni.kit.browser.material",
+    ]
     assert any(
         "without app_profile" in item
         for item in diagnostics["suggested_next"]
