@@ -255,6 +255,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
 def test_f3b_robot_rtx_public_evidence_redaction_guidance():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
 
+    assert "same MCP host process that ran" in guide
+    assert "fresh stdio host has no in-memory latest report" in guide
     assert "Raw live reports can include host-local capture paths" in guide
     assert "<validation-api-capture>/capture_<id>.png" in guide
     assert "preserve SHA256/pixel stats" in guide

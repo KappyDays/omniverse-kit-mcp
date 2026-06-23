@@ -29,6 +29,8 @@ Robot + RTX live proof wrapper:
 `extension_clear_logs` -> `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
 `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
 `scenario_last_report(report_format="markdown")` -> `extension_capture_logs`.
+Call `scenario_last_report` from the same MCP host process that ran
+`scenario_validate`; a fresh stdio host has no in-memory latest report.
 
 Raw live reports can include host-local capture paths and Kit log filenames.
 Before committing public evidence, redact artifact paths such as
