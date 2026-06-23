@@ -13,6 +13,7 @@ commits have already been pushed.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -60,6 +61,24 @@ DISALLOWED_GENERATED_REFERENCES = (
     "docs/references/testbed-snapshot/",
     "docs/references/official-assets/",
 )
+
+
+def _local_user_names() -> tuple[str, ...]:
+    candidates = {
+        os.environ.get("USERNAME", ""),
+        os.environ.get("USER", ""),
+        Path.home().name,
+    }
+    return tuple(
+        sorted(
+            name
+            for name in candidates
+            if name and re.fullmatch(r"[A-Za-z0-9._-]+", name)
+        )
+    )
+
+
+LOCAL_USER_NAMES = _local_user_names()
 
 
 @dataclass(frozen=True)
@@ -116,7 +135,25 @@ def _scan_text(source: str, detail: str, text: str) -> list[Finding]:
                         sample=line.strip()[:240],
                     )
                 )
+        if _looks_like_split_user_path(line):
+            findings.append(
+                Finding(
+                    source=source,
+                    label="split_windows_user_path",
+                    detail=f"{detail}:{line_no}",
+                    sample=line.strip()[:240],
+                )
+            )
     return findings
+
+
+def _looks_like_split_user_path(line: str) -> bool:
+    if "/Users/" not in line and "\\Users\\" not in line:
+        return False
+    for user_name in LOCAL_USER_NAMES:
+        if re.search(rf"['\"]{re.escape(user_name)}['\"]", line, re.IGNORECASE):
+            return True
+    return False
 
 
 def scan_current_tree(project: Path) -> list[Finding]:
@@ -222,17 +259,9 @@ def _scan_commit_added_lines(project: Path, commit: str) -> list[Finding]:
             continue
         if not line.startswith("+") or line.startswith("+++"):
             continue
-        added = line[1:]
-        for label, pattern in DISALLOWED_PATH_PATTERNS + SECRET_LIKE_PATTERNS:
-            if pattern.search(added):
-                findings.append(
-                    Finding(
-                        "history-added-line",
-                        label,
-                        f"{subject} {current_file}",
-                        added.strip()[:240],
-                    )
-                )
+        findings.extend(
+            _scan_text("history-added-line", f"{subject} {current_file}", line[1:])
+        )
     return findings
 
 

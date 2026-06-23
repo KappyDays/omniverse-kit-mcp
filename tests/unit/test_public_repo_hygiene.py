@@ -48,6 +48,30 @@ _SECRET_LIKE_PATTERNS = (
 )
 
 
+def _local_user_names() -> tuple[str, ...]:
+    candidates = {
+        os.environ.get("USERNAME", ""),
+        os.environ.get("USER", ""),
+        Path.home().name,
+    }
+    return tuple(
+        sorted(
+            name
+            for name in candidates
+            if name and re.fullmatch(r"[A-Za-z0-9._-]+", name)
+        )
+    )
+
+
+def _looks_like_split_user_path(line: str) -> bool:
+    if "/Users/" not in line and "\\Users\\" not in line:
+        return False
+    return any(
+        re.search(rf"['\"]{re.escape(name)}['\"]", line, re.IGNORECASE)
+        for name in _local_user_names()
+    )
+
+
 def _tracked_files() -> list[str]:
     return subprocess.check_output(
         ["git", "-C", str(PROJECT), "ls-files"],
@@ -74,6 +98,9 @@ def test_tracked_text_files_do_not_embed_user_specific_paths() -> None:
         for label, pattern in _DISALLOWED_PATH_PATTERNS:
             if pattern.search(text):
                 offenders.append(f"{rel}: matches {label}")
+        for line_no, line in enumerate(text.splitlines(), start=1):
+            if _looks_like_split_user_path(line):
+                offenders.append(f"{rel}:{line_no}: matches split_windows_user_path")
     assert not offenders, "User-specific public path literals found:\n" + "\n".join(
         offenders[:50]
     )
@@ -247,6 +274,48 @@ def test_public_hygiene_script_since_scans_root_commit(tmp_path: Path) -> None:
     assert result.returncode == 1
     assert "history-added-line" in result.stdout
     assert "windows_user_path" in result.stdout
+
+
+def test_public_hygiene_script_flags_split_user_path_literals(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    split_user = "splituser"
+    (repo / "evidence.py").write_text("leaked_path = 'redacted'\n", encoding="utf-8")
+    _commit_all(repo, "baseline")
+
+    leak_line = (
+        'leaked_path = "C:" + "/Users/" + "'
+        + split_user
+        + '" + "/AppData/Local/Temp/capture.png"\n'
+    )
+    (repo / "evidence.py").write_text(leak_line, encoding="utf-8")
+    _commit_all(repo, "split user path leak")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env={**os.environ, "USERNAME": split_user, "USER": split_user},
+    )
+
+    assert result.returncode == 1
+    assert "history-added-line" in result.stdout
+    assert "split_windows_user_path" in result.stdout
 
 
 def test_public_hygiene_script_accepts_redacted_history(tmp_path: Path) -> None:
