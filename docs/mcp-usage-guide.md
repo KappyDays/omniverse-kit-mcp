@@ -120,6 +120,10 @@ For `official_asset_sync_status` profile diagnostics, compare
 `diagnostics.catalog_status_counts` with
 `diagnostics.matching_status_counts` and use `diagnostics.sample_names` only as
 bounded retry hints.
+If `official_asset_verify` returns `OFFICIAL_ASSET_NOT_FOUND`, treat it as a
+preflight miss rather than a failed stage probe: inspect the same bounded
+diagnostics, then go back through `official_asset_search` /
+`official_asset_resolve` before retrying verify.
 For `official_asset_verify` failed records, inspect `diagnostics.reason` plus
 `diagnostics.asset_checks` or `diagnostics.material_checks` before retrying or
 placing the asset in a user scene. JSON `diagnostic_next_actions` carries the
