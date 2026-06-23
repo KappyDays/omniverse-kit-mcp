@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -44,6 +45,7 @@ from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 
 
 async def run(scenario_path: str) -> int:
+    os.chdir(PROJECT_ROOT)
     config = AppConfig()
     resolved_path = _resolve_scenario_path(scenario_path, config)
     isaac_client = IsaacRestClient(config.isaac_sim)

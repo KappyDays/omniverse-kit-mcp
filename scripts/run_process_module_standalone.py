@@ -24,6 +24,7 @@ from omniverse_kit_mcp.modules.process_module import ProcessModule  # noqa: E402
 
 
 async def run(action: str, profile: str, instance: int) -> int:
+    os.chdir(PROJECT_ROOT)
     os.environ["ISAAC_MCP_APP_PROFILE"] = profile
     os.environ["ISAAC_MCP_INSTANCE_ID"] = str(instance)
 
