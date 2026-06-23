@@ -132,10 +132,7 @@ scenario_plan(scenario_path="smoke/state_check_property.yaml")   # plan preview
 Read resource isaacsim://scenarios                               # available scenario list
 scenario_last_report(report_format="markdown")                   # quick triage; omit arg for JSON
 ```
-`scenario_last_report` includes per-step `attempts`, `max_attempts`,
-`retry_failures`, and `data_summary` telemetry such as lidar `num_points`,
-`backend`, `frames_waited`, `empty_reason`, `diagnostics.suggested_next`,
-`raw_keys`, `warning`, and timeline/capture highlights; use Markdown for quick triage and JSON before logs for exact fields.
+`scenario_last_report` includes per-step `attempts`, `max_attempts`, `retry_failures`, and `data_summary` telemetry such as lidar `num_points`, `backend`, `frames_waited`, `empty_reason`, `diagnostics.reason`, `diagnostics.suggested_next`, `diagnostics.fallback_tool_order`, `raw_keys`, `warning`, and timeline/capture highlights; use Markdown for quick triage and JSON before logs for exact fields.
 
 ## Procedure for creating a new scenario
 

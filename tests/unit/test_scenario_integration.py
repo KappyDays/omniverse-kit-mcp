@@ -148,6 +148,54 @@ def test_markdown_highlights_bounded_raw_key_samples():
     ) in markdown
 
 
+def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
+    summary = ScenarioRunSummary(
+        scenario_id="official_asset_diagnostics",
+        status=ExecutionStatus.FAILED,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="find_asset",
+                phase="arrange",
+                status=ExecutionStatus.FAILED,
+                data_summary={
+                    "count": 0,
+                    "diagnostics": {
+                        "reason": "query_no_match",
+                        "suggested_next": [
+                            "Retry with a broader asset family.",
+                            "Use asset_search if official search still misses.",
+                        ],
+                        "fallback_tool_order": [
+                            "official_asset_sync_status",
+                            "official_asset_search",
+                            "official_asset_resolve",
+                            "official_asset_verify",
+                            "asset_search",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert (
+        "- `find_asset`: diagnostics.reason=query_no_match; "
+        "suggested_next=[Retry with a broader asset family., "
+        "Use asset_search if official search still misses.]; "
+        "diagnostics.fallback_tool_order=[official_asset_sync_status, "
+        "official_asset_search, official_asset_resolve, official_asset_verify, "
+        "asset_search]; count=0"
+    ) in markdown
+
+
 def test_markdown_does_not_label_stage_path_as_capture_path():
     summary = ScenarioRunSummary(
         scenario_id="stage_path_summary",
