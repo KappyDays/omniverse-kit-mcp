@@ -40,7 +40,7 @@ Robot + RTX live proof wrapper:
 `extension_capture_logs`.
 Before validation, check `scenario_plan.phase_counts` and `total_steps` so a
 missing setup, sensor, viewport, or cleanup phase is caught before live stage
-mutation.
+mutation. `automatic: true` cleanup steps are runner-added safeguards, not YAML.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 

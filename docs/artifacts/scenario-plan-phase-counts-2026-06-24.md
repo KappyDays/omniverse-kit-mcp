@@ -5,16 +5,17 @@ Batch: scenario plan phase count visibility
 
 ## Change
 
-`scenario_plan` now includes `total_steps` and per-phase `phase_counts` before the expanded `phases` payload.
+`scenario_plan` now includes `total_steps` and per-phase `phase_counts` before the expanded `phases` payload. For scenarios that trigger runner fallback cleanup, the plan includes the automatic `__fallback_cleanup_reset` step at the end of the cleanup phase.
 
 ## Why
 
-Robot and RTX sensor workflows are long enough that agents should confirm the expected arrange, act, assert, and cleanup shape before mutating a live stage. Exposing counts directly in the tool result makes this check less fragile than manually counting expanded plan arrays.
+Robot and RTX sensor workflows are long enough that agents should confirm the expected arrange, act, assert, and cleanup shape before mutating a live stage. Exposing counts directly in the tool result makes this check less fragile than manually counting expanded plan arrays. Showing automatic cleanup keeps `scenario_plan` aligned with runner summary counts.
 
 ## Verification
 
 - Unit coverage pins phase counts for a small fixture scenario.
-- The robot + RTX golden workflow unit path pins the current compiled `31` total steps and `11/9/5/6` phase split.
+- The robot + RTX golden workflow unit path pins the current executable `32` total steps and `11/9/5/7` phase split, including automatic fallback cleanup.
+- The same golden workflow unit path asserts the runner's passed/failed/skipped counts stay aligned with the executable plan count.
 - `python -m pytest tests/unit/test_scenario_runner.py tests/unit/test_scenario_integration.py::test_robot_rtx_sensor_golden_workflow_routes_through_runner -q`: 11 passed.
 - `python -m ruff check src/omniverse_kit_mcp/tools/scenario_tools.py tests/unit/test_scenario_runner.py tests/unit/test_scenario_integration.py`: passed.
 - `python -m pytest tests/unit/test_doc_integrity.py tests/unit/test_doc_references.py tests/unit/test_scenario_runner.py tests/unit/test_scenario_integration.py -q`: 79 passed, 2 skipped.

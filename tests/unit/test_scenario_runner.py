@@ -141,7 +141,9 @@ def test_scenario_plan_payload_includes_phase_counts(sync_add_cube_scenario_raw)
         "arrange": len(scenario.arrange_steps),
         "act": len(scenario.act_steps),
         "assert": len(scenario.assert_steps),
-        "cleanup": len(scenario.cleanup_steps),
+        "cleanup": len(scenario.cleanup_steps) + 1,
     }
     assert len(planned["phases"]["arrange"]) == len(scenario.arrange_steps)
     assert len(planned["phases"]["assert"]) == len(scenario.assert_steps)
+    assert planned["phases"]["cleanup"][-1]["id"] == "__fallback_cleanup_reset"
+    assert planned["phases"]["cleanup"][-1]["automatic"] is True

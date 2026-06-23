@@ -1060,17 +1060,27 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     assert raw_capture["args"]["min_variance"] == 1.0
     scenario = compile_scenario(raw)
     plan = _scenario_plan_payload(scenario)
-    assert plan["total_steps"] == 31
+    assert plan["total_steps"] == 32
     assert plan["phase_counts"] == {
         "arrange": 11,
         "act": 9,
         "assert": 5,
-        "cleanup": 6,
+        "cleanup": 7,
+    }
+    assert plan["phases"]["cleanup"][-1] == {
+        "id": "__fallback_cleanup_reset",
+        "module": "extension",
+        "action": "reset",
+        "args": {},
+        "automatic": True,
     }
 
     summary = await runner.run(scenario)
 
     assert summary.status == ExecutionStatus.PASSED, summary
+    assert summary.passed_steps == plan["total_steps"]
+    assert summary.failed_steps == 0
+    assert summary.skipped_steps == 0
     act_step_ids = [step["id"] for step in raw["spec"]["act"]]
     assert act_step_ids.index("play_for_sensor_data") < act_step_ids.index(
         "attach_top_lidar"
