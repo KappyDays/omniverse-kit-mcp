@@ -966,6 +966,9 @@ async def test_scenario_runner_reports_retry_context_on_hard_timeout(monkeypatch
 
     summary = await runner.run(scenario)
 
+    assert summary.failed_steps == 1
+    assert json.loads(to_json(summary))["failed_steps"] == 1
+    assert "**Steps**: 1 passed, 1 failed, 0 skipped" in to_markdown(summary)
     result = next(r for r in summary.step_results if r.step_id == "timeout_lidar")
     assert result.status == ExecutionStatus.TIMEOUT
     assert result.attempts == 1
@@ -1134,6 +1137,9 @@ async def test_scenario_runner_bounds_hard_error_retry_messages(monkeypatch):
 
     summary = await runner.run(scenario)
 
+    assert summary.failed_steps == 1
+    assert json.loads(to_json(summary))["failed_steps"] == 1
+    assert "**Steps**: 1 passed, 1 failed, 0 skipped" in to_markdown(summary)
     result = next(r for r in summary.step_results if r.step_id == "error_lidar")
     assert result.status == ExecutionStatus.ERROR
     assert result.attempts == 1

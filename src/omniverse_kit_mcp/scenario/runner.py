@@ -571,7 +571,7 @@ class ScenarioRunner:
         ctx: ScenarioContext,
     ) -> ScenarioRunSummary:
         passed = sum(1 for r in step_results if r.status == ExecutionStatus.PASSED)
-        failed = sum(1 for r in step_results if r.status == ExecutionStatus.FAILED)
+        failed = sum(1 for r in step_results if _is_failed_step_status(r.status))
         skipped = sum(1 for r in step_results if r.status == ExecutionStatus.SKIPPED)
         return ScenarioRunSummary(
             scenario_id=scenario.scenario_id,
@@ -609,6 +609,14 @@ def _failure_summary(
         "status": status.value,
         "error_code": error_code,
         "message": _truncate_retry_message(message),
+    }
+
+
+def _is_failed_step_status(status: ExecutionStatus) -> bool:
+    return status in {
+        ExecutionStatus.FAILED,
+        ExecutionStatus.ERROR,
+        ExecutionStatus.TIMEOUT,
     }
 
 
