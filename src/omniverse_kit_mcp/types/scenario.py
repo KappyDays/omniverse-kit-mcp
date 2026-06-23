@@ -93,3 +93,6 @@ class ScenarioRunSummary:
     ended_at_epoch_ms: int
     step_results: tuple[StepResult, ...]
     artifact_paths: tuple[str, ...]
+    continued_steps: int = 0
+    fatal_failed_steps: int = 0
+    cleanup_failed_steps: int = 0

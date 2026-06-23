@@ -589,6 +589,9 @@ class ScenarioRunner:
         passed = sum(1 for r in step_results if r.status == ExecutionStatus.PASSED)
         failed = sum(1 for r in step_results if _is_failed_step_status(r.status))
         skipped = sum(1 for r in step_results if r.status == ExecutionStatus.SKIPPED)
+        cleanup_failed = _cleanup_failed_step_count(step_results)
+        continued = _continued_failed_step_count(step_results)
+        fatal_failed = max(0, failed - cleanup_failed - continued)
         return ScenarioRunSummary(
             scenario_id=scenario.scenario_id,
             status=status,
@@ -599,6 +602,9 @@ class ScenarioRunner:
             ended_at_epoch_ms=int(time.time() * 1000),
             step_results=tuple(step_results),
             artifact_paths=ctx.all_artifact_paths,
+            continued_steps=continued,
+            fatal_failed_steps=fatal_failed,
+            cleanup_failed_steps=cleanup_failed,
         )
 
 
@@ -634,6 +640,24 @@ def _is_failed_step_status(status: ExecutionStatus) -> bool:
         ExecutionStatus.ERROR,
         ExecutionStatus.TIMEOUT,
     }
+
+
+def _continued_failed_step_count(step_results: list[StepResult]) -> int:
+    return sum(
+        1
+        for result in step_results
+        if result.phase != "cleanup"
+        and result.continue_on_failure
+        and _is_failed_step_status(result.status)
+    )
+
+
+def _cleanup_failed_step_count(step_results: list[StepResult]) -> int:
+    return sum(
+        1
+        for result in step_results
+        if result.phase == "cleanup" and _is_failed_step_status(result.status)
+    )
 
 
 def _scenario_needs_fallback_cleanup(scenario: CompiledScenario) -> bool:

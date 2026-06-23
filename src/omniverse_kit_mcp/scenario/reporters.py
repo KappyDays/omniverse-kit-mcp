@@ -86,10 +86,13 @@ def to_markdown(
     summary: ScenarioRunSummary, *, redact_local_paths: bool = False
 ) -> str:
     """Render summary as Markdown report."""
-    cleanup_failures = _cleanup_failed_steps(summary)
-    main_failures = max(0, summary.failed_steps - cleanup_failures)
-    continued_failures = _continued_failed_steps(summary)
-    fatal_main_failures = max(0, main_failures - continued_failures)
+    cleanup_failures = _summary_cleanup_failed_steps(summary)
+    continued_failures = _summary_continued_steps(summary)
+    fatal_main_failures = _summary_fatal_failed_steps(
+        summary,
+        cleanup_failures=cleanup_failures,
+        continued_failures=continued_failures,
+    )
     if continued_failures:
         steps_text = (
             f"**Steps**: {summary.passed_steps} passed, "
@@ -98,7 +101,7 @@ def to_markdown(
         )
     else:
         steps_text = (
-            f"**Steps**: {summary.passed_steps} passed, {main_failures} failed, "
+            f"**Steps**: {summary.passed_steps} passed, {fatal_main_failures} failed, "
             f"{summary.skipped_steps} skipped"
         )
     lines = [
@@ -216,22 +219,33 @@ def _redact_local_path_string(value: str) -> str:
     )
 
 
-def _cleanup_failed_steps(summary: ScenarioRunSummary) -> int:
-    return sum(
+def _summary_cleanup_failed_steps(summary: ScenarioRunSummary) -> int:
+    return summary.cleanup_failed_steps or sum(
         1
         for step in summary.step_results
-        if step.phase == "cleanup" and step.status.value in {"failed", "error", "timeout"}
+        if step.phase == "cleanup" and step.status.value in _FAILED_STATUS_VALUES
     )
 
 
-def _continued_failed_steps(summary: ScenarioRunSummary) -> int:
-    return sum(
+def _summary_continued_steps(summary: ScenarioRunSummary) -> int:
+    return summary.continued_steps or sum(
         1
         for step in summary.step_results
         if step.phase != "cleanup"
         and step.continue_on_failure
         and step.status.value in _FAILED_STATUS_VALUES
     )
+
+
+def _summary_fatal_failed_steps(
+    summary: ScenarioRunSummary,
+    *,
+    cleanup_failures: int,
+    continued_failures: int,
+) -> int:
+    if summary.fatal_failed_steps:
+        return summary.fatal_failed_steps
+    return max(0, summary.failed_steps - cleanup_failures - continued_failures)
 
 
 def _display_step_status(step: StepResult) -> str:

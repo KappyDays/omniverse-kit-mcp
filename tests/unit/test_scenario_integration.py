@@ -1355,6 +1355,15 @@ async def test_scenario_runner_reports_exhausted_hard_timeout_retries(monkeypatc
 
     summary = await runner.run(scenario)
 
+    assert summary.failed_steps == 1
+    assert summary.continued_steps == 0
+    assert summary.fatal_failed_steps == 1
+    assert summary.cleanup_failed_steps == 0
+    json_report = json.loads(to_json(summary))
+    assert json_report["failed_steps"] == 1
+    assert json_report["continued_steps"] == 0
+    assert json_report["fatal_failed_steps"] == 1
+    assert json_report["cleanup_failed_steps"] == 0
     result = next(r for r in summary.step_results if r.step_id == "always_timeout")
     assert result.status == ExecutionStatus.TIMEOUT
     assert calls == 2
@@ -1412,7 +1421,14 @@ async def test_scenario_runner_bounds_hard_error_retry_messages(monkeypatch):
     summary = await runner.run(scenario)
 
     assert summary.failed_steps == 1
-    assert json.loads(to_json(summary))["failed_steps"] == 1
+    assert summary.continued_steps == 0
+    assert summary.fatal_failed_steps == 1
+    assert summary.cleanup_failed_steps == 0
+    json_report = json.loads(to_json(summary))
+    assert json_report["failed_steps"] == 1
+    assert json_report["continued_steps"] == 0
+    assert json_report["fatal_failed_steps"] == 1
+    assert json_report["cleanup_failed_steps"] == 0
     assert "**Steps**: 1 passed, 1 failed, 0 skipped" in to_markdown(summary)
     result = next(r for r in summary.step_results if r.step_id == "error_lidar")
     assert result.status == ExecutionStatus.ERROR
@@ -1587,6 +1603,9 @@ async def test_continued_hard_timeout_and_exception_report_as_continued(monkeypa
 
     assert summary.status == ExecutionStatus.PASSED
     assert summary.failed_steps == 2
+    assert summary.continued_steps == 2
+    assert summary.fatal_failed_steps == 0
+    assert summary.cleanup_failed_steps == 0
     steps = {step.step_id: step for step in summary.step_results}
     assert steps["continued_timeout"].continue_on_failure is True
     assert steps["continued_timeout"].status == ExecutionStatus.TIMEOUT
@@ -1597,6 +1616,10 @@ async def test_continued_hard_timeout_and_exception_report_as_continued(monkeypa
     assert "| continued_timeout | assert | timeout (continued) |" in markdown
     assert "| continued_error | assert | error (continued) |" in markdown
     json_report = json.loads(to_json(summary))
+    assert json_report["failed_steps"] == 2
+    assert json_report["continued_steps"] == 2
+    assert json_report["fatal_failed_steps"] == 0
+    assert json_report["cleanup_failed_steps"] == 0
     json_steps = {step["step_id"]: step for step in json_report["step_results"]}
     assert json_steps["continued_timeout"]["continue_on_failure"] is True
     assert json_steps["continued_error"]["continue_on_failure"] is True
@@ -1809,6 +1832,10 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     summary = await runner.run(compile_scenario(raw))
 
     assert summary.status == ExecutionStatus.PASSED, summary
+    assert summary.failed_steps == 1
+    assert summary.continued_steps == 1
+    assert summary.fatal_failed_steps == 0
+    assert summary.cleanup_failed_steps == 0
     steps = {step.step_id: step for step in summary.step_results}
     assert "__fallback_cleanup_reset" not in steps
     assert steps["check_isaac_catalog"].status == ExecutionStatus.PASSED
@@ -1837,6 +1864,10 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     assert "diagnostics.candidate_counts.total_entries=1" in markdown
     assert "diagnostics.candidate_counts.after_app_profile=0" in markdown
     json_report = json.loads(to_json(summary))
+    assert json_report["failed_steps"] == 1
+    assert json_report["continued_steps"] == 1
+    assert json_report["fatal_failed_steps"] == 0
+    assert json_report["cleanup_failed_steps"] == 0
     json_steps = {step["step_id"]: step for step in json_report["step_results"]}
     assert json_steps["get_pallet_wrong_profile"]["continue_on_failure"] is True
 
