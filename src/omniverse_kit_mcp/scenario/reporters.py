@@ -19,6 +19,18 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ("diagnostics.requested_app_profile", (("diagnostics", "requested_app_profile"),)),
     ("diagnostics.available_profiles", (("diagnostics", "available_profiles"),)),
     ("diagnostics.matching_item_count", (("diagnostics", "matching_item_count"),)),
+    (
+        "diagnostics.candidate_counts.total_entries",
+        (("diagnostics", "candidate_counts", "total_entries"),),
+    ),
+    (
+        "diagnostics.candidate_counts.after_app_profile",
+        (("diagnostics", "candidate_counts", "after_app_profile"),),
+    ),
+    (
+        "diagnostics.candidate_counts.query_matches",
+        (("diagnostics", "candidate_counts", "query_matches"),),
+    ),
     ("suggested_next", (("diagnostics", "suggested_next"),)),
     ("diagnostics.fallback_tool_order", (("diagnostics", "fallback_tool_order"),)),
     ("raw_keys", (("raw_keys",),)),

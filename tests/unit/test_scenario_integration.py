@@ -296,6 +296,11 @@ def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
                     "count": 0,
                     "diagnostics": {
                         "reason": "query_no_match",
+                        "candidate_counts": {
+                            "total_entries": 4,
+                            "after_app_profile": 2,
+                            "query_matches": 0,
+                        },
                         "suggested_next": [
                             "Retry with a broader asset family.",
                             "Use asset_search if official search still misses.",
@@ -318,6 +323,9 @@ def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
 
     assert (
         "- `find_asset`: diagnostics.reason=query_no_match; "
+        "diagnostics.candidate_counts.total_entries=4; "
+        "diagnostics.candidate_counts.after_app_profile=2; "
+        "diagnostics.candidate_counts.query_matches=0; "
         "suggested_next=[Retry with a broader asset family., "
         "Use asset_search if official search still misses.]; "
         "diagnostics.fallback_tool_order=[official_asset_sync_status, "
