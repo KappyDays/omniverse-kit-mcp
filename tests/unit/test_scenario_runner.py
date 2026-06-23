@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from omniverse_kit_mcp.exceptions import ScenarioSchemaError
@@ -9,6 +12,8 @@ from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import validate_schema
 from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
 from omniverse_kit_mcp.tools.scenario_tools import _plan_step
+
+PROJECT = Path(__file__).resolve().parents[2]
 
 
 def test_validate_valid_scenario(sync_add_cube_scenario_raw):
@@ -18,6 +23,16 @@ def test_validate_valid_scenario(sync_add_cube_scenario_raw):
 def test_validate_invalid_scenario_missing_metadata():
     with pytest.raises(ScenarioSchemaError):
         validate_schema({"apiVersion": "isaacsim.validation/v1", "kind": "Scenario", "spec": {"assert": []}})
+
+
+def test_python_scenario_schema_matches_json_schema_file():
+    disk_schema = json.loads(
+        (PROJECT / "scenarios" / "schema" / "scenario.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert SCENARIO_SCHEMA == disk_schema
 
 
 def test_compile_scenario(sync_add_cube_scenario_raw):
