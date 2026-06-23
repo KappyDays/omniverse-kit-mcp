@@ -14,8 +14,8 @@ The generated signature reference remains `docs/tool-catalog.md`.
 | Build a visible scene | `official_asset_search`, `asset_search`, `stage_load_usd`, `viewport_frame_prims`, `viewport_capture_assert` | `docs/invariants/usd-load.md`, `docs/invariants/visual-validation.md` |
 | Inspect or edit the USD stage | `stage_capture_snapshot`, `stage_compute_world_bbox`, `stage_set_property`, `stage_create_prim` | `src/omniverse_kit_mcp/tools/CLAUDE.md` |
 | Diagnose a failed live action | Read-only probes first: `mcp_runtime_info`, `simulation_get_status`, `extension_capture_logs`, `stage_capture_snapshot` | `docs/tool-diagnostic-map.md`; then the relevant `docs/runbooks/*.md` if a known failure pattern matches |
-| Drive a reproducible scenario | `scenario_plan`, `scenario_validate`, `scenario_last_report(report_format="markdown")` for quick triage or default JSON for exact fields | `docs/invariants/scenario-validation.md`, `scenarios/CLAUDE.md` |
-| Prove the robot + RTX sensor golden path | `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)`, `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)`, `scenario_last_report(report_format="markdown")` for lidar/timeline/capture highlights; if lidar is empty, inspect `empty_reason` and `diagnostics.suggested_next` before widening the smoke | `docs/invariants/scenario-validation.md`, `src/omniverse_kit_mcp/modules/integration-facts.md` |
+| Drive a reproducible scenario | `scenario_plan`, `scenario_validate`, `scenario_last_report(report_format="markdown")` for quick triage or default JSON for exact fields; add `redact_local_paths=true` before copying live evidence into public docs | `docs/invariants/scenario-validation.md`, `scenarios/CLAUDE.md` |
+| Prove the robot + RTX sensor golden path | `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)`, `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)`, `scenario_last_report(report_format="markdown", redact_local_paths=true)` for public-safe lidar/timeline/capture highlights; if lidar is empty, inspect `empty_reason` and `diagnostics.suggested_next` before widening the smoke | `docs/invariants/scenario-validation.md`, `src/omniverse_kit_mcp/modules/integration-facts.md` |
 | Work with robot or character motion | `robot_list_arm_profiles`, `robot_load`, `robot_probe_arm_profile`, `character_load`, `job_status` | `src/omniverse_kit_mcp/modules/CLAUDE.md`, `docs/invariants/scenario-validation.md` |
 | Attach RTX sensors to a robot manually | Prefer the smoke scenario route; if manual, follow the robot + RTX sensor sequence in the invariant before calling `sensor_attach_rtx_lidar` / `sensor_lidar_get_point_cloud`; set `min_points>0` and read `empty_reason`/`diagnostics.suggested_next` on zero-point results | `docs/invariants/scenario-validation.md`, `src/omniverse_kit_mcp/modules/integration-facts.md` |
 | Capture GUI or menu evidence | `window_capture`, `window_list`, `window_menu_list`, `window_menu_trigger` | `docs/invariants/visual-validation.md`, `src/omniverse_kit_mcp/tools/CLAUDE.md` |
@@ -28,14 +28,16 @@ Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
 `extension_clear_logs` -> `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
 `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
-`scenario_last_report(report_format="markdown")` -> `extension_capture_logs`.
+`scenario_last_report(report_format="markdown")` or
+`scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
+`extension_capture_logs`.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 
 Raw live reports can include host-local capture paths and Kit log filenames.
-Before committing public evidence, redact artifact paths such as
-`<validation-api-capture>/capture_<id>.png`, preserve SHA256/pixel stats and
-WARN/ERROR counts, and run the public hygiene checks.
+For public evidence, request `redact_local_paths=true`, preserve SHA256/pixel stats
+and WARN/ERROR counts, confirm artifact paths look like
+`<validation-api-capture>/capture_<id>.png`, and run the public hygiene checks.
 
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.suggested_next`, and

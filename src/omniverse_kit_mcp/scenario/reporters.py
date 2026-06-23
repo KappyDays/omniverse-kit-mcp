@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict
 from typing import Any
 
@@ -35,14 +36,42 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ("non_empty", (("non_empty",),)),
     ("passed", (("passed",),)),
 )
+_VALIDATION_CAPTURE_RE = re.compile(
+    r"\b[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+[\\/]+AppData[\\/]+Local[\\/]+"
+    r"Temp[\\/]+validation_api_captures[\\/]+([^\\/`\"'\s]+)",
+    re.IGNORECASE,
+)
+_KIT_TEMP_LOG_RE = re.compile(
+    r"\b[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+[\\/]+AppData[\\/]+Local[\\/]+"
+    r"Temp[\\/]+omniverse_kit_mcp[\\/]+(kit_[^\\/`\"'\s]+\.log)",
+    re.IGNORECASE,
+)
+_WINDOWS_USER_PATH_RE = re.compile(
+    r"\b[A-Za-z]:[\\/]+Users[\\/]+[^\\/`\"'\s]+(?:[\\/][^`\"'\s]*)?",
+    re.IGNORECASE,
+)
+_MSYS_USER_PATH_RE = re.compile(
+    r"(?<![A-Za-z0-9_])/[A-Za-z]/Users/[^/`\"'\s]+(?:/[^`\"'\s]*)?",
+    re.IGNORECASE,
+)
+_SANITIZED_WINDOWS_USER_PATH_RE = re.compile(
+    r"\b[A-Za-z]--Users-[A-Za-z0-9._-]+(?:-[A-Za-z0-9._-]+)*\b"
+)
 
 
-def to_json(summary: ScenarioRunSummary) -> str:
+def to_json(
+    summary: ScenarioRunSummary, *, redact_local_paths: bool = False
+) -> str:
     """Serialize summary to JSON string."""
-    return json.dumps(_to_dict(summary), indent=2, ensure_ascii=False)
+    data = _to_dict(summary)
+    if redact_local_paths:
+        data = _redact_local_paths(data)
+    return json.dumps(data, indent=2, ensure_ascii=False)
 
 
-def to_markdown(summary: ScenarioRunSummary) -> str:
+def to_markdown(
+    summary: ScenarioRunSummary, *, redact_local_paths: bool = False
+) -> str:
     """Render summary as Markdown report."""
     cleanup_failures = _cleanup_failed_steps(summary)
     main_failures = max(0, summary.failed_steps - cleanup_failures)
@@ -68,17 +97,27 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
     for sr in summary.step_results:
         dur = f"{sr.duration_ms}ms" if sr.duration_ms is not None else "-"
         attempts = f"{sr.attempts}/{sr.max_attempts}"
+        message = sr.message or ""
+        if redact_local_paths:
+            message = _redact_local_path_string(message)
         lines.append(
             f"| {_markdown_table_cell(sr.step_id)} | "
             f"{_markdown_table_cell(sr.phase)} | "
             f"{_markdown_table_cell(sr.status.value)} | "
             f"{_markdown_table_cell(attempts)} | "
             f"{_markdown_table_cell(dur)} | "
-            f"{_markdown_table_cell(sr.message or '')} |"
+            f"{_markdown_table_cell(message)} |"
         )
 
     data_rows = [
-        (sr.step_id, _format_data_summary_highlight(sr.data_summary))
+        (
+            sr.step_id,
+            _format_data_summary_highlight(
+                _redact_local_paths(sr.data_summary)
+                if redact_local_paths
+                else sr.data_summary
+            ),
+        )
         for sr in summary.step_results
         if sr.data_summary and _has_diagnostic_summary(sr.data_summary)
     ]
@@ -97,15 +136,20 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
     if retry_rows:
         lines.extend(["", "## Retry Failures", ""])
         for step_id, failure in retry_rows:
+            failure_message = failure.get("message") or ""
+            if redact_local_paths:
+                failure_message = _redact_local_path_string(str(failure_message))
             lines.append(
                 f"- {_markdown_code_span(step_id)} attempt {failure.get('attempt')}: "
                 f"{failure.get('status')} {failure.get('error_code')} - "
-                f"{_markdown_inline(failure.get('message') or '')}"
+                f"{_markdown_inline(failure_message)}"
             )
 
     if summary.artifact_paths:
         lines.extend(["", "## Artifacts", ""])
         for path in summary.artifact_paths:
+            if redact_local_paths:
+                path = _redact_local_path_string(path)
             lines.append(f"- {_markdown_code_span(path)}")
 
     return "\n".join(lines)
@@ -120,6 +164,33 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
         for sr in summary.step_results
     ]
     return d
+
+
+def _redact_local_paths(value: Any) -> Any:
+    if isinstance(value, str):
+        return _redact_local_path_string(value)
+    if isinstance(value, list):
+        return [_redact_local_paths(item) for item in value]
+    if isinstance(value, tuple):
+        return [_redact_local_paths(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key): _redact_local_paths(item)
+            for key, item in value.items()
+        }
+    return value
+
+
+def _redact_local_path_string(value: str) -> str:
+    redacted = _VALIDATION_CAPTURE_RE.sub(
+        r"<validation-api-capture>/\1", value
+    )
+    redacted = _KIT_TEMP_LOG_RE.sub(r"<local-kit-log>/\1", redacted)
+    redacted = _WINDOWS_USER_PATH_RE.sub("<local-user-path>", redacted)
+    redacted = _MSYS_USER_PATH_RE.sub("<local-user-path>", redacted)
+    return _SANITIZED_WINDOWS_USER_PATH_RE.sub(
+        "<local-user-path>", redacted
+    )
 
 
 def _cleanup_failed_steps(summary: ScenarioRunSummary) -> int:

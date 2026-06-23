@@ -221,6 +221,63 @@ def test_markdown_escapes_list_code_spans_and_highlight_newlines():
     assert "- ``capture`path<br>frame.png``" in markdown
 
 
+def test_reporters_can_redact_host_local_artifact_paths():
+    capture_path = (
+        "C:" + "/Users/" + "localuser"
+        + "/AppData/Local/Temp/validation_api_captures/capture_abcd1234.png"
+    )
+    log_path = (
+        "C:" + "/Users/" + "localuser"
+        + "/AppData/Local/Temp/omniverse_kit_mcp/kit_123.log"
+    )
+    generic_path = (
+        "C:" + "/Users/" + "localuser"
+        + "/workspace/branch/isaac-sim/kit/kit.exe"
+    )
+    summary = ScenarioRunSummary(
+        scenario_id="public_safe_report",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="capture_visible_result",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                message=f"capture saved at {capture_path}",
+                artifacts={"image": capture_path},
+                data_summary={
+                    "artifact": {
+                        "path": capture_path,
+                        "sha256": "abc123",
+                    },
+                    "path": capture_path,
+                    "log": log_path,
+                    "kit_exe": generic_path,
+                    "passed": True,
+                },
+            ),
+        ),
+        artifact_paths=(capture_path,),
+    )
+
+    report = json.loads(to_json(summary, redact_local_paths=True))
+    serialized = json.dumps(report)
+    markdown = to_markdown(summary, redact_local_paths=True)
+
+    assert "<validation-api-capture>/capture_abcd1234.png" in serialized
+    assert "<local-kit-log>/kit_123.log" in serialized
+    assert "<local-user-path>" in serialized
+    assert "C:" not in serialized
+    assert "<validation-api-capture>/capture_abcd1234.png" in markdown
+    assert "<local-kit-log>/kit_123.log" in markdown
+    assert "<local-user-path>" in markdown
+    assert "C:" not in markdown
+
+
 def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
     summary = ScenarioRunSummary(
         scenario_id="official_asset_diagnostics",

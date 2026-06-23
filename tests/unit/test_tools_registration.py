@@ -395,6 +395,41 @@ def _single_lidar_summary(scenario_id: str = "latest_scenario") -> ScenarioRunSu
     )
 
 
+def _host_local_capture_path() -> str:
+    return (
+        "C:" + "/Users/" + "localuser"
+        + "/AppData/Local/Temp/validation_api_captures/capture_report.png"
+    )
+
+
+def _capture_summary(scenario_id: str = "latest_scenario") -> ScenarioRunSummary:
+    capture_path = _host_local_capture_path()
+    return ScenarioRunSummary(
+        scenario_id=scenario_id,
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="capture_visible_result",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "artifact": {
+                        "path": capture_path,
+                        "sha256": "abc123",
+                    },
+                    "passed": True,
+                },
+            ),
+        ),
+        artifact_paths=(capture_path,),
+    )
+
+
 def _write_minimal_scenario(config: AppConfig) -> None:
     scenario_path = Path(config.scenario.scenarios_dir) / "smoke" / "minimal.yaml"
     scenario_path.parent.mkdir(parents=True, exist_ok=True)
@@ -457,6 +492,34 @@ async def test_scenario_last_report_can_return_markdown(mcp_server, monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_scenario_last_report_can_redact_local_paths(
+    mcp_server, monkeypatch,
+):
+    summary = _capture_summary()
+    monkeypatch.setattr(scenario_tools, "_last_reports", {
+        "latest_scenario": json.dumps({"scenario_id": "latest_scenario"}),
+    })
+    monkeypatch.setattr(scenario_tools, "_last_report_summaries", {
+        "latest_scenario": summary,
+    })
+    monkeypatch.setattr(scenario_tools, "_last_report_id", "latest_scenario")
+    tool = mcp_server._tool_manager._tools["scenario_last_report"]
+
+    raw_json = await tool.fn(report_format="json")
+    safe_json = await tool.fn(report_format="json", redact_local_paths=True)
+    safe_markdown = await tool.fn(
+        report_format="markdown", redact_local_paths=True,
+    )
+
+    assert _host_local_capture_path() not in safe_json
+    assert _host_local_capture_path() not in safe_markdown
+    assert "<validation-api-capture>/capture_report.png" in safe_json
+    assert "<validation-api-capture>/capture_report.png" in safe_markdown
+    assert _host_local_capture_path() not in json.dumps(json.loads(safe_json))
+    assert raw_json == json.dumps({"scenario_id": "latest_scenario"})
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("report_format", ["markdown", "md"])
 async def test_scenario_validate_can_return_markdown(
     monkeypatch, tmp_path, report_format,
@@ -490,6 +553,35 @@ async def test_scenario_validate_can_return_markdown(
     assert json.loads(scenario_tools._last_reports["minimal_markdown_report"])[
         "scenario_id"
     ] == "minimal_markdown_report"
+
+
+@pytest.mark.asyncio
+async def test_scenario_validate_can_redact_local_paths(monkeypatch, tmp_path):
+    class FakeScenarioRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def run(self, scenario, *, fail_fast_override=None):
+            return _capture_summary(scenario.scenario_id)
+
+    monkeypatch.setattr(scenario_tools, "ScenarioRunner", FakeScenarioRunner)
+    config = AppConfig(
+        scenario=ScenarioConfig(SCENARIOS_DIR=str(tmp_path / "scenarios")),
+    )
+    _write_minimal_scenario(config)
+    mcp = create_mcp_server(config)
+    tool = mcp._tool_manager._tools["scenario_validate"]
+
+    payload = await tool.fn(
+        "smoke/minimal.yaml",
+        redact_local_paths=True,
+    )
+
+    assert _host_local_capture_path() not in payload
+    assert "<validation-api-capture>/capture_report.png" in payload
+    assert _host_local_capture_path() in scenario_tools._last_reports[
+        "minimal_markdown_report"
+    ]
 
 
 @pytest.mark.asyncio

@@ -7,7 +7,6 @@ Scenario listing and schema are MCP resources:
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -32,10 +31,9 @@ from omniverse_kit_mcp.modules.stage_module import StageModule
 from omniverse_kit_mcp.modules.viewport_module import ViewportModule
 from omniverse_kit_mcp.modules.window_module import WindowModule
 from omniverse_kit_mcp.scenario.compiler import compile_scenario
-from omniverse_kit_mcp.scenario.loader import list_scenarios, load_scenario, validate_schema
+from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
-from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
 from omniverse_kit_mcp.types.scenario import CompiledStep, ScenarioRunSummary
 from omniverse_kit_mcp.tools.tool_profiles import (
     PROFILE_FULL,
@@ -116,12 +114,14 @@ def register_scenario_tools(
         fail_fast: bool | None = None,
         input_overrides: dict[str, Any] | None = None,
         report_format: str = "json",
+        redact_local_paths: bool = False,
     ) -> str:
         """Execute YAML validation scenario (Arrange→Act→Assert→Cleanup).
 
         Returns JSON by default; pass report_format='markdown' for a
-        human-readable report with data summary highlights. input_overrides
-        substitutes scenario variables.
+        human-readable report with data summary highlights. Set
+        redact_local_paths=true before copying a live report into public
+        artifacts. input_overrides substitutes scenario variables.
         """
         global _last_report_id
         try:
@@ -156,7 +156,11 @@ def register_scenario_tools(
         _last_reports[scenario.scenario_id] = report
         _last_report_summaries[scenario.scenario_id] = summary
         _last_report_id = scenario.scenario_id
-        return _format_report(summary, normalized_report_format)
+        return _format_report(
+            summary,
+            normalized_report_format,
+            redact_local_paths=redact_local_paths,
+        )
 
     @tool()
     async def scenario_plan(
@@ -193,11 +197,13 @@ def register_scenario_tools(
     async def scenario_last_report(
         scenario_id: str | None = None,
         report_format: str = "json",
+        redact_local_paths: bool = False,
     ) -> str:
         """Get the latest scenario_validate report, or a specific report by scenario_id.
 
         Defaults to JSON; pass report_format='markdown' for a human-readable
-        report with data summary highlights.
+        report with data summary highlights. Set redact_local_paths=true before
+        copying live evidence into public artifacts.
         """
         try:
             normalized_report_format = _normalize_report_format(report_format)
@@ -215,7 +221,17 @@ def register_scenario_tools(
                         "Run scenario_validate again before requesting markdown."
                     )
                 })
-            return to_markdown(summary)
+            return to_markdown(summary, redact_local_paths=redact_local_paths)
+        if redact_local_paths:
+            summary = _last_report_summaries.get(target_id)
+            if summary is None:
+                return json.dumps({
+                    "error": (
+                        f"No redactable report found for scenario '{target_id}'. "
+                        "Run scenario_validate again before requesting redaction."
+                    )
+                })
+            return to_json(summary, redact_local_paths=True)
         report = _last_reports.get(target_id)
         if report is None:
             return json.dumps({"error": f"No report found for scenario '{target_id}'"})
@@ -251,7 +267,12 @@ def _normalize_report_format(report_format: str) -> str:
     )
 
 
-def _format_report(summary: ScenarioRunSummary, report_format: str) -> str:
+def _format_report(
+    summary: ScenarioRunSummary,
+    report_format: str,
+    *,
+    redact_local_paths: bool = False,
+) -> str:
     if report_format == "markdown":
-        return to_markdown(summary)
-    return to_json(summary)
+        return to_markdown(summary, redact_local_paths=redact_local_paths)
+    return to_json(summary, redact_local_paths=redact_local_paths)

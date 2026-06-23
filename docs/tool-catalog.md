@@ -2630,11 +2630,12 @@ is unavailable.
 ### `scenario_last_report`
 
 ```python
-scenario_last_report(scenario_id: 'str | None' = None, report_format: 'str' = 'json') -> 'str'
+scenario_last_report(scenario_id: 'str | None' = None, report_format: 'str' = 'json', redact_local_paths: 'bool' = False) -> 'str'
 ```
 
 Get the latest scenario_validate report, or a specific report by scenario_id.  Defaults to
 JSON; pass report_format='markdown' for a human-readable report with data summary highlights.
+Set redact_local_paths=true before copying live evidence into public artifacts.
 
 **Parameters**
 
@@ -2642,6 +2643,7 @@ JSON; pass report_format='markdown' for a human-readable report with data summar
 |------|------|---------|----------|
 | `scenario_id` | `string \| None` | `None` |  |
 | `report_format` | `string` | `'json'` |  |
+| `redact_local_paths` | `boolean` | `False` |  |
 
 ### `scenario_plan`
 
@@ -2661,12 +2663,13 @@ it.
 ### `scenario_validate`
 
 ```python
-scenario_validate(scenario_path: 'str', dry_run: 'bool' = False, fail_fast: 'bool | None' = None, input_overrides: 'dict[str, Any] | None' = None, report_format: 'str' = 'json') -> 'str'
+scenario_validate(scenario_path: 'str', dry_run: 'bool' = False, fail_fast: 'bool | None' = None, input_overrides: 'dict[str, Any] | None' = None, report_format: 'str' = 'json', redact_local_paths: 'bool' = False) -> 'str'
 ```
 
 Execute YAML validation scenario (Arrange→Act→Assert→Cleanup).  Returns JSON by default; pass
-report_format='markdown' for a human-readable report with data summary highlights.
-input_overrides substitutes scenario variables.
+report_format='markdown' for a human-readable report with data summary highlights. Set
+redact_local_paths=true before copying a live report into public artifacts. input_overrides
+substitutes scenario variables.
 
 **Parameters**
 
@@ -2677,6 +2680,7 @@ input_overrides substitutes scenario variables.
 | `fail_fast` | `boolean \| None` | `None` |  |
 | `input_overrides` | `object \| None` | `None` |  |
 | `report_format` | `string` | `'json'` |  |
+| `redact_local_paths` | `boolean` | `False` |  |
 
 ## Kit commands - command registry / Python runner
 
