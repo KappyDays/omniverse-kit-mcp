@@ -308,6 +308,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "verification_status" in wrapper
     assert "diagnostics.asset_checks" in wrapper
     assert "diagnostics.material_checks" in wrapper
+    assert "diagnostics.error_type" in wrapper
     assert "redacted JSON" in wrapper
     assert "redacted Markdown" in wrapper
 

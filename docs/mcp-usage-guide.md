@@ -114,9 +114,10 @@ Before live execution, confirm `scenario_plan.evidence_steps` includes
 `evidence_kind=official_asset_verify` for the verify step. After validation,
 compare JSON `evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
-`diagnostics.asset_checks` or `diagnostics.material_checks`. Use redacted JSON
-for exact public-safe fields and redacted Markdown `Evidence Summary`
-for the compact evidence note.
+`diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or
+exception failures, also check `diagnostics.error_type` before deciding whether
+to retry or widen the live proof. Use redacted JSON for exact public-safe fields
+and redacted Markdown `Evidence Summary` for the compact evidence note.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
