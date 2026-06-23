@@ -492,3 +492,79 @@ def test_public_hygiene_script_json_format_reports_findings(tmp_path: Path) -> N
         and finding["label"] == "windows_user_path"
         for finding in payload["findings"]
     )
+
+
+def test_public_hygiene_script_json_classifies_history_reachability(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    (repo / "evidence.md").write_text("capture: redacted\n", encoding="utf-8")
+    _commit_all(repo, "baseline")
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/public.png"
+    (repo / "evidence.md").write_text(f"capture: {leaked_path}\n", encoding="utf-8")
+    _commit_all(repo, "public leak")
+    public_tip = subprocess.check_output(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        text=True,
+        encoding="utf-8",
+    ).strip()
+    _git(repo, "update-ref", "refs/remotes/origin/main", public_tip)
+
+    (repo / "evidence.md").write_text(
+        "capture: local validation capture path redacted\n",
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact public leak")
+
+    pending_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/pending.png"
+    (repo / "evidence.md").write_text(f"capture: {pending_path}\n", encoding="utf-8")
+    _commit_all(repo, "pending leak")
+
+    (repo / "evidence.md").write_text(
+        "capture: local validation capture path redacted\n",
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact pending leak")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--since",
+            "1970-01-01T00:00:00+0000",
+            "--head",
+            "HEAD",
+            "--format",
+            "json",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    payload = json.loads(result.stdout)
+    assert payload["public_ref"] == "origin/main"
+    assert payload["reachability_counts"] == {
+        "already_public": 1,
+        "pending_push": 1,
+    }
+    assert any(
+        finding["reachability"] == "already_public"
+        and finding["commit"] == public_tip
+        for finding in payload["findings"]
+    )
+    assert any(
+        finding["reachability"] == "pending_push"
+        and "pending leak" in finding["detail"]
+        for finding in payload["findings"]
+    )

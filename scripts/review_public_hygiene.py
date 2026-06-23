@@ -89,11 +89,18 @@ class Finding:
     label: str
     detail: str
     sample: str = ""
+    commit: str | None = None
+    reachability: str | None = None
 
     def format(self) -> str:
+        source = (
+            f"{self.source}/{self.reachability}"
+            if self.reachability
+            else self.source
+        )
         if self.sample:
-            return f"[{self.source}] {self.detail}: matches {self.label}: {self.sample}"
-        return f"[{self.source}] {self.detail}: matches {self.label}"
+            return f"[{source}] {self.detail}: matches {self.label}: {self.sample}"
+        return f"[{source}] {self.detail}: matches {self.label}"
 
 
 def _git(project: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -130,7 +137,14 @@ def _is_generated_reference(rel: str) -> bool:
     )
 
 
-def _scan_text(source: str, detail: str, text: str) -> list[Finding]:
+def _scan_text(
+    source: str,
+    detail: str,
+    text: str,
+    *,
+    commit: str | None = None,
+    reachability: str | None = None,
+) -> list[Finding]:
     findings: list[Finding] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
         for label, pattern in DISALLOWED_PATH_PATTERNS + SECRET_LIKE_PATTERNS:
@@ -141,6 +155,8 @@ def _scan_text(source: str, detail: str, text: str) -> list[Finding]:
                         label=label,
                         detail=f"{detail}:{line_no}",
                         sample=line.strip()[:240],
+                        commit=commit,
+                        reachability=reachability,
                     )
                 )
         if _looks_like_split_user_path(line):
@@ -150,6 +166,8 @@ def _scan_text(source: str, detail: str, text: str) -> list[Finding]:
                     label="split_windows_user_path",
                     detail=f"{detail}:{line_no}",
                     sample=line.strip()[:240],
+                    commit=commit,
+                    reachability=reachability,
                 )
             )
     return findings
@@ -213,6 +231,41 @@ def _default_base(project: Path, head: str) -> str | None:
     return None
 
 
+def _ref_exists(project: Path, ref: str) -> bool:
+    return _git(project, "rev-parse", "--verify", ref, check=False).returncode == 0
+
+
+def _default_public_ref(project: Path) -> str | None:
+    upstream = _git_output(
+        project,
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{u}",
+        check=False,
+    ).strip()
+    if upstream:
+        return upstream
+    if _ref_exists(project, "origin/main"):
+        return "origin/main"
+    return None
+
+
+def _resolve_public_ref(project: Path, public_ref: str | None) -> str | None:
+    if public_ref:
+        if not _ref_exists(project, public_ref):
+            raise ValueError(f"invalid --public-ref value: {public_ref}")
+        return public_ref
+    return _default_public_ref(project)
+
+
+def _commit_reachability(project: Path, commit: str, public_ref: str | None) -> str:
+    if not public_ref:
+        return "unknown"
+    result = _git(project, "merge-base", "--is-ancestor", commit, public_ref, check=False)
+    return "already_public" if result.returncode == 0 else "pending_push"
+
+
 def _base_and_commits_since(
     project: Path,
     head: str,
@@ -265,7 +318,13 @@ def _changed_files_in_commits(project: Path, commits: list[str]) -> list[str]:
     return sorted(files)
 
 
-def _scan_commit_added_lines(project: Path, commit: str) -> list[Finding]:
+def _scan_commit_added_lines(
+    project: Path,
+    commit: str,
+    public_ref: str | None,
+) -> list[Finding]:
+    full_commit = _git_output(project, "rev-parse", commit).strip()
+    reachability = _commit_reachability(project, full_commit, public_ref)
     subject = _git_output(project, "show", "-s", "--format=%h %s", commit).strip()
     diff = _git_output(project, "show", "--format=", "--unified=0", "--no-ext-diff", commit)
     findings: list[Finding] = []
@@ -277,7 +336,13 @@ def _scan_commit_added_lines(project: Path, commit: str) -> list[Finding]:
         if not line.startswith("+") or line.startswith("+++"):
             continue
         findings.extend(
-            _scan_text("history-added-line", f"{subject} {current_file}", line[1:])
+            _scan_text(
+                "history-added-line",
+                f"{subject} {current_file}",
+                line[1:],
+                commit=full_commit,
+                reachability=reachability,
+            )
         )
     return findings
 
@@ -288,6 +353,7 @@ def scan_history(
     head: str,
     *,
     commits: list[str] | None = None,
+    public_ref: str | None = None,
 ) -> list[Finding]:
     if commits is None and not base:
         return []
@@ -312,8 +378,17 @@ def scan_history(
                 Finding("history-path", "generated_reference", f"{base}..{head} {rel}")
             )
     for commit in history_commits:
-        findings.extend(_scan_commit_added_lines(project, commit))
+        findings.extend(_scan_commit_added_lines(project, commit, public_ref))
     return findings
+
+
+def _reachability_counts(findings: list[Finding]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for finding in findings:
+        if not finding.reachability:
+            continue
+        counts[finding.reachability] = counts.get(finding.reachability, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -337,6 +412,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="scan history since local midnight today",
     )
     parser.add_argument("--head", default="HEAD", help="inclusive upper bound commit")
+    parser.add_argument(
+        "--public-ref",
+        help=(
+            "ref treated as already public for history finding classification; "
+            "defaults to the current upstream, then origin/main"
+        ),
+    )
     parser.add_argument(
         "--skip-history",
         action="store_true",
@@ -362,13 +444,22 @@ def main(argv: list[str] | None = None) -> int:
             base, history_commits = _base_and_commits_since(project, head, since)
         else:
             base = args.base if args.base else _default_base(project, head)
+        public_ref = None if args.skip_history else _resolve_public_ref(project, args.public_ref)
     except ValueError as exc:
         print(f"Public repository hygiene review error: {exc}", file=sys.stderr)
         return 2
 
     findings = scan_current_tree(project)
     if not args.skip_history:
-        findings.extend(scan_history(project, base, head, commits=history_commits))
+        findings.extend(
+            scan_history(
+                project,
+                base,
+                head,
+                commits=history_commits,
+                public_ref=public_ref,
+            )
+        )
 
     if args.skip_history:
         range_text = "skipped"
@@ -382,7 +473,9 @@ def main(argv: list[str] | None = None) -> int:
                 "ok": not findings,
                 "project": str(project),
                 "history_range": range_text,
+                "public_ref": public_ref,
                 "finding_count": len(findings),
+                "reachability_counts": _reachability_counts(findings),
                 "findings": [asdict(finding) for finding in findings],
             },
             indent=2,
@@ -393,6 +486,14 @@ def main(argv: list[str] | None = None) -> int:
         print("Public repository hygiene review failed:")
         print(f"  project: {project}")
         print(f"  history range: {range_text}")
+        if public_ref:
+            print(f"  public ref: {public_ref}")
+        reachability_counts = _reachability_counts(findings)
+        if reachability_counts:
+            counts_text = ", ".join(
+                f"{key}={value}" for key, value in reachability_counts.items()
+            )
+            print(f"  reachability: {counts_text}")
         for finding in findings[:100]:
             print(f"  - {finding.format()}")
         if len(findings) > 100:
@@ -402,6 +503,8 @@ def main(argv: list[str] | None = None) -> int:
     print("Public repository hygiene review OK")
     print(f"  project: {project}")
     print(f"  history range: {range_text}")
+    if public_ref:
+        print(f"  public ref: {public_ref}")
     return 0
 
 

@@ -29,6 +29,9 @@ stay outside the public gate. The default history scan uses the current branch
 upstream merge-base through `HEAD`, so local commits that are about to be pushed
 are reviewed. `--today` expands to local midnight for the current day and is the
 preferred quick command for "all commits pushed or prepared today" reviews.
+History findings are classified against the current upstream or `origin/main`:
+`already_public` means the commit is reachable from that public ref, and
+`pending_push` means it is still only in the scanned local range.
 
 ## Blocking Findings
 
