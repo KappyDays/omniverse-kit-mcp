@@ -2038,6 +2038,132 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
 
 
 @pytest.mark.asyncio
+async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_retry():
+    """Exhausted RTX lidar retries must preserve final-step and attempt actions."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["sensor_lidar_get_point_cloud_sequence"] = [
+        {
+            "ok": True,
+            "sensor_prim": "/World/Robot/Lidar",
+            "annotator": "IsaacCreateRTXLidarScanBuffer",
+            "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
+            "num_points": 2,
+            "points": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+            "intensities": [1.0, 1.0],
+            "truncated": True,
+            "frames_waited": 180,
+            "raw_keys": ["cached_lidar_sensor"],
+            "warning": None,
+            "empty_reason": None,
+            "diagnostics": {
+                "cached_lidar_instance": True,
+                "readback_paths_attempted": ["cached_lidar_sensor"],
+            },
+        }
+        for _ in range(3)
+    ]
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_lidar_retry_exhausted", "name": "lidar retry"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "read_lidar",
+                    "module": "sensor",
+                    "action": "lidar_get_point_cloud",
+                    "idempotent": True,
+                    "retries": {
+                        "maxAttempts": 3,
+                        "initialBackoffSeconds": 0,
+                        "maxBackoffSeconds": 0,
+                    },
+                    "args": {
+                        "sensor_prim": "/World/Robot/Lidar",
+                        "frames_to_wait": 180,
+                        "min_points": 4,
+                        "max_points": 2,
+                    },
+                }
+            ]
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    assert summary.status == ExecutionStatus.FAILED
+    lidar_calls = [
+        c for c in isaac_client.calls if c[0] == "sensor_lidar_get_point_cloud"
+    ]
+    assert len(lidar_calls) == 3
+    step_result = next(r for r in summary.step_results if r.step_id == "read_lidar")
+    assert step_result.status == ExecutionStatus.FAILED
+    assert step_result.attempts == 3
+    assert step_result.max_attempts == 3
+    assert step_result.error_code == "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    assert len(step_result.retry_failures) == 3
+    assert {failure["attempt"] for failure in step_result.retry_failures} == {1, 2, 3}
+
+    expected_action = {
+        "diagnostics.reason": "point_count_below_minimum",
+        "suggested_next": [
+            "Step more simulation frames before retrying the lidar read.",
+            "Lower min_points only for bounded diagnostics if the scan is "
+            "otherwise healthy.",
+            "Inspect readback_paths_attempted and WARN/ERROR logs if the buffer "
+            "stays short.",
+        ],
+        "diagnostics.fallback_tool_order": [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
+        "diagnostics.readback_paths_attempted": ["cached_lidar_sensor"],
+    }
+    report = json.loads(to_json(summary))
+    assert report["diagnostic_next_actions"] == [
+        {
+            "step_id": "read_lidar",
+            "phase": "assert",
+            "source": "step",
+            "status": "failed",
+            "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            **expected_action,
+        },
+        *[
+            {
+                "step_id": "read_lidar",
+                "phase": "assert",
+                "source": "retry_failure",
+                "status": "failed",
+                "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+                "final_step_status": "failed",
+                "attempt": attempt,
+                **expected_action,
+            }
+            for attempt in (1, 2, 3)
+        ],
+    ]
+    lidar_report = next(
+        result for result in report["step_results"]
+        if result["step_id"] == "read_lidar"
+    )
+    for failure in lidar_report["retry_failures"]:
+        assert failure["diagnostic_next_actions"] == expected_action
+        assert failure["data_summary"]["diagnostics"]["num_points"] == 2
+        assert failure["data_summary"]["diagnostics"]["min_points"] == 4
+
+    markdown = to_markdown(summary)
+    assert "## Diagnostic Next Actions" in markdown
+    assert "- `read_lidar`: diagnostics.reason=point_count_below_minimum" in markdown
+    assert "- `read_lidar attempt 3`: diagnostics.reason=point_count_below_minimum" in markdown
+
+
+@pytest.mark.asyncio
 async def test_scenario_runner_rejects_retries_without_idempotent_flag():
     from tests.conftest import MockIsaacRestClient, MockLakehouseClient
 

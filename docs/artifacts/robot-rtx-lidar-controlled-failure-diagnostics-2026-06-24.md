@@ -39,6 +39,14 @@ simulation_get_status`.
 - Logs after clear: WARN count 4, ERROR count 0. WARN entries were known
   Hydratexture release / USD stage close refcount warnings.
 
+## Unit Guard
+
+- `tests/unit/test_scenario_integration.py::test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_retry`
+  now locks the final-failed retry shape: the top-level
+  `diagnostic_next_actions` queue includes the final failed step plus attempts
+  1, 2, and 3, and each retry failure keeps machine-readable
+  `diagnostic_next_actions` with point-count diagnostics and fallback order.
+
 ## Public Hygiene
 
 No live worker IDs, process IDs, local absolute paths, raw Kit log paths, raw
