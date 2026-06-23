@@ -16,6 +16,8 @@ Failure reasons currently covered:
 
 ## Contract
 
+- Missing `asset_id` preflight failures return `OFFICIAL_ASSET_NOT_FOUND`,
+  keep `_official_not_found_data` diagnostics, and do not start a stage probe.
 - Asset failures include `diagnostics.asset_checks`.
 - Material failures include `diagnostics.material_checks`.
 - Timeout/exception failures preserve `diagnostics.error_type` when available.
@@ -25,7 +27,7 @@ Failure reasons currently covered:
 ## Validation
 
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_asset_module.py -q`
-  - `48 passed`
+  - `50 passed`
 - `.\.venv\Scripts\python.exe -m ruff check src\omniverse_kit_mcp\modules\asset_module.py tests\unit\test_asset_module.py`
   - passed
 - `tests/unit/test_scenario_integration.py::test_official_asset_verify_failure_diagnostics_survive_runner_report`
@@ -33,6 +35,10 @@ Failure reasons currently covered:
   leaves the scenario step `passed`, but JSON `diagnostic_next_actions` and
   Markdown `Diagnostic Next Actions` preserve `asset_checks`, `suggested_next`,
   and the official-asset fallback order for agent triage.
+- `tests/unit/test_asset_module.py::test_official_asset_verify_not_found_reports_diagnostics_without_stage_probe`
+  locks the typo/not-found preflight path: diagnostics preserve candidate counts,
+  suggested next actions, and fallback tool order, while no live stage/client call
+  is made.
 - `tests/unit/test_scenario_integration.py::test_official_asset_verify_material_failure_diagnostics_survive_runner_report`
   locks the material-report path: a failed material verify record preserves
   `material_checks.create_prim_ok`, `material_checks.assign_ok`,

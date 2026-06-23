@@ -1021,6 +1021,53 @@ async def test_official_asset_resolve_not_found_reports_diagnostics(
     assert result.data["diagnostics"]["filters"]["min_status"] == "discovered"
 
 
+@pytest.mark.asyncio
+async def test_official_asset_verify_not_found_reports_diagnostics_without_stage_probe(
+    synthetic_official_catalog: Path,
+):
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = AssetModule(client, official_catalog_dir=synthetic_official_catalog)
+    result = await module.official_verify(
+        _meta(),
+        asset_id="missing forklift",
+        app_profile="isaac-sim",
+        timeout_s=1.0,
+    )
+
+    assert not result.ok
+    assert result.error_code == "OFFICIAL_ASSET_NOT_FOUND"
+    assert result.data["name_or_id"] == "missing forklift"
+    assert result.data["app_profile"] == "isaac-sim"
+    assert result.data["prefer_loadable"] is False
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "query_no_match"
+    assert diagnostics["filters"]["query"] == "missing forklift"
+    assert diagnostics["filters"]["app_profile"] == "isaac-sim"
+    assert diagnostics["candidate_counts"]["total_entries"] == 3
+    assert diagnostics["candidate_counts"]["after_app_profile"] == 2
+    assert diagnostics["candidate_counts"]["query_matches"] == 0
+    assert diagnostics["available_profiles"] == ["isaac-sim", "usd-composer"]
+    assert diagnostics["available_providers"] == [
+        "omni.simready.explorer",
+        "omni.kit.browser.material",
+    ]
+    assert diagnostics["sample_names"] == [
+        "aluminumpallet_a01.usd",
+        "aluminumpallet_a02.usd",
+    ]
+    assert diagnostics["fallback_tool_order"] == [
+        "official_asset_sync_status",
+        "official_asset_search",
+        "official_asset_resolve",
+        "official_asset_verify",
+        "asset_search",
+    ]
+    assert any("broader" in item for item in diagnostics["suggested_next"])
+    assert client.calls == []
+
+
 def test_official_safe_prim_name_prefixes_leading_digit() -> None:
     from omniverse_kit_mcp.modules.asset_module import _safe_prim_name
 
