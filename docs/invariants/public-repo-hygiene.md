@@ -40,10 +40,13 @@ The default history scan uses the current branch upstream merge-base through
 - Redact local install roots, temp paths, worker/thread IDs, process IDs, and
   raw generated catalog/cache paths.
 - If a finding was already pushed, report it clearly. Do not rewrite history or
-  force-push without explicit user approval.
+  force-push without explicit user approval. Use
+  `docs/runbooks/public-history-leak.md` to prepare a non-destructive
+  remediation plan.
 
 ## Related Checks
 
 - `tests/unit/test_public_repo_hygiene.py`
+- `docs/runbooks/public-history-leak.md`
 - `git diff --check`
 - `scripts/verify_mcp_sync.py` when tool/docs catalog sync is relevant
