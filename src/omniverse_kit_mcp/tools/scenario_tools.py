@@ -231,6 +231,60 @@ _STAGE_MUTATION_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] =
         ("graph_path", "script_path", "node_name"),
     ),
 }
+_TIMELINE_CONTROL_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
+    ("simulation", "play"): ("play", ()),
+    ("simulation", "pause"): ("pause", ()),
+    ("simulation", "stop"): ("stop", ()),
+    ("simulation", "step"): ("step", ("frames",)),
+    ("simulation", "set_time"): ("set_time", ("time",)),
+    ("simulation", "wait_until"): ("wait_until", ("until_time", "timeout_s")),
+}
+_PLAY_REQUIRED_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
+    ("robot", "set_joint_positions"): (
+        "robot_articulation_write",
+        ("prim_path", "positions"),
+    ),
+    ("robot", "navigate_to"): (
+        "robot_navigation",
+        ("prim_path", "target_position", "timeout_s"),
+    ),
+    ("robot", "navigate_path"): (
+        "robot_navigation_path",
+        ("prim_path", "waypoints", "timeout_s"),
+    ),
+    ("robot", "drive_physics"): (
+        "robot_physics_drive",
+        ("prim_path", "target_position", "duration_s"),
+    ),
+    ("robot", "gripper_control"): (
+        "robot_gripper_control",
+        ("prim_path", "action", "position"),
+    ),
+    ("robot", "set_ee_target"): (
+        "robot_ik_target",
+        ("prim_path", "target_position", "end_effector_frame"),
+    ),
+    ("robot", "run_franka_pick_place"): (
+        "robot_pick_place_controller",
+        ("robot_prim_path", "cube_prim_path", "target_position"),
+    ),
+    ("character", "navigate_to"): (
+        "character_navigation",
+        ("prim_path", "target_position", "timeout_s"),
+    ),
+    ("sensor", "attach_rtx_lidar"): (
+        "rtx_lidar_attach_during_play",
+        ("robot_prim", "sensor_name", "config_preset"),
+    ),
+    ("sensor", "lidar_get_point_cloud"): (
+        "rtx_lidar_readback",
+        ("sensor_prim", "frames_to_wait", "min_points", "max_points", "fail_on_warning"),
+    ),
+    ("simulation", "wait_until"): (
+        "simulation_time_wait",
+        ("until_time", "timeout_s"),
+    ),
+}
 
 
 def _resolve_safe_path(user_path: str, scenarios_root: str) -> str:
@@ -443,6 +497,8 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         phases["cleanup"].append(_plan_fallback_cleanup_step())
     phase_counts = {phase: len(steps) for phase, steps in phases.items()}
     stage_mutation_steps = _plan_stage_mutation_steps(phases)
+    simulation_state_steps = _plan_simulation_state_steps(phases)
+    timeline_control_steps = _plan_timeline_control_steps(phases)
     return {
         "scenario_id": scenario.scenario_id,
         "name": scenario.name,
@@ -461,6 +517,12 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         "stage_mutation_steps": stage_mutation_steps,
         "evidence_steps": _plan_evidence_steps(phases),
         "retry_steps": _plan_retry_steps(phases),
+        "simulation_state_summary": _plan_simulation_state_summary(
+            simulation_state_steps,
+            timeline_control_steps,
+        ),
+        "simulation_state_steps": simulation_state_steps,
+        "timeline_control_steps": timeline_control_steps,
         "phases": phases,
     }
 
@@ -597,6 +659,104 @@ def _plan_stage_mutation_summary(
         "phase_counts": phase_counts,
         "mutation_kinds": sorted(mutation_kinds),
     }
+
+
+def _plan_simulation_state_steps(
+    phases: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    state_steps: list[dict[str, Any]] = []
+    is_playing = False
+    for phase, steps in phases.items():
+        for step in steps:
+            spec = _PLAY_REQUIRED_STEP_SPECS.get((step["module"], step["action"]))
+            if spec is not None:
+                requirement_kind, arg_keys = spec
+                planned: dict[str, Any] = {
+                    "id": step["id"],
+                    "phase": phase,
+                    "module": step["module"],
+                    "action": step["action"],
+                    "requirement_kind": requirement_kind,
+                    "requires": "simulation_play_active",
+                    "play_state_before_step": is_playing,
+                }
+                key_args = _selected_plan_args(step.get("args"), arg_keys)
+                if key_args:
+                    planned["key_args"] = key_args
+                _copy_plan_control_fields(step, planned)
+                state_steps.append(planned)
+            is_playing = _timeline_state_after_step(step, is_playing)
+    return state_steps
+
+
+def _plan_timeline_control_steps(
+    phases: dict[str, list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    control_steps: list[dict[str, Any]] = []
+    for phase, steps in phases.items():
+        for step in steps:
+            spec = _TIMELINE_CONTROL_STEP_SPECS.get((step["module"], step["action"]))
+            if spec is None:
+                continue
+            control_kind, arg_keys = spec
+            planned: dict[str, Any] = {
+                "id": step["id"],
+                "phase": phase,
+                "module": step["module"],
+                "action": step["action"],
+                "control_kind": control_kind,
+            }
+            key_args = _selected_plan_args(step.get("args"), arg_keys)
+            if key_args:
+                planned["key_args"] = key_args
+            _copy_plan_control_fields(step, planned)
+            control_steps.append(planned)
+    return control_steps
+
+
+def _plan_simulation_state_summary(
+    simulation_state_steps: list[dict[str, Any]],
+    timeline_control_steps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    control_counts = {
+        kind: 0
+        for kind, _arg_keys in _TIMELINE_CONTROL_STEP_SPECS.values()
+    }
+    for step in timeline_control_steps:
+        control_kind = step.get("control_kind")
+        if isinstance(control_kind, str):
+            control_counts[control_kind] = control_counts.get(control_kind, 0) + 1
+    missing_play_count = sum(
+        1
+        for step in simulation_state_steps
+        if not step.get("play_state_before_step")
+    )
+    warnings = []
+    if missing_play_count:
+        warnings.append("simulation_play_missing_before_required_steps")
+    return {
+        "requires_play": bool(simulation_state_steps),
+        "requires_play_count": len(simulation_state_steps),
+        "play_state_missing_count": missing_play_count,
+        "has_simulation_play": control_counts.get("play", 0) > 0,
+        "has_simulation_pause": control_counts.get("pause", 0) > 0,
+        "has_simulation_stop": control_counts.get("stop", 0) > 0,
+        "timeline_control_counts": dict(sorted(control_counts.items())),
+        "warnings": warnings,
+    }
+
+
+def _timeline_state_after_step(
+    step: dict[str, Any],
+    is_playing: bool,
+) -> bool:
+    if step["module"] != "simulation":
+        return is_playing
+    if step["action"] == "play":
+        return True
+    if step["action"] in {"pause", "stop"}:
+        return False
+    return is_playing
 
 
 def _conditional_stage_mutation_spec(

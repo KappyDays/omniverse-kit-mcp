@@ -1788,6 +1788,71 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
             },
         }
     ]
+    assert plan["simulation_state_summary"] == {
+        "requires_play": True,
+        "requires_play_count": 2,
+        "play_state_missing_count": 0,
+        "has_simulation_play": True,
+        "has_simulation_pause": True,
+        "has_simulation_stop": True,
+        "timeline_control_counts": {
+            "pause": 1,
+            "play": 2,
+            "set_time": 0,
+            "step": 2,
+            "stop": 2,
+            "wait_until": 0,
+        },
+        "warnings": [],
+    }
+    assert [step["id"] for step in plan["timeline_control_steps"]] == [
+        "warm_up_play",
+        "warm_up_stop",
+        "play_for_sensor_data",
+        "pre_lidar_attach_warmup",
+        "advance_sensor_frames",
+        "pause_after_sensor_data",
+        "final_sim_stop",
+    ]
+    simulation_state_steps = {
+        step["id"]: step for step in plan["simulation_state_steps"]
+    }
+    assert simulation_state_steps["attach_top_lidar"] == {
+        "id": "attach_top_lidar",
+        "phase": "act",
+        "module": "sensor",
+        "action": "attach_rtx_lidar",
+        "requirement_kind": "rtx_lidar_attach_during_play",
+        "requires": "simulation_play_active",
+        "play_state_before_step": True,
+        "key_args": {
+            "robot_prim": "/World/Robot/NovaCarter",
+            "sensor_name": "TopLidar",
+            "config_preset": "Example_Rotary",
+        },
+    }
+    assert simulation_state_steps["read_lidar_point_cloud"] == {
+        "id": "read_lidar_point_cloud",
+        "phase": "act",
+        "module": "sensor",
+        "action": "lidar_get_point_cloud",
+        "requirement_kind": "rtx_lidar_readback",
+        "requires": "simulation_play_active",
+        "play_state_before_step": True,
+        "key_args": {
+            "sensor_prim": "/World/Robot/NovaCarter/TopLidar",
+            "frames_to_wait": 180,
+            "min_points": 1,
+            "max_points": 512,
+            "fail_on_warning": True,
+        },
+        "idempotent": True,
+        "retries": {
+            "maxAttempts": 3,
+            "initialBackoffSeconds": 0.25,
+            "maxBackoffSeconds": 1.0,
+        },
+    }
 
     summary = await runner.run(scenario)
 
@@ -2168,6 +2233,70 @@ async def test_robot_rtx_sensor_golden_workflow_reports_capture_assert_diagnosti
         "failure_codes=[PIXEL_MEAN_BELOW_THRESHOLD, "
         "PIXEL_VARIANCE_BELOW_THRESHOLD]"
     ) in markdown
+
+
+def test_scenario_plan_flags_missing_simulation_play_for_robot_steps():
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "robot_drive_without_play",
+            "name": "Robot drive missing play preflight",
+            "tags": ["robot"],
+        },
+        "spec": {
+            "defaults": {"stepTimeoutSeconds": 30, "failFast": True},
+            "act": [
+                {
+                    "id": "drive_without_play",
+                    "module": "robot",
+                    "action": "drive_physics",
+                    "args": {
+                        "prim_path": "/World/Robot",
+                        "target_position": [1.0, 0.0, 0.0],
+                        "duration_s": 1.0,
+                    },
+                },
+            ],
+        },
+    }
+
+    plan = _scenario_plan_payload(compile_scenario(raw))
+
+    assert plan["simulation_state_summary"] == {
+        "requires_play": True,
+        "requires_play_count": 1,
+        "play_state_missing_count": 1,
+        "has_simulation_play": False,
+        "has_simulation_pause": False,
+        "has_simulation_stop": False,
+        "timeline_control_counts": {
+            "pause": 0,
+            "play": 0,
+            "set_time": 0,
+            "step": 0,
+            "stop": 0,
+            "wait_until": 0,
+        },
+        "warnings": ["simulation_play_missing_before_required_steps"],
+    }
+    assert plan["timeline_control_steps"] == []
+    assert plan["simulation_state_steps"] == [
+        {
+            "id": "drive_without_play",
+            "phase": "act",
+            "module": "robot",
+            "action": "drive_physics",
+            "requirement_kind": "robot_physics_drive",
+            "requires": "simulation_play_active",
+            "play_state_before_step": False,
+            "key_args": {
+                "prim_path": "/World/Robot",
+                "target_position": [1.0, 0.0, 0.0],
+                "duration_s": 1.0,
+            },
+        }
+    ]
 
 
 def test_robot_rtx_sensor_golden_workflow_allows_lidar_point_overrides():

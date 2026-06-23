@@ -77,9 +77,12 @@ extension_capture_logs`.
 Before stage mutation, `scenario_plan` or
 `scenario_validate(..., dry_run=true)` must expose matching `phase_counts`,
 `stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`,
-`evidence_steps`, and `retry_steps`; `stage_mutation_summary.read_only=false`
-requires scratch/test stage routing. Check `stage_mutation_steps` against the
-scratch/test stage boundary and
+`evidence_steps`, `retry_steps`, `simulation_state_summary`,
+`simulation_state_steps`, and `timeline_control_steps`;
+`stage_mutation_summary.read_only=false` requires scratch/test stage routing.
+Check `stage_mutation_steps` against the scratch/test stage boundary,
+`simulation_state_summary.play_state_missing_count` before robot/sensor actions,
+and
 `retry_steps[].key_args` so lidar thresholds match the intended proof.
 For controlled failure diagnostics, pass the same
 `input_overrides={"lidar_min_points": 513}` to `scenario_plan` and

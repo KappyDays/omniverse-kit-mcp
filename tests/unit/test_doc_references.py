@@ -260,6 +260,14 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "stage_mutation_summary.read_only=false" in invariant
     assert "stage_mutation_steps" in guide
     assert "stage_mutation_steps" in invariant
+    assert "simulation_state_summary" in guide
+    assert "simulation_state_summary" in invariant
+    assert "simulation_state_steps" in guide
+    assert "simulation_state_steps" in invariant
+    assert "timeline_control_steps" in guide
+    assert "timeline_control_steps" in invariant
+    assert "simulation_state_summary.play_state_missing_count" in guide
+    assert "simulation_state_summary.play_state_missing_count" in invariant
     assert "scratch/test stage boundary" in invariant
     assert "diagnostic_steps" in guide
     assert "diagnostic_steps" in invariant
@@ -362,6 +370,10 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     assert "`stage_mutation_steps`" in guide
     assert "scratch/test stage" in guide
     assert "`diagnostic_steps`" in guide
+    assert "`simulation_state_summary`" in guide
+    assert "`simulation_state_steps`" in guide
+    assert "`timeline_control_steps`" in guide
+    assert "simulation_state_summary.play_state_missing_count=0" in guide
     assert "`retry_steps` with key args for retried evidence steps" in guide
     assert "status/search/resolve/get diagnostics, read-only" in guide
     assert "`scenario_validate(..., dry_run=true)` returns the same plan fields" in guide

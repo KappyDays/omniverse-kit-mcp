@@ -64,14 +64,18 @@ Robot + RTX live proof wrapper:
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
 `extension_capture_logs`.
 Before validation, check `scenario_plan.phase_counts`, `total_steps`,
-`stage_mutation_summary`, `stage_mutation_steps`, `evidence_steps`, and `retry_steps`
-so a missing setup, stage/sensor mutation, viewport cleanup, lidar evidence,
-capture evidence, or idempotent retry gate is caught before live stage mutation.
+`stage_mutation_summary`, `stage_mutation_steps`, `simulation_state_summary`,
+`simulation_state_steps`, `timeline_control_steps`, `evidence_steps`, and
+`retry_steps` so a missing setup, stage/sensor mutation, simulation play gate,
+viewport cleanup, lidar evidence, capture evidence, or idempotent retry gate is
+caught before live stage mutation.
 `stage_mutation_summary.read_only=false` means the run needs a scratch/test
 stage; then inspect `stage_mutation_steps` for exact touched steps. For retried evidence steps, inspect
 `retry_steps[].key_args` next to the retry policy so thresholds such as
 `min_points`, `max_points`, `frames_to_wait`, and `fail_on_warning` match the
-intended failure or success proof. `automatic: true` cleanup steps are
+intended failure or success proof. `simulation_state_summary.play_state_missing_count`
+must be `0`; if not, inspect `simulation_state_steps` and add or move a
+`simulation.play` step before the listed robot/sensor action. `automatic: true` cleanup steps are
 runner-added safeguards, not YAML.
 `scenario_validate(..., dry_run=true)` returns the same plan fields plus
 `dry_run`, `steps`, and `compiled`, so it is safe as a one-call preflight when
@@ -79,7 +83,9 @@ you are already on the validation tool path. Inspect `diagnostic_steps` for
 read-only official asset catalog/status/search/resolve/get probes,
 `stage_mutation_summary` for read-only vs scratch-stage routing,
 `stage_mutation_steps` for exact stage/live-scene side effects,
-`evidence_steps` for proof rows, and `retry_steps` for retry gates.
+`simulation_state_summary`/`simulation_state_steps` for R2 play-state gates,
+`timeline_control_steps` for play/pause/stop/step order, `evidence_steps` for
+proof rows, and `retry_steps` for retry gates.
 After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
 inspect the same plan shape before restarting a cached MCP host.
