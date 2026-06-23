@@ -1411,6 +1411,86 @@ async def test_asset_list_routes_through_runner():
 
 
 @pytest.mark.asyncio
+async def test_official_asset_diagnostics_survive_runner_failure(tmp_path: Path):
+    """asset.official_resolve failures must keep diagnostics in scenario reports."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    catalog_dir = tmp_path / "official-assets"
+    catalog_dir.mkdir()
+    url = "https://example.com/Assets/pallet/pallet.usd"
+    catalog_dir.joinpath("latest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "generated_at": "2099-01-01T00:00:00Z",
+                "snapshots": [
+                    {
+                        "app_profile": "isaac-sim",
+                        "app_version": "6.0.0",
+                        "kit_version": "110.1.1",
+                        "providers": [],
+                    }
+                ],
+                "items": [
+                    {
+                        "id": f"url:{url}",
+                        "kind": "asset",
+                        "name": "pallet.usd",
+                        "aliases": ["pallet"],
+                        "canonical_url": url,
+                        "provider": "omni.simready.explorer",
+                        "provided_in": [
+                            {
+                                "app_profile": "isaac-sim",
+                                "provider": "omni.simready.explorer",
+                            }
+                        ],
+                        "loadable_in": [],
+                        "verification_status": "url_validated",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "official_asset_diag", "name": "official asset diag"},
+        "spec": {
+            "assert": [
+                {
+                    "id": "resolve_missing",
+                    "module": "asset",
+                    "action": "official_resolve",
+                    "args": {
+                        "name_or_id": "forklift",
+                        "kind": "asset",
+                        "app_profile": "isaac-sim",
+                    },
+                }
+            ]
+        },
+    }
+
+    summary = await runner.run(compile_scenario(raw))
+
+    step = summary.step_results[0]
+    assert step.status == ExecutionStatus.ERROR
+    assert step.data_summary["diagnostics"]["reason"] == "query_no_match"
+    assert step.data_summary["diagnostics"]["candidate_counts"]["query_matches"] == 0
+    markdown = to_markdown(summary)
+    assert "diagnostics.reason=query_no_match" in markdown
+    assert "diagnostics.fallback_tool_order=[official_asset_sync_status" in markdown
+
+
+@pytest.mark.asyncio
 async def test_job_status_fails_on_unexpected_status():
     """job.status with expected_status mismatch → FAILED step."""
     from tests.conftest import MockIsaacRestClient, MockLakehouseClient
