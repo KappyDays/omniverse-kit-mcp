@@ -59,10 +59,13 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
     for sr in summary.step_results:
         dur = f"{sr.duration_ms}ms" if sr.duration_ms is not None else "-"
         attempts = f"{sr.attempts}/{sr.max_attempts}"
-        msg = sr.message or ""
         lines.append(
-            f"| {sr.step_id} | {sr.phase} | {sr.status.value} | "
-            f"{attempts} | {dur} | {msg} |"
+            f"| {_markdown_table_cell(sr.step_id)} | "
+            f"{_markdown_table_cell(sr.phase)} | "
+            f"{_markdown_table_cell(sr.status.value)} | "
+            f"{_markdown_table_cell(attempts)} | "
+            f"{_markdown_table_cell(dur)} | "
+            f"{_markdown_table_cell(sr.message or '')} |"
         )
 
     data_rows = [
@@ -86,7 +89,7 @@ def to_markdown(summary: ScenarioRunSummary) -> str:
             lines.append(
                 f"- `{step_id}` attempt {failure.get('attempt')}: "
                 f"{failure.get('status')} {failure.get('error_code')} - "
-                f"{failure.get('message') or ''}"
+                f"{_markdown_inline(failure.get('message') or '')}"
             )
 
     if summary.artifact_paths:
@@ -106,6 +109,14 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
         for sr in summary.step_results
     ]
     return d
+
+
+def _markdown_table_cell(value: Any) -> str:
+    return _markdown_inline(value).replace("|", r"\|")
+
+
+def _markdown_inline(value: Any) -> str:
+    return str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br>")
 
 
 def _has_diagnostic_summary(data_summary: dict[str, Any]) -> bool:

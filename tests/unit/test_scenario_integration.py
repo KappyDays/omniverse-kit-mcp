@@ -148,6 +148,47 @@ def test_markdown_highlights_bounded_raw_key_samples():
     ) in markdown
 
 
+def test_markdown_escapes_step_result_table_cells():
+    summary = ScenarioRunSummary(
+        scenario_id="table_escape",
+        status=ExecutionStatus.FAILED,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read|lidar",
+                phase="assert",
+                status=ExecutionStatus.FAILED,
+                message="bridge | retry\nline two",
+                duration_ms=5,
+                retry_failures=(
+                    {
+                        "attempt": 1,
+                        "status": "failed",
+                        "error_code": "ERR_PIPE",
+                        "message": "first | failure\nwith detail",
+                    },
+                ),
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert (
+        "| read\\|lidar | assert | failed | 1/1 | 5ms | "
+        "bridge \\| retry<br>line two |"
+    ) in markdown
+    assert (
+        "- `read|lidar` attempt 1: failed ERR_PIPE - "
+        "first | failure<br>with detail"
+    ) in markdown
+
+
 def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
     summary = ScenarioRunSummary(
         scenario_id="official_asset_diagnostics",
