@@ -1217,7 +1217,7 @@ official_asset_resolve(name_or_id: 'str', kind: 'str | None' = None, app_profile
 
 Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer
 current app/profile loadability; if stale or not load/assign verified,
-verify_required_before_use is true.
+verify_required_before_use is true; not-found errors include diagnostics.reason/suggested_next.
 
 **Parameters**
 
@@ -1235,9 +1235,9 @@ official_asset_search(query: 'str', kind: 'str | None' = None, app_profile: 'str
 ```
 
 Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns
-URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; stale
-hits may be listed only when allow_stale=True and must be passed to official_asset_verify
-before use.
+URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; verify
+stale/unverified hits with official_asset_verify before use; zero-result responses include
+diagnostics.reason/suggested_next before falling back to asset_search.
 
 **Parameters**
 
@@ -1258,7 +1258,7 @@ official_asset_sync_status(app_profile: 'str | None' = None) -> 'str'
 ```
 
 Report latest official asset snapshot metadata, provider/app versions, counts, stale status,
-and failure counts. No Kit launch required.
+failure counts, and catalog-unavailable diagnostics. No Kit launch required.
 
 **Parameters**
 

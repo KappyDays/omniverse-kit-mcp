@@ -25,7 +25,7 @@ from omniverse_kit_mcp.clients.isaac_rest_client import IsaacRestClient
 from omniverse_kit_mcp.modules.base import error_result, ok_result
 from omniverse_kit_mcp.modules.external_asset import ExternalAssetRegistry
 from omniverse_kit_mcp.types.asset import AssetCategory, AssetItem, AssetListResult
-from omniverse_kit_mcp.types.common import ModuleResult, OperationMeta
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleResult, OperationMeta
 
 logger = logging.getLogger(__name__)
 
@@ -327,26 +327,44 @@ class AssetModule:
                 _official_candidate(catalog, entry, app_profile)
                 for _, _, entry in scored[: max(0, limit)]
             ]
+            data = {
+                "catalog_path": str(
+                    catalog.get("_catalog_path")
+                    or _official_catalog_path(self._official_catalog_dir, app_profile)
+                ),
+                "catalog_identity": _official_public_catalog_identity(catalog),
+                "query": query,
+                "kind": kind,
+                "app_profile": app_profile,
+                "provider": provider,
+                "min_status": min_status,
+                "allow_stale": allow_stale,
+                "count": len(candidates),
+                "candidates": candidates,
+            }
+            if not candidates:
+                data["diagnostics"] = _official_search_diagnostics(
+                    catalog,
+                    query=query,
+                    kind=kind,
+                    app_profile=app_profile,
+                    provider=provider,
+                    min_status=min_status,
+                    allow_stale=allow_stale,
+                    limit=limit,
+                )
             return ok_result(
-                {
-                    "catalog_path": str(catalog.get("_catalog_path") or _official_catalog_path(self._official_catalog_dir, app_profile)),
-                    "catalog_identity": _official_public_catalog_identity(catalog),
-                    "query": query,
-                    "kind": kind,
-                    "app_profile": app_profile,
-                    "provider": provider,
-                    "min_status": min_status,
-                    "allow_stale": allow_stale,
-                    "count": len(candidates),
-                    "candidates": candidates,
-                },
+                data,
                 started_ms=started,
             )
         except FileNotFoundError as exc:
-            return error_result(
+            return _official_error_result(
                 str(exc),
                 started_ms=started,
                 error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+                data=_official_catalog_unavailable_data(
+                    self._official_catalog_dir, app_profile
+                ),
             )
         except Exception as exc:
             return error_result(
@@ -375,20 +393,30 @@ class AssetModule:
                 prefer_loadable=prefer_loadable,
             )
             if entry is None:
-                return error_result(
+                return _official_error_result(
                     f"Official asset entry not found: {name_or_id}",
                     started_ms=started,
                     error_code="OFFICIAL_ASSET_NOT_FOUND",
+                    data=_official_not_found_data(
+                        catalog,
+                        name_or_id=name_or_id,
+                        kind=kind,
+                        app_profile=app_profile,
+                        prefer_loadable=prefer_loadable,
+                    ),
                 )
             return ok_result(
                 _official_resolved(catalog, entry, app_profile),
                 started_ms=started,
             )
         except FileNotFoundError as exc:
-            return error_result(
+            return _official_error_result(
                 str(exc),
                 started_ms=started,
                 error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+                data=_official_catalog_unavailable_data(
+                    self._official_catalog_dir, app_profile
+                ),
             )
         except Exception as exc:
             return error_result(
@@ -408,10 +436,17 @@ class AssetModule:
             catalog = self._load_official_catalog()
             entry = _find_official_entry(catalog, asset_id)
             if entry is None:
-                return error_result(
+                return _official_error_result(
                     f"Official asset entry not found: {asset_id}",
                     started_ms=started,
                     error_code="OFFICIAL_ASSET_NOT_FOUND",
+                    data=_official_not_found_data(
+                        catalog,
+                        name_or_id=asset_id,
+                        kind=None,
+                        app_profile=None,
+                        prefer_loadable=True,
+                    ),
                 )
             data = dict(entry)
             data["stale_warning"] = _official_stale_warning(catalog, entry, None)
@@ -420,10 +455,13 @@ class AssetModule:
             )
             return ok_result(data, started_ms=started)
         except FileNotFoundError as exc:
-            return error_result(
+            return _official_error_result(
                 str(exc),
                 started_ms=started,
                 error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+                data=_official_catalog_unavailable_data(
+                    self._official_catalog_dir, None
+                ),
             )
         except Exception as exc:
             return error_result(
@@ -492,10 +530,13 @@ class AssetModule:
                 started_ms=started,
             )
         except FileNotFoundError as exc:
-            return error_result(
+            return _official_error_result(
                 str(exc),
                 started_ms=started,
                 error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+                data=_official_catalog_unavailable_data(
+                    self._official_catalog_dir, app_profile
+                ),
             )
         except Exception as exc:
             return error_result(
@@ -522,10 +563,17 @@ class AssetModule:
                 prefer_loadable=False,
             )
             if entry is None:
-                return error_result(
+                return _official_error_result(
                     f"Official asset entry not found: {asset_id}",
                     started_ms=started,
                     error_code="OFFICIAL_ASSET_NOT_FOUND",
+                    data=_official_not_found_data(
+                        catalog,
+                        name_or_id=asset_id,
+                        kind=None,
+                        app_profile=app_profile,
+                        prefer_loadable=False,
+                    ),
                 )
             default_timeout = 45.0 if entry.get("kind") == "material" else 120.0
             timeout = float(timeout_s or default_timeout)
@@ -565,10 +613,13 @@ class AssetModule:
             _append_official_verify_record(self._official_catalog_dir, record)
             return ok_result(record, started_ms=started)
         except FileNotFoundError as exc:
-            return error_result(
+            return _official_error_result(
                 str(exc),
                 started_ms=started,
                 error_code="OFFICIAL_ASSET_CATALOG_UNAVAILABLE",
+                data=_official_catalog_unavailable_data(
+                    self._official_catalog_dir, app_profile
+                ),
             )
         except Exception as exc:
             return error_result(
@@ -1045,6 +1096,248 @@ def _load_official_catalog(
         ],
     }
     return catalog
+
+
+def _official_error_result(
+    message: str,
+    *,
+    started_ms: int,
+    error_code: str,
+    data: dict[str, Any],
+) -> ModuleResult[dict[str, Any]]:
+    return ModuleResult(
+        ok=False,
+        status=ExecutionStatus.ERROR,
+        data=data,
+        message=message,
+        error_code=error_code,
+        duration_ms=int(time.time() * 1000) - started_ms,
+    )
+
+
+def _official_catalog_unavailable_data(
+    catalog_dir: Path,
+    app_profile: str | None,
+) -> dict[str, Any]:
+    expected_files = ["latest.json", "catalog.json", "official-assets.latest.json"]
+    if app_profile:
+        expected_files.insert(0, _official_profile_latest_name(app_profile))
+    return {
+        "app_profile": app_profile,
+        "diagnostics": {
+            "reason": "catalog_unavailable",
+            "checked_catalog_path": str(_official_catalog_path(catalog_dir, app_profile)),
+            "expected_files": expected_files,
+            "suggested_next": _official_suggested_next("catalog_unavailable"),
+            "fallback_tool_order": _official_fallback_tool_order(),
+        },
+    }
+
+
+def _official_not_found_data(
+    catalog: dict[str, Any],
+    *,
+    name_or_id: str,
+    kind: str | None,
+    app_profile: str | None,
+    prefer_loadable: bool,
+) -> dict[str, Any]:
+    return {
+        "name_or_id": name_or_id,
+        "kind": kind,
+        "app_profile": app_profile,
+        "prefer_loadable": prefer_loadable,
+        "diagnostics": _official_search_diagnostics(
+            catalog,
+            query=name_or_id,
+            kind=kind,
+            app_profile=app_profile,
+            provider=None,
+            min_status="discovered",
+            allow_stale=True,
+            limit=20,
+        ),
+    }
+
+
+def _official_search_diagnostics(
+    catalog: dict[str, Any],
+    *,
+    query: str,
+    kind: str | None,
+    app_profile: str | None,
+    provider: str | None,
+    min_status: str,
+    allow_stale: bool,
+    limit: int,
+) -> dict[str, Any]:
+    entries = _official_entries(catalog)
+    by_kind = [
+        e
+        for e in entries
+        if not kind or str(e.get("kind", "")).lower() == kind.lower()
+    ]
+    by_app = [
+        e
+        for e in by_kind
+        if not app_profile or _official_entry_has_app(e, app_profile)
+    ]
+    by_provider = [
+        e
+        for e in by_app
+        if not provider or _official_entry_has_provider(e, provider)
+    ]
+    min_rank = _official_status_rank(min_status)
+    by_status = [
+        e
+        for e in by_provider
+        if _official_status_rank(_official_entry_status(e, app_profile)) >= min_rank
+    ]
+    query_text = query.strip()
+    query_matches_before_stale = [
+        e
+        for e in by_status
+        if not query_text or _official_score(e, query) > 0
+    ]
+    stale_query_matches = [
+        e
+        for e in query_matches_before_stale
+        if _official_stale_warning(catalog, e, app_profile)
+    ]
+    by_stale = [
+        e
+        for e in by_status
+        if allow_stale or not _official_stale_warning(catalog, e, app_profile)
+    ]
+    query_matches = [
+        e
+        for e in by_stale
+        if not query_text or _official_score(e, query) > 0
+    ]
+    counts = {
+        "total_entries": len(entries),
+        "after_kind": len(by_kind),
+        "after_app_profile": len(by_app),
+        "after_provider": len(by_provider),
+        "after_min_status": len(by_status),
+        "query_matches_before_stale_filter": len(query_matches_before_stale),
+        "after_allow_stale": len(by_stale),
+        "query_matches": len(query_matches),
+        "result_limit": max(0, limit),
+    }
+    reason = _official_no_results_reason(
+        counts,
+        kind=kind,
+        app_profile=app_profile,
+        provider=provider,
+        query=query_text,
+        allow_stale=allow_stale,
+        stale_query_match_count=len(stale_query_matches),
+        limit=limit,
+    )
+    return {
+        "reason": reason,
+        "filters": {
+            "query": query,
+            "kind": kind,
+            "app_profile": app_profile,
+            "provider": provider,
+            "min_status": min_status,
+            "allow_stale": allow_stale,
+            "limit": limit,
+        },
+        "candidate_counts": counts,
+        "suggested_next": _official_suggested_next(reason),
+        "fallback_tool_order": _official_fallback_tool_order(),
+    }
+
+
+def _official_no_results_reason(
+    counts: dict[str, int],
+    *,
+    kind: str | None,
+    app_profile: str | None,
+    provider: str | None,
+    query: str,
+    allow_stale: bool,
+    stale_query_match_count: int,
+    limit: int,
+) -> str:
+    if limit <= 0:
+        return "limit_zero"
+    if counts["total_entries"] == 0:
+        return "empty_catalog"
+    if kind and counts["after_kind"] == 0:
+        return "kind_not_found"
+    if app_profile and counts["after_app_profile"] == 0:
+        return "app_profile_not_covered"
+    if provider and counts["after_provider"] == 0:
+        return "provider_not_covered"
+    if counts["after_min_status"] == 0:
+        return "min_status_too_strict"
+    if not allow_stale and stale_query_match_count and counts["query_matches"] == 0:
+        return "only_stale_matches"
+    if query and counts["query_matches"] == 0:
+        return "query_no_match"
+    return "no_results"
+
+
+def _official_suggested_next(reason: str) -> list[str]:
+    suggestions = {
+        "catalog_unavailable": [
+            "Generate the ignored official catalog with scripts/sync_official_asset_catalog.py, then retry official_asset_sync_status.",
+            "Use asset_search as the offline fallback while the official catalog is unavailable.",
+        ],
+        "empty_catalog": [
+            "Regenerate the official catalog with provider discovery enabled for the target app profile.",
+            "Use asset_search for Isaac curated USD assets while auditing catalog generation.",
+        ],
+        "kind_not_found": [
+            "Retry without kind, or switch kind between asset and material.",
+            "Check official_asset_sync_status counts before falling back to asset_search.",
+        ],
+        "app_profile_not_covered": [
+            "Call official_asset_sync_status without app_profile to list covered profiles.",
+            "Retry official_asset_search with a covered app_profile or no app_profile.",
+        ],
+        "provider_not_covered": [
+            "Call official_asset_sync_status for provider coverage, then retry without provider.",
+            "If the provider is expected, rerun catalog sync for that app profile before use.",
+        ],
+        "min_status_too_strict": [
+            "Retry official_asset_search with min_status='discovered' to inspect lower-confidence hits.",
+            "Run official_asset_verify on promising hits before stage placement or material assignment.",
+        ],
+        "only_stale_matches": [
+            "Retry with allow_stale=True, then pass the selected id to official_asset_verify.",
+            "Do not stage-place or assign stale results until verification succeeds.",
+        ],
+        "query_no_match": [
+            "Retry with a broader asset family, category, provider, or filename stem.",
+            "If official search still misses, use asset_search for Isaac curated USD assets.",
+        ],
+        "limit_zero": [
+            "Retry official_asset_search with limit greater than 0.",
+            "Keep other filters unchanged before widening the search.",
+        ],
+    }
+    return suggestions.get(
+        reason,
+        [
+            "Call official_asset_sync_status to inspect catalog coverage.",
+            "Retry official_asset_search with fewer filters before using asset_search fallback.",
+        ],
+    )
+
+
+def _official_fallback_tool_order() -> list[str]:
+    return [
+        "official_asset_sync_status",
+        "official_asset_search",
+        "official_asset_resolve",
+        "official_asset_verify",
+        "asset_search",
+    ]
 
 
 def _official_entries(catalog: dict[str, Any]) -> list[dict[str, Any]]:

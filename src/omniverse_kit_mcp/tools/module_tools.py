@@ -1254,7 +1254,7 @@ def register_module_tools(
         allow_stale: bool = True,
         limit: int = 20,
     ) -> str:
-        """Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; stale hits may be listed only when allow_stale=True and must be passed to official_asset_verify before use."""
+        """Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; verify stale/unverified hits with official_asset_verify before use; zero-result responses include diagnostics.reason/suggested_next before falling back to asset_search."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_search(
             meta,
@@ -1275,7 +1275,7 @@ def register_module_tools(
         app_profile: str | None = None,
         prefer_loadable: bool = True,
     ) -> str:
-        """Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer current app/profile loadability; if stale or not load/assign verified, verify_required_before_use is true."""
+        """Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer current app/profile loadability; if stale or not load/assign verified, verify_required_before_use is true; not-found errors include diagnostics.reason/suggested_next."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_resolve(
             meta,
@@ -1295,7 +1295,7 @@ def register_module_tools(
 
     @tool()
     async def official_asset_sync_status(app_profile: str | None = None) -> str:
-        """Report latest official asset snapshot metadata, provider/app versions, counts, stale status, and failure counts. No Kit launch required."""
+        """Report latest official asset snapshot metadata, provider/app versions, counts, stale status, failure counts, and catalog-unavailable diagnostics. No Kit launch required."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_sync_status(meta, app_profile=app_profile)
         return _serialize(result)

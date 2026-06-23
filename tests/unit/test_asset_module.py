@@ -438,6 +438,84 @@ async def test_official_asset_search_returns_url_id_and_variant(
     assert all("a02" not in c["name"] for c in result.data["candidates"])
 
 
+@pytest.mark.asyncio
+async def test_official_asset_search_no_results_reports_diagnostics(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_search(
+        _meta(),
+        query="forklift",
+        app_profile="isaac-sim",
+    )
+
+    assert result.ok, result.message
+    assert result.data["count"] == 0
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "query_no_match"
+    assert diagnostics["candidate_counts"]["total_entries"] == 3
+    assert diagnostics["candidate_counts"]["query_matches"] == 0
+    assert "asset_search" in diagnostics["fallback_tool_order"]
+    assert any("broader" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_official_asset_search_min_status_diagnostics(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_search(
+        _meta(),
+        query="aluminumpallet_a01",
+        app_profile="isaac-sim",
+        min_status="load_verified",
+    )
+
+    assert result.ok, result.message
+    assert result.data["count"] == 0
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "min_status_too_strict"
+    assert diagnostics["candidate_counts"]["after_app_profile"] == 2
+    assert diagnostics["candidate_counts"]["after_min_status"] == 0
+    assert any(
+        "min_status='discovered'" in item
+        for item in diagnostics["suggested_next"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_official_asset_search_zero_limit_reports_limit_diagnostics(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_search(
+        _meta(),
+        query="aluminumpallet_a01",
+        app_profile="isaac-sim",
+        limit=0,
+    )
+
+    assert result.ok, result.message
+    assert result.data["count"] == 0
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "limit_zero"
+    assert diagnostics["candidate_counts"]["query_matches"] == 1
+    assert diagnostics["candidate_counts"]["result_limit"] == 0
+    assert any(
+        "limit greater than 0" in item
+        for item in diagnostics["suggested_next"]
+    )
+
+
 def _catalog_with_items(
     *,
     run_id: str,
@@ -646,6 +724,35 @@ async def test_official_asset_get_missing_catalog_reports_unavailable(tmp_path: 
 
     assert not result.ok
     assert result.error_code == "OFFICIAL_ASSET_CATALOG_UNAVAILABLE"
+    assert result.data["diagnostics"]["reason"] == "catalog_unavailable"
+    assert result.data["diagnostics"]["expected_files"] == [
+        "latest.json",
+        "catalog.json",
+        "official-assets.latest.json",
+    ]
+    assert "asset_search" in result.data["diagnostics"]["fallback_tool_order"]
+
+
+@pytest.mark.asyncio
+async def test_official_asset_resolve_not_found_reports_diagnostics(
+    synthetic_official_catalog: Path,
+):
+    module = AssetModule(
+        _ExplodingClient(),
+        official_catalog_dir=synthetic_official_catalog,
+    )
+    result = await module.official_resolve(
+        _meta(),
+        name_or_id="missing forklift",
+        kind="asset",
+        app_profile="isaac-sim",
+    )
+
+    assert not result.ok
+    assert result.error_code == "OFFICIAL_ASSET_NOT_FOUND"
+    assert result.data["name_or_id"] == "missing forklift"
+    assert result.data["diagnostics"]["reason"] == "query_no_match"
+    assert result.data["diagnostics"]["filters"]["min_status"] == "discovered"
 
 
 def test_official_safe_prim_name_prefixes_leading_digit() -> None:
