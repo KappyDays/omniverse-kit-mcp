@@ -125,15 +125,18 @@ _SANITIZED_WINDOWS_USER_PATH_RE = re.compile(
 )
 _PY_OBJECT_REPR_RE = re.compile(r"<([^<>]*\bobject) at 0x[0-9A-Fa-f]+>")
 _PROCESS_ID_TEXT_RE = re.compile(
-    r"\b(?P<label>pid|process[_ -]?id)\s*(?P<sep>[:=])\s*\d+\b",
+    r"\b(?P<label>pid|process[_ -]?id)\b(?P<key_quote>['\"]?)"
+    r"(?P<before_sep>\s*)(?P<sep>[:=])(?P<after_sep>\s*)"
+    r"(?P<value_quote>['\"]?)\d+\b(?P=value_quote)?",
     re.IGNORECASE,
 )
 _WORKER_THREAD_ID_TEXT_RE = re.compile(
     r"\b(?P<label>"
     r"thread[_ -]?id|worker[_ -]?id|worker[_ -]?thread[_ -]?id|"
     r"pendingWorktreeId|pending[_ -]?worktree[_ -]?id"
-    r")"
-    r"\s*(?P<sep>[:=])\s*[A-Za-z0-9._:-]+\b",
+    r")\b(?P<key_quote>['\"]?)"
+    r"(?P<before_sep>\s*)(?P<sep>[:=])(?P<after_sep>\s*)"
+    r"(?P<value_quote>['\"]?)[A-Za-z0-9._:-]+\b(?P=value_quote)?",
     re.IGNORECASE,
 )
 
@@ -445,10 +448,18 @@ def _redact_local_path_string(value: str) -> str:
         "<local-user-path>", redacted
     )
     redacted = _PROCESS_ID_TEXT_RE.sub(
-        r"\g<label>\g<sep><process-id>", redacted
+        (
+            r"\g<label>\g<key_quote>\g<before_sep>\g<sep>\g<after_sep>"
+            r"\g<value_quote><process-id>\g<value_quote>"
+        ),
+        redacted,
     )
     return _WORKER_THREAD_ID_TEXT_RE.sub(
-        r"\g<label>\g<sep><worker-thread-id>", redacted
+        (
+            r"\g<label>\g<key_quote>\g<before_sep>\g<sep>\g<after_sep>"
+            r"\g<value_quote><worker-thread-id>\g<value_quote>"
+        ),
+        redacted,
     )
 
 
