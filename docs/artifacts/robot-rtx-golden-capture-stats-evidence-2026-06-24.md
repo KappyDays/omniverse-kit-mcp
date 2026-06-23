@@ -52,3 +52,11 @@ and four surrounding lidar target cubes are visible.
 
 No raw local capture path, local install root, process ID, worker/thread ID,
 secret, or raw Kit log snippet is recorded here.
+
+## Unit Guard Follow-Up
+
+`tests/unit/test_scenario_integration.py` now also locks the failure-path
+`evidence_summary` row for `capture_visible_result`. The guard requires failed
+`viewport_capture_assert` reports to preserve `passed=false`, pixel mean and
+variance arrays, pixel averages, and the two blank-frame failure codes in both
+JSON and Markdown report output.

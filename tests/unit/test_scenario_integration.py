@@ -1913,6 +1913,43 @@ async def test_robot_rtx_sensor_golden_workflow_reports_capture_assert_diagnosti
         "error_code": "VIEWPORT_CAPTURE_ASSERT_FAILED",
         **failed_capture["diagnostic_next_actions"],
     }]
+    evidence_report = {
+        result["step_id"]: result for result in report["evidence_summary"]
+    }
+    assert evidence_report["capture_visible_result"] == {
+        "step_id": "capture_visible_result",
+        "phase": "assert",
+        "status": "failed",
+        "attempts": 1,
+        "max_attempts": 1,
+        "retry_failure_count": 0,
+        "evidence_kind": "visual_capture",
+        "capture_path": "/tmp/blank_robot_sensor.png",
+        "sha256": "abc123",
+        "width": 1280,
+        "height": 720,
+        "pixel_mean": [0.0, 0.0, 0.0],
+        "pixel_variance": [0.0, 0.0, 0.0],
+        "warmup_frames_used": 8,
+        "passed": False,
+        "pixel_mean_average": 0.0,
+        "pixel_variance_average": 0.0,
+        "failure_codes": [
+            "PIXEL_MEAN_BELOW_THRESHOLD",
+            "PIXEL_VARIANCE_BELOW_THRESHOLD",
+        ],
+    }
+    markdown = to_markdown(summary)
+    assert (
+        "- `capture_visible_result`: "
+        "evidence_kind=visual_capture; status=failed; attempts=1/1; "
+        "capture_path=/tmp/blank_robot_sensor.png; sha256=abc123; "
+        "width=1280; height=720; pixel_mean=[0.0, 0.0, 0.0]; "
+        "pixel_variance=[0.0, 0.0, 0.0]; warmup_frames_used=8; "
+        "passed=False; pixel_mean_average=0.0; pixel_variance_average=0.0; "
+        "failure_codes=[PIXEL_MEAN_BELOW_THRESHOLD, "
+        "PIXEL_VARIANCE_BELOW_THRESHOLD]"
+    ) in markdown
 
 
 def test_robot_rtx_sensor_golden_workflow_allows_lidar_point_overrides():
