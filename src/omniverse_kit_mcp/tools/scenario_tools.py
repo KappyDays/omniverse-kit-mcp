@@ -36,7 +36,7 @@ from omniverse_kit_mcp.scenario.loader import list_scenarios, load_scenario, val
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.scenario.schema import SCENARIO_SCHEMA
-from omniverse_kit_mcp.types.scenario import CompiledStep
+from omniverse_kit_mcp.types.scenario import CompiledStep, ScenarioRunSummary
 from omniverse_kit_mcp.tools.tool_profiles import (
     PROFILE_FULL,
     ToolSelection,
@@ -46,6 +46,7 @@ from omniverse_kit_mcp.tools.tool_profiles import (
 
 # Module-level store for last run reports
 _last_reports: dict[str, str] = {}
+_last_report_summaries: dict[str, ScenarioRunSummary] = {}
 _last_report_id: str | None = None
 
 
@@ -114,9 +115,19 @@ def register_scenario_tools(
         dry_run: bool = False,
         fail_fast: bool | None = None,
         input_overrides: dict[str, Any] | None = None,
+        report_format: str = "json",
     ) -> str:
-        """Execute YAML validation scenario (Arrange→Act→Assert→Cleanup). Returns step-level pass/fail summary. input_overrides substitutes scenario variables."""
+        """Execute YAML validation scenario (Arrange→Act→Assert→Cleanup).
+
+        Returns JSON by default; pass report_format='markdown' for a
+        human-readable report with data summary highlights. input_overrides
+        substitutes scenario variables.
+        """
         global _last_report_id
+        try:
+            normalized_report_format = _normalize_report_format(report_format)
+        except ValueError as exc:
+            return json.dumps({"error": str(exc)})
         safe_path = _resolve_safe_path(scenario_path, config.scenario.scenarios_dir)
         raw = load_scenario(safe_path)
 
@@ -143,8 +154,9 @@ def register_scenario_tools(
         )
         report = to_json(summary)
         _last_reports[scenario.scenario_id] = report
+        _last_report_summaries[scenario.scenario_id] = summary
         _last_report_id = scenario.scenario_id
-        return report
+        return _format_report(summary, normalized_report_format)
 
     @tool()
     async def scenario_plan(
@@ -180,11 +192,30 @@ def register_scenario_tools(
     @tool()
     async def scenario_last_report(
         scenario_id: str | None = None,
+        report_format: str = "json",
     ) -> str:
-        """Get the latest scenario_validate report, or a specific report by scenario_id."""
+        """Get the latest scenario_validate report, or a specific report by scenario_id.
+
+        Defaults to JSON; pass report_format='markdown' for a human-readable
+        report with data summary highlights.
+        """
+        try:
+            normalized_report_format = _normalize_report_format(report_format)
+        except ValueError as exc:
+            return json.dumps({"error": str(exc)})
         target_id = scenario_id or _last_report_id
         if target_id is None:
             return json.dumps({"error": "No scenario reports have been recorded"})
+        if normalized_report_format == "markdown":
+            summary = _last_report_summaries.get(target_id)
+            if summary is None:
+                return json.dumps({
+                    "error": (
+                        f"No markdown report found for scenario '{target_id}'. "
+                        "Run scenario_validate again before requesting markdown."
+                    )
+                })
+            return to_markdown(summary)
         report = _last_reports.get(target_id)
         if report is None:
             return json.dumps({"error": f"No report found for scenario '{target_id}'"})
@@ -207,3 +238,20 @@ def _plan_step(step: CompiledStep) -> dict[str, Any]:
             "maxBackoffSeconds": step.retry_policy.max_backoff_s,
         }
     return planned
+
+
+def _normalize_report_format(report_format: str) -> str:
+    normalized = report_format.strip().lower()
+    if normalized == "md":
+        return "markdown"
+    if normalized in {"json", "markdown"}:
+        return normalized
+    raise ValueError(
+        "report_format must be 'json', 'markdown', or 'md'"
+    )
+
+
+def _format_report(summary: ScenarioRunSummary, report_format: str) -> str:
+    if report_format == "markdown":
+        return to_markdown(summary)
+    return to_json(summary)

@@ -130,11 +130,12 @@ If `expected_status` is not specified, only `error` termination is FAIL. termina
 scenario_validate(scenario_path="smoke/trigger_sync_cube.yaml")  # actual execution
 scenario_plan(scenario_path="smoke/state_check_property.yaml")   # plan preview
 Read resource isaacsim://scenarios                               # available scenario list
-scenario_last_report()                                           # last execution report
+scenario_last_report(report_format="markdown")                   # quick triage; omit arg for JSON
 ```
 `scenario_last_report` includes per-step `attempts`, `max_attempts`,
 `retry_failures`, and `data_summary` telemetry such as lidar `num_points`,
-`backend`, `frames_waited`, `raw_keys`, and `warning`; use it before logs.
+`backend`, `frames_waited`, `raw_keys`, `warning`, and timeline/capture
+highlights; use Markdown for quick triage and JSON before logs for exact fields.
 
 ## Procedure for creating a new scenario
 

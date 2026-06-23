@@ -77,9 +77,9 @@ fresh lidar attached during play returns points in the same stage.
 Transient zero-point RTX buffers should be absorbed with step-level retries only
 on idempotent sensor reads; inspect `scenario_last_report` fields
 `attempts`, `max_attempts`, `retry_failures`, and `data_summary` before opening
-logs. When using `scripts/run_scenario_standalone.py`, inspect the Markdown
-`Data Summary Highlights` section for the same lidar `num_points`, `backend`,
-`frames_waited`, `raw_keys`, `warning`, and timeline/capture diagnostics.
+logs. Use `scenario_last_report(report_format="markdown")` or the Markdown
+section printed by `scripts/run_scenario_standalone.py` for quick
+`Data Summary Highlights`; use default JSON for exact field values.
 For idempotent retry steps, the scenario runner retries returned non-pass
 results, hard step timeouts, and hard step exceptions; each failed attempt is
 recorded in `retry_failures`.

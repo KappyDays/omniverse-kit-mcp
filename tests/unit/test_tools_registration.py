@@ -26,6 +26,8 @@ from omniverse_kit_mcp.tools.tool_profiles import (
     TOOL_METADATA,
     build_tool_selection,
 )
+from omniverse_kit_mcp.types.common import ExecutionStatus
+from omniverse_kit_mcp.types.scenario import ScenarioRunSummary, StepResult
 
 
 EXPECTED_MODULE_TOOLS: frozenset[str] = frozenset({
@@ -367,6 +369,55 @@ def test_scenario_tools_present(mcp_server):
         assert name in tools, f"Missing scenario tool: {name}"
 
 
+def _single_lidar_summary(scenario_id: str = "latest_scenario") -> ScenarioRunSummary:
+    return ScenarioRunSummary(
+        scenario_id=scenario_id,
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read_lidar",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "num_points": 2,
+                    "backend": "omni.replicator.core",
+                    "frames_waited": 12,
+                    "warning": None,
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+
+def _write_minimal_scenario(config: AppConfig) -> None:
+    scenario_path = Path(config.scenario.scenarios_dir) / "smoke" / "minimal.yaml"
+    scenario_path.parent.mkdir(parents=True, exist_ok=True)
+    scenario_path.write_text(
+        """
+apiVersion: isaacsim.validation/v1
+kind: Scenario
+metadata:
+  id: minimal_markdown_report
+  name: Minimal markdown report
+spec:
+  assert:
+    - id: world_exists
+      module: stage
+      action: assert_prim_exists
+      args:
+        prim_path: /World
+        should_exist: true
+""".strip(),
+        encoding="utf-8",
+    )
+
+
 @pytest.mark.asyncio
 async def test_scenario_last_report_defaults_to_latest(mcp_server, monkeypatch):
     latest = json.dumps({"scenario_id": "latest_scenario"})
@@ -375,6 +426,7 @@ async def test_scenario_last_report_defaults_to_latest(mcp_server, monkeypatch):
         "latest_scenario": latest,
         "older_scenario": older,
     })
+    monkeypatch.setattr(scenario_tools, "_last_report_summaries", {})
     monkeypatch.setattr(scenario_tools, "_last_report_id", "latest_scenario")
     tool = mcp_server._tool_manager._tools["scenario_last_report"]
 
@@ -383,8 +435,87 @@ async def test_scenario_last_report_defaults_to_latest(mcp_server, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_scenario_last_report_can_return_markdown(mcp_server, monkeypatch):
+    summary = _single_lidar_summary()
+    monkeypatch.setattr(scenario_tools, "_last_reports", {
+        "latest_scenario": json.dumps({"scenario_id": "latest_scenario"}),
+    })
+    monkeypatch.setattr(scenario_tools, "_last_report_summaries", {
+        "latest_scenario": summary,
+    })
+    monkeypatch.setattr(scenario_tools, "_last_report_id", "latest_scenario")
+    tool = mcp_server._tool_manager._tools["scenario_last_report"]
+
+    markdown = await tool.fn(report_format="markdown")
+
+    assert "# Scenario Report: latest_scenario" in markdown
+    assert "## Data Summary Highlights" in markdown
+    assert (
+        "- `read_lidar`: num_points=2; backend=omni.replicator.core; "
+        "frames_waited=12; warning=null"
+    ) in markdown
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("report_format", ["markdown", "md"])
+async def test_scenario_validate_can_return_markdown(monkeypatch, report_format):
+    class FakeScenarioRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def run(self, scenario, *, fail_fast_override=None):
+            return _single_lidar_summary(scenario.scenario_id)
+
+    monkeypatch.setattr(scenario_tools, "ScenarioRunner", FakeScenarioRunner)
+    config = AppConfig()
+    _write_minimal_scenario(config)
+    mcp = create_mcp_server(config)
+    tool = mcp._tool_manager._tools["scenario_validate"]
+
+    markdown = await tool.fn(
+        "smoke/minimal.yaml",
+        report_format=report_format,
+    )
+
+    assert "# Scenario Report: minimal_markdown_report" in markdown
+    assert "## Data Summary Highlights" in markdown
+    assert (
+        "- `read_lidar`: num_points=2; backend=omni.replicator.core; "
+        "frames_waited=12; warning=null"
+    ) in markdown
+    assert json.loads(scenario_tools._last_reports["minimal_markdown_report"])[
+        "scenario_id"
+    ] == "minimal_markdown_report"
+
+
+@pytest.mark.asyncio
+async def test_scenario_validate_rejects_unknown_format(mcp_server):
+    tool = mcp_server._tool_manager._tools["scenario_validate"]
+
+    payload = json.loads(await tool.fn(
+        "smoke/minimal.yaml",
+        report_format="yaml",
+    ))
+
+    assert payload == {"error": "report_format must be 'json', 'markdown', or 'md'"}
+
+
+@pytest.mark.asyncio
+async def test_scenario_last_report_rejects_unknown_format(mcp_server, monkeypatch):
+    monkeypatch.setattr(scenario_tools, "_last_reports", {})
+    monkeypatch.setattr(scenario_tools, "_last_report_summaries", {})
+    monkeypatch.setattr(scenario_tools, "_last_report_id", None)
+    tool = mcp_server._tool_manager._tools["scenario_last_report"]
+
+    payload = json.loads(await tool.fn(report_format="yaml"))
+
+    assert payload == {"error": "report_format must be 'json', 'markdown', or 'md'"}
+
+
+@pytest.mark.asyncio
 async def test_scenario_last_report_no_latest_error(mcp_server, monkeypatch):
     monkeypatch.setattr(scenario_tools, "_last_reports", {})
+    monkeypatch.setattr(scenario_tools, "_last_report_summaries", {})
     monkeypatch.setattr(scenario_tools, "_last_report_id", None)
     tool = mcp_server._tool_manager._tools["scenario_last_report"]
 

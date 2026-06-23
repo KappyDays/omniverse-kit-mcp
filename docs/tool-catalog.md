@@ -2627,16 +2627,18 @@ is unavailable.
 ### `scenario_last_report`
 
 ```python
-scenario_last_report(scenario_id: 'str | None' = None) -> 'str'
+scenario_last_report(scenario_id: 'str | None' = None, report_format: 'str' = 'json') -> 'str'
 ```
 
-Get the latest scenario_validate report, or a specific report by scenario_id.
+Get the latest scenario_validate report, or a specific report by scenario_id.  Defaults to
+JSON; pass report_format='markdown' for a human-readable report with data summary highlights.
 
 **Parameters**
 
 | name | type | default | required |
 |------|------|---------|----------|
 | `scenario_id` | `string \| None` | `None` |  |
+| `report_format` | `string` | `'json'` |  |
 
 ### `scenario_plan`
 
@@ -2656,11 +2658,12 @@ it.
 ### `scenario_validate`
 
 ```python
-scenario_validate(scenario_path: 'str', dry_run: 'bool' = False, fail_fast: 'bool | None' = None, input_overrides: 'dict[str, Any] | None' = None) -> 'str'
+scenario_validate(scenario_path: 'str', dry_run: 'bool' = False, fail_fast: 'bool | None' = None, input_overrides: 'dict[str, Any] | None' = None, report_format: 'str' = 'json') -> 'str'
 ```
 
-Execute YAML validation scenario (Arrange→Act→Assert→Cleanup). Returns step-level pass/fail
-summary. input_overrides substitutes scenario variables.
+Execute YAML validation scenario (Arrange→Act→Assert→Cleanup).  Returns JSON by default; pass
+report_format='markdown' for a human-readable report with data summary highlights.
+input_overrides substitutes scenario variables.
 
 **Parameters**
 
@@ -2670,6 +2673,7 @@ summary. input_overrides substitutes scenario variables.
 | `dry_run` | `boolean` | `False` |  |
 | `fail_fast` | `boolean \| None` | `None` |  |
 | `input_overrides` | `object \| None` | `None` |  |
+| `report_format` | `string` | `'json'` |  |
 
 ## Kit commands - command registry / Python runner
 
