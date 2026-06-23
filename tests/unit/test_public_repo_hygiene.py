@@ -319,6 +319,41 @@ def test_public_hygiene_script_flags_split_user_path_literals(tmp_path: Path) ->
     assert "split_windows_user_path" in result.stdout
 
 
+def test_public_hygiene_script_flags_untracked_local_paths(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    (repo / "README.md").write_text("baseline\n", encoding="utf-8")
+    _commit_all(repo, "baseline")
+
+    leaked_path = "C:" + "/Users/" + "localuser" + "/AppData/Local/Temp/capture.png"
+    (repo / "draft-evidence.md").write_text(
+        f"capture: {leaked_path}\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--skip-history",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    assert "untracked-tree" in result.stdout
+    assert "windows_user_path" in result.stdout
+
+
 def test_public_hygiene_script_accepts_redacted_history(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

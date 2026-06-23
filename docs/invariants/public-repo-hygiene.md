@@ -22,8 +22,11 @@ For a session/day audit after commits may already have been pushed, use:
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "2026-06-23 00:00" --head HEAD
 ```
 
-The default history scan uses the current branch upstream merge-base through
-`HEAD`, so local commits that are about to be pushed are reviewed.
+The current-tree scan includes tracked files plus untracked, non-ignored files
+from `git ls-files --others --exclude-standard`; ignored local evidence caches
+stay outside the public gate. The default history scan uses the current branch
+upstream merge-base through `HEAD`, so local commits that are about to be pushed
+are reviewed.
 
 ## Blocking Findings
 

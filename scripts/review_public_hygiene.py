@@ -116,6 +116,12 @@ def _tracked_files(project: Path) -> list[str]:
     return _git_output(project, "ls-files").splitlines()
 
 
+def _untracked_files(project: Path) -> list[str]:
+    return _git_output(
+        project, "ls-files", "--others", "--exclude-standard"
+    ).splitlines()
+
+
 def _is_generated_reference(rel: str) -> bool:
     return any(
         rel == generated.rstrip("/") or rel.startswith(generated)
@@ -157,23 +163,28 @@ def _looks_like_split_user_path(line: str) -> bool:
     return False
 
 
+def _scan_worktree_file(project: Path, source: str, rel: str) -> list[Finding]:
+    findings: list[Finding] = []
+    if _is_generated_reference(rel):
+        return [Finding(source, "generated_reference", rel)]
+
+    path = project / rel
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return findings
+    except FileNotFoundError:
+        return findings
+    findings.extend(_scan_text(source, rel, text))
+    return findings
+
+
 def scan_current_tree(project: Path) -> list[Finding]:
     findings: list[Finding] = []
     for rel in _tracked_files(project):
-        if _is_generated_reference(rel):
-            findings.append(
-                Finding("current-tree", "generated_reference", rel)
-            )
-            continue
-
-        path = project / rel
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        except FileNotFoundError:
-            continue
-        findings.extend(_scan_text("current-tree", rel, text))
+        findings.extend(_scan_worktree_file(project, "current-tree", rel))
+    for rel in _untracked_files(project):
+        findings.extend(_scan_worktree_file(project, "untracked-tree", rel))
     return findings
 
 
