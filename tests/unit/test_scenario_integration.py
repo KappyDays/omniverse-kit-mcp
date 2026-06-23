@@ -320,6 +320,8 @@ def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
     )
 
     markdown = to_markdown(summary)
+    report = json.loads(to_json(summary))
+    find_asset = report["step_results"][0]
 
     assert (
         "- `find_asset`: diagnostics.reason=query_no_match; "
@@ -341,6 +343,25 @@ def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
         "official_asset_search, official_asset_resolve, official_asset_verify, "
         "asset_search]"
     ) in markdown
+    assert find_asset["diagnostic_next_actions"] == {
+        "diagnostics.reason": "query_no_match",
+        "suggested_next": [
+            "Retry with a broader asset family.",
+            "Use asset_search if official search still misses.",
+        ],
+        "diagnostics.fallback_tool_order": [
+            "official_asset_sync_status",
+            "official_asset_search",
+            "official_asset_resolve",
+            "official_asset_verify",
+            "asset_search",
+        ],
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "find_asset",
+        "source": "step",
+        **find_asset["diagnostic_next_actions"],
+    }]
 
 
 def test_markdown_highlights_sync_status_profile_diagnostics():
@@ -382,6 +403,7 @@ def test_markdown_highlights_sync_status_profile_diagnostics():
     )
 
     markdown = to_markdown(summary)
+    report = json.loads(to_json(summary))
 
     assert (
         "- `check_catalog_profile`: "
@@ -398,6 +420,47 @@ def test_markdown_highlights_sync_status_profile_diagnostics():
         "diagnostics.fallback_tool_order=[official_asset_sync_status, "
         "official_asset_search, asset_search]"
     ) in markdown
+    assert report["step_results"][0]["diagnostic_next_actions"][
+        "diagnostics.reason"
+    ] == "app_profile_not_covered"
+    assert report["diagnostic_next_actions"][0]["source"] == "step"
+
+
+def test_report_does_not_promote_reason_only_diagnostics_to_next_actions():
+    summary = ScenarioRunSummary(
+        scenario_id="reason_only_diagnostics",
+        status=ExecutionStatus.FAILED,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read_lidar",
+                phase="assert",
+                status=ExecutionStatus.FAILED,
+                data_summary={
+                    "num_points": 0,
+                    "diagnostics": {
+                        "reason": "empty_scan_buffer",
+                        "readback_paths_attempted": [
+                            "cached_lidar_sensor",
+                            "replicator_annotator",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+
+    assert report["diagnostic_next_actions"] == []
+    assert "diagnostic_next_actions" not in report["step_results"][0]
+    assert "## Diagnostic Next Actions" not in markdown
 
 
 def test_markdown_reports_cleanup_failures_as_non_fatal():
@@ -1172,6 +1235,25 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "cached_lidar_sensor",
         "replicator_annotator",
     ]
+    assert lidar_report["retry_failures"][0]["diagnostic_next_actions"] == {
+        "empty_reason": "empty_scan_buffer",
+        "suggested_next": "step more frames and retry idempotently",
+        "diagnostics.readback_paths_attempted": [
+            "cached_lidar_sensor",
+            "replicator_annotator",
+        ],
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "read_lidar",
+        "source": "retry_failure",
+        "empty_reason": "empty_scan_buffer",
+        "suggested_next": "step more frames and retry idempotently",
+        "diagnostics.readback_paths_attempted": [
+            "cached_lidar_sensor",
+            "replicator_annotator",
+        ],
+        "attempt": 1,
+    }]
     markdown = to_markdown(summary)
     assert "| Step | Phase | Status | Attempts | Duration | Message |" in markdown
     assert "| read_lidar | assert | passed | 2/2 |" in markdown

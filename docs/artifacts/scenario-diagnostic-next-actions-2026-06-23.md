@@ -4,8 +4,11 @@ Date: 2026-06-23
 
 ## Change
 
-Scenario Markdown reports now add a `Diagnostic Next Actions` section when
-step or retry diagnostics contain `suggested_next` or `fallback_tool_order`.
+Scenario reports now expose action-oriented diagnostics when step or retry
+diagnostics contain `suggested_next` or `fallback_tool_order`:
+
+- JSON: top-level and per-step/per-retry `diagnostic_next_actions`.
+- Markdown: `Diagnostic Next Actions` section.
 
 This keeps the existing `Data Summary Highlights` and `Retry Failures` sections
 intact, but gives agents a smaller action-oriented list to check first when
@@ -25,7 +28,7 @@ return an empty diagnostic result.
 - Unit coverage extends the existing official asset diagnostics, sync status
   diagnostics, and transient RTX lidar retry tests.
 - The change is report-only and does not alter scenario execution order,
-  retry behavior, live stage state, or JSON report shape.
+  retry behavior, or live stage state.
 
 ## Public Hygiene Note
 

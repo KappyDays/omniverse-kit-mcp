@@ -207,10 +207,40 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
     d = asdict(summary)  # type: ignore[arg-type]
     # Convert enum values to strings
     d["status"] = summary.status.value
-    d["step_results"] = [
-        {**asdict(sr), "status": sr.status.value}  # type: ignore[arg-type]
-        for sr in summary.step_results
-    ]
+    step_results: list[dict[str, Any]] = []
+    diagnostic_next_actions: list[dict[str, Any]] = []
+    for sr in summary.step_results:
+        step_result = {**asdict(sr), "status": sr.status.value}  # type: ignore[arg-type]
+        action = _diagnostic_next_action_payload(sr.data_summary)
+        if action:
+            step_result["diagnostic_next_actions"] = action
+            diagnostic_next_actions.append({
+                "step_id": sr.step_id,
+                "source": "step",
+                **action,
+            })
+
+        retry_failures: list[dict[str, Any]] = []
+        for failure in sr.retry_failures:
+            retry_failure = dict(failure)
+            data_summary = retry_failure.get("data_summary")
+            if isinstance(data_summary, dict):
+                retry_action = _diagnostic_next_action_payload(data_summary)
+                if retry_action:
+                    retry_failure["diagnostic_next_actions"] = retry_action
+                    summary_action = {
+                        "step_id": sr.step_id,
+                        "source": "retry_failure",
+                        **retry_action,
+                    }
+                    if retry_failure.get("attempt") is not None:
+                        summary_action["attempt"] = retry_failure["attempt"]
+                    diagnostic_next_actions.append(summary_action)
+            retry_failures.append(retry_failure)
+        step_result["retry_failures"] = retry_failures
+        step_results.append(step_result)
+    d["step_results"] = step_results
+    d["diagnostic_next_actions"] = diagnostic_next_actions
     return d
 
 
@@ -351,11 +381,23 @@ def _diagnostic_next_action_rows(
 
 
 def _format_diagnostic_next_action(data_summary: dict[str, Any]) -> str:
+    payload = _diagnostic_next_action_payload(data_summary)
+    if not payload:
+        return ""
+    parts = [
+        part
+        for key, value in payload.items()
+        for part in _format_summary_pair(key, value)
+    ]
+    return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
+
+
+def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, Any]:
     diagnostics = data_summary.get("diagnostics")
     if not isinstance(diagnostics, dict):
         diagnostics = {}
 
-    parts: list[str] = []
+    payload: dict[str, Any] = {}
     for key, value in (
         ("diagnostics.reason", diagnostics.get("reason")),
         (
@@ -374,15 +416,14 @@ def _format_diagnostic_next_action(data_summary: dict[str, Any]) -> str:
     ):
         if value is None:
             continue
-        parts.extend(_format_summary_pair(key, value))
+        payload[key] = value
 
     if not any(
-        part.startswith("suggested_next=")
-        or part.startswith("diagnostics.fallback_tool_order=")
-        for part in parts
+        key in payload
+        for key in ("suggested_next", "diagnostics.fallback_tool_order")
     ):
-        return ""
-    return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
+        return {}
+    return payload
 
 
 def _emitted_summary_roots(data_summary: dict[str, Any]) -> set[str]:
