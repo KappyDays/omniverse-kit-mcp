@@ -582,6 +582,9 @@ def test_markdown_highlights_official_asset_bounded_diagnostic_details():
     )
 
     markdown = to_markdown(summary)
+    report = json.loads(to_json(summary))
+    verify_asset = report["step_results"][1]
+    verify_material = report["step_results"][2]
 
     assert "diagnostics.available_kinds=[asset, material]" in markdown
     assert (
@@ -604,6 +607,48 @@ def test_markdown_highlights_official_asset_bounded_diagnostic_details():
     assert "diagnostics.material_checks.create_prim_ok=True" in markdown
     assert "diagnostics.material_checks.assign_ok=True" in markdown
     assert "diagnostics.material_checks.bound_ok=False" in markdown
+    assert verify_asset["diagnostic_next_actions"] == {
+        "diagnostics.reason": "asset_load_quality_failed",
+        "diagnostics.target_status": "load_verified",
+        "diagnostics.current_catalog_status": "failed",
+        "diagnostics.error_type": "TimeoutError",
+        "suggested_next": ["Inspect load_quality before retry."],
+        "diagnostics.fallback_tool_order": ["official_asset_get", "asset_search"],
+        "diagnostics.asset_checks": {
+            "load_quality": "invalid_empty_content",
+            "bbox_valid": False,
+            "bbox_validation_reasons": ["bbox_invalid"],
+            "has_authored_children": False,
+            "has_default_prim": False,
+            "prim_count_valid": False,
+        },
+    }
+    assert verify_material["diagnostic_next_actions"] == {
+        "diagnostics.reason": "material_assign_or_binding_failed",
+        "diagnostics.target_status": "assign_verified",
+        "diagnostics.current_catalog_status": "url_validated",
+        "suggested_next": ["Check material binding readback."],
+        "diagnostics.fallback_tool_order": ["official_asset_get", "asset_search"],
+        "diagnostics.material_checks": {
+            "create_prim_ok": True,
+            "assign_ok": True,
+            "bound_ok": False,
+        },
+    }
+    assert any(
+        action["step_id"] == "verify_asset"
+        and action["diagnostics.asset_checks"]["load_quality"]
+        == "invalid_empty_content"
+        for action in report["diagnostic_next_actions"]
+    )
+    assert (
+        'diagnostics.asset_checks={"load_quality":"invalid_empty_content",'
+        '"bbox_valid":false'
+    ) in markdown
+    assert (
+        'diagnostics.material_checks={"create_prim_ok":true,'
+        '"assign_ok":true,"bound_ok":false}'
+    ) in markdown
 
 
 def test_report_does_not_promote_reason_only_diagnostics_to_next_actions():

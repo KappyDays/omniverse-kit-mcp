@@ -533,6 +533,12 @@ def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, A
     payload: dict[str, Any] = {}
     for key, value in (
         ("diagnostics.reason", diagnostics.get("reason")),
+        ("diagnostics.target_status", diagnostics.get("target_status")),
+        (
+            "diagnostics.current_catalog_status",
+            diagnostics.get("current_catalog_status"),
+        ),
+        ("diagnostics.error_type", diagnostics.get("error_type")),
         (
             "empty_reason",
             data_summary.get("empty_reason", diagnostics.get("empty_reason")),
@@ -546,6 +552,8 @@ def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, A
             "diagnostics.readback_paths_attempted",
             diagnostics.get("readback_paths_attempted"),
         ),
+        ("diagnostics.asset_checks", diagnostics.get("asset_checks")),
+        ("diagnostics.material_checks", diagnostics.get("material_checks")),
     ):
         if value is None:
             continue

@@ -73,7 +73,9 @@ For `official_asset_sync_status` profile diagnostics, compare
 bounded retry hints.
 For `official_asset_verify` failed records, inspect `diagnostics.reason` plus
 `diagnostics.asset_checks` or `diagnostics.material_checks` before retrying or
-placing the asset in a user scene.
+placing the asset in a user scene. JSON `diagnostic_next_actions` carries the
+target/current status plus the relevant check dict when a verify failure also
+provides `suggested_next` or a fallback order.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
