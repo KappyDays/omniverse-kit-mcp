@@ -181,3 +181,8 @@ Prefer the listed official catalog recovery steps before using legacy
 If `official_asset_sync_status(app_profile=...)` reports `profile_count=0`,
 inspect `data.diagnostics.available_profiles` before assuming the catalog is
 empty.
+
+Runtime result fields that identify the catalog location are public-safe.
+Catalogs inside this repository are reported as project-relative POSIX paths;
+catalogs injected from an external or temporary directory are reported as
+`<external-catalog>/<filename>` instead of a host-local absolute path.

@@ -28,6 +28,17 @@ def _meta() -> OperationMeta:
     )
 
 
+def _assert_no_local_path_fragment(payload: object, root: Path) -> None:
+    text = json.dumps(payload, default=str)
+    local_forms = {
+        str(root),
+        str(root).replace("\\", "/"),
+        str(root).replace("\\", "\\\\"),
+    }
+    for local_form in local_forms:
+        assert local_form not in text
+
+
 class _ExplodingClient:
     """Any REST call fails — proves asset_search is fully offline (no Isaac)."""
 
@@ -436,6 +447,26 @@ async def test_official_asset_search_returns_url_id_and_variant(
     assert hit["verify_required_before_use"] is True
     assert hit["provider_evidence"][0]["provider"] == "omni.simready.explorer"
     assert all("a02" not in c["name"] for c in result.data["candidates"])
+    assert result.data["catalog_path"] == "<external-catalog>/latest.json"
+    assert result.data["catalog_identity"]["path"] == "<external-catalog>/latest.json"
+    _assert_no_local_path_fragment(result.data, synthetic_official_catalog)
+
+
+def test_official_public_catalog_path_reports_repo_relative_path() -> None:
+    from omniverse_kit_mcp.modules.asset_module import _official_public_catalog_path
+
+    repo_catalog = (
+        Path(__file__).resolve().parents[2]
+        / "docs"
+        / "references"
+        / "official-assets"
+        / "latest.json"
+    )
+
+    assert (
+        _official_public_catalog_path(repo_catalog)
+        == "docs/references/official-assets/latest.json"
+    )
 
 
 @pytest.mark.asyncio
@@ -595,8 +626,13 @@ async def test_official_asset_search_uses_profile_latest_pointer(tmp_path: Path)
 
     assert result.ok, result.message
     assert result.data["count"] == 1
-    assert result.data["catalog_path"].endswith("latest-isaac-sim.json")
+    assert result.data["catalog_path"] == "<external-catalog>/latest-isaac-sim.json"
+    assert (
+        result.data["catalog_identity"]["path"]
+        == "<external-catalog>/latest-isaac-sim.json"
+    )
     assert result.data["catalog_identity"]["run_id"] == "isaac-run"
+    _assert_no_local_path_fragment(result.data, tmp_path)
 
 
 @pytest.mark.asyncio
@@ -748,9 +784,12 @@ async def test_official_asset_sync_status_reports_profile_counts(
 
     assert result.ok, result.message
     assert result.data["profile_count"] == 1
+    assert result.data["catalog_path"] == "<external-catalog>/latest.json"
+    assert result.data["catalog_identity"]["path"] == "<external-catalog>/latest.json"
     assert result.data["profiles"][0]["app_profile"] == "usd-composer"
     assert result.data["counts"]["material"] == 1
     assert result.data["counts"]["assign_verified"] == 1
+    _assert_no_local_path_fragment(result.data, synthetic_official_catalog)
 
 
 @pytest.mark.asyncio
@@ -790,7 +829,12 @@ async def test_official_asset_get_missing_catalog_reports_unavailable(tmp_path: 
         "catalog.json",
         "official-assets.latest.json",
     ]
+    assert (
+        result.data["diagnostics"]["checked_catalog_path"]
+        == "<external-catalog>/latest.json"
+    )
     assert "asset_search" in result.data["diagnostics"]["fallback_tool_order"]
+    _assert_no_local_path_fragment(result.data, tmp_path)
 
 
 @pytest.mark.asyncio

@@ -30,9 +30,10 @@ from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleResult, Operat
 logger = logging.getLogger(__name__)
 
 # Project-root-relative default catalog dir (…/docs/assets/isaac).
-_DEFAULT_CATALOG_DIR = Path(__file__).resolve().parents[3] / "docs" / "assets" / "isaac"
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_CATALOG_DIR = _PROJECT_ROOT / "docs" / "assets" / "isaac"
 _DEFAULT_OFFICIAL_CATALOG_DIR = (
-    Path(__file__).resolve().parents[3] / "docs" / "references" / "official-assets"
+    _PROJECT_ROOT / "docs" / "references" / "official-assets"
 )
 
 # Curated per-category catalog files (stems double as the `category` value).
@@ -327,11 +328,11 @@ class AssetModule:
                 _official_candidate(catalog, entry, app_profile)
                 for _, _, entry in scored[: max(0, limit)]
             ]
+            catalog_path = catalog.get("_catalog_path") or _official_catalog_path(
+                self._official_catalog_dir, app_profile
+            )
             data = {
-                "catalog_path": str(
-                    catalog.get("_catalog_path")
-                    or _official_catalog_path(self._official_catalog_dir, app_profile)
-                ),
+                "catalog_path": _official_public_catalog_path(catalog_path),
                 "catalog_identity": _official_public_catalog_identity(catalog),
                 "query": query,
                 "kind": kind,
@@ -519,11 +520,11 @@ class AssetModule:
                 e for e in entries
                 if not app_profile or _official_entry_has_app(e, app_profile)
             ]
+            catalog_path = catalog.get("_catalog_path") or _official_catalog_path(
+                self._official_catalog_dir, app_profile
+            )
             data = {
-                "catalog_path": str(
-                    catalog.get("_catalog_path")
-                    or _official_catalog_path(self._official_catalog_dir, app_profile)
-                ),
+                "catalog_path": _official_public_catalog_path(catalog_path),
                 "catalog_identity": _official_public_catalog_identity(catalog),
                 "schema_version": catalog.get("schema_version"),
                 "generated_at": catalog.get("generated_at"),
@@ -1080,6 +1081,18 @@ def _official_catalog_file_id(path: Path) -> tuple[str, int, int]:
     return (str(path.resolve()), int(stat.st_mtime_ns), int(stat.st_size))
 
 
+def _official_public_catalog_path(path: Path | str) -> str:
+    candidate = Path(path)
+    try:
+        resolved = candidate.resolve()
+        return resolved.relative_to(_PROJECT_ROOT.resolve()).as_posix()
+    except (OSError, ValueError):
+        pass
+    if not candidate.is_absolute():
+        return candidate.as_posix()
+    return f"<external-catalog>/{candidate.name or 'catalog'}"
+
+
 def _official_public_catalog_identity(catalog: dict[str, Any]) -> dict[str, Any]:
     return dict(catalog.get("_catalog_identity") or {})
 
@@ -1096,10 +1109,11 @@ def _load_official_catalog(
             "scripts/sync_official_asset_catalog.py before using official_asset_* tools."
         )
     catalog = json.loads(path.read_text(encoding="utf-8"))
-    catalog["_catalog_path"] = str(path)
+    public_path = _official_public_catalog_path(path)
+    catalog["_catalog_path"] = public_path
     stat = path.stat()
     catalog["_catalog_identity"] = {
-        "path": str(path),
+        "path": public_path,
         "mtime_ns": int(stat.st_mtime_ns),
         "size": int(stat.st_size),
         "run_id": catalog.get("run_id"),
@@ -1141,7 +1155,9 @@ def _official_catalog_unavailable_data(
         "app_profile": app_profile,
         "diagnostics": {
             "reason": "catalog_unavailable",
-            "checked_catalog_path": str(_official_catalog_path(catalog_dir, app_profile)),
+            "checked_catalog_path": _official_public_catalog_path(
+                _official_catalog_path(catalog_dir, app_profile)
+            ),
             "expected_files": expected_files,
             "suggested_next": _official_suggested_next("catalog_unavailable"),
             "fallback_tool_order": _official_fallback_tool_order(),
