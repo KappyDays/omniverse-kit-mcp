@@ -44,18 +44,27 @@ def to_json(summary: ScenarioRunSummary) -> str:
 
 def to_markdown(summary: ScenarioRunSummary) -> str:
     """Render summary as Markdown report."""
+    cleanup_failures = _cleanup_failed_steps(summary)
+    main_failures = max(0, summary.failed_steps - cleanup_failures)
     lines = [
         f"# Scenario Report: {summary.scenario_id}",
         "",
         f"**Status**: {summary.status.value.upper()}",
         f"**Duration**: {summary.ended_at_epoch_ms - summary.started_at_epoch_ms}ms",
-        f"**Steps**: {summary.passed_steps} passed, {summary.failed_steps} failed, {summary.skipped_steps} skipped",
+        (
+            f"**Steps**: {summary.passed_steps} passed, {main_failures} failed, "
+            f"{summary.skipped_steps} skipped"
+        ),
+    ]
+    if cleanup_failures:
+        lines.append(f"**Cleanup**: {cleanup_failures} non-fatal failure(s)")
+    lines.extend([
         "",
         "## Step Results",
         "",
         "| Step | Phase | Status | Attempts | Duration | Message |",
         "|------|-------|--------|----------|----------|---------|",
-    ]
+    ])
     for sr in summary.step_results:
         dur = f"{sr.duration_ms}ms" if sr.duration_ms is not None else "-"
         attempts = f"{sr.attempts}/{sr.max_attempts}"
@@ -111,6 +120,14 @@ def _to_dict(summary: ScenarioRunSummary) -> dict[str, Any]:
         for sr in summary.step_results
     ]
     return d
+
+
+def _cleanup_failed_steps(summary: ScenarioRunSummary) -> int:
+    return sum(
+        1
+        for step in summary.step_results
+        if step.phase == "cleanup" and step.status.value in {"failed", "error", "timeout"}
+    )
 
 
 def _markdown_table_cell(value: Any) -> str:

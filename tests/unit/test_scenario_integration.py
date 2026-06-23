@@ -318,6 +318,42 @@ def test_markdown_highlights_sync_status_profile_diagnostics():
     assert "profile_count=0" in markdown
 
 
+def test_markdown_reports_cleanup_failures_as_non_fatal():
+    summary = ScenarioRunSummary(
+        scenario_id="cleanup_shape",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="main_step",
+                phase="assert",
+                status=ExecutionStatus.PASSED,
+            ),
+            StepResult(
+                step_id="__fallback_cleanup_reset",
+                phase="cleanup",
+                status=ExecutionStatus.ERROR,
+                message="All connection attempts failed",
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert "**Status**: PASSED" in markdown
+    assert "**Steps**: 1 passed, 0 failed, 0 skipped" in markdown
+    assert "**Cleanup**: 1 non-fatal failure(s)" in markdown
+    assert (
+        "| __fallback_cleanup_reset | cleanup | error | 1/1 | - | "
+        "All connection attempts failed |"
+    ) in markdown
+
+
 def test_markdown_does_not_label_stage_path_as_capture_path():
     summary = ScenarioRunSummary(
         scenario_id="stage_path_summary",
