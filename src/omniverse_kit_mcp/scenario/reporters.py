@@ -74,6 +74,10 @@ _SANITIZED_WINDOWS_USER_PATH_RE = re.compile(
     r"\b[A-Za-z]--Users-[A-Za-z0-9._-]+(?:-[A-Za-z0-9._-]+)*\b"
 )
 _PY_OBJECT_REPR_RE = re.compile(r"<([^<>]*\bobject) at 0x[0-9A-Fa-f]+>")
+_PROCESS_ID_TEXT_RE = re.compile(
+    r"\b(?P<label>pid|process[_ -]?id)\s*(?P<sep>[:=])\s*\d+\b",
+    re.IGNORECASE,
+)
 
 
 def to_json(
@@ -253,11 +257,36 @@ def _redact_local_paths(value: Any) -> Any:
     if isinstance(value, tuple):
         return [_redact_local_paths(item) for item in value]
     if isinstance(value, dict):
-        return {
-            str(key): _redact_local_paths(item)
-            for key, item in value.items()
-        }
+        redacted: dict[str, Any] = {}
+        for key, item in value.items():
+            key_text = str(key)
+            redacted[key_text] = (
+                _redact_process_id_value(item)
+                if _is_process_id_key(key_text)
+                else _redact_local_paths(item)
+            )
+        return redacted
     return value
+
+
+def _is_process_id_key(key: str) -> bool:
+    normalized = key.strip().lower().replace("-", "_")
+    return normalized in {"pid", "process_id"} or normalized.endswith((
+        "_pid",
+        "_pids",
+    ))
+
+
+def _redact_process_id_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return [_redact_process_id_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [_redact_process_id_value(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _redact_process_id_value(item) for key, item in value.items()}
+    return "<process-id>"
 
 
 def _redact_local_path_string(value: str) -> str:
@@ -267,8 +296,11 @@ def _redact_local_path_string(value: str) -> str:
     redacted = _KIT_TEMP_LOG_RE.sub(r"<local-kit-log>/\1", redacted)
     redacted = _WINDOWS_USER_PATH_RE.sub("<local-user-path>", redacted)
     redacted = _MSYS_USER_PATH_RE.sub("<local-user-path>", redacted)
-    return _SANITIZED_WINDOWS_USER_PATH_RE.sub(
+    redacted = _SANITIZED_WINDOWS_USER_PATH_RE.sub(
         "<local-user-path>", redacted
+    )
+    return _PROCESS_ID_TEXT_RE.sub(
+        r"\g<label>\g<sep><process-id>", redacted
     )
 
 

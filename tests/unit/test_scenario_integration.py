@@ -285,7 +285,7 @@ def test_reporters_can_redact_host_local_artifact_paths():
                 step_id="capture_visible_result",
                 phase="assert",
                 status=ExecutionStatus.PASSED,
-                message=f"capture saved at {capture_path}",
+                message=f"capture saved at {capture_path}; pid=<process-id>",
                 artifacts={"image": capture_path},
                 data_summary={
                     "artifact": {
@@ -295,6 +295,10 @@ def test_reporters_can_redact_host_local_artifact_paths():
                     "path": capture_path,
                     "log": log_path,
                     "kit_exe": generic_path,
+                    "pid": "<process-id>",
+                    "process_id": "<process-id>",
+                    "child_pids": [42125, 42126],
+                    "nested": {"kit_pid": 42127},
                     "passed": True,
                 },
             ),
@@ -310,10 +314,23 @@ def test_reporters_can_redact_host_local_artifact_paths():
     assert "<local-kit-log>/kit_123.log" in serialized
     assert "<local-user-path>" in serialized
     assert "C:" not in serialized
+    assert "42123" not in serialized
+    assert "42124" not in serialized
+    assert "42125" not in serialized
+    assert "42126" not in serialized
+    assert "42127" not in serialized
+    assert '"pid": "<process-id>"' in serialized
+    assert '"process_id": "<process-id>"' in serialized
     assert "<validation-api-capture>/capture_abcd1234.png" in markdown
     assert "<local-kit-log>/kit_123.log" in markdown
     assert "<local-user-path>" in markdown
     assert "C:" not in markdown
+    assert "42123" not in markdown
+    assert "42124" not in markdown
+    assert "42125" not in markdown
+    assert "42126" not in markdown
+    assert "42127" not in markdown
+    assert "pid=<process-id>" in markdown
 
 
 def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
