@@ -45,7 +45,7 @@ _MEMORY_INDEX = (
     Path.home()
     / ".claude"
     / "projects"
-    / "local-workspace-slug"
+    / "--".join(PROJECT.resolve().parts).replace(":", "")
     / "memory"
     / "MEMORY.md"
 )

@@ -12,13 +12,13 @@ continuing.
 
 Recorded on 2026-06-10; merge consolidation updated on 2026-06-11.
 
-- Source checkout: `<local-user-path>\workspace\omniverse-kit-mcp`
+- Source checkout: `<repo-root>`
 - Current source branch: `main`
 - Upgrade implementation branch: `codex/isaac-sim-6-live-upgrade`
 - Merge target: `main`
 - Historical dirty/untracked source state is recorded below for audit context.
   Always check fresh `git status` before acting.
-- Previous execution worktree `<codex-worktree-root>\15aa` is no
+- Previous execution worktree `<retired-codex-worktree>` is no
   longer present in `git worktree list` or on disk. Do not rely on any files
   that were said to exist only in that worktree.
 - This document is the durable restart anchor and completion record for the
@@ -28,7 +28,7 @@ Recorded on 2026-06-10; merge consolidation updated on 2026-06-11.
 Historical implementation worktree:
 
 ```text
-Path: <codex-worktree-root>\isaac6-live\omniverse-kit-mcp
+Path: <codex-worktrees>\isaac6-live\omniverse-kit-mcp
 Branch: codex/isaac-sim-6-live-upgrade
 Baseline SHA: e9039e0c3719a8923f31d3b8560d558af3ce276b
 Status: complete before merge; static gates and required Isaac Sim 6.0 live gates passed.
@@ -66,7 +66,7 @@ it. Never clean or reset the source checkout to make the upgrade easier.
 The user supplied this install root:
 
 ```text
-<local-kit-install>
+<isaac-sim-6.0-root>
 ```
 
 Verified local evidence:
@@ -89,8 +89,8 @@ Verified local evidence:
 Worktree-local environment values for live work:
 
 ```dotenv
-ISAAC_SIM_KIT_EXE=<local-kit-install>/kit/kit.exe
-ISAAC_SIM_KIT_FILE=<local-kit-install>/apps/isaacsim.exp.full.kit
+ISAAC_SIM_KIT_EXE=<isaac-sim-6.0-root>/kit/kit.exe
+ISAAC_SIM_KIT_FILE=<isaac-sim-6.0-root>/apps/isaacsim.exp.full.kit
 ISAAC_SIM_STARTUP_TIMEOUT=600.0
 ISAAC_MCP_APP_PROFILE=isaac-sim
 ISAAC_MCP_INSTANCE_ID=1
@@ -150,8 +150,8 @@ the chosen API.
   `medium`, `high`, and `xhigh`.
 - Work in a new isolated worktree/branch for implementation.
 - Suggested branch: `codex/isaac-sim-6-live-upgrade`.
--Suggested worktree root:
-  `<codex-worktree-root>\isaac6-live\omniverse-kit-mcp`
+- Suggested worktree root:
+  `<codex-worktrees>\isaac6-live\omniverse-kit-mcp`
 - If a worktree starts detached, attach a branch before editing.
 - Copy this SoT into the worktree before editing if the branch does not contain
   it.
@@ -271,7 +271,7 @@ Goal: establish a clean execution base after context compression.
       - `exts`, `extscache`, `extsInternal`
 - [ ] Verify Isaac Python:
       ```powershell
-      & "<local-kit-install>\python.bat" -c "import sys; print(sys.version); print(sys.executable)"
+      & "<isaac-sim-6.0-root>\python.bat" -c "import sys; print(sys.version); print(sys.executable)"
       ```
 - [ ] Run baseline static checks when possible:
       ```powershell
@@ -687,9 +687,9 @@ they are clearly wrong; add a correction entry instead.
 | Date | Status | Evidence |
 |---|---|---|
 | 2026-06-10 | local-install-found | User supplied Isaac 6.0 standalone path; root, `kit.exe`, app `.kit`, VERSION, and Python 3.12.13 verified. |
-| 2026-06-10 | previous-worktree-missing | `git worktree list` shows only source checkout; `<codex-worktree-root>\15aa` is absent. Reconstruct upgrade in a fresh worktree. |
+| 2026-06-10 | previous-worktree-missing | `git worktree list` shows only source checkout; `<retired-codex-worktree>` is absent. Reconstruct upgrade in a fresh worktree. |
 | 2026-06-10 | official-docs-checked | Release notes, Python environment docs, sensor migration pages, ROS2 OmniGraph migration, and Replicator Agent migration guide checked. |
-| 2026-06-10 | worktree-created | Implementation worktree `<codex-worktree-root>\isaac6-live\omniverse-kit-mcp` on branch `codex/isaac-sim-6-live-upgrade`, baseline `e9039e0c3719a8923f31d3b8560d558af3ce276b`. |
+| 2026-06-10 | worktree-created | Implementation worktree `<codex-worktrees>\isaac6-live\omniverse-kit-mcp` on branch `codex/isaac-sim-6-live-upgrade`, baseline `e9039e0c3719a8923f31d3b8560d558af3ce276b`. |
 | 2026-06-10 | baseline-static-green | Before upgrade edits in the worktree: `uv run pytest tests/` = 481 passed, 15 skipped; `.venv\Scripts\python.exe scripts\verify_mcp_sync.py` = OK, 9 catalog/registration checks passed; `codex mcp list` inside `workspaces/isaac/instance-1` showed `isaacsim-mcp-1` enabled. |
 | 2026-06-10 | phase-1-static-green | Launch/profile/setup changed to 6.0 paths and ROS lib detection prefers `exts/isaacsim.ros2.core/<distro>/lib`. Targeted tests: `test_config_multi_app.py` 19 passed, `test_process_module_multi_app.py` 11 passed, `test_kit_launchers.py` 4 passed. |
 | 2026-06-10 | phase-2-static-green | Extension catalog scripts updated for local 6.0 install, Kit `110.1.1`, `extsInternal`, and source counts. Targeted tests: `test_harvest_bootstrap.py` 76 passed, `test_catalog_integrity.py` 14 skipped when generated catalog absent, `test_render_catalog.py` 5 passed. |
@@ -703,7 +703,7 @@ they are clearly wrong; add a correction entry instead.
 | 2026-06-10 | catalog-sync-no-stage | `.venv\Scripts\python.exe scripts\verify_mcp_sync.py` regenerated `docs/tool-catalog.md`; registration/catalog pytest inside the script passed (9 passed), then script exited non-zero only because the generated catalog is uncommitted and staging is forbidden without user approval. Follow-up `uv run pytest tests/unit/test_tools_registration.py tests/unit/test_tool_catalog_sync.py -q` = 9 passed. |
 | 2026-06-10 | full-static-green | `uv run pytest tests/` after current upgrade edits = 483 passed, 15 skipped in 36.96s. `uv run pytest tests/unit/test_doc_integrity.py -q` = 8 passed. Compileall for changed validation_api/navmesh extension services/controllers passed. |
 | 2026-06-10 | extension-catalog-local-green | `scripts/harvest_extension_metadata.py` against local 6.0 install produced local ignored `docs/references/extensions.json`: total 637 unique extensions, Isaac source counts `exts=114`, `extscache=487`, `extsDeprecated=26`, `extsInternal=7`, `kit/extscore=3`. Four harvest warnings are all missing default USD Composer dirs under `C:\USDComposer`; expected for an Isaac-only worktree. `scripts/render_catalog_md.py` succeeded. `test_catalog_integrity.py` with local catalog = 13 passed, 1 skipped. `scripts/diff_catalog.py --verbose` after harvest = 0 added/removed/version/category drift for both apps (`usd_composer current=0 fresh=0`). |
-| 2026-06-10 | live-kit-green | Local 6.0 standalone started from `<local-kit-install>` with `kit.exe` + `apps/isaacsim.exp.full.kit`; instance 1 ready on port 8111. |
+| 2026-06-10 | live-kit-green | Local 6.0 standalone started from `<isaac-sim-6.0-root>` with `kit.exe` + `apps/isaacsim.exp.full.kit`; instance 1 ready on port 8111. |
 | 2026-06-10 | live-sensor-green | `scripts/live_test_sensor_contact_imu.py` passed. Contact backend reported `fallback_xform:ValueError`; IMU backend reported `isaacsim.sensors.experimental.physics.IMU.create`; annotators include rgb/semantic. |
 | 2026-06-10 | live-robot-crash-root-caused | Isaac 6.0 crashed when robot payload mutation happened while a NovaCarter navigation job/timeline was active. Root cause was unsafe stage mutation during active async job/physics state, not just the USD command. |
 | 2026-06-10 | live-robot-green | `RobotService.load` now uses `CreatePayloadCommand(instanceable=False)`, parent Xform creation, active-job rejection, and timeline-stop guard. `LIVE_ROBOT=1 scripts/live_test_robot_ext.py` passed: `navigate_path` terminal `done`, gripper open/close OK, `set_ee_target` IK success via `isaacsim.robot_motion`. |

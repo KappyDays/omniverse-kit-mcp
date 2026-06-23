@@ -2,7 +2,7 @@
 
 Status: ready
 Created: 2026-06-19
-Target: `<local-user-path>\workspace\omniverse-kit-mcp`
+Target: `<repo-root>`
 
 ## Goal
 
@@ -179,7 +179,7 @@ Do not start Kit from repo root for ordinary live work.
 
 ## GOAL Prompt
 
-You are in `<local-user-path>\workspace\omniverse-kit-mcp`. Implement the ready plan at `docs/artifacts/implementation-plans/2026-06-19-official-asset-catalog-mcp-implementation-plan.md`.
+You are in `<repo-root>`. Implement the ready plan at `docs/artifacts/implementation-plans/2026-06-19-official-asset-catalog-mcp-implementation-plan.md`.
 
 Goal: add a repo-local NVIDIA official asset/material catalog system for Omniverse Kit apps, plus MCP search/resolve/status/on-demand verify tools. V1 targets Isaac Sim 6.0.0/Kit 110.1.1 via `workspaces/isaac/instance-1` and USD Composer via `workspaces/usd-composer/instance-1`. Providers are `omni.kit.browser.asset`, `omni.simready.explorer`, and `omni.kit.browser.material`; reflect `omni.kit.window.material` app overrides.
 
