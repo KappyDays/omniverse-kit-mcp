@@ -31,6 +31,7 @@ from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, ModuleResult
+from omniverse_kit_mcp.types.scenario import ScenarioRunSummary, StepResult
 
 PROJECT = Path(__file__).resolve().parents[2]
 
@@ -105,6 +106,46 @@ def test_diff_snapshots_builder_validates_required_args():
     """F3 builder must fail loudly if before_step_id/after_step_id are missing."""
     with pytest.raises(KeyError):
         build_request(ModuleName.STAGE, "diff_snapshots", {})
+
+
+def test_markdown_highlights_bounded_raw_key_samples():
+    summary = ScenarioRunSummary(
+        scenario_id="bounded_raw_keys",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read_lidar",
+                phase="act",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "num_points": 512,
+                    "backend": "omni.replicator.core",
+                    "frames_waited": 60,
+                    "raw_keys": {
+                        "count": 17,
+                        "sample": ["azimuth", "channelId", "data"],
+                    },
+                    "warning": None,
+                    "truncated": True,
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    markdown = to_markdown(summary)
+
+    assert (
+        "- `read_lidar`: num_points=512; backend=omni.replicator.core; "
+        "frames_waited=60; raw_keys.count=17; "
+        "raw_keys.sample=[azimuth, channelId, data]; warning=null; "
+        "truncated=True"
+    ) in markdown
 
 
 def test_external_asset_actions_have_registry_builders():

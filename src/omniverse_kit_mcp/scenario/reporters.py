@@ -151,7 +151,10 @@ def _lookup_summary_path(
 
 def _format_summary_pair(key: str, value: Any) -> list[str]:
     if isinstance(value, dict) and "count" in value:
-        return [f"{key}.count={_format_summary_value(value['count'])}"]
+        parts = [f"{key}.count={_format_summary_value(value['count'])}"]
+        if "sample" in value:
+            parts.append(f"{key}.sample={_format_summary_value(value['sample'])}")
+        return parts
     return [f"{key}={_format_summary_value(value)}"]
 
 
