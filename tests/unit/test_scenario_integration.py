@@ -429,6 +429,21 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "pixel_variance": [8.0, 9.0, 10.0],
         "warmup_frames_used": 8,
     }
+    isaac_client.responses["simulation_step"] = {
+        "ok": True,
+        "is_playing": True,
+        "is_stopped": False,
+        "current_time": 1.0,
+        "start_time": 0.0,
+        "end_time": 10.0,
+        "time_codes_per_second": 24.0,
+        "timeline_settled": True,
+        "timeline_settle_updates": 1,
+        "frames": 60,
+        "start_time_before_step": 0.0,
+        "advance_mode": "play_burst",
+        "was_playing": True,
+    }
     runner = _build_runner(isaac_client, MockLakehouseClient())
     raw = load_scenario(
         PROJECT / "scenarios" / "smoke" / "robot_rtx_sensor_golden_workflow.yaml"
@@ -531,6 +546,21 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "intensity",
     ]
     assert cloud_report["data_summary"]["warning"] is None
+    markdown = to_markdown(summary)
+    assert (
+        "- `read_lidar_point_cloud`: num_points=3; "
+        "backend=omni.replicator.core; frames_waited=60; "
+        "raw_keys=[azimuth, data, distance, elevation, intensity]; "
+        "warning=null; truncated=False"
+    ) in markdown
+    assert (
+        "- `advance_sensor_frames`: timeline_settled=True; "
+        "timeline_settle_updates=1; is_playing=True; is_stopped=False"
+    ) in markdown
+    assert (
+        "- `capture_visible_result`: capture_path=/tmp/golden_robot_sensor.png; "
+        "sha256=abc123; passed=True"
+    ) in markdown
 
 
 @pytest.mark.asyncio
@@ -629,6 +659,12 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     markdown = to_markdown(summary)
     assert "| Step | Phase | Status | Attempts | Duration | Message |" in markdown
     assert "| read_lidar | assert | passed | 2/2 |" in markdown
+    assert "## Data Summary Highlights" in markdown
+    assert (
+        "- `read_lidar`: num_points=2; backend=omni.replicator.core; "
+        "frames_waited=12; raw_keys=[azimuth, distance]; warning=null; "
+        "truncated=False"
+    ) in markdown
     assert "## Retry Failures" in markdown
     assert (
         "- `read_lidar` attempt 1: failed "

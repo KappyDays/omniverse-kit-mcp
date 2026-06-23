@@ -21,6 +21,9 @@ The generated signature reference remains `docs/tool-catalog.md`.
 | Capture GUI or menu evidence | `window_capture`, `window_list`, `window_menu_list`, `window_menu_trigger` | `docs/invariants/visual-validation.md`, `src/omniverse_kit_mcp/tools/CLAUDE.md` |
 | Find a missing capability to wrap | `extension_search`, then duplicate-check `docs/tool-catalog.md` | `docs/references/CLAUDE.md`, `docs/invariants/mcp-tool-add.md` |
 
+Standalone scenario runs print JSON plus Markdown; follow the scenario
+validation invariant for report-field triage.
+
 ## Timeline Control
 
 `simulation_play`, `simulation_pause`, and `simulation_stop` return timeline
