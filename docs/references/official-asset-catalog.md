@@ -164,3 +164,12 @@ official browser-extension assets or materials. Stale snapshot hits can be
 returned with warnings, but any result with `verify_required_before_use=true`
 must be passed to `official_asset_verify` before stage placement or material
 assignment.
+
+When `official_asset_search` returns zero candidates, or when
+`official_asset_resolve`, `official_asset_get`, or `official_asset_verify`
+cannot find an entry, inspect `data.diagnostics.reason`, `candidate_counts`,
+`suggested_next`, and `fallback_tool_order` before widening the workflow.
+Prefer the listed official catalog recovery steps before using legacy
+`asset_search`. In scenario runs,
+`scenario_last_report(report_format="markdown")` highlights
+`diagnostics.reason`, `suggested_next`, and `diagnostics.fallback_tool_order`.

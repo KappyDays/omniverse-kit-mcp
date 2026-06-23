@@ -25,8 +25,8 @@ Standalone scenario runs print JSON plus Markdown; follow the scenario
 validation invariant for report-field triage.
 
 For `official_asset_*` zero-result or not-found responses, inspect
-`diagnostics.reason` and `diagnostics.suggested_next` before falling back to
-`asset_search`.
+`diagnostics.reason`, `diagnostics.suggested_next`, and
+`diagnostics.fallback_tool_order` before falling back to `asset_search`.
 
 ## Timeline Control
 
