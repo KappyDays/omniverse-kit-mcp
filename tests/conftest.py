@@ -1077,8 +1077,9 @@ class MockIsaacRestClient:
 
     async def window_list(self) -> dict:
         self.calls.append(("window_list", {}))
+        window_pid = 1234
         return self.responses.get("window_list", {
-            "ok": True, "pid": "<process-id>", "count": 1,
+            "ok": True, "pid": window_pid, "count": 1,
             "windows": [
                 {"hwnd": 1, "title": "Isaac Sim Full", "class_name": "GLFW30",
                  "width": 1920, "height": 1080},

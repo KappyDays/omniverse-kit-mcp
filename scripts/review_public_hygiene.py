@@ -202,6 +202,7 @@ def _scan_text(
     text: str,
     *,
     path: str | None = None,
+    scan_python_process_ids: bool = True,
     commit: str | None = None,
     reachability: str | None = None,
 ) -> list[Finding]:
@@ -212,7 +213,14 @@ def _scan_text(
             + SECRET_LIKE_PATTERNS
             + SENSITIVE_IDENTIFIER_PATTERNS
         ):
-            if label == "process_id_number" and _is_python_source_path(path):
+            if (
+                label == "process_id_number"
+                and not scan_python_process_ids
+                and _is_python_source_path(path)
+            ):
+                # Current-tree scans still block Python source. Pending-history
+                # scans keep compatibility with existing synthetic fixture
+                # commits unless an approved history rewrite is in progress.
                 continue
             if pattern.search(line):
                 findings.append(
@@ -421,6 +429,7 @@ def _scan_commit_added_lines(
                 f"{subject} {current_file}",
                 line[1:],
                 path=current_file,
+                scan_python_process_ids=False,
                 commit=full_commit,
                 reachability=reachability,
             )

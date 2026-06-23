@@ -333,6 +333,13 @@ def test_reporters_can_redact_host_local_artifact_paths():
         "C:" + "/Users/" + "localuser"
         + "/workspace/branch/isaac-sim/kit/kit.exe"
     )
+    inline_pid = 42123
+    inline_json_pid = 42128
+    inline_json_process_id = 42129
+    data_pid = 42123
+    data_process_id = "42124"
+    child_pids = [42125, 42126]
+    nested_kit_pid = 42127
     summary = ScenarioRunSummary(
         scenario_id="public_safe_report",
         status=ExecutionStatus.PASSED,
@@ -347,14 +354,14 @@ def test_reporters_can_redact_host_local_artifact_paths():
                 phase="assert",
                 status=ExecutionStatus.PASSED,
                 message=(
-                    f"capture saved at {capture_path}; pid=<process-id>; "
+                    f"capture saved at {capture_path}; pid={inline_pid}; "
                     "thread_id=thread-example-7f3a; "
                     "worker_thread_id=worker-thread-message; "
                     "pending_worktree_id=pw_message; "
                     '{"pendingWorktreeId": "pw_json"}; '
                     "{'worker_thread_id': 'worker-thread-json'}; "
-                    '{"pid": "<process-id>"}; '
-                    '{"process_id": "<process-id>"}'
+                    f'{{"pid": {inline_json_pid}}}; '
+                    f'{{"process_id": "{inline_json_process_id}"}}'
                 ),
                 artifacts={"image": capture_path},
                 data_summary={
@@ -365,10 +372,10 @@ def test_reporters_can_redact_host_local_artifact_paths():
                     "path": capture_path,
                     "log": log_path,
                     "kit_exe": generic_path,
-                    "pid": "<process-id>",
-                    "process_id": "<process-id>",
-                    "child_pids": [42125, 42126],
-                    "nested": {"kit_pid": 42127},
+                    "pid": data_pid,
+                    "process_id": data_process_id,
+                    "child_pids": child_pids,
+                    "nested": {"kit_pid": nested_kit_pid},
                     "thread_id": "thread-example-7f3a",
                     "worker_id": "worker-example",
                     "pendingWorktreeId": "pw_12345",
@@ -451,6 +458,7 @@ def test_official_verify_evidence_summary_redacts_public_sensitive_fields():
         "C:" + "/Users/" + "localuser"
         + "/AppData/Local/Temp/omniverse_kit_mcp/kit_456.log"
     )
+    material_process_id = 42130
     thread_id = "12345678" + "-1234-4234-9234-123456789abc"
     pending_id = "019ef2d4" + "-51c3-7533-9c65-decd64e4fa40"
     summary = ScenarioRunSummary(
@@ -485,7 +493,7 @@ def test_official_verify_evidence_summary_redacts_public_sensitive_fields():
                     "attempt": 2,
                     "timeout_s": 1.0,
                     "error": (
-                        f"binding failed at {capture_path}; process_id=<process-id>; "
+                        f"binding failed at {capture_path}; process_id={material_process_id}; "
                         f"thread_id={thread_id}"
                     ),
                     "diagnostics": {
