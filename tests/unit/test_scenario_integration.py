@@ -3232,6 +3232,7 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
         "check_isaac_catalog",
         "search_known_miss",
         "search_pallet_asset",
+        "resolve_pallet_asset",
         "get_pallet_wrong_profile",
     ]
     assert diagnostic_steps["check_isaac_catalog"] == {
@@ -3255,6 +3256,19 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     assert diagnostic_steps["get_pallet_wrong_profile"]["diagnostic_kind"] == (
         "official_asset_get"
     )
+    assert diagnostic_steps["resolve_pallet_asset"] == {
+        "id": "resolve_pallet_asset",
+        "phase": "assert",
+        "module": "asset",
+        "action": "official_resolve",
+        "diagnostic_kind": "official_asset_resolve",
+        "key_args": {
+            "name_or_id": "pallet",
+            "kind": "asset",
+            "app_profile": "isaac-sim",
+            "prefer_loadable": True,
+        },
+    }
     assert diagnostic_steps["get_pallet_wrong_profile"]["continueOnFailure"] is True
 
     summary = await runner.run(scenario)
@@ -3272,6 +3286,10 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
         "query_no_match"
     )
     assert steps["search_pallet_asset"].data_summary["count"] == 1
+    assert steps["resolve_pallet_asset"].status == ExecutionStatus.PASSED
+    assert steps["resolve_pallet_asset"].data_summary["name"] == (
+        "aluminumpallet_a01.usd"
+    )
     assert steps["get_pallet_wrong_profile"].status == ExecutionStatus.ERROR
     assert steps["get_pallet_wrong_profile"].continue_on_failure is True
     mismatch_diagnostics = steps["get_pallet_wrong_profile"].data_summary[
@@ -3288,7 +3306,7 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
     assert "diagnostics.reason=query_no_match" in markdown
     assert "search_pallet_asset" in markdown
     assert "get_pallet_wrong_profile" in markdown
-    assert "**Steps**: 3 passed, 0 failed, 1 continued, 0 skipped" in markdown
+    assert "**Steps**: 4 passed, 0 failed, 1 continued, 0 skipped" in markdown
     assert "| get_pallet_wrong_profile | assert | error (continued) |" in markdown
     assert "diagnostics.reason=app_profile_not_covered" in markdown
     assert "diagnostics.available_profiles=[isaac-sim]" in markdown

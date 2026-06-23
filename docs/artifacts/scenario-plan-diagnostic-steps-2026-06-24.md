@@ -25,9 +25,9 @@ so agents can confirm the intended catalog/status/search/get probes at
   - Result: passed
 - `.\.venv\Scripts\python.exe scripts\run_scenario_standalone.py --dry-run smoke\official_asset_catalog_diagnostics.yaml`
   - Result: exit 0
-  - `diagnostic_steps`: 4 rows
+  - `diagnostic_steps`: 5 rows
   - Kinds: `official_asset_sync_status`, `official_asset_search`,
-    `official_asset_get`
+    `official_asset_resolve`, `official_asset_get`
   - Continued diagnostic gate:
     `get_pallet_wrong_profile.continueOnFailure=true`
 - `.\.venv\Scripts\python.exe scripts\run_scenario_standalone.py --dry-run smoke\official_asset_verify_live.yaml`

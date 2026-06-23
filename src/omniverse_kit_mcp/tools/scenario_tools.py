@@ -91,7 +91,7 @@ _DIAGNOSTIC_STEP_SPECS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
     ),
     ("asset", "official_resolve"): (
         "official_asset_resolve",
-        ("name_or_id", "kind", "app_profile", "provider", "min_status"),
+        ("name_or_id", "kind", "app_profile", "prefer_loadable"),
     ),
     ("asset", "official_get"): (
         "official_asset_get",
