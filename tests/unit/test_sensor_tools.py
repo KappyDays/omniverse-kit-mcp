@@ -234,6 +234,11 @@ async def test_lidar_get_point_cloud_fails_when_below_min_points():
         "diagnostics": {
             "empty_reason": "empty_scan_buffer",
             "suggested_next": "step more frames and retry",
+            "cached_lidar_instance": True,
+            "readback_paths_attempted": [
+                "cached_lidar_sensor",
+                "replicator_annotator",
+            ],
         },
     }
     module = SensorModule(client)
@@ -251,6 +256,11 @@ async def test_lidar_get_point_cloud_fails_when_below_min_points():
     assert "backend=omni.replicator.core" in (result.message or "")
     assert "empty_reason=empty_scan_buffer" in (result.message or "")
     assert "suggested_next=step more frames and retry" in (result.message or "")
+    assert "cached_lidar_instance=True" in (result.message or "")
+    assert (
+        "readback_paths_attempted=cached_lidar_sensor,replicator_annotator"
+        in (result.message or "")
+    )
     assert "frames_waited=2" in (result.message or "")
     assert "raw_keys=generic-model-output,num_elements:0" in (result.message or "")
     assert "parsed generic-model-output" in (result.message or "")

@@ -1048,6 +1048,11 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
             "diagnostics": {
                 "empty_reason": "empty_scan_buffer",
                 "suggested_next": "step more frames and retry idempotently",
+                "cached_lidar_instance": True,
+                "readback_paths_attempted": [
+                    "cached_lidar_sensor",
+                    "replicator_annotator",
+                ],
             },
         },
         {
@@ -1121,6 +1126,11 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     assert "suggested_next=step more frames and retry idempotently" in str(
         retry_failure["message"]
     )
+    assert "cached_lidar_instance=True" in str(retry_failure["message"])
+    assert (
+        "readback_paths_attempted=cached_lidar_sensor,replicator_annotator"
+        in str(retry_failure["message"])
+    )
     assert step_result.data_summary["num_points"] == 2
     assert step_result.data_summary["empty_reason"] is None
     report = json.loads(to_json(summary))
@@ -1150,6 +1160,11 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "- `read_lidar` attempt 1: failed "
         "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS -"
     ) in markdown
+    assert "cached_lidar_instance=True" in markdown
+    assert (
+        "readback_paths_attempted=cached_lidar_sensor,replicator_annotator"
+        in markdown
+    )
 
 
 @pytest.mark.asyncio
@@ -1432,7 +1447,7 @@ async def test_scenario_runner_bounds_hard_error_retry_messages(monkeypatch):
     runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
 
     async def raise_long_error(_step, _ctx, _scenario_id, _timeout):
-        raise RuntimeError("x" * 400)
+        raise RuntimeError("x" * 800)
 
     monkeypatch.setattr(runner, "_execute_step_with_retries", raise_long_error)
     raw = {
@@ -1476,7 +1491,7 @@ async def test_scenario_runner_bounds_hard_error_retry_messages(monkeypatch):
     assert result.max_attempts == 3
     assert len(result.retry_failures) == 1
     message = str(result.retry_failures[0]["message"])
-    assert len(message) == 243
+    assert len(message) == 515
     assert message.endswith("...")
 
 

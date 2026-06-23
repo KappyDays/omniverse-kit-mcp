@@ -323,10 +323,19 @@ def _format_lidar_failure_detail(
     data: SensorLidarGetPointCloudResult, *, include_warning: bool = True,
 ) -> str:
     details: list[str] = []
-    if include_warning and data.warning:
-        details.append(f"warning={data.warning}")
     if data.empty_reason:
         details.append(f"empty_reason={data.empty_reason}")
+    if "cached_lidar_instance" in data.diagnostics:
+        details.append(
+            f"cached_lidar_instance={data.diagnostics['cached_lidar_instance']}"
+        )
+    readback_paths = data.diagnostics.get("readback_paths_attempted")
+    if readback_paths:
+        if isinstance(readback_paths, (list, tuple)):
+            formatted_paths = ",".join(str(item) for item in readback_paths[:8])
+        else:
+            formatted_paths = str(readback_paths)
+        details.append(f"readback_paths_attempted={formatted_paths}")
     suggested_next = data.diagnostics.get("suggested_next")
     if suggested_next:
         details.append(f"suggested_next={suggested_next}")
@@ -335,4 +344,6 @@ def _format_lidar_failure_detail(
     details.append(f"frames_waited={data.frames_waited}")
     if data.raw_keys:
         details.append(f"raw_keys={','.join(data.raw_keys[:8])}")
+    if include_warning and data.warning:
+        details.append(f"warning={data.warning}")
     return f" ({'; '.join(details)})" if details else ""

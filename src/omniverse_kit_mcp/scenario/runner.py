@@ -56,7 +56,7 @@ _NO_FALLBACK_CLEANUP_ACTIONS = frozenset({
     # AssetModule finally blocks; extension reset adds no extra cleanup signal.
     (ModuleName.ASSET, "official_verify"),
 })
-_RETRY_FAILURE_MESSAGE_LIMIT = 240
+_RETRY_FAILURE_MESSAGE_LIMIT = 512
 
 
 @dataclass(slots=True, frozen=True)
