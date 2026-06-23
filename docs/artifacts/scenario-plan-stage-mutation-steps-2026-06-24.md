@@ -26,6 +26,8 @@ before running Isaac Sim live validation.
   - Includes `stage_reset`, `stage_load_usd`, `lighting_create_dome`,
     `robot_load`, lidar target `stage_create_prim`, RTX camera/lidar attach,
     sensor visualization toggle, and cleanup `stage_delete_prim` rows.
+  - Unit guard:
+    `tests/unit/test_scenario_integration.py::test_robot_rtx_sensor_golden_workflow_routes_through_runner`.
 - `smoke/trigger_sync_cube.yaml`
   - `stage_mutation_summary.read_only`: `false`
   - `stage_mutation_summary.mutation_count`: `1`
@@ -43,4 +45,5 @@ before running Isaac Sim live validation.
 .\.venv\Scripts\python.exe scripts\run_scenario_standalone.py --dry-run smoke\official_asset_verify_live.yaml
 .\.venv\Scripts\python.exe scripts\run_scenario_standalone.py --dry-run smoke\robot_rtx_sensor_golden_workflow.yaml
 .\.venv\Scripts\python.exe scripts\run_scenario_standalone.py --dry-run smoke\trigger_sync_cube.yaml
+.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py::test_robot_rtx_sensor_golden_workflow_routes_through_runner -q
 ```

@@ -1643,6 +1643,71 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "assert": 5,
         "cleanup": 7,
     }
+    assert plan["stage_mutation_summary"] == {
+        "read_only": False,
+        "requires_scratch_stage": True,
+        "mutation_count": 18,
+        "phase_counts": {
+            "arrange": 9,
+            "act": 4,
+            "assert": 0,
+            "cleanup": 5,
+        },
+        "mutation_kinds": [
+            "lighting_create_dome",
+            "robot_load",
+            "sensor_annotator_binding",
+            "sensor_attach_rtx_camera",
+            "sensor_attach_rtx_lidar",
+            "sensor_visualization_toggle",
+            "stage_create_prim",
+            "stage_delete_prim",
+            "stage_load_usd",
+            "stage_reset",
+        ],
+    }
+    stage_mutation_steps = {
+        step["id"]: step for step in plan["stage_mutation_steps"]
+    }
+    assert len(stage_mutation_steps) == 18
+    assert stage_mutation_steps["reset_stage"] == {
+        "id": "reset_stage",
+        "phase": "arrange",
+        "module": "simulation",
+        "action": "stage_new",
+        "mutation_kind": "stage_reset",
+    }
+    assert stage_mutation_steps["load_nova_carter"]["mutation_kind"] == "robot_load"
+    assert stage_mutation_steps["load_nova_carter"]["key_args"][
+        "prim_path"
+    ] == "/World/Robot/NovaCarter"
+    assert stage_mutation_steps["attach_top_lidar"][
+        "mutation_kind"
+    ] == "sensor_attach_rtx_lidar"
+    assert stage_mutation_steps["attach_top_lidar"]["key_args"][
+        "config_preset"
+    ] == "Example_Rotary"
+    assert stage_mutation_steps["hide_lidar_debug_draw"] == {
+        "id": "hide_lidar_debug_draw",
+        "phase": "cleanup",
+        "module": "sensor",
+        "action": "set_visualization",
+        "mutation_kind": "sensor_visualization_toggle",
+        "key_args": {
+            "sensor_prim": "/World/Robot/NovaCarter/TopLidar",
+            "mode": "off",
+        },
+        "continueOnFailure": True,
+    }
+    assert stage_mutation_steps["remove_robot"] == {
+        "id": "remove_robot",
+        "phase": "cleanup",
+        "module": "simulation",
+        "action": "stage_delete_prim",
+        "mutation_kind": "stage_delete_prim",
+        "key_args": {"prim_path": "/World/Robot"},
+        "continueOnFailure": True,
+    }
     assert plan["phases"]["cleanup"][-1] == {
         "id": "__fallback_cleanup_reset",
         "module": "extension",
