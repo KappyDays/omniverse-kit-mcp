@@ -1588,7 +1588,15 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "evidence_kind": "visual_capture",
         "capture_path": "/tmp/golden_robot_sensor.png",
         "sha256": "abc123",
+        "width": 1280,
+        "height": 720,
+        "pixel_mean": [32.0, 34.0, 36.0],
+        "pixel_variance": [8.0, 9.0, 10.0],
+        "warmup_frames_used": 8,
         "passed": True,
+        "pixel_mean_average": 34.0,
+        "pixel_variance_average": 9.0,
+        "failure_codes": [],
     }
     markdown = to_markdown(summary)
     assert (
@@ -1620,7 +1628,11 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
     assert (
         "- `capture_visible_result`: "
         "evidence_kind=visual_capture; status=passed; attempts=1/1; "
-        "capture_path=/tmp/golden_robot_sensor.png; sha256=abc123; passed=True"
+        "capture_path=/tmp/golden_robot_sensor.png; sha256=abc123; "
+        "width=1280; height=720; pixel_mean=[32.0, 34.0, 36.0]; "
+        "pixel_variance=[8.0, 9.0, 10.0]; warmup_frames_used=8; "
+        "passed=True; pixel_mean_average=34.0; pixel_variance_average=9.0; "
+        "failure_codes=[]"
     ) in markdown
 
 

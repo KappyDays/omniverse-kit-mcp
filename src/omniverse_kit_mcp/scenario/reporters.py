@@ -614,6 +614,17 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
                 row["capture_path"] = artifact["path"]
             if "sha256" in artifact:
                 row["sha256"] = artifact["sha256"]
+            _copy_if_present(
+                artifact,
+                row,
+                (
+                    "width",
+                    "height",
+                    "pixel_mean",
+                    "pixel_variance",
+                    "warmup_frames_used",
+                ),
+            )
         if "path" in data_summary:
             row["capture_path"] = data_summary["path"]
         _copy_if_present(
@@ -625,6 +636,9 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
                 "non_empty",
                 "pixel_mean",
                 "pixel_variance",
+                "pixel_mean_average",
+                "pixel_variance_average",
+                "failure_codes",
             ),
         )
     return {key: value for key, value in row.items() if value != {}}

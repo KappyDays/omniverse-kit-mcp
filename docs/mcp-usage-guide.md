@@ -36,7 +36,10 @@ available.
 Reports also include JSON `evidence_summary` and Markdown `Evidence Summary`
 when executed steps produced compact lidar, viewport-framing, or visual-capture
 evidence; compare it with `scenario_plan.evidence_steps` before claiming a
-robot/RTX or visual workflow is proven.
+robot/RTX or visual workflow is proven. For `viewport_capture_assert`, inspect
+the visual-capture row's `passed`, `pixel_mean_average`,
+`pixel_variance_average`, `pixel_mean`, `pixel_variance`, and
+`warmup_frames_used` fields before relying on the image as nonblank evidence.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

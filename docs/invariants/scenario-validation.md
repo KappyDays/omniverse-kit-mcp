@@ -108,7 +108,12 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `data_summary.diagnostics.fallback_tool_order`,
 `data_summary.diagnostics.cached_lidar_instance`,
 `data_summary.diagnostics.readback_paths_attempted`,
-`data_summary.raw_keys`, and `data_summary.warning` before opening logs.
+`data_summary.raw_keys`, `data_summary.warning`,
+`evidence_summary[].evidence_kind`,
+`evidence_summary[].pixel_mean_average`,
+`evidence_summary[].pixel_variance_average`,
+`evidence_summary[].pixel_mean`, and `evidence_summary[].pixel_variance` before
+opening logs.
 Use `scenario_last_report(report_format="markdown", redact_local_paths=true)`
 for public-safe quick `Diagnostic Next Actions` and `Data Summary Highlights`;
 use default JSON for exact field values before copying anything into public docs.
