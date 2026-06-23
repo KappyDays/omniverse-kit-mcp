@@ -3061,6 +3061,111 @@ async def test_official_asset_verify_failure_diagnostics_survive_runner_report(
 
 
 @pytest.mark.asyncio
+async def test_official_asset_verify_material_failure_diagnostics_survive_runner_report(
+    tmp_path: Path,
+):
+    """Material verify failures must keep assign/bind diagnostics in reports."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    catalog_dir = _write_minimal_official_material_catalog(tmp_path)
+    isaac_client = MockIsaacRestClient()
+    isaac_client.responses["material_get_bound"] = {
+        "ok": True,
+        "prim_path": "/World/OfficialMaterialVerify/Brushed_AluminumTarget",
+        "material_path": "",
+    }
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    material_id = (
+        "url:https://omniverse-content-production.s3-us-west-2.amazonaws.com"
+        "/Assets/Materials/2023_2_1/Base/Metals/Brushed_Aluminum.mdl"
+    )
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "official_material_verify_failed_diag",
+            "name": "official material verify failed diag",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "verify_unbound_material",
+                    "module": "asset",
+                    "action": "official_verify",
+                    "args": {
+                        "asset_id": material_id,
+                        "app_profile": "usd-composer",
+                        "timeout_s": 1.0,
+                    },
+                }
+            ]
+        },
+    }
+
+    summary = await runner.run(compile_scenario(raw))
+
+    assert summary.status == ExecutionStatus.PASSED, summary
+    step = summary.step_results[0]
+    assert step.status == ExecutionStatus.PASSED
+    assert step.data_summary["verification_status"] == "failed"
+    diagnostics = step.data_summary["diagnostics"]
+    assert diagnostics["reason"] == "material_assign_or_binding_failed"
+    assert diagnostics["target_status"] == "assign_verified"
+    assert diagnostics["material_checks"] == {
+        "create_prim_ok": True,
+        "assign_ok": True,
+        "bound_ok": False,
+    }
+
+    json_report = json.loads(to_json(summary))
+    assert json_report["diagnostic_next_actions"] == [{
+        "step_id": "verify_unbound_material",
+        "phase": "assert",
+        "source": "step",
+        "status": "passed",
+        "diagnostics.reason": "material_assign_or_binding_failed",
+        "diagnostics.target_status": "assign_verified",
+        "diagnostics.current_catalog_status": "assign_verified",
+        "suggested_next": [
+            "Inspect create_prim, assign, and bound fields to locate the "
+            "material binding failure.",
+            "Retry in the app_profile that provides the material before "
+            "assigning it in a user scene.",
+        ],
+        "diagnostics.fallback_tool_order": [
+            "official_asset_sync_status",
+            "official_asset_search",
+            "official_asset_resolve",
+            "official_asset_verify",
+            "asset_search",
+        ],
+        "diagnostics.material_checks": {
+            "create_prim_ok": True,
+            "assign_ok": True,
+            "bound_ok": False,
+        },
+    }]
+    json_step = json_report["step_results"][0]
+    assert json_step["diagnostic_next_actions"][
+        "diagnostics.material_checks"
+    ]["bound_ok"] is False
+
+    markdown = to_markdown(summary)
+    assert "## Diagnostic Next Actions" in markdown
+    assert (
+        "- `verify_unbound_material`: "
+        "diagnostics.reason=material_assign_or_binding_failed"
+    ) in markdown
+    assert "diagnostics.material_checks.create_prim_ok=True" in markdown
+    assert "diagnostics.material_checks.assign_ok=True" in markdown
+    assert "diagnostics.material_checks.bound_ok=False" in markdown
+
+
+@pytest.mark.asyncio
 async def test_official_asset_verify_live_smoke_routes_through_runner(
     tmp_path: Path,
 ):
@@ -3150,6 +3255,56 @@ def _write_minimal_official_catalog(tmp_path: Path) -> Path:
                             }
                         ],
                         "verification_status": "load_verified",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return catalog_dir
+
+
+def _write_minimal_official_material_catalog(tmp_path: Path) -> Path:
+    catalog_dir = tmp_path / "official-materials"
+    catalog_dir.mkdir()
+    url = (
+        "https://omniverse-content-production.s3-us-west-2.amazonaws.com"
+        "/Assets/Materials/2023_2_1/Base/Metals/Brushed_Aluminum.mdl"
+    )
+    catalog_dir.joinpath("latest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "generated_at": "2099-01-01T00:00:00Z",
+                "snapshots": [
+                    {
+                        "app_profile": "usd-composer",
+                        "app_version": "2026.1.0",
+                        "kit_version": "110.1.1",
+                        "providers": [],
+                    }
+                ],
+                "items": [
+                    {
+                        "id": f"url:{url}",
+                        "kind": "material",
+                        "name": "Brushed_Aluminum.mdl",
+                        "aliases": ["brushed aluminum", "aluminum"],
+                        "canonical_url": url,
+                        "provider": "omni.kit.browser.material",
+                        "provided_in": [
+                            {
+                                "app_profile": "usd-composer",
+                                "provider": "omni.kit.browser.material",
+                            }
+                        ],
+                        "loadable_in": [
+                            {
+                                "app_profile": "usd-composer",
+                                "verification_status": "assign_verified",
+                            }
+                        ],
+                        "verification_status": "assign_verified",
                     }
                 ],
             }

@@ -33,8 +33,13 @@ Failure reasons currently covered:
   leaves the scenario step `passed`, but JSON `diagnostic_next_actions` and
   Markdown `Diagnostic Next Actions` preserve `asset_checks`, `suggested_next`,
   and the official-asset fallback order for agent triage.
+- `tests/unit/test_scenario_integration.py::test_official_asset_verify_material_failure_diagnostics_survive_runner_report`
+  locks the material-report path: a failed material verify record preserves
+  `material_checks.create_prim_ok`, `material_checks.assign_ok`,
+  `material_checks.bound_ok`, `suggested_next`, and the official fallback order
+  in JSON and Markdown reports.
 
 ## Public Boundary
 
 No local install root, raw generated official catalog path, worker id, process
-id, or live capture path is recorded here.
+id, live capture path, or generated material catalog snapshot is recorded here.
