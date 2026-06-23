@@ -26,6 +26,9 @@ validation invariant for report-field triage.
 For retried sensor steps, check `retry_failures[].data_summary` before relying
 on the retry failure message string; it preserves bounded machine-readable
 diagnostics for failed attempts.
+Markdown reports include `Diagnostic Next Actions` when diagnostic payloads
+carry `suggested_next` or `fallback_tool_order`; follow that section before
+opening logs or changing scenario timing.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

@@ -332,6 +332,15 @@ def test_markdown_highlights_nested_diagnostic_reason_and_fallback():
         "official_asset_search, official_asset_resolve, official_asset_verify, "
         "asset_search]; count=0"
     ) in markdown
+    assert "## Diagnostic Next Actions" in markdown
+    assert (
+        "- `find_asset`: diagnostics.reason=query_no_match; "
+        "suggested_next=[Retry with a broader asset family., "
+        "Use asset_search if official search still misses.]; "
+        "diagnostics.fallback_tool_order=[official_asset_sync_status, "
+        "official_asset_search, official_asset_resolve, official_asset_verify, "
+        "asset_search]"
+    ) in markdown
 
 
 def test_markdown_highlights_sync_status_profile_diagnostics():
@@ -383,6 +392,12 @@ def test_markdown_highlights_sync_status_profile_diagnostics():
         "diagnostics.matching_item_count=0"
     ) in markdown
     assert "profile_count=0" in markdown
+    assert (
+        "- `check_catalog_profile`: diagnostics.reason=app_profile_not_covered; "
+        "suggested_next=[Call official_asset_sync_status without app_profile.]; "
+        "diagnostics.fallback_tool_order=[official_asset_sync_status, "
+        "official_asset_search, asset_search]"
+    ) in markdown
 
 
 def test_markdown_reports_cleanup_failures_as_non_fatal():
@@ -1182,6 +1197,13 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     assert (
         "[num_points=0; backend=omni.replicator.core; "
         "frames_waited=12; empty_reason=empty_scan_buffer"
+    ) in markdown
+    assert "## Diagnostic Next Actions" in markdown
+    assert (
+        "- `read_lidar attempt 1`: empty_reason=empty_scan_buffer; "
+        "suggested_next=step more frames and retry idempotently; "
+        "diagnostics.readback_paths_attempted=[cached_lidar_sensor, "
+        "replicator_annotator]"
     ) in markdown
 
 

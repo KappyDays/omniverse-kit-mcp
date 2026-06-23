@@ -185,6 +185,14 @@ def to_markdown(
                 f"{_markdown_inline(failure_message)}{_markdown_inline(failure_detail)}"
             )
 
+    action_rows = _diagnostic_next_action_rows(summary, redact_local_paths=redact_local_paths)
+    if action_rows:
+        lines.extend(["", "## Diagnostic Next Actions", ""])
+        for source, detail in action_rows:
+            lines.append(
+                f"- {_markdown_code_span(source)}: {_markdown_inline(detail)}"
+            )
+
     if summary.artifact_paths:
         lines.extend(["", "## Artifacts", ""])
         for path in summary.artifact_paths:
@@ -305,6 +313,75 @@ def _format_data_summary_highlight(data_summary: dict[str, Any]) -> str:
             continue
         if key not in emitted and _is_compact_scalar(value):
             parts.extend(_format_summary_pair(key, value))
+    return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
+
+
+def _diagnostic_next_action_rows(
+    summary: ScenarioRunSummary,
+    *,
+    redact_local_paths: bool,
+) -> list[tuple[str, str]]:
+    rows: list[tuple[str, str]] = []
+    for step in summary.step_results:
+        if step.data_summary:
+            data_summary = (
+                _redact_local_paths(step.data_summary)
+                if redact_local_paths
+                else step.data_summary
+            )
+            detail = _format_diagnostic_next_action(data_summary)
+            if detail:
+                rows.append((step.step_id, detail))
+        for failure in step.retry_failures:
+            data_summary = failure.get("data_summary")
+            if not isinstance(data_summary, dict):
+                continue
+            data_summary = (
+                _redact_local_paths(data_summary)
+                if redact_local_paths
+                else data_summary
+            )
+            detail = _format_diagnostic_next_action(data_summary)
+            if not detail:
+                continue
+            attempt = failure.get("attempt")
+            source = f"{step.step_id} attempt {attempt}" if attempt else step.step_id
+            rows.append((source, detail))
+    return rows
+
+
+def _format_diagnostic_next_action(data_summary: dict[str, Any]) -> str:
+    diagnostics = data_summary.get("diagnostics")
+    if not isinstance(diagnostics, dict):
+        diagnostics = {}
+
+    parts: list[str] = []
+    for key, value in (
+        ("diagnostics.reason", diagnostics.get("reason")),
+        (
+            "empty_reason",
+            data_summary.get("empty_reason", diagnostics.get("empty_reason")),
+        ),
+        (
+            "suggested_next",
+            data_summary.get("suggested_next", diagnostics.get("suggested_next")),
+        ),
+        ("diagnostics.fallback_tool_order", diagnostics.get("fallback_tool_order")),
+        (
+            "diagnostics.readback_paths_attempted",
+            diagnostics.get("readback_paths_attempted"),
+        ),
+    ):
+        if value is None:
+            continue
+        parts.extend(_format_summary_pair(key, value))
+
+    if not any(
+        part.startswith("suggested_next=")
+        or part.startswith("diagnostics.fallback_tool_order=")
+        for part in parts
+    ):
+        return ""
     return "; ".join(parts[:_MAX_HIGHLIGHT_PARTS])
 
 
