@@ -67,7 +67,7 @@ class SensorService:
         """Create a Camera prim child + stamp sensor_type + apply mount transform."""
         import omni.kit.commands  # lazy
         import omni.usd
-        from pxr import Gf, Sdf, UsdGeom
+        from pxr import Gf
 
         robot_prim = request["robot_prim"]
         mount_offset = request["mount_offset"]
