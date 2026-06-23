@@ -39,6 +39,12 @@ Failure reasons currently covered:
   locks the typo/not-found preflight path: diagnostics preserve candidate counts,
   suggested next actions, and fallback tool order, while no live stage/client call
   is made.
+- `tests/unit/test_scenario_integration.py::test_official_asset_verify_not_found_diagnostics_survive_runner_report`
+  locks the same preflight miss through scenario reports: JSON
+  `failure_summary`, JSON `diagnostic_next_actions`, and Markdown `Diagnostic
+  Next Actions` preserve `OFFICIAL_ASSET_NOT_FOUND`, query-miss diagnostics, and
+  the official-asset fallback order, while `evidence_summary` stays empty
+  because no stage probe ran.
 - `tests/unit/test_scenario_integration.py::test_official_asset_verify_material_failure_diagnostics_survive_runner_report`
   locks the material-report path: a failed material verify record preserves
   `material_checks.create_prim_ok`, `material_checks.assign_ok`,

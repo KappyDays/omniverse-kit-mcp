@@ -3593,6 +3593,108 @@ async def test_official_asset_verify_failure_diagnostics_survive_runner_report(
     assert "diagnostics.asset_checks.has_authored_children=False" in markdown
 
 
+@pytest.mark.asyncio
+async def test_official_asset_verify_not_found_diagnostics_survive_runner_report(
+    tmp_path: Path,
+):
+    """official_asset_verify not-found errors must remain actionable in reports."""
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    catalog_dir = _write_minimal_official_catalog(tmp_path)
+    isaac_client = MockIsaacRestClient()
+    runner = _build_runner(isaac_client, MockLakehouseClient())
+    runner._modules[ModuleName.ASSET] = AssetModule(
+        isaac_client,
+        official_catalog_dir=catalog_dir,
+    )
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {
+            "id": "official_asset_verify_missing_diag",
+            "name": "official asset verify missing diag",
+        },
+        "spec": {
+            "assert": [
+                {
+                    "id": "verify_missing_asset",
+                    "module": "asset",
+                    "action": "official_verify",
+                    "args": {
+                        "asset_id": "missing forklift",
+                        "app_profile": "isaac-sim",
+                        "timeout_s": 1.0,
+                    },
+                }
+            ]
+        },
+    }
+
+    summary = await runner.run(compile_scenario(raw))
+
+    assert summary.status == ExecutionStatus.FAILED, summary
+    step = summary.step_results[0]
+    assert step.status == ExecutionStatus.ERROR
+    assert step.error_code == "OFFICIAL_ASSET_NOT_FOUND"
+    assert step.data_summary["name_or_id"] == "missing forklift"
+    diagnostics = step.data_summary["diagnostics"]
+    assert diagnostics["reason"] == "query_no_match"
+    assert diagnostics["candidate_counts"]["total_entries"] == 1
+    assert diagnostics["candidate_counts"]["query_matches"] == 0
+    assert diagnostics["available_profiles"] == ["isaac-sim"]
+    assert diagnostics["available_providers"] == ["omni.simready.explorer"]
+    assert diagnostics["sample_names"] == ["aluminumpallet_a01.usd"]
+    assert diagnostics["fallback_tool_order"] == [
+        "official_asset_sync_status",
+        "official_asset_search",
+        "official_asset_resolve",
+        "official_asset_verify",
+        "asset_search",
+    ]
+    assert isaac_client.calls == []
+
+    json_report = json.loads(to_json(summary))
+    assert json_report["failure_summary"][0]["error_code"] == (
+        "OFFICIAL_ASSET_NOT_FOUND"
+    )
+    assert "diagnostics.candidate_counts.query_matches=0" in (
+        json_report["failure_summary"][0]["data_highlight"]
+    )
+    assert json_report["diagnostic_next_actions"] == [{
+        "step_id": "verify_missing_asset",
+        "phase": "assert",
+        "source": "step",
+        "status": "error",
+        "error_code": "OFFICIAL_ASSET_NOT_FOUND",
+        "diagnostics.reason": "query_no_match",
+        "suggested_next": [
+            "Retry with a broader asset family, category, provider, or filename stem.",
+            "If official search still misses, use asset_search for Isaac curated USD assets.",
+        ],
+        "diagnostics.fallback_tool_order": [
+            "official_asset_sync_status",
+            "official_asset_search",
+            "official_asset_resolve",
+            "official_asset_verify",
+            "asset_search",
+        ],
+    }]
+    assert json_report["evidence_summary"] == []
+
+    markdown = to_markdown(summary)
+    assert "## Failure Summary" in markdown
+    assert "## Data Summary Highlights" in markdown
+    assert "## Diagnostic Next Actions" in markdown
+    assert "error_code=OFFICIAL_ASSET_NOT_FOUND" in markdown
+    assert "diagnostics.reason=query_no_match" in markdown
+    assert "diagnostics.candidate_counts.query_matches=0" in markdown
+    assert (
+        "diagnostics.fallback_tool_order=[official_asset_sync_status, "
+        "official_asset_search, official_asset_resolve, official_asset_verify, "
+        "asset_search]"
+    ) in markdown
+
+
 def test_official_asset_verify_evidence_summary_preserves_error_type():
     summary = ScenarioRunSummary(
         scenario_id="official_verify_timeout",
