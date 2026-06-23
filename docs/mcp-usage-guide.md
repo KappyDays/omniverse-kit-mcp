@@ -60,8 +60,10 @@ such as `diagnostics.cached_lidar_instance` and
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.candidate_counts`,
 `diagnostics.available_profiles`, `diagnostics.available_providers`,
-`diagnostics.suggested_next`, and `diagnostics.fallback_tool_order` before
-changing `app_profile` / `provider` or falling back to `asset_search`.
+`diagnostics.available_kinds`, `diagnostics.status_counts`,
+`diagnostics.sample_names`, `diagnostics.suggested_next`, and
+`diagnostics.fallback_tool_order` before changing `kind` / `app_profile` /
+`provider` / `min_status` or falling back to `asset_search`.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

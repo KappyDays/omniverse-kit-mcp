@@ -1367,6 +1367,17 @@ def _official_search_diagnostics(
         "candidate_counts": counts,
         "available_profiles": _official_catalog_profiles(catalog),
         "available_providers": _official_catalog_provider_names(catalog),
+        "available_kinds": _official_available_kinds(entries),
+        "status_counts": _official_status_counts(by_provider, app_profile),
+        "sample_names": _official_diagnostic_sample_names(
+            reason=reason,
+            by_kind=by_kind,
+            by_app=by_app,
+            by_provider=by_provider,
+            by_status=by_status,
+            by_stale=by_stale,
+            stale_query_matches=stale_query_matches,
+        ),
         "suggested_next": _official_suggested_next(reason),
         "fallback_tool_order": _official_fallback_tool_order(),
     }
@@ -1458,6 +1469,58 @@ def _official_fallback_tool_order() -> list[str]:
         "official_asset_verify",
         "asset_search",
     ]
+
+
+def _official_available_kinds(entries: list[dict[str, Any]]) -> list[str]:
+    return _dedupe_strs([entry.get("kind") for entry in entries])
+
+
+def _official_status_counts(
+    entries: list[dict[str, Any]],
+    app_profile: str | None,
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for entry in entries:
+        status = _official_entry_status(entry, app_profile)
+        counts[status] = counts.get(status, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _official_diagnostic_sample_names(
+    *,
+    reason: str,
+    by_kind: list[dict[str, Any]],
+    by_app: list[dict[str, Any]],
+    by_provider: list[dict[str, Any]],
+    by_status: list[dict[str, Any]],
+    by_stale: list[dict[str, Any]],
+    stale_query_matches: list[dict[str, Any]],
+) -> list[str]:
+    sample_source_by_reason = {
+        "kind_not_found": by_kind,
+        "app_profile_not_covered": by_kind,
+        "provider_not_covered": by_app,
+        "min_status_too_strict": by_provider,
+        "only_stale_matches": stale_query_matches,
+        "query_no_match": by_stale,
+        "limit_zero": by_stale,
+    }
+    return _official_sample_names(
+        sample_source_by_reason.get(reason, by_status),
+        limit=5,
+    )
+
+
+def _official_sample_names(
+    entries: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[str]:
+    names = [
+        str(entry.get("name") or entry.get("id") or "").strip()
+        for entry in entries[: max(0, limit)]
+    ]
+    return _dedupe_strs(names)
 
 
 def _official_entries(catalog: dict[str, Any]) -> list[dict[str, Any]]:

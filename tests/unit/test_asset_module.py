@@ -497,6 +497,12 @@ async def test_official_asset_search_no_results_reports_diagnostics(
         "omni.simready.explorer",
         "omni.kit.browser.material",
     ]
+    assert diagnostics["available_kinds"] == ["asset", "material"]
+    assert diagnostics["status_counts"] == {"url_validated": 2}
+    assert diagnostics["sample_names"] == [
+        "aluminumpallet_a01.usd",
+        "aluminumpallet_a02.usd",
+    ]
     assert "asset_search" in diagnostics["fallback_tool_order"]
     assert any("broader" in item for item in diagnostics["suggested_next"])
 
@@ -522,6 +528,11 @@ async def test_official_asset_search_min_status_diagnostics(
     assert diagnostics["reason"] == "min_status_too_strict"
     assert diagnostics["candidate_counts"]["after_app_profile"] == 2
     assert diagnostics["candidate_counts"]["after_min_status"] == 0
+    assert diagnostics["status_counts"] == {"url_validated": 2}
+    assert diagnostics["sample_names"] == [
+        "aluminumpallet_a01.usd",
+        "aluminumpallet_a02.usd",
+    ]
     assert any(
         "min_status='discovered'" in item
         for item in diagnostics["suggested_next"]
@@ -579,6 +590,11 @@ async def test_official_asset_search_profile_miss_reports_available_filters(
         "omni.simready.explorer",
         "omni.kit.browser.material",
     ]
+    assert diagnostics["available_kinds"] == ["asset", "material"]
+    assert diagnostics["sample_names"][:2] == [
+        "aluminumpallet_a01.usd",
+        "aluminumpallet_a02.usd",
+    ]
 
 
 @pytest.mark.asyncio
@@ -606,6 +622,11 @@ async def test_official_asset_search_provider_miss_reports_available_filters(
     assert diagnostics["available_providers"] == [
         "omni.simready.explorer",
         "omni.kit.browser.material",
+    ]
+    assert diagnostics["status_counts"] == {}
+    assert diagnostics["sample_names"] == [
+        "aluminumpallet_a01.usd",
+        "aluminumpallet_a02.usd",
     ]
 
 
