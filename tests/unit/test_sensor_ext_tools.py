@@ -300,6 +300,21 @@ def test_lidar_gmo_num_elements_from_keys_uses_largest_value():
     ]) == 352386
 
 
+def test_lidar_raw_key_normalizer_drops_zero_when_positive_count_exists():
+    service = _load_validation_sensor_service()
+
+    assert service._normalize_lidar_raw_keys([
+        "generic-model-output",
+        "num_elements:0",
+        "num_elements:352386",
+        "source:top_level",
+    ]) == [
+        "generic-model-output",
+        "num_elements:352386",
+        "source:top_level",
+    ]
+
+
 def test_lidar_scan_dict_extractor_converts_degrees_to_cartesian():
     service = _load_validation_sensor_service()
 

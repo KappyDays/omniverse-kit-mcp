@@ -528,7 +528,9 @@ class SensorService:
                         max_points,
                         parse_generic_model_output_data,
                     )
-                    raw_keys = sorted({*raw_keys, *frame_raw_keys})
+                    raw_keys = _normalize_lidar_raw_keys(
+                        sorted({*raw_keys, *frame_raw_keys})
+                    )
                     if frame_points:
                         points = frame_points
                         intensities = frame_intensities
@@ -860,6 +862,7 @@ def _extract_cached_lidar_frame_points(
         elif legacy_warning and warning is None:
             warning = legacy_warning
 
+    raw_keys = _normalize_lidar_raw_keys(raw_keys)
     if not points and warning is None:
         warning = (
             "parsed generic-model-output contained "
@@ -948,6 +951,12 @@ def _gmo_num_elements_from_keys(raw_keys: list[str]) -> int:
             except ValueError:
                 continue
     return max(values, default=0)
+
+
+def _normalize_lidar_raw_keys(raw_keys: list[str]) -> list[str]:
+    if _gmo_num_elements_from_keys(raw_keys) <= 0:
+        return raw_keys
+    return [key for key in raw_keys if key != "num_elements:0"]
 
 
 def _lidar_empty_reason(
