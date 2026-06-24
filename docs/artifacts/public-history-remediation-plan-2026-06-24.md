@@ -11,9 +11,16 @@ reachable from `origin/main`.
 - Current working tree public hygiene: clean.
 - Pending local range `origin/main..HEAD`: clean under the pending-push audit.
 - Commits created on 2026-06-24: 1 process-ID example finding, classified as
-  `already_public`.
+  `already_public`; the latest audit also classifies it as
+  `public-ref-current: present_on_public_ref=1`, meaning the current
+  `origin/main` tip still contains the same class of finding.
 - Older history since 2026-06-23: 10 findings, all classified as
   `already_public`.
+- Local `HEAD` has already replaced the current-file process-ID example with
+  the placeholder form `pid=<number>`, so a normal push of `HEAD` would clean
+  the public ref tip for this file. That would not remove the reachable public
+  history finding; strict public-clean history still requires an approved
+  rewrite/force-push.
 
 Because the remaining findings are already public, do not rewrite history,
 force-push, or continue pushing from the affected branch without explicit user
@@ -65,7 +72,8 @@ rewriting and the required force-push impact.
 
 ## Push Gate
 
-Normal push from the current branch remains blocked until either:
+Normal push from the current branch remains blocked by process until either:
 
-- the user approves and completes the history remediation above, or
-- the user explicitly accepts the residual public-history risk.
+- the user explicitly approves a non-destructive push that cleans the public ref
+  tip while accepting residual reachable-history risk, or
+- the user approves and completes the history remediation above.
