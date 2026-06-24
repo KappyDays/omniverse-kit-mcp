@@ -176,6 +176,11 @@ def _scenario_plan_probe_summary(
     )
     if not isinstance(live_validation_steps, list):
         live_validation_steps = []
+    live_validation_tools = [
+        step.get("tool")
+        for step in live_validation_steps
+        if isinstance(step, dict) and isinstance(step.get("tool"), str)
+    ]
     return {
         "scenario_id": plan.get("scenario_id"),
         "total_steps": plan.get("total_steps"),
@@ -189,6 +194,17 @@ def _scenario_plan_probe_summary(
         "simulation_state_step_count": len(simulation_state_steps),
         "timeline_control_step_count": len(timeline_control_steps),
         "live_validation_step_count": len(live_validation_steps),
+        "live_validation_tools": live_validation_tools,
+        "scratch_stage_required": (
+            live_validation_checklist.get("scratch_stage_required")
+            if isinstance(live_validation_checklist, dict)
+            else None
+        ),
+        "log_capture_recommended": (
+            live_validation_checklist.get("log_capture_recommended")
+            if isinstance(live_validation_checklist, dict)
+            else None
+        ),
     }
 
 
