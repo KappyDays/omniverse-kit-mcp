@@ -81,6 +81,12 @@ def _parse_required_tool_sequence(raw: str | None) -> tuple[str, ...]:
     return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
+def _parse_expected_bool(raw: str | None) -> bool | None:
+    if raw is None:
+        return None
+    return raw == "true"
+
+
 def _tool_text_response(response: dict[str, Any]) -> str:
     if "error" in response:
         raise RuntimeError(json.dumps(response["error"], ensure_ascii=False))
@@ -179,6 +185,25 @@ def _live_validation_tool_mismatches(
     ]
 
 
+def _plan_flag_mismatches(
+    summary: dict[str, Any],
+    *,
+    expect_scratch_stage_required: bool | None = None,
+    expect_log_capture_recommended: bool | None = None,
+) -> list[str]:
+    mismatches: list[str] = []
+    expectations = {
+        "scratch_stage_required": expect_scratch_stage_required,
+        "log_capture_recommended": expect_log_capture_recommended,
+    }
+    for field, expected in expectations.items():
+        if expected is not None and summary.get(field) != expected:
+            mismatches.append(
+                f"{field} expected {expected}, got {summary.get(field)!r}"
+            )
+    return mismatches
+
+
 def _scenario_plan_probe_summary(
     plan: dict[str, Any],
     field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
@@ -244,6 +269,8 @@ async def probe(
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
     required_live_validation_tools: tuple[str, ...] = (),
+    expect_scratch_stage_required: bool | None = None,
+    expect_log_capture_recommended: bool | None = None,
 ) -> int:
     if workspace is None:
         command, cwd, extra_env = _default_stdio_entry()
@@ -390,8 +417,22 @@ async def probe(
             for mismatch in tool_mismatches:
                 print(f"  - {mismatch}")
             exit_status = 1
-    elif required_live_validation_tools:
-        print("--require-live-validation-tools requires --scenario-plan")
+        flag_mismatches = _plan_flag_mismatches(
+            plan_summary,
+            expect_scratch_stage_required=expect_scratch_stage_required,
+            expect_log_capture_recommended=expect_log_capture_recommended,
+        )
+        if flag_mismatches:
+            print("scenario plan flag expectation mismatch:")
+            for mismatch in flag_mismatches:
+                print(f"  - {mismatch}")
+            exit_status = 1
+    elif (
+        required_live_validation_tools
+        or expect_scratch_stage_required is not None
+        or expect_log_capture_recommended is not None
+    ):
+        print("scenario plan expectations require --scenario-plan")
         exit_status = 2
 
     proc.stdin.close()
@@ -478,6 +519,16 @@ def main(argv: list[str] | None = None) -> int:
             "for success, e.g. 'mcp_runtime_info,kit_app_start,...'."
         ),
     )
+    parser.add_argument(
+        "--expect-scratch-stage-required",
+        choices=("true", "false"),
+        help="Require scenario_plan.live_validation_checklist.scratch_stage_required.",
+    )
+    parser.add_argument(
+        "--expect-log-capture-recommended",
+        choices=("true", "false"),
+        help="Require scenario_plan.live_validation_checklist.log_capture_recommended.",
+    )
     args = parser.parse_args(argv)
     try:
         input_overrides = _parse_json_object(
@@ -494,8 +545,19 @@ def main(argv: list[str] | None = None) -> int:
     required_live_validation_tools = _parse_required_tool_sequence(
         args.require_live_validation_tools,
     )
-    if required_live_validation_tools and args.scenario_plan is None:
-        print("--require-live-validation-tools requires --scenario-plan")
+    expect_scratch_stage_required = _parse_expected_bool(
+        args.expect_scratch_stage_required,
+    )
+    expect_log_capture_recommended = _parse_expected_bool(
+        args.expect_log_capture_recommended,
+    )
+    has_plan_expectations = (
+        bool(required_live_validation_tools)
+        or expect_scratch_stage_required is not None
+        or expect_log_capture_recommended is not None
+    )
+    if has_plan_expectations and args.scenario_plan is None:
+        print("scenario plan expectations require --scenario-plan")
         return 2
     runtime_info = (
         args.runtime_info
@@ -516,6 +578,8 @@ def main(argv: list[str] | None = None) -> int:
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
             required_live_validation_tools=required_live_validation_tools,
+            expect_scratch_stage_required=expect_scratch_stage_required,
+            expect_log_capture_recommended=expect_log_capture_recommended,
         )
     )
 

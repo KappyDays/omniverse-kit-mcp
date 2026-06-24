@@ -396,10 +396,34 @@ def test_mcp_probe_live_validation_tool_mismatches_report_order_drift():
     ]
 
 
-def test_mcp_probe_rejects_live_validation_tools_without_scenario_plan():
+def test_mcp_probe_plan_flag_mismatches_report_drift():
+    summary = {
+        "scratch_stage_required": False,
+        "log_capture_recommended": True,
+    }
+
+    assert mcp_probe._plan_flag_mismatches(
+        summary,
+        expect_scratch_stage_required=True,
+        expect_log_capture_recommended=False,
+    ) == [
+        "scratch_stage_required expected True, got False",
+        "log_capture_recommended expected False, got True",
+    ]
+
+
+def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--require-live-validation-tools",
         "mcp_runtime_info,kit_app_start",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-scratch-stage-required",
+        "true",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-log-capture-recommended",
+        "false",
     ]) == 2
 
 

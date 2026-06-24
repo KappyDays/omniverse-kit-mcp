@@ -281,6 +281,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "scenario_validate,extension_clear_logs,scenario_validate,"
         "scenario_last_report,extension_capture_logs"
     ) in wrapper
+    assert "--expect-scratch-stage-required true" in wrapper
+    assert "--expect-log-capture-recommended true" in wrapper
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
@@ -333,6 +335,7 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
 
 def test_f3b_official_asset_scenario_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
     sequence = [
         "mcp_runtime_info",
         "kit_app_start",
@@ -407,6 +410,12 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "scenario_validate,extension_clear_logs,scenario_validate,"
         "scenario_last_report,extension_capture_logs"
     ) in wrapper
+    verify_live_probe = wrapper[
+        wrapper.index("--scenario-plan smoke/official_asset_verify_live.yaml"):
+        wrapper.index("For the read-only catalog diagnostics path, use")
+    ]
+    assert "--expect-scratch-stage-required true" in wrapper
+    assert "--expect-log-capture-recommended true" in verify_live_probe
     assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
     assert (
         "--require-live-validation-tools "
@@ -414,6 +423,14 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "extension_clear_logs,scenario_validate,scenario_last_report,"
         "extension_capture_logs"
     ) in wrapper
+    read_only_probe = wrapper[
+        wrapper.index("--scenario-plan smoke/official_asset_catalog_diagnostics.yaml"):
+        wrapper.index("After validation, request redacted JSON")
+    ]
+    assert "--expect-scratch-stage-required false" in read_only_probe
+    assert "--expect-log-capture-recommended true" in read_only_probe
+    assert "--expect-scratch-stage-required true" in scripts_claude
+    assert "--expect-log-capture-recommended true" in scripts_claude
 
 
 def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
