@@ -78,7 +78,8 @@ Before stage mutation, `scenario_plan` or
 `scenario_validate(..., dry_run=true)` must expose matching `phase_counts`,
 `stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`,
 `evidence_steps`, `retry_steps`, `simulation_state_summary`,
-`simulation_state_steps`, and `timeline_control_steps`;
+`simulation_state_steps`, `timeline_control_steps`, and
+`live_validation_checklist`;
 `stage_mutation_summary.read_only=false` requires scratch/test stage routing.
 Check `stage_mutation_steps` against the scratch/test stage boundary,
 `simulation_state_summary.play_state_missing_count` before robot/sensor actions,

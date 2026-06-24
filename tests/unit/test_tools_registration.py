@@ -512,6 +512,18 @@ async def test_scenario_validate_dry_run_uses_plan_step_counts(tmp_path):
     assert payload["stage_mutation_steps"] == []
     assert payload["evidence_steps"] == []
     assert payload["retry_steps"] == []
+    assert payload["live_validation_checklist"]["scratch_stage_required"] is False
+    assert payload["live_validation_checklist"]["log_capture_recommended"] is False
+    assert [
+        step["tool"] for step in payload["live_validation_checklist"]["steps"]
+    ] == [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "scenario_validate",
+        "scenario_last_report",
+    ]
     assert payload["phase_counts"] == {
         "arrange": 0,
         "act": 0,

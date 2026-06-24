@@ -69,6 +69,9 @@ Before validation, check `scenario_plan.phase_counts`, `total_steps`,
 `retry_steps` so a missing setup, stage/sensor mutation, simulation play gate,
 viewport cleanup, lidar evidence, capture evidence, or idempotent retry gate is
 caught before live stage mutation.
+`scenario_plan.live_validation_checklist.steps` mirrors the wrapper order in a
+machine-readable form; follow it before copying any live result into public
+evidence.
 `stage_mutation_summary.read_only=false` means the run needs a scratch/test
 stage; then inspect `stage_mutation_steps` for exact touched steps. For retried evidence steps, inspect
 `retry_steps[].key_args` next to the retry policy so thresholds such as

@@ -266,6 +266,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "simulation_state_steps" in invariant
     assert "timeline_control_steps" in guide
     assert "timeline_control_steps" in invariant
+    assert "live_validation_checklist" in guide
+    assert "live_validation_checklist" in invariant
     assert "simulation_state_summary.play_state_missing_count" in guide
     assert "simulation_state_summary.play_state_missing_count" in invariant
     assert "scratch/test stage boundary" in invariant
@@ -373,6 +375,7 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     assert "`simulation_state_summary`" in guide
     assert "`simulation_state_steps`" in guide
     assert "`timeline_control_steps`" in guide
+    assert "`live_validation_checklist`" in guide
     assert "simulation_state_summary.play_state_missing_count=0" in guide
     assert "`retry_steps` with key args for retried evidence steps" in guide
     assert "status/search/resolve/get diagnostics, read-only" in guide

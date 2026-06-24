@@ -311,6 +311,12 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
         },
         "simulation_state_steps": [{"id": "attach_top_lidar"}],
         "timeline_control_steps": [{"id": "play_for_sensor_data"}],
+        "live_validation_checklist": {
+            "steps": [
+                {"tool": "mcp_runtime_info"},
+                {"tool": "scenario_validate"},
+            ]
+        },
     })
 
     assert summary == {
@@ -320,11 +326,13 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
             "simulation_state_summary": True,
             "simulation_state_steps": True,
             "timeline_control_steps": True,
+            "live_validation_checklist": True,
         },
         "play_state_missing_count": 0,
         "requires_play_count": 2,
         "simulation_state_step_count": 1,
         "timeline_control_step_count": 1,
+        "live_validation_step_count": 2,
     }
 
 
@@ -427,6 +435,7 @@ def test_mcp_probe_merges_default_and_custom_required_plan_fields():
         "simulation_state_summary",
         "simulation_state_steps",
         "timeline_control_steps",
+        "live_validation_checklist",
         "evidence_steps",
     )
 

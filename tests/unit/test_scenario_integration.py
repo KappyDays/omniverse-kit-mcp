@@ -1805,6 +1805,31 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         },
         "warnings": [],
     }
+    live_validation_checklist = plan["live_validation_checklist"]
+    assert live_validation_checklist["scratch_stage_required"] is True
+    assert live_validation_checklist["log_capture_recommended"] is True
+    assert [
+        step["tool"] for step in live_validation_checklist["steps"]
+    ] == [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "scenario_validate",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    ]
+    assert live_validation_checklist["steps"][4]["args"] == {"dry_run": True}
+    assert live_validation_checklist["steps"][7]["args"] == {
+        "report_format": "markdown",
+        "redact_local_paths": True,
+    }
+    assert live_validation_checklist["steps"][8]["args"] == {
+        "level": "WARN",
+        "stop_after_capture": True,
+    }
     assert [step["id"] for step in plan["timeline_control_steps"]] == [
         "warm_up_play",
         "warm_up_stop",

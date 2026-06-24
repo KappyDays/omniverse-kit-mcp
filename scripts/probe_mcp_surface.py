@@ -24,6 +24,7 @@ PLAN_REQUIRED_FIELDS = (
     "simulation_state_summary",
     "simulation_state_steps",
     "timeline_control_steps",
+    "live_validation_checklist",
 )
 
 
@@ -167,6 +168,14 @@ def _scenario_plan_probe_summary(
     timeline_control_steps = plan.get("timeline_control_steps")
     if not isinstance(timeline_control_steps, list):
         timeline_control_steps = []
+    live_validation_checklist = plan.get("live_validation_checklist")
+    live_validation_steps = (
+        live_validation_checklist.get("steps")
+        if isinstance(live_validation_checklist, dict)
+        else []
+    )
+    if not isinstance(live_validation_steps, list):
+        live_validation_steps = []
     return {
         "scenario_id": plan.get("scenario_id"),
         "total_steps": plan.get("total_steps"),
@@ -179,6 +188,7 @@ def _scenario_plan_probe_summary(
         "requires_play_count": simulation_state_summary.get("requires_play_count"),
         "simulation_state_step_count": len(simulation_state_steps),
         "timeline_control_step_count": len(timeline_control_steps),
+        "live_validation_step_count": len(live_validation_steps),
     }
 
 

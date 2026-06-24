@@ -497,8 +497,16 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         phases["cleanup"].append(_plan_fallback_cleanup_step())
     phase_counts = {phase: len(steps) for phase, steps in phases.items()}
     stage_mutation_steps = _plan_stage_mutation_steps(phases)
+    stage_mutation_summary = _plan_stage_mutation_summary(stage_mutation_steps)
+    diagnostic_steps = _plan_diagnostic_steps(phases)
+    evidence_steps = _plan_evidence_steps(phases)
+    retry_steps = _plan_retry_steps(phases)
     simulation_state_steps = _plan_simulation_state_steps(phases)
     timeline_control_steps = _plan_timeline_control_steps(phases)
+    simulation_state_summary = _plan_simulation_state_summary(
+        simulation_state_steps,
+        timeline_control_steps,
+    )
     return {
         "scenario_id": scenario.scenario_id,
         "name": scenario.name,
@@ -510,16 +518,17 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         "variables": scenario.variables,
         "total_steps": sum(phase_counts.values()),
         "phase_counts": phase_counts,
-        "diagnostic_steps": _plan_diagnostic_steps(phases),
-        "stage_mutation_summary": _plan_stage_mutation_summary(
-            stage_mutation_steps
-        ),
+        "diagnostic_steps": diagnostic_steps,
+        "stage_mutation_summary": stage_mutation_summary,
         "stage_mutation_steps": stage_mutation_steps,
-        "evidence_steps": _plan_evidence_steps(phases),
-        "retry_steps": _plan_retry_steps(phases),
-        "simulation_state_summary": _plan_simulation_state_summary(
-            simulation_state_steps,
-            timeline_control_steps,
+        "evidence_steps": evidence_steps,
+        "retry_steps": retry_steps,
+        "simulation_state_summary": simulation_state_summary,
+        "live_validation_checklist": _plan_live_validation_checklist(
+            stage_mutation_summary=stage_mutation_summary,
+            diagnostic_steps=diagnostic_steps,
+            evidence_steps=evidence_steps,
+            simulation_state_summary=simulation_state_summary,
         ),
         "simulation_state_steps": simulation_state_steps,
         "timeline_control_steps": timeline_control_steps,
@@ -743,6 +752,104 @@ def _plan_simulation_state_summary(
         "has_simulation_stop": control_counts.get("stop", 0) > 0,
         "timeline_control_counts": dict(sorted(control_counts.items())),
         "warnings": warnings,
+    }
+
+
+def _plan_live_validation_checklist(
+    *,
+    stage_mutation_summary: dict[str, Any],
+    diagnostic_steps: list[dict[str, Any]],
+    evidence_steps: list[dict[str, Any]],
+    simulation_state_summary: dict[str, Any],
+) -> dict[str, Any]:
+    log_capture_recommended = bool(
+        diagnostic_steps
+        or evidence_steps
+        or stage_mutation_summary.get("requires_scratch_stage")
+        or simulation_state_summary.get("requires_play")
+    )
+    steps: list[dict[str, Any]] = []
+
+    def append_step(
+        *,
+        phase: str,
+        tool: str,
+        purpose: str,
+        args: dict[str, Any] | None = None,
+    ) -> None:
+        step: dict[str, Any] = {
+            "order": len(steps) + 1,
+            "phase": phase,
+            "tool": tool,
+            "purpose": purpose,
+        }
+        if args:
+            step["args"] = args
+        steps.append(step)
+
+    append_step(
+        phase="preflight",
+        tool="mcp_runtime_info",
+        purpose="confirm_profile_and_import_freshness",
+    )
+    append_step(
+        phase="startup",
+        tool="kit_app_start",
+        purpose="attach_or_start_workspace_kit",
+    )
+    append_step(
+        phase="preflight",
+        tool="simulation_get_status",
+        purpose="record_timeline_baseline",
+    )
+    append_step(
+        phase="preflight",
+        tool="scenario_plan",
+        purpose="confirm_plan_shape_before_mutation",
+    )
+    if stage_mutation_summary.get("requires_scratch_stage"):
+        append_step(
+            phase="preflight",
+            tool="scenario_validate",
+            args={"dry_run": True},
+            purpose="confirm_scratch_stage_boundary_before_mutation",
+        )
+    if log_capture_recommended:
+        append_step(
+            phase="preflight",
+            tool="extension_clear_logs",
+            purpose="start_request_scoped_warn_error_window",
+        )
+    append_step(
+        phase="execute",
+        tool="scenario_validate",
+        purpose="run_scenario",
+    )
+    append_step(
+        phase="evidence",
+        tool="scenario_last_report",
+        args={
+            "report_format": "markdown",
+            "redact_local_paths": True,
+        },
+        purpose="capture_public_safe_triage_report",
+    )
+    if log_capture_recommended:
+        append_step(
+            phase="triage",
+            tool="extension_capture_logs",
+            args={
+                "level": "WARN",
+                "stop_after_capture": True,
+            },
+            purpose="capture_warn_error_after_run",
+        )
+    return {
+        "scratch_stage_required": bool(
+            stage_mutation_summary.get("requires_scratch_stage")
+        ),
+        "log_capture_recommended": log_capture_recommended,
+        "steps": steps,
     }
 
 
