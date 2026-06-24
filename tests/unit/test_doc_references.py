@@ -223,6 +223,7 @@ def test_f3_phase_report_artifacts_exist():
 
 def test_f3b_robot_rtx_live_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    scripts_doc = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
     invariant = (
         PROJECT / "docs" / "invariants" / "scenario-validation.md"
     ).read_text(encoding="utf-8")
@@ -333,7 +334,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     )
     assert "scenario_last_report(markdown)" not in invariant
     assert "--input-overrides-json '{\"lidar_min_points\":513}'" in guide
-    assert "it still calls only `scenario_plan`" in guide
+    assert "--expect-retry-key-arg read_lidar_point_cloud:min_points=513" in guide
+    assert "fails if the" in guide
+    assert "override does not reach `retry_steps[].key_args.min_points`" in guide
+    assert "--expect-retry-key-arg step:key=value" in scripts_doc
 
 
 def test_f3b_robot_rtx_public_evidence_redaction_guidance():

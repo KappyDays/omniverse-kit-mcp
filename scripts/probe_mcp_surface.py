@@ -204,6 +204,76 @@ def _plan_flag_mismatches(
     return mismatches
 
 
+def _parse_expected_retry_key_args(
+    raw_values: list[str],
+) -> tuple[tuple[str, str, Any], ...]:
+    expectations: list[tuple[str, str, Any]] = []
+    for raw in raw_values:
+        if ":" not in raw or "=" not in raw:
+            raise ValueError(
+                "--expect-retry-key-arg entries must look like step_id:key=value"
+            )
+        step_id, rest = raw.split(":", 1)
+        key, raw_value = rest.split("=", 1)
+        step_id = step_id.strip()
+        key = key.strip()
+        if not step_id or not key:
+            raise ValueError(
+                "--expect-retry-key-arg requires non-empty step_id and key"
+            )
+        try:
+            value: Any = json.loads(raw_value)
+        except json.JSONDecodeError:
+            value = raw_value
+        expectations.append((step_id, key, value))
+    return tuple(expectations)
+
+
+def _retry_key_arg_mismatches(
+    summary: dict[str, Any],
+    expectations: tuple[tuple[str, str, Any], ...],
+) -> list[str]:
+    if not expectations:
+        return []
+    retry_steps = summary.get("retry_steps")
+    if not isinstance(retry_steps, list):
+        return ["retry_steps summary is missing or malformed"]
+    by_id = {
+        str(step.get("step_id")): step
+        for step in retry_steps
+        if isinstance(step, dict) and step.get("step_id") is not None
+    }
+    mismatches: list[str] = []
+    for step_id, key, expected in expectations:
+        step = by_id.get(step_id)
+        if step is None:
+            mismatches.append(f"retry step {step_id!r} was not found")
+            continue
+        key_args = step.get("key_args")
+        if not isinstance(key_args, dict):
+            mismatches.append(f"retry step {step_id!r} key_args missing or malformed")
+            continue
+        if key not in key_args:
+            mismatches.append(f"retry step {step_id!r} key_args[{key!r}] was not found")
+            continue
+        actual = key_args.get(key)
+        if actual != expected:
+            mismatches.append(
+                f"retry step {step_id!r} key_args[{key!r}] expected "
+                f"{expected!r}, got {actual!r}"
+            )
+    return mismatches
+
+
+def _retry_step_max_attempts(step: dict[str, Any]) -> Any:
+    if step.get("max_attempts") is not None:
+        return step.get("max_attempts")
+    retries = step.get("retries")
+    if isinstance(retries, dict):
+        return retries.get("maxAttempts")
+    return None
+
+
 def _scenario_plan_probe_summary(
     plan: dict[str, Any],
     field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
@@ -230,6 +300,20 @@ def _scenario_plan_probe_summary(
         for step in live_validation_steps
         if isinstance(step, dict) and isinstance(step.get("tool"), str)
     ]
+    retry_steps = plan.get("retry_steps")
+    if not isinstance(retry_steps, list):
+        retry_steps = []
+    retry_step_summaries = [
+        {
+            "step_id": step.get("step_id") or step.get("id"),
+            "phase": step.get("phase"),
+            "action": step.get("action"),
+            "max_attempts": _retry_step_max_attempts(step),
+            "key_args": step.get("key_args"),
+        }
+        for step in retry_steps
+        if isinstance(step, dict)
+    ]
     return {
         "scenario_id": plan.get("scenario_id"),
         "total_steps": plan.get("total_steps"),
@@ -242,6 +326,8 @@ def _scenario_plan_probe_summary(
         "requires_play_count": simulation_state_summary.get("requires_play_count"),
         "simulation_state_step_count": len(simulation_state_steps),
         "timeline_control_step_count": len(timeline_control_steps),
+        "retry_step_count": len(retry_step_summaries),
+        "retry_steps": retry_step_summaries,
         "live_validation_step_count": len(live_validation_steps),
         "live_validation_tools": live_validation_tools,
         "scratch_stage_required": (
@@ -269,6 +355,7 @@ async def probe(
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
     required_live_validation_tools: tuple[str, ...] = (),
+    expected_retry_key_args: tuple[tuple[str, str, Any], ...] = (),
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
 ) -> int:
@@ -427,8 +514,18 @@ async def probe(
             for mismatch in flag_mismatches:
                 print(f"  - {mismatch}")
             exit_status = 1
+        retry_mismatches = _retry_key_arg_mismatches(
+            plan_summary,
+            expected_retry_key_args,
+        )
+        if retry_mismatches:
+            print("retry key-arg expectation mismatch:")
+            for mismatch in retry_mismatches:
+                print(f"  - {mismatch}")
+            exit_status = 1
     elif (
         required_live_validation_tools
+        or expected_retry_key_args
         or expect_scratch_stage_required is not None
         or expect_log_capture_recommended is not None
     ):
@@ -529,6 +626,16 @@ def main(argv: list[str] | None = None) -> int:
         choices=("true", "false"),
         help="Require scenario_plan.live_validation_checklist.log_capture_recommended.",
     )
+    parser.add_argument(
+        "--expect-retry-key-arg",
+        action="append",
+        default=[],
+        help=(
+            "Require a scenario_plan retry_steps entry key arg, formatted "
+            "as step_id:key=value. Value is JSON-decoded when possible; "
+            "repeat for multiple expectations."
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         input_overrides = _parse_json_object(
@@ -545,6 +652,13 @@ def main(argv: list[str] | None = None) -> int:
     required_live_validation_tools = _parse_required_tool_sequence(
         args.require_live_validation_tools,
     )
+    try:
+        expected_retry_key_args = _parse_expected_retry_key_args(
+            args.expect_retry_key_arg,
+        )
+    except ValueError as exc:
+        print(f"Invalid probe option: {exc}")
+        return 2
     expect_scratch_stage_required = _parse_expected_bool(
         args.expect_scratch_stage_required,
     )
@@ -553,6 +667,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     has_plan_expectations = (
         bool(required_live_validation_tools)
+        or bool(expected_retry_key_args)
         or expect_scratch_stage_required is not None
         or expect_log_capture_recommended is not None
     )
@@ -578,6 +693,7 @@ def main(argv: list[str] | None = None) -> int:
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
             required_live_validation_tools=required_live_validation_tools,
+            expected_retry_key_args=expected_retry_key_args,
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,
         )

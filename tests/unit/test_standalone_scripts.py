@@ -311,6 +311,15 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
         },
         "simulation_state_steps": [{"id": "attach_top_lidar"}],
         "timeline_control_steps": [{"id": "play_for_sensor_data"}],
+        "retry_steps": [
+            {
+                "id": "read_lidar_point_cloud",
+                "phase": "assert",
+                "action": "sensor.lidar_get_point_cloud",
+                "retries": {"maxAttempts": 3},
+                "key_args": {"min_points": 513, "frames_to_wait": 180},
+            }
+        ],
         "live_validation_checklist": {
             "scratch_stage_required": True,
             "log_capture_recommended": True,
@@ -335,6 +344,16 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
         "requires_play_count": 2,
         "simulation_state_step_count": 1,
         "timeline_control_step_count": 1,
+        "retry_step_count": 1,
+        "retry_steps": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "phase": "assert",
+                "action": "sensor.lidar_get_point_cloud",
+                "max_attempts": 3,
+                "key_args": {"min_points": 513, "frames_to_wait": 180},
+            }
+        ],
         "live_validation_step_count": 3,
         "live_validation_tools": [
             "mcp_runtime_info",
@@ -396,6 +415,69 @@ def test_mcp_probe_live_validation_tool_mismatches_report_order_drift():
     ]
 
 
+def test_mcp_probe_parses_expected_retry_key_args():
+    assert mcp_probe._parse_expected_retry_key_args([
+        "read_lidar_point_cloud:min_points=513",
+        "read_lidar_point_cloud:fail_on_warning=true",
+        'read_lidar_point_cloud:mode="controlled"',
+    ]) == (
+        ("read_lidar_point_cloud", "min_points", 513),
+        ("read_lidar_point_cloud", "fail_on_warning", True),
+        ("read_lidar_point_cloud", "mode", "controlled"),
+    )
+
+
+def test_mcp_probe_rejects_malformed_retry_key_arg_expectation():
+    with pytest.raises(ValueError, match="step_id:key=value"):
+        mcp_probe._parse_expected_retry_key_args(["read_lidar_point_cloud"])
+
+
+def test_mcp_probe_retry_key_arg_mismatches_are_empty_for_expected_value():
+    summary = {
+        "retry_steps": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "key_args": {"min_points": 513},
+            },
+        ],
+    }
+
+    assert mcp_probe._retry_key_arg_mismatches(
+        summary,
+        (("read_lidar_point_cloud", "min_points", 513),),
+    ) == []
+
+
+def test_mcp_probe_retry_key_arg_mismatches_report_drift():
+    summary = {
+        "retry_steps": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "key_args": {"min_points": 512},
+            },
+        ],
+    }
+
+    assert mcp_probe._retry_key_arg_mismatches(
+        summary,
+        (("read_lidar_point_cloud", "min_points", 513),),
+    ) == [
+        "retry step 'read_lidar_point_cloud' key_args['min_points'] "
+        "expected 513, got 512",
+    ]
+    assert mcp_probe._retry_key_arg_mismatches(
+        summary,
+        (("read_lidar_point_cloud", "frames_to_wait", 180),),
+    ) == [
+        "retry step 'read_lidar_point_cloud' "
+        "key_args['frames_to_wait'] was not found",
+    ]
+    assert mcp_probe._retry_key_arg_mismatches(
+        summary,
+        (("missing_step", "min_points", 513),),
+    ) == ["retry step 'missing_step' was not found"]
+
+
 def test_mcp_probe_plan_flag_mismatches_report_drift():
     summary = {
         "scratch_stage_required": False,
@@ -424,6 +506,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-log-capture-recommended",
         "false",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-retry-key-arg",
+        "read_lidar_point_cloud:min_points=513",
     ]) == 2
 
 
