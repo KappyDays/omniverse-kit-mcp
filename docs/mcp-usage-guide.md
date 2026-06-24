@@ -90,9 +90,9 @@ After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
 inspect the same plan shape before restarting a cached MCP host.
 If first-class live tools are not exposed in the current parent host, use
-`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --require-plan-fields`
-to smoke the workspace-local stdio MCP entry and confirm the plan field shape
-without stage mutation.
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --require-plan-fields`
+to smoke the workspace-local stdio MCP entry, confirm profile/import freshness,
+and confirm the plan field shape without stage mutation.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the
 default standalone report remains raw JSON+Markdown for local triage.
@@ -164,7 +164,7 @@ the read-only sync/search/resolve/get catalog diagnostic chain; its
 should be empty.
 If first-class live tools are not exposed in the parent host, the same
 workspace-local stdio probe can preflight the plan shape without stage mutation:
-`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --scenario-plan smoke/official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps`.
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke/official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps`.
 After validation, compare JSON `evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
 `diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or
@@ -212,9 +212,10 @@ Call `mcp_runtime_info` after MCP host startup to confirm the active
 and custom include/exclude tokens before comparing a slim profile against the
 full catalog.
 From a parent/root session without first-class live tools, run
-`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info`
-for the same profile/import-freshness smoke through the workspace-local stdio
-entry.
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh`
+for the same profile/import-freshness gate through the workspace-local stdio
+entry; expectation options imply the `mcp_runtime_info` call even if
+`--runtime-info` is omitted.
 
 ## Exact Signatures
 

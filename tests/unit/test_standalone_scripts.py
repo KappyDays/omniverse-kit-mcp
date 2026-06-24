@@ -360,6 +360,48 @@ def test_mcp_probe_summarizes_runtime_info_shape():
     }
 
 
+def test_mcp_probe_runtime_info_mismatches_are_empty_for_expected_shape():
+    summary = {
+        "tool_profile": "full",
+        "app_profile": "isaac-sim",
+        "tool_count": 152,
+        "source_newer_than_import": False,
+        "restart_required_for_latest_mcp_code": False,
+    }
+
+    assert mcp_probe._runtime_info_mismatches(
+        summary,
+        expect_tool_profile="full",
+        expect_app_profile="isaac-sim",
+        expect_tool_count=152,
+        require_runtime_fresh=True,
+    ) == []
+
+
+def test_mcp_probe_runtime_info_mismatches_report_profile_count_and_staleness():
+    summary = {
+        "tool_profile": "app",
+        "app_profile": "usd-composer",
+        "tool_count": 148,
+        "source_newer_than_import": True,
+        "restart_required_for_latest_mcp_code": True,
+    }
+
+    assert mcp_probe._runtime_info_mismatches(
+        summary,
+        expect_tool_profile="full",
+        expect_app_profile="isaac-sim",
+        expect_tool_count=152,
+        require_runtime_fresh=True,
+    ) == [
+        "tool_profile expected 'full', got 'app'",
+        "app_profile expected 'isaac-sim', got 'usd-composer'",
+        "tool_count expected 152, got 148",
+        "source_newer_than_import is true",
+        "restart_required_for_latest_mcp_code is true",
+    ]
+
+
 def test_mcp_probe_summarizes_custom_plan_fields():
     summary = mcp_probe._scenario_plan_probe_summary(
         {

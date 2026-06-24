@@ -113,6 +113,47 @@ def _runtime_info_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _runtime_info_mismatches(
+    summary: dict[str, Any],
+    *,
+    expect_tool_profile: str | None = None,
+    expect_app_profile: str | None = None,
+    expect_tool_count: int | None = None,
+    require_runtime_fresh: bool = False,
+) -> list[str]:
+    mismatches: list[str] = []
+    if (
+        expect_tool_profile is not None
+        and summary.get("tool_profile") != expect_tool_profile
+    ):
+        mismatches.append(
+            f"tool_profile expected {expect_tool_profile!r}, "
+            f"got {summary.get('tool_profile')!r}"
+        )
+    if (
+        expect_app_profile is not None
+        and summary.get("app_profile") != expect_app_profile
+    ):
+        mismatches.append(
+            f"app_profile expected {expect_app_profile!r}, "
+            f"got {summary.get('app_profile')!r}"
+        )
+    if (
+        expect_tool_count is not None
+        and summary.get("tool_count") != expect_tool_count
+    ):
+        mismatches.append(
+            f"tool_count expected {expect_tool_count}, "
+            f"got {summary.get('tool_count')!r}"
+        )
+    if require_runtime_fresh:
+        if summary.get("source_newer_than_import") is True:
+            mismatches.append("source_newer_than_import is true")
+        if summary.get("restart_required_for_latest_mcp_code") is True:
+            mismatches.append("restart_required_for_latest_mcp_code is true")
+    return mismatches
+
+
 def _scenario_plan_probe_summary(
     plan: dict[str, Any],
     field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
@@ -145,6 +186,10 @@ async def probe(
     *,
     workspace: Path | None = None,
     runtime_info: bool = False,
+    expect_tool_profile: str | None = None,
+    expect_app_profile: str | None = None,
+    expect_tool_count: int | None = None,
+    require_runtime_fresh: bool = False,
     scenario_plan: str | None = None,
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
@@ -240,6 +285,18 @@ async def probe(
         runtime_summary = _runtime_info_probe_summary(runtime_payload)
         print("\n=== mcp_runtime_info smoke ===")
         print(json.dumps(runtime_summary, indent=2, ensure_ascii=False))
+        runtime_mismatches = _runtime_info_mismatches(
+            runtime_summary,
+            expect_tool_profile=expect_tool_profile,
+            expect_app_profile=expect_app_profile,
+            expect_tool_count=expect_tool_count,
+            require_runtime_fresh=require_runtime_fresh,
+        )
+        if runtime_mismatches:
+            print("runtime expectation mismatch:")
+            for mismatch in runtime_mismatches:
+                print(f"  - {mismatch}")
+            exit_status = 1
 
     if scenario_plan is not None:
         await send({
@@ -309,6 +366,27 @@ def main(argv: list[str] | None = None) -> int:
         help="Call mcp_runtime_info and print a compact profile/freshness summary.",
     )
     parser.add_argument(
+        "--expect-tool-profile",
+        help="Require mcp_runtime_info.tool_profile to match this value.",
+    )
+    parser.add_argument(
+        "--expect-app-profile",
+        help="Require mcp_runtime_info.app_profile to match this value.",
+    )
+    parser.add_argument(
+        "--expect-tool-count",
+        type=int,
+        help="Require mcp_runtime_info.tool_count to match this value.",
+    )
+    parser.add_argument(
+        "--require-runtime-fresh",
+        action="store_true",
+        help=(
+            "Fail when mcp_runtime_info reports source_newer_than_import or "
+            "restart_required_for_latest_mcp_code."
+        ),
+    )
+    parser.add_argument(
         "--scenario-plan",
         help="Call scenario_plan for this scenario path after tools/resources smoke.",
     )
@@ -343,10 +421,21 @@ def main(argv: list[str] | None = None) -> int:
         args.require_plan_fields,
         args.require_plan_field,
     )
+    runtime_info = (
+        args.runtime_info
+        or args.expect_tool_profile is not None
+        or args.expect_app_profile is not None
+        or args.expect_tool_count is not None
+        or args.require_runtime_fresh
+    )
     return asyncio.run(
         probe(
             workspace=args.workspace,
-            runtime_info=args.runtime_info,
+            runtime_info=runtime_info,
+            expect_tool_profile=args.expect_tool_profile,
+            expect_app_profile=args.expect_app_profile,
+            expect_tool_count=args.expect_tool_count,
+            require_runtime_fresh=args.require_runtime_fresh,
             scenario_plan=args.scenario_plan,
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
