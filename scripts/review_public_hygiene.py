@@ -129,6 +129,14 @@ class Finding:
         return f"[{source}] {self.detail}: matches {self.label}"
 
 
+@dataclass(frozen=True)
+class PushDecision:
+    status: str
+    normal_push_allowed: bool
+    requires_user_approval: bool
+    next_action: str
+
+
 def _redact_output_text(value: str) -> str:
     redacted = value
     for label, pattern in (
@@ -529,6 +537,77 @@ def _public_presence_counts(findings: list[Finding]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+def _push_decision(findings: list[Finding]) -> PushDecision:
+    if not findings:
+        return PushDecision(
+            status="clean",
+            normal_push_allowed=True,
+            requires_user_approval=False,
+            next_action="No public hygiene findings detected for this review range.",
+        )
+
+    pending_count = sum(
+        1 for finding in findings if finding.reachability == "pending_push"
+    )
+    already_public_count = sum(
+        1 for finding in findings if finding.reachability == "already_public"
+    )
+    current_tree_count = sum(
+        1
+        for finding in findings
+        if finding.reachability is None
+        and finding.source in {"current-tree", "untracked-tree"}
+    )
+    present_on_public_ref_count = sum(
+        1
+        for finding in findings
+        if finding.public_presence == "present_on_public_ref"
+    )
+
+    if pending_count:
+        return PushDecision(
+            status="blocked_pending_push",
+            normal_push_allowed=False,
+            requires_user_approval=bool(already_public_count),
+            next_action=(
+                "Fix or remove pending-push findings before a normal public push. "
+                "If already-public findings are also present, follow "
+                "docs/runbooks/public-history-leak.md before any rewrite or "
+                "risk-accepting push."
+            ),
+        )
+    if current_tree_count:
+        return PushDecision(
+            status="blocked_current_tree",
+            normal_push_allowed=False,
+            requires_user_approval=bool(already_public_count),
+            next_action=(
+                "Redact or remove current-tree findings before a normal public push."
+            ),
+        )
+    if already_public_count:
+        next_action = (
+            "Stop pushing from the affected branch and follow "
+            "docs/runbooks/public-history-leak.md. Explicit user approval is "
+            "required before history rewrite/force-push or before a "
+            "non-destructive push that accepts residual public-history risk."
+        )
+        if present_on_public_ref_count:
+            next_action += " The current public ref tip still contains a finding class."
+        return PushDecision(
+            status="blocked_already_public_history",
+            normal_push_allowed=False,
+            requires_user_approval=True,
+            next_action=next_action,
+        )
+    return PushDecision(
+        status="blocked_review_required",
+        normal_push_allowed=False,
+        requires_user_approval=False,
+        next_action="Review and resolve public hygiene findings before a normal push.",
+    )
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, default=PROJECT)
@@ -630,6 +709,7 @@ def main(argv: list[str] | None = None) -> int:
     output_project = (
         _redact_output_text(str(project)) if args.redact_samples else str(project)
     )
+    push_decision = _push_decision(findings)
     if args.format == "json":
         print(json.dumps(
             {
@@ -640,6 +720,7 @@ def main(argv: list[str] | None = None) -> int:
                 "finding_count": len(findings),
                 "reachability_counts": _reachability_counts(findings),
                 "public_presence_counts": _public_presence_counts(findings),
+                "push_decision": asdict(push_decision),
                 "findings": [asdict(finding) for finding in output_findings],
             },
             indent=2,
@@ -664,6 +745,14 @@ def main(argv: list[str] | None = None) -> int:
                 f"{key}={value}" for key, value in public_presence_counts.items()
             )
             print(f"  public-ref-current: {counts_text}")
+        print(f"  push-decision: {push_decision.status}")
+        print(
+            "  normal-push-allowed: "
+            f"{str(push_decision.normal_push_allowed).lower()}"
+        )
+        if push_decision.requires_user_approval:
+            print("  requires-user-approval: true")
+        print(f"  next-action: {push_decision.next_action}")
         for finding in output_findings[:100]:
             print(f"  - {finding.format()}")
         if len(findings) > 100:
@@ -675,6 +764,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  history range: {range_text}")
     if public_ref:
         print(f"  public ref: {public_ref}")
+    print(f"  push-decision: {push_decision.status}")
+    print(
+        "  normal-push-allowed: "
+        f"{str(push_decision.normal_push_allowed).lower()}"
+    )
     return 0
 
 

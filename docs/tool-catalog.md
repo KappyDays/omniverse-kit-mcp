@@ -764,11 +764,11 @@ alone (use viewport_capture). wait_stable polls pixel diffs for async UI.
 window_capture_sequence(num_frames: 'int' = 10, interval_s: 'float' = 0.5, hwnd: 'int | None' = None, bring_to_front: 'bool' = False, use_client_rect: 'bool' = False, settle_frames: 'int' = 3) -> 'str'
 ```
 
-Capture N full-window frames at `interval_s` spacing for motion verification.  Wraps
-window_capture in a fixed-rate loop — used to record dynamic scenes (robot pick sequence,
-conveyor cube transit, hover highlight on/off) where a single PNG is insufficient. Works on
-both Isaac Sim and USD Composer (window_capture's GLFW30 auto-detect).  Returns JSON: {frames:
-[{frame, path, sha256, ok, error?}], ...}.
+Capture N full-window frames at `interval_s` spacing for motion verification.          Wraps
+window_capture in a fixed-rate loop — used to record dynamic         scenes (robot pick
+sequence, conveyor cube transit, hover highlight         on/off) where a single PNG is
+insufficient. Works on both Isaac Sim         and USD Composer (window_capture's GLFW30 auto-
+detect).          Returns JSON: {frames: [{frame, path, sha256, ok, error?}], ...}.
 
 **Parameters**
 
@@ -997,14 +997,15 @@ kit_app_restart) and unknown ext_id.
 extension_search(keyword: 'str', app: 'str | None' = None, category: 'str | None' = None, limit: 'int' = 20) -> 'str'
 ```
 
-Search the optional local Kit extension catalog for candidates.  Matches `keyword` (case-
-insensitive substring) against ext name / title / summary / mcp_research_hint / raw_description
-/ keywords. Empty keyword returns all entries matching optional filters.  Filters:   - app:
-"isaacsim" or "usd_composer" (include entries where that app key exists)   - category: exact
-match on entry.category (case-insensitive)   - limit: max results (default 20)  Returns list of
-{name, title, summary, category, apps, key_symbols, mcp_research_hint}. Use this when choosing
-a Kit Extension to wrap for a new MCP tool or to answer "which extension handles X?" questions.
-Public clones do not ship the generated catalog; when it is absent the tool returns
+Search the optional local Kit extension catalog for candidates.          Matches `keyword`
+(case-insensitive substring) against ext name / title /         summary / mcp_research_hint /
+raw_description / keywords. Empty keyword         returns all entries matching optional
+filters.          Filters:           - app: "isaacsim" or "usd_composer" (include entries where
+that app key exists)           - category: exact match on entry.category (case-insensitive)
+- limit: max results (default 20)          Returns list of {name, title, summary, category,
+apps, key_symbols,         mcp_research_hint}. Use this when choosing a Kit Extension to wrap
+for a         new MCP tool or to answer "which extension handles X?" questions. Public
+clones do not ship the generated catalog; when it is absent the tool         returns
 EXTENSION_CATALOG_UNAVAILABLE with regeneration guidance.
 
 **Parameters**
@@ -1124,17 +1125,18 @@ is_folder=false entries have spawnable url.
 asset_search(query: 'str', category: 'str | None' = None, limit: 'int' = 20) -> 'str'
 ```
 
-Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.  Maps
-a natural-language need (e.g. "forklift", "warehouse", "franka", "police character", "pallet")
-to concrete spawnable USD URLs by ranking the curated markdown catalog under docs/assets/isaac/
-(robots 90+, environments, people/animations, props, SimReady 1000+). Use this at planning time
-/ before building a scene to pick a real asset (Validation Rule R1 — actual outputs use actual
-assets; controlled test/demo fixtures may be primitives); complements the live asset_list
-(which needs Isaac up) and content_browse.  Args:   query: free-text terms matched against
-asset name / catalog text.   category: optional filter — one of robots / environments / people
-/     props / simready / other.   limit: max results (default 20).  Returns a ranked list of
-{name, url, category, source_file}. Load a chosen url with stage_load_usd / robot_load /
-character_load per docs/invariants/usd-load.md.
+Search the curated NVIDIA / Isaac Sim 6.0 asset catalog OFFLINE — no Isaac Sim required.
+Maps a natural-language need (e.g. "forklift", "warehouse", "franka",         "police
+character", "pallet") to concrete spawnable USD URLs by ranking         the curated markdown
+catalog under docs/assets/isaac/ (robots 90+,         environments, people/animations, props,
+SimReady 1000+). Use this at         planning time / before building a scene to pick a real
+asset (Validation         Rule R1 — actual outputs use actual assets; controlled test/demo
+fixtures may be primitives); complements the live asset_list (which         needs Isaac up) and
+content_browse.          Args:           query: free-text terms matched against asset name /
+catalog text.           category: optional filter — one of robots / environments / people /
+props / simready / other.           limit: max results (default 20).          Returns a ranked
+list of {name, url, category, source_file}. Load a         chosen url with stage_load_usd /
+robot_load / character_load per         docs/invariants/usd-load.md.
 
 **Parameters**
 
@@ -1414,10 +1416,10 @@ navigation_sample_walkable_points(count: 'int', bounds_min: 'list[float] | None'
 ```
 
 Sample N random walkable points on the baked NavMesh (area-weighted barycentric, spec §8.1).
-count ∈ [1, 1000]. Optional [x,y,z] bounds_min/max restrict to AABB (both must be set or both
-null). When triangle iteration API is unavailable on this Kit build, falls back to bbox-
-rejection (random-in-bbox + reachability via query_shortest_path) — response ``method`` field
-reports which path won. Requires prior navigation_bake.
+count ∈ [1, 1000]. Optional [x,y,z] bounds_min/max restrict to AABB         (both must be set
+or both null). When triangle iteration API is         unavailable on this Kit build, falls back
+to bbox-rejection         (random-in-bbox + reachability via query_shortest_path) — response
+``method`` field reports which path won. Requires prior navigation_bake.
 
 **Parameters**
 
@@ -1452,11 +1454,11 @@ robot_drive_physics(prim_path: 'str', waypoints: 'list[list[float]]', max_linear
 ```
 
 Drive a wheel-based articulation along ``waypoints`` using DifferentialController + Pure
-Pursuit (physics-based, writes joint_velocities, spec §8.2).  ASYNC Job — returns ``{job_id}``;
-poll ``job_status``. Requires timeline playing (R2). Wheel DOFs auto-resolved by name substring
-scan (wheel_left/right or joint_wheel_*). Always zeros wheels on exit
-(cancel/timeout/exception). Defaults are Nova Carter spec (wheel_radius=0.14,
-wheel_base=0.413).
+Pursuit (physics-based, writes joint_velocities, spec §8.2).          ASYNC Job — returns
+``{job_id}``; poll ``job_status``. Requires         timeline playing (R2). Wheel DOFs auto-
+resolved by name substring         scan (wheel_left/right or joint_wheel_*). Always zeros
+wheels on         exit (cancel/timeout/exception). Defaults are Nova Carter spec
+(wheel_radius=0.14, wheel_base=0.413).
 
 **Parameters**
 
@@ -2633,9 +2635,10 @@ is unavailable.
 scenario_last_report(scenario_id: 'str | None' = None, report_format: 'str' = 'json', redact_local_paths: 'bool' = False) -> 'str'
 ```
 
-Get the latest scenario_validate report, or a specific report by scenario_id.  Defaults to
-JSON; pass report_format='markdown' for a human-readable report with data summary highlights.
-Set redact_local_paths=true before copying live evidence into public artifacts.
+Get the latest scenario_validate report, or a specific report by scenario_id.          Defaults
+to JSON; pass report_format='markdown' for a human-readable         report with data summary
+highlights. Set redact_local_paths=true before         copying live evidence into public
+artifacts.
 
 **Parameters**
 
@@ -2651,8 +2654,8 @@ Set redact_local_paths=true before copying live evidence into public artifacts.
 scenario_plan(scenario_path: 'str', input_overrides: 'dict[str, Any] | None' = None) -> 'str'
 ```
 
-Compile scenario YAML and show execution plan without running it.  input_overrides substitutes
-scenario variables.
+Compile scenario YAML and show execution plan without running it.          input_overrides
+substitutes scenario variables.
 
 **Parameters**
 
@@ -2667,10 +2670,10 @@ scenario variables.
 scenario_validate(scenario_path: 'str', dry_run: 'bool' = False, fail_fast: 'bool | None' = None, input_overrides: 'dict[str, Any] | None' = None, report_format: 'str' = 'json', redact_local_paths: 'bool' = False) -> 'str'
 ```
 
-Execute YAML validation scenario (Arrange→Act→Assert→Cleanup).  Returns JSON by default; pass
-report_format='markdown' for a human-readable report with data summary highlights. Set
-redact_local_paths=true before copying a live report into public artifacts. input_overrides
-substitutes scenario variables.
+Execute YAML validation scenario (Arrange→Act→Assert→Cleanup).          Returns JSON by
+default; pass report_format='markdown' for a         human-readable report with data summary
+highlights. Set         redact_local_paths=true before copying a live report into public
+artifacts. input_overrides substitutes scenario variables.
 
 **Parameters**
 
@@ -2691,11 +2694,11 @@ substitutes scenario variables.
 kit_command_execute(name: 'str', payload: 'dict | None' = None, expect_undo: 'bool' = False) -> 'str'
 ```
 
-Execute an omni.kit.commands registered command.  Dispatches to the currently-active Kit app's
-command registry. Common examples:   - CreateConveyorBelt (Isaac, isaacsim.asset.gen.conveyor)
-- CreatePrimWithDefaultXform (common)   - ChangeProperty (common)  Unknown command names on the
-current app return ok=false with error=command_exception (not a tool failure — parseable
-result).
+Execute an omni.kit.commands registered command.          Dispatches to the currently-active
+Kit app's command registry.         Common examples:           - CreateConveyorBelt (Isaac,
+isaacsim.asset.gen.conveyor)           - CreatePrimWithDefaultXform (common)           -
+ChangeProperty (common)          Unknown command names on the current app return ok=false with
+error=command_exception (not a tool failure — parseable result).
 
 **Parameters**
 
@@ -2711,19 +2714,21 @@ result).
 kit_python_run(code: 'str', return_keys: 'list[str] | None' = None) -> 'str'
 ```
 
-Run arbitrary Python source in the Kit main thread.  Fills the gap the Kit command registry
-leaves — when the operation you need isn't a registered Kit command (USD relationship edits,
-``Usd.EditContext`` walks, ``omni.client`` direct calls, bulk attribute author patterns), use
-this instead of pasting code into the GUI Script Editor.  Args:   code: Python source.
-Statements run in a fresh ``__main__``-style         namespace, so ``import omni.usd`` / ``from
-pxr import ...``         work without setup.   return_keys: Optional list of namespace variable
-names whose                final values are returned in the response. Empty =
-stdout-only communication. Non-JSON-safe values are                coerced via str() fallback.
-Returns: dict with ``ok`` / ``stdout`` / ``stderr`` / ``error`` / ``traceback`` / ``returned``.
-Script exceptions become an ``error`` + ``traceback`` payload (the MCP call still succeeds —
-caller inspects ``ok`` to decide).  Tool naming note: REST/internal names use ``python_run`` to
-avoid the project's pre-tool security hook (which flags the literal substring ``exec`` followed
-by ``(``); the user-facing tool name is also ``kit_python_run`` for consistency.
+Run arbitrary Python source in the Kit main thread.          Fills the gap the Kit command
+registry leaves — when the operation         you need isn't a registered Kit command (USD
+relationship edits,         ``Usd.EditContext`` walks, ``omni.client`` direct calls, bulk
+attribute author patterns), use this instead of pasting code into         the GUI Script
+Editor.          Args:           code: Python source. Statements run in a fresh
+``__main__``-style                 namespace, so ``import omni.usd`` / ``from pxr import ...``
+work without setup.           return_keys: Optional list of namespace variable names whose
+final values are returned in the response. Empty =                        stdout-only
+communication. Non-JSON-safe values are                        coerced via str() fallback.
+Returns: dict with ``ok`` / ``stdout`` / ``stderr`` / ``error`` /         ``traceback`` /
+``returned``. Script exceptions become an ``error``         + ``traceback`` payload (the MCP
+call still succeeds — caller         inspects ``ok`` to decide).          Tool naming note:
+REST/internal names use ``python_run`` to avoid         the project's pre-tool security hook
+(which flags the literal         substring ``exec`` followed by ``(``); the user-facing tool
+name         is also ``kit_python_run`` for consistency.
 
 **Parameters**
 

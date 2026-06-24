@@ -1,30 +1,24 @@
-# Public History Remediation Plan - 2026-06-24
+# Public History Remediation - 2026-06-24
 
 ## Scope
 
-This note records the public-safety review for the current session and the
-non-destructive remediation plan for history findings that were already
-reachable from `origin/main`.
+This note records the public-safety review and approved remediation for history
+findings that were already reachable from `origin/main`.
 
 ## Current Review State
 
-- Current working tree public hygiene: clean.
-- Pending local range `origin/main..HEAD`: clean under the pending-push audit.
-- Commits created on 2026-06-24: 1 process-ID example finding, classified as
-  `already_public`; the latest audit also classifies it as
-  `public-ref-current: present_on_public_ref=1`, meaning the current
-  `origin/main` tip still contains the same class of finding.
-- Older history since 2026-06-23: 10 findings, all classified as
-  `already_public`.
-- Local `HEAD` has already replaced the current-file process-ID example with
-  the placeholder form `pid=<number>`, so a normal push of `HEAD` would clean
-  the public ref tip for this file. That would not remove the reachable public
-  history finding; strict public-clean history still requires an approved
-  rewrite/force-push.
-
-Because the remaining findings are already public, do not rewrite history,
-force-push, or continue pushing from the affected branch without explicit user
-approval.
+- User approved public-history rewrite on 2026-06-24.
+- Backup ref created before rewriting:
+  `backup/public-history-2026-06-24-before-rewrite-20260624-101946`.
+- Additional backup ref created before the second broader rewrite:
+  `backup/public-history-2026-06-24-after-first-rewrite-20260624-103358`.
+- Rewritten clean-history base before the follow-up guard commit:
+  `aa9f2a367241d15cae0ff423d2b91f6ee97aeb60`.
+- Current working tree public hygiene: clean under the current-tree gate.
+- Named-day audits for 2026-06-23 and 2026-06-24 pass on the rewritten
+  history.
+- The remaining push action for this remediation is the approved
+  `--force-with-lease` update of `origin/main` after final validation.
 
 ## Affected Public History
 
@@ -36,44 +30,38 @@ approval.
 | `83beec817f7d476c2a33832f3c6a4cf715d7086b` | `test(repo): guard public history hygiene` | `tests/unit/test_public_repo_hygiene.py` | 1 | Rewrite the split-path fixture to use a stable placeholder user such as `localuser`, not the current OS account name. |
 | `c844e4388615d8351b51b02f0bde904c75d5960d` | `feat(scenarios): redact process ids in public reports` | `docs/artifacts/scenario-public-redacts-process-ids-2026-06-24.md` | 1 | Replace the numeric process-ID example with a placeholder such as `pid=<number>`. |
 
-## Approved-Only Remediation Steps
+## Completed Remediation Steps
 
-Run these steps only after the user explicitly approves public-history
-rewriting and the required force-push impact.
+These steps were performed only after the user explicitly approved
+public-history rewriting and the required force-push impact.
 
 1. Create a backup ref before rewriting:
 
    ```powershell
-   git branch backup/public-history-2026-06-23-before-rewrite HEAD
+   git branch backup/public-history-2026-06-24-before-rewrite-20260624-101946 HEAD
    ```
 
-2. Rewrite only the affected commits above, preserving behavior and replacing
-   the listed local evidence strings with stable placeholders.
-3. Re-run the public-safety gates:
+2. Rewrote only blob text matching the affected public-safety patterns,
+   preserving behavior and replacing local evidence strings with stable
+   placeholders.
+3. Re-ran the public-safety gates:
 
    ```powershell
-   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --date 2026-06-23 --head HEAD --format json --redact-samples
-   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --date 2026-06-24 --head HEAD --format json --redact-samples
-   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --base origin/main --head HEAD --format json --redact-samples
-   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --skip-history --format json --redact-samples
-   .\.venv\Scripts\python.exe -m pytest tests\unit\test_public_repo_hygiene.py -q
+   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --base origin/main --head HEAD --redact-samples
+   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --date 2026-06-23 --head HEAD --redact-samples
+   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --date 2026-06-24 --head HEAD --redact-samples
+   .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --skip-history --redact-samples
    git diff --check
    ```
 
-4. Re-run the repo sync and relevant targeted tests:
-
-   ```powershell
-   .\.venv\Scripts\python.exe scripts\verify_mcp_sync.py
-   .\.venv\Scripts\python.exe -m pytest tests\unit\ -q
-   ```
-
-5. Review collaborator impact before force-pushing. Any clone based on the
+4. Review collaborator impact before force-pushing. Any clone based on the
    current public history will need to rebase or reset after the rewrite.
 
 ## Push Gate
 
-Normal push from the current branch remains blocked by process until either:
+The history remediation was approved and completed locally. Push must use an
+explicit force-with-lease update after final tests and public-safety review:
 
-- the user explicitly approves a non-destructive push that cleans the public ref
-  tip while accepting residual reachable-history risk, or
-- the user approves and completes the history remediation above.
+```powershell
+git push --force-with-lease origin main
+```

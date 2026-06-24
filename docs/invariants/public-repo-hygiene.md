@@ -43,6 +43,9 @@ For `already_public` findings, the guard also reports `public-ref-current`:
 `present_on_public_ref` means the current public ref tree still contains the
 same class of finding, while `absent_from_public_ref` means the public ref only
 retains it in reachable history.
+Text and JSON output also include `push-decision` / `push_decision` with
+`normal_push_allowed`. Treat `normal_push_allowed=false` as a stop signal for
+normal public pushes until the reported `next_action` is handled.
 
 ## Blocking Findings
 

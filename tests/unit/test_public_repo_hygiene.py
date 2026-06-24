@@ -607,6 +607,8 @@ def test_public_hygiene_script_flags_labeled_process_id_number(
     assert "process_id_number" in result.stdout
     assert leaked_id not in result.stdout
     assert "<sensitive-id:process_id_number>" in result.stdout
+    assert "push-decision: blocked_current_tree" in result.stdout
+    assert "normal-push-allowed: false" in result.stdout
 
 
 def test_public_hygiene_script_flags_labeled_process_id_in_python_source(
@@ -1011,6 +1013,17 @@ def test_public_hygiene_script_json_classifies_history_reachability(
     assert payload["public_presence_counts"] == {
         "present_on_public_ref": 1,
     }
+    assert payload["push_decision"] == {
+        "status": "blocked_pending_push",
+        "normal_push_allowed": False,
+        "requires_user_approval": True,
+        "next_action": (
+            "Fix or remove pending-push findings before a normal public push. "
+            "If already-public findings are also present, follow "
+            "docs/runbooks/public-history-leak.md before any rewrite or "
+            "risk-accepting push."
+        ),
+    }
     assert any(
         finding["reachability"] == "already_public"
         and finding["commit"] == public_tip
@@ -1076,6 +1089,17 @@ def test_public_hygiene_script_json_marks_public_history_absent_from_public_tip(
     payload = json.loads(result.stdout)
     assert payload["reachability_counts"] == {"already_public": 1}
     assert payload["public_presence_counts"] == {"absent_from_public_ref": 1}
+    assert payload["push_decision"] == {
+        "status": "blocked_already_public_history",
+        "normal_push_allowed": False,
+        "requires_user_approval": True,
+        "next_action": (
+            "Stop pushing from the affected branch and follow "
+            "docs/runbooks/public-history-leak.md. Explicit user approval is "
+            "required before history rewrite/force-push or before a "
+            "non-destructive push that accepts residual public-history risk."
+        ),
+    }
     finding = payload["findings"][0]
     assert finding["reachability"] == "already_public"
     assert finding["public_presence"] == "absent_from_public_ref"
