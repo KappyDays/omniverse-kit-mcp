@@ -109,7 +109,7 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `diagnostic_next_actions[].phase`, `diagnostic_next_actions[].status`,
 `diagnostic_next_actions[].error_code`,
 `diagnostic_next_actions[].final_step_status`,
-`diagnostic_next_actions[].diagnostics.num_points` / `diagnostic_next_actions[].diagnostics.min_points`,
+`diagnostic_next_actions[]` flat keys `diagnostics.num_points` / `diagnostics.min_points`,
 `step_results[].diagnostic_next_actions`,
 `step_results[].retry_failures[].diagnostic_next_actions`,
 `attempts`, `max_attempts`, `retry_failures`,

@@ -29,10 +29,11 @@ diagnostics for failed attempts.
 Reports include `diagnostic_next_actions` in JSON and `Diagnostic Next Actions`
 in Markdown when diagnostic payloads carry `suggested_next` or
 `fallback_tool_order`; follow that section before opening logs or changing
-scenario timing. Prefer the JSON root queue when exact routing matters: it
-includes `phase`, source `status`, final step `error_code`, retry
-`error_code`, retry `attempt`, and `final_step_status` when those fields are
-available.
+scenario timing. JSON action entries use flat dotted keys such as
+`diagnostics.reason` and `diagnostics.num_points`, not nested `diagnostics`
+objects. Prefer the JSON root queue when exact routing matters: it includes
+`phase`, source `status`, final step `error_code`, retry `error_code`, retry
+`attempt`, and `final_step_status` when those fields are available.
 Failed reports also include JSON `failure_summary` and Markdown `Failure
 Summary` before the full step table. Start there to identify final fatal,
 continued, cleanup, and exhausted-retry rows, then drill into
