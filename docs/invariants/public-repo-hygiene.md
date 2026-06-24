@@ -39,6 +39,10 @@ already moved on.
 History findings are classified against the current upstream or `origin/main`:
 `already_public` means the commit is reachable from that public ref, and
 `pending_push` means it is still only in the scanned local range.
+For `already_public` findings, the guard also reports `public-ref-current`:
+`present_on_public_ref` means the current public ref tree still contains the
+same class of finding, while `absent_from_public_ref` means the public ref only
+retains it in reachable history.
 
 ## Blocking Findings
 

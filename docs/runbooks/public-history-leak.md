@@ -16,7 +16,10 @@ path from commits that may already be public.
    .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --since "YYYY-MM-DD 00:00" --head HEAD --format json
    ```
 3. Check whether the finding is only in pending local commits or already in
-   `origin/<branch>`.
+   `origin/<branch>`. In text/JSON output, `public-ref-current:
+   present_on_public_ref` means the current public ref tree still contains the
+   same class of finding; `absent_from_public_ref` means the issue is retained
+   in reachable history but no longer present at the public ref tip.
 4. If already pushed, do not rewrite history, force-push, or ask another worker
    to push until the user explicitly approves the rewrite plan.
 

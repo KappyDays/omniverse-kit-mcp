@@ -115,13 +115,15 @@ class Finding:
     sample: str = ""
     commit: str | None = None
     reachability: str | None = None
+    public_presence: str | None = None
 
     def format(self) -> str:
-        source = (
-            f"{self.source}/{self.reachability}"
-            if self.reachability
-            else self.source
-        )
+        source_parts = [self.source]
+        if self.reachability:
+            source_parts.append(self.reachability)
+        if self.public_presence:
+            source_parts.append(self.public_presence)
+        source = "/".join(source_parts)
         if self.sample:
             return f"[{source}] {self.detail}: matches {self.label}: {self.sample}"
         return f"[{source}] {self.detail}: matches {self.label}"
@@ -159,6 +161,7 @@ def _redact_finding_for_output(finding: Finding) -> Finding:
         sample=_redact_output_text(finding.sample),
         commit=finding.commit,
         reachability=finding.reachability,
+        public_presence=finding.public_presence,
     )
 
 
@@ -260,6 +263,24 @@ def _looks_like_split_user_path(line: str) -> bool:
     return False
 
 
+def _pattern_for_label(label: str) -> re.Pattern[str] | None:
+    for pattern_label, pattern in (
+        DISALLOWED_PATH_PATTERNS
+        + SECRET_LIKE_PATTERNS
+        + SENSITIVE_IDENTIFIER_PATTERNS
+    ):
+        if pattern_label == label:
+            return pattern
+    return None
+
+
+def _label_present_in_text(label: str, text: str) -> bool:
+    if label == "split_windows_user_path":
+        return any(_looks_like_split_user_path(line) for line in text.splitlines())
+    pattern = _pattern_for_label(label)
+    return bool(pattern and pattern.search(text))
+
+
 def _scan_worktree_file(project: Path, source: str, rel: str) -> list[Finding]:
     findings: list[Finding] = []
     if _is_generated_reference(rel):
@@ -344,6 +365,23 @@ def _commit_reachability(project: Path, commit: str, public_ref: str | None) -> 
     return "already_public" if result.returncode == 0 else "pending_push"
 
 
+def _public_ref_presence(
+    project: Path,
+    public_ref: str | None,
+    rel: str,
+    label: str,
+    reachability: str,
+) -> str | None:
+    if not public_ref or reachability != "already_public":
+        return None
+    result = _git(project, "show", f"{public_ref}:{rel}", check=False)
+    if result.returncode != 0:
+        return "absent_from_public_ref"
+    if _label_present_in_text(label, result.stdout):
+        return "present_on_public_ref"
+    return "absent_from_public_ref"
+
+
 def _base_and_commits_since(
     project: Path,
     head: str,
@@ -423,16 +461,32 @@ def _scan_commit_added_lines(
             continue
         if not line.startswith("+") or line.startswith("+++"):
             continue
+        line_findings = _scan_text(
+            "history-added-line",
+            f"{subject} {current_file}",
+            line[1:],
+            path=current_file,
+            scan_python_process_ids=False,
+            commit=full_commit,
+            reachability=reachability,
+        )
         findings.extend(
-            _scan_text(
-                "history-added-line",
-                f"{subject} {current_file}",
-                line[1:],
-                path=current_file,
-                scan_python_process_ids=False,
-                commit=full_commit,
-                reachability=reachability,
+            Finding(
+                source=finding.source,
+                label=finding.label,
+                detail=finding.detail,
+                sample=finding.sample,
+                commit=finding.commit,
+                reachability=finding.reachability,
+                public_presence=_public_ref_presence(
+                    project,
+                    public_ref,
+                    current_file,
+                    finding.label,
+                    reachability,
+                ),
             )
+            for finding in line_findings
         )
     return findings
 
@@ -478,6 +532,15 @@ def _reachability_counts(findings: list[Finding]) -> dict[str, int]:
         if not finding.reachability:
             continue
         counts[finding.reachability] = counts.get(finding.reachability, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _public_presence_counts(findings: list[Finding]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for finding in findings:
+        if not finding.public_presence:
+            continue
+        counts[finding.public_presence] = counts.get(finding.public_presence, 0) + 1
     return dict(sorted(counts.items()))
 
 
@@ -591,6 +654,7 @@ def main(argv: list[str] | None = None) -> int:
                 "public_ref": public_ref,
                 "finding_count": len(findings),
                 "reachability_counts": _reachability_counts(findings),
+                "public_presence_counts": _public_presence_counts(findings),
                 "findings": [asdict(finding) for finding in output_findings],
             },
             indent=2,
@@ -609,6 +673,12 @@ def main(argv: list[str] | None = None) -> int:
                 f"{key}={value}" for key, value in reachability_counts.items()
             )
             print(f"  reachability: {counts_text}")
+        public_presence_counts = _public_presence_counts(findings)
+        if public_presence_counts:
+            counts_text = ", ".join(
+                f"{key}={value}" for key, value in public_presence_counts.items()
+            )
+            print(f"  public-ref-current: {counts_text}")
         for finding in output_findings[:100]:
             print(f"  - {finding.format()}")
         if len(findings) > 100:
