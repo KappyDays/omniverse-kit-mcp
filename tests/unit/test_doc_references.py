@@ -307,6 +307,14 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "`failure_summary`" in invariant
     assert "failure_summary[].last_retry_failure" in invariant
     assert "min_points" in guide
+    assert "diagnostics.num_points" in guide
+    assert "diagnostics.min_points" in guide
+    assert "diagnostic_next_actions[].diagnostics.num_points" in invariant
+    assert "diagnostic_next_actions[].diagnostics.min_points" in invariant
+    assert "retry_failures[].data_summary.diagnostics.num_points" in invariant
+    assert "retry_failures[].data_summary.diagnostics.min_points" in invariant
+    assert "data_summary.diagnostics.num_points" in invariant
+    assert "data_summary.diagnostics.min_points" in invariant
     assert "max_points" in guide
     assert "frames_to_wait" in guide
     assert "fail_on_warning" in guide
