@@ -5,7 +5,8 @@
 Make the workspace-local MCP stdio probe show the actual
 `scenario_plan.live_validation_checklist` wrapper order, not only whether the
 field exists. This gives parent/root sessions a compact read-only way to verify
-the live Robot + RTX or official asset run order before mutating a stage.
+the live Robot + RTX or official asset run order and scratch/read-only routing
+before mutating a stage.
 
 ## Change
 
@@ -16,19 +17,26 @@ the live Robot + RTX or official asset run order before mutating a stage.
 - Extend unit coverage for the new summary fields.
 - Add `--require-live-validation-tools` so workspace-local stdio smoke can fail
   when the live wrapper order drifts.
+- Add `--expect-scratch-stage-required` and
+  `--expect-log-capture-recommended` so the same read-only smoke can fail when a
+  live-load scenario is no longer marked scratch-bound, or when a read-only
+  diagnostics scenario accidentally gains stage-mutation routing.
 
 ## Validation
 
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_standalone_scripts.py -q`
-  - passed as part of `tests\unit\test_standalone_scripts.py tests\unit\test_doc_references.py`
-  - combined result: `30 passed, 1 skipped`
+  - `19 passed`
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py tests\unit\test_doc_integrity.py -q`
+  - `23 passed, 2 skipped`
 - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py`
   - passed; catalog already up to date
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q`
-  - `803 passed, 16 skipped`
-- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --skip-history --redact-samples`
+  - `808 passed, 16 skipped`
+- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`
   - passed
-- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\robot_rtx_sensor_golden_workflow.yaml --require-plan-fields`
+- `git diff --check`
+  - passed
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\robot_rtx_sensor_golden_workflow.yaml --require-plan-fields --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`
   - passed
   - `live_validation_tools`: `mcp_runtime_info`, `kit_app_start`,
     `simulation_get_status`, `scenario_plan`, `scenario_validate`,
@@ -36,23 +44,19 @@ the live Robot + RTX or official asset run order before mutating a stage.
     `extension_capture_logs`
   - `scratch_stage_required`: `true`
   - `log_capture_recommended`: `true`
-- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-plan-field live_validation_checklist`
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`
   - passed
   - `live_validation_step_count`: `9`
   - `scratch_stage_required`: `true`
   - `log_capture_recommended`: `true`
-- Latest order-gated `scenario_plan` rerun (read-only, no `scenario_validate`
-  execution):
-  - Robot/RTX golden workflow `scenario_plan` order gate passed with
-    `mcp_runtime_info`, `kit_app_start`, `simulation_get_status`,
-    `scenario_plan`, `scenario_validate`, `extension_clear_logs`,
-    `scenario_validate`, `scenario_last_report`, `extension_capture_logs`.
-  - `official_asset_catalog_diagnostics` `scenario_plan` order gate passed with
-    `mcp_runtime_info`, `kit_app_start`, `simulation_get_status`,
-    `scenario_plan`, `extension_clear_logs`, `scenario_validate`,
-    `scenario_last_report`, `extension_capture_logs`.
-  - `official_asset_verify_live` `scenario_plan` order gate passed with the
-    same planned stage-mutating wrapper order as Robot/RTX.
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\official_asset_catalog_diagnostics.yaml --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true`
+  - passed
+  - `live_validation_step_count`: `8`
+  - `scratch_stage_required`: `false`
+  - `log_capture_recommended`: `true`
+
+All three workspace-local stdio probes above are `scenario_plan` smokes. They
+do not execute `scenario_validate` or mutate a live stage.
 
 ## Public Safety
 
