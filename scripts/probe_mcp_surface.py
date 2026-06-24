@@ -75,6 +75,12 @@ def _merge_required_plan_fields(
     return tuple(dict.fromkeys(field.strip() for field in fields if field.strip()))
 
 
+def _parse_required_tool_sequence(raw: str | None) -> tuple[str, ...]:
+    if raw is None:
+        return ()
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
 def _tool_text_response(response: dict[str, Any]) -> str:
     if "error" in response:
         raise RuntimeError(json.dumps(response["error"], ensure_ascii=False))
@@ -155,6 +161,24 @@ def _runtime_info_mismatches(
     return mismatches
 
 
+def _live_validation_tool_mismatches(
+    summary: dict[str, Any],
+    expected_tools: tuple[str, ...],
+) -> list[str]:
+    if not expected_tools:
+        return []
+    actual_tools = summary.get("live_validation_tools")
+    if not isinstance(actual_tools, list):
+        return ["live_validation_tools summary is missing or malformed"]
+    actual = tuple(str(tool) for tool in actual_tools)
+    if actual == expected_tools:
+        return []
+    return [
+        "live_validation_tools expected "
+        f"{list(expected_tools)!r}, got {list(actual)!r}"
+    ]
+
+
 def _scenario_plan_probe_summary(
     plan: dict[str, Any],
     field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
@@ -219,6 +243,7 @@ async def probe(
     scenario_plan: str | None = None,
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
+    required_live_validation_tools: tuple[str, ...] = (),
 ) -> int:
     if workspace is None:
         command, cwd, extra_env = _default_stdio_entry()
@@ -356,6 +381,18 @@ async def probe(
         if missing_fields:
             print("missing required plan fields: " + ", ".join(missing_fields))
             exit_status = 1
+        tool_mismatches = _live_validation_tool_mismatches(
+            plan_summary,
+            required_live_validation_tools,
+        )
+        if tool_mismatches:
+            print("live validation tool order mismatch:")
+            for mismatch in tool_mismatches:
+                print(f"  - {mismatch}")
+            exit_status = 1
+    elif required_live_validation_tools:
+        print("--require-live-validation-tools requires --scenario-plan")
+        exit_status = 2
 
     proc.stdin.close()
     try:
@@ -434,6 +471,13 @@ def main(argv: list[str] | None = None) -> int:
             "can be repeated."
         ),
     )
+    parser.add_argument(
+        "--require-live-validation-tools",
+        help=(
+            "Comma-separated exact live_validation_checklist tool order required "
+            "for success, e.g. 'mcp_runtime_info,kit_app_start,...'."
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         input_overrides = _parse_json_object(
@@ -447,6 +491,12 @@ def main(argv: list[str] | None = None) -> int:
         args.require_plan_fields,
         args.require_plan_field,
     )
+    required_live_validation_tools = _parse_required_tool_sequence(
+        args.require_live_validation_tools,
+    )
+    if required_live_validation_tools and args.scenario_plan is None:
+        print("--require-live-validation-tools requires --scenario-plan")
+        return 2
     runtime_info = (
         args.runtime_info
         or args.expect_tool_profile is not None
@@ -465,6 +515,7 @@ def main(argv: list[str] | None = None) -> int:
             scenario_plan=args.scenario_plan,
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
+            required_live_validation_tools=required_live_validation_tools,
         )
     )
 

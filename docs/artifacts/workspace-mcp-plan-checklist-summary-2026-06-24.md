@@ -14,6 +14,8 @@ the live Robot + RTX or official asset run order before mutating a stage.
   summaries.
 - Guard the summary against missing or malformed checklist payloads.
 - Extend unit coverage for the new summary fields.
+- Add `--require-live-validation-tools` so workspace-local stdio smoke can fail
+  when the live wrapper order drifts.
 
 ## Validation
 
@@ -39,6 +41,18 @@ the live Robot + RTX or official asset run order before mutating a stage.
   - `live_validation_step_count`: `9`
   - `scratch_stage_required`: `true`
   - `log_capture_recommended`: `true`
+- Latest order-gated `scenario_plan` rerun (read-only, no `scenario_validate`
+  execution):
+  - Robot/RTX golden workflow `scenario_plan` order gate passed with
+    `mcp_runtime_info`, `kit_app_start`, `simulation_get_status`,
+    `scenario_plan`, `scenario_validate`, `extension_clear_logs`,
+    `scenario_validate`, `scenario_last_report`, `extension_capture_logs`.
+  - `official_asset_catalog_diagnostics` `scenario_plan` order gate passed with
+    `mcp_runtime_info`, `kit_app_start`, `simulation_get_status`,
+    `scenario_plan`, `extension_clear_logs`, `scenario_validate`,
+    `scenario_last_report`, `extension_capture_logs`.
+  - `official_asset_verify_live` `scenario_plan` order gate passed with the
+    same planned stage-mutating wrapper order as Robot/RTX.
 
 ## Public Safety
 

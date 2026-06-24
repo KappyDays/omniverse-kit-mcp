@@ -346,6 +346,63 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
     }
 
 
+def test_mcp_probe_parses_required_live_validation_tools():
+    assert mcp_probe._parse_required_tool_sequence(
+        "mcp_runtime_info, kit_app_start,, scenario_plan ",
+    ) == (
+        "mcp_runtime_info",
+        "kit_app_start",
+        "scenario_plan",
+    )
+
+
+def test_mcp_probe_live_validation_tool_mismatches_are_empty_for_exact_order():
+    summary = {
+        "live_validation_tools": [
+            "mcp_runtime_info",
+            "kit_app_start",
+            "scenario_plan",
+        ],
+    }
+
+    assert mcp_probe._live_validation_tool_mismatches(
+        summary,
+        (
+            "mcp_runtime_info",
+            "kit_app_start",
+            "scenario_plan",
+        ),
+    ) == []
+
+
+def test_mcp_probe_live_validation_tool_mismatches_report_order_drift():
+    summary = {
+        "live_validation_tools": [
+            "kit_app_start",
+            "mcp_runtime_info",
+        ],
+    }
+
+    assert mcp_probe._live_validation_tool_mismatches(
+        summary,
+        (
+            "mcp_runtime_info",
+            "kit_app_start",
+        ),
+    ) == [
+        "live_validation_tools expected "
+        "['mcp_runtime_info', 'kit_app_start'], got "
+        "['kit_app_start', 'mcp_runtime_info']",
+    ]
+
+
+def test_mcp_probe_rejects_live_validation_tools_without_scenario_plan():
+    assert mcp_probe.main([
+        "--require-live-validation-tools",
+        "mcp_runtime_info,kit_app_start",
+    ]) == 2
+
+
 def test_mcp_probe_summarizes_runtime_info_shape():
     summary = mcp_probe._runtime_info_probe_summary({
         "tool_profile": "full",
