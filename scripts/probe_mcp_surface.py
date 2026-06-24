@@ -62,6 +62,17 @@ def _parse_json_object(raw_json: str | None, *, label: str) -> dict[str, Any] | 
     return parsed
 
 
+def _merge_required_plan_fields(
+    require_default_fields: bool,
+    custom_fields: list[str] | None,
+) -> tuple[str, ...]:
+    fields: list[str] = []
+    if require_default_fields:
+        fields.extend(PLAN_REQUIRED_FIELDS)
+    fields.extend(custom_fields or [])
+    return tuple(dict.fromkeys(field.strip() for field in fields if field.strip()))
+
+
 def _tool_text_response(response: dict[str, Any]) -> str:
     if "error" in response:
         raise RuntimeError(json.dumps(response["error"], ensure_ascii=False))
@@ -76,7 +87,10 @@ def _tool_text_response(response: dict[str, Any]) -> str:
     raise RuntimeError("tools/call response did not include text content")
 
 
-def _scenario_plan_probe_summary(plan: dict[str, Any]) -> dict[str, Any]:
+def _scenario_plan_probe_summary(
+    plan: dict[str, Any],
+    field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
+) -> dict[str, Any]:
     simulation_state_summary = plan.get("simulation_state_summary")
     if not isinstance(simulation_state_summary, dict):
         simulation_state_summary = {}
@@ -90,7 +104,7 @@ def _scenario_plan_probe_summary(plan: dict[str, Any]) -> dict[str, Any]:
         "scenario_id": plan.get("scenario_id"),
         "total_steps": plan.get("total_steps"),
         "required_fields_present": {
-            field: field in plan for field in PLAN_REQUIRED_FIELDS
+            field: field in plan for field in field_names
         },
         "play_state_missing_count": simulation_state_summary.get(
             "play_state_missing_count"
@@ -106,7 +120,7 @@ async def probe(
     workspace: Path | None = None,
     scenario_plan: str | None = None,
     input_overrides: dict[str, Any] | None = None,
-    require_plan_fields: bool = False,
+    required_plan_fields: tuple[str, ...] = (),
 ) -> int:
     if workspace is None:
         command, cwd, extra_env = _default_stdio_entry()
@@ -201,18 +215,18 @@ async def probe(
         plan_resp = await recv()
         plan_text = _tool_text_response(plan_resp)
         plan = json.loads(plan_text)
-        plan_summary = _scenario_plan_probe_summary(plan)
+        summary_fields = required_plan_fields or PLAN_REQUIRED_FIELDS
+        plan_summary = _scenario_plan_probe_summary(plan, summary_fields)
         print("\n=== scenario_plan smoke ===")
         print(json.dumps(plan_summary, indent=2, ensure_ascii=False))
         missing_fields = [
             field
-            for field, present in plan_summary["required_fields_present"].items()
-            if not present
+            for field in required_plan_fields
+            if field not in plan
         ]
         if missing_fields:
             print("missing required plan fields: " + ", ".join(missing_fields))
-            if require_plan_fields:
-                exit_status = 1
+            exit_status = 1
 
     proc.stdin.close()
     try:
@@ -256,6 +270,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Exit non-zero if scenario_plan is missing simulation-state plan fields.",
     )
+    parser.add_argument(
+        "--require-plan-field",
+        action="append",
+        default=[],
+        help=(
+            "Additional top-level scenario_plan field required for success; "
+            "can be repeated."
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         input_overrides = _parse_json_object(
@@ -265,12 +288,16 @@ def main(argv: list[str] | None = None) -> int:
     except (TypeError, ValueError, json.JSONDecodeError) as exc:
         print(f"Invalid probe option: {exc}")
         return 2
+    required_plan_fields = _merge_required_plan_fields(
+        args.require_plan_fields,
+        args.require_plan_field,
+    )
     return asyncio.run(
         probe(
             workspace=args.workspace,
             scenario_plan=args.scenario_plan,
             input_overrides=input_overrides,
-            require_plan_fields=args.require_plan_fields,
+            required_plan_fields=required_plan_fields,
         )
     )
 

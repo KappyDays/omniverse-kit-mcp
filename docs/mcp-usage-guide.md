@@ -162,6 +162,9 @@ Use `scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)` when you need
 the read-only sync/search/resolve/get catalog diagnostic chain; its
 `stage_mutation_summary.read_only` should be `true` and `stage_mutation_steps`
 should be empty.
+If first-class live tools are not exposed in the parent host, the same
+workspace-local stdio probe can preflight the plan shape without stage mutation:
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --scenario-plan smoke/official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps`.
 After validation, compare JSON `evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
 `diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or

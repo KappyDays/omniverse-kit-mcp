@@ -328,6 +328,35 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
     }
 
 
+def test_mcp_probe_summarizes_custom_plan_fields():
+    summary = mcp_probe._scenario_plan_probe_summary(
+        {
+            "scenario_id": "official_asset_verify_live",
+            "diagnostic_steps": [],
+            "evidence_steps": [{"id": "verify_stage_probe"}],
+        },
+        ("diagnostic_steps", "evidence_steps", "stage_mutation_steps"),
+    )
+
+    assert summary["required_fields_present"] == {
+        "diagnostic_steps": True,
+        "evidence_steps": True,
+        "stage_mutation_steps": False,
+    }
+
+
+def test_mcp_probe_merges_default_and_custom_required_plan_fields():
+    assert mcp_probe._merge_required_plan_fields(
+        True,
+        ["evidence_steps", "simulation_state_summary", ""],
+    ) == (
+        "simulation_state_summary",
+        "simulation_state_steps",
+        "timeline_control_steps",
+        "evidence_steps",
+    )
+
+
 def test_mcp_probe_rejects_non_object_input_overrides():
     with pytest.raises(ValueError, match="must decode to a JSON object"):
         mcp_probe._parse_json_object("[1]", label="--input-overrides-json")
