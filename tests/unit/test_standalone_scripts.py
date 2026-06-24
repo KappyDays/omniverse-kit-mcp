@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.probe_mcp_surface as mcp_probe
 import scripts.run_process_module_standalone as process_script
 import scripts.run_scenario_standalone as scenario_script
 from omniverse_kit_mcp.config import AppConfig, ScenarioConfig
@@ -251,3 +252,82 @@ def test_scenario_standalone_rejects_non_object_input_overrides(capsys):
 
     assert exit_code == 2
     assert "must decode to a JSON object" in capsys.readouterr().err
+
+
+def test_mcp_probe_loads_workspace_stdio_entry(tmp_path):
+    workspace = tmp_path / "workspaces" / "isaac" / "instance-1"
+    workspace.mkdir(parents=True)
+    (workspace / ".mcp.json").write_text(
+        json.dumps({
+            "mcpServers": {
+                "isaacsim-mcp-1": {
+                    "type": "stdio",
+                    "command": "cmd",
+                    "args": [
+                        "/c",
+                        "uv",
+                        "--directory",
+                        "../../..",
+                        "run",
+                        "--no-sync",
+                        "omniverse-kit-mcp",
+                    ],
+                    "env": {
+                        "ISAAC_MCP_APP_PROFILE": "isaac-sim",
+                        "ISAAC_MCP_INSTANCE_ID": "1",
+                    },
+                },
+            },
+        }),
+        encoding="utf-8",
+    )
+
+    command, cwd, env = mcp_probe._load_workspace_stdio_entry(workspace)
+
+    assert command == [
+        "cmd",
+        "/c",
+        "uv",
+        "--directory",
+        "../../..",
+        "run",
+        "--no-sync",
+        "omniverse-kit-mcp",
+    ]
+    assert cwd == workspace
+    assert env == {
+        "ISAAC_MCP_APP_PROFILE": "isaac-sim",
+        "ISAAC_MCP_INSTANCE_ID": "1",
+    }
+
+
+def test_mcp_probe_summarizes_scenario_plan_shape():
+    summary = mcp_probe._scenario_plan_probe_summary({
+        "scenario_id": "robot_rtx_sensor_golden_workflow",
+        "total_steps": 23,
+        "simulation_state_summary": {
+            "play_state_missing_count": 0,
+            "requires_play_count": 2,
+        },
+        "simulation_state_steps": [{"id": "attach_top_lidar"}],
+        "timeline_control_steps": [{"id": "play_for_sensor_data"}],
+    })
+
+    assert summary == {
+        "scenario_id": "robot_rtx_sensor_golden_workflow",
+        "total_steps": 23,
+        "required_fields_present": {
+            "simulation_state_summary": True,
+            "simulation_state_steps": True,
+            "timeline_control_steps": True,
+        },
+        "play_state_missing_count": 0,
+        "requires_play_count": 2,
+        "simulation_state_step_count": 1,
+        "timeline_control_step_count": 1,
+    }
+
+
+def test_mcp_probe_rejects_non_object_input_overrides():
+    with pytest.raises(ValueError, match="must decode to a JSON object"):
+        mcp_probe._parse_json_object("[1]", label="--input-overrides-json")

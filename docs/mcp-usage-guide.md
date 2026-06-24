@@ -89,6 +89,10 @@ proof rows, and `retry_steps` for retry gates.
 After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
 inspect the same plan shape before restarting a cached MCP host.
+If first-class live tools are not exposed in the current parent host, use
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --require-plan-fields`
+to smoke the workspace-local stdio MCP entry and confirm the plan field shape
+without stage mutation.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the
 default standalone report remains raw JSON+Markdown for local triage.
