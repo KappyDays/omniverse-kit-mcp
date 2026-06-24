@@ -927,6 +927,8 @@ def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, A
             "empty_reason",
             data_summary.get("empty_reason", diagnostics.get("empty_reason")),
         ),
+        ("diagnostics.num_points", diagnostics.get("num_points")),
+        ("diagnostics.min_points", diagnostics.get("min_points")),
         (
             "suggested_next",
             data_summary.get("suggested_next", diagnostics.get("suggested_next")),

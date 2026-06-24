@@ -2500,6 +2500,8 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
     assert lidar_report["retry_failures"][0]["diagnostic_next_actions"] == {
         "diagnostics.reason": "point_count_below_minimum",
         "empty_reason": "empty_scan_buffer",
+        "diagnostics.num_points": 0,
+        "diagnostics.min_points": 1,
         "suggested_next": "step more frames and retry idempotently",
         "diagnostics.fallback_tool_order": [
             "simulation_step",
@@ -2522,6 +2524,8 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "attempt": 1,
         "diagnostics.reason": "point_count_below_minimum",
         "empty_reason": "empty_scan_buffer",
+        "diagnostics.num_points": 0,
+        "diagnostics.min_points": 1,
         "suggested_next": "step more frames and retry idempotently",
         "diagnostics.fallback_tool_order": [
             "simulation_step",
@@ -2565,6 +2569,8 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
         "- `read_lidar attempt 1`: "
         "diagnostics.reason=point_count_below_minimum; "
         "empty_reason=empty_scan_buffer; "
+        "diagnostics.num_points=0; "
+        "diagnostics.min_points=1; "
         "suggested_next=step more frames and retry idempotently; "
         "diagnostics.fallback_tool_order=[simulation_step, "
         "sensor_lidar_get_point_cloud, extension_capture_logs]; "
@@ -2646,6 +2652,8 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
 
     expected_action = {
         "diagnostics.reason": "point_count_below_minimum",
+        "diagnostics.num_points": 2,
+        "diagnostics.min_points": 4,
         "suggested_next": [
             "Step more simulation frames before retrying the lidar read.",
             "Lower min_points only for bounded diagnostics if the scan is "
@@ -2708,6 +2716,7 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
         result for result in report["step_results"]
         if result["step_id"] == "read_lidar"
     )
+    assert lidar_report["diagnostic_next_actions"] == expected_action
     for failure in lidar_report["retry_failures"]:
         assert failure["diagnostic_next_actions"] == expected_action
         assert failure["data_summary"]["diagnostics"]["num_points"] == 2
@@ -2754,8 +2763,16 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
     ) in markdown
     assert '"reason":"point_count_below_minimum"' in markdown
     assert '"min_points":4' in markdown
-    assert "- `read_lidar`: diagnostics.reason=point_count_below_minimum" in markdown
-    assert "- `read_lidar attempt 3`: diagnostics.reason=point_count_below_minimum" in markdown
+    assert (
+        "- `read_lidar`: diagnostics.reason=point_count_below_minimum; "
+        "diagnostics.num_points=2; diagnostics.min_points=4"
+    ) in markdown
+    assert (
+        "- `read_lidar attempt 3`: diagnostics.reason=point_count_below_minimum; "
+        "diagnostics.num_points=2; diagnostics.min_points=4"
+    ) in markdown
+    assert "diagnostics.num_points=2" in markdown
+    assert "diagnostics.min_points=4" in markdown
     assert "diagnostics.cached_lidar_instance=True" in markdown
 
 
