@@ -328,6 +328,38 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
     }
 
 
+def test_mcp_probe_summarizes_runtime_info_shape():
+    summary = mcp_probe._runtime_info_probe_summary({
+        "tool_profile": "full",
+        "app_profile": "isaac-sim",
+        "tool_count": 152,
+        "registered_tool_count": 152,
+        "omitted_tool_count": 0,
+        "included_groups": {"Scenario": 3, "Robot": 8},
+        "omitted_tools": [],
+        "custom_include_tokens": [],
+        "custom_exclude_tokens": [],
+        "source_newer_than_import": False,
+        "restart_required_for_latest_mcp_code": False,
+        "has_mcp_runtime_info_tool": True,
+    })
+
+    assert summary == {
+        "tool_profile": "full",
+        "app_profile": "isaac-sim",
+        "tool_count": 152,
+        "registered_tool_count": 152,
+        "omitted_tool_count": 0,
+        "included_group_count": 2,
+        "omitted_tool_list_count": 0,
+        "custom_include_tokens": [],
+        "custom_exclude_tokens": [],
+        "source_newer_than_import": False,
+        "restart_required_for_latest_mcp_code": False,
+        "has_mcp_runtime_info_tool": True,
+    }
+
+
 def test_mcp_probe_summarizes_custom_plan_fields():
     summary = mcp_probe._scenario_plan_probe_summary(
         {

@@ -2,7 +2,8 @@
 
 By default this lists tools/resources from a fresh local server. Pass
 ``--workspace workspaces/isaac/instance-1`` to spawn the same workspace-local
-stdio entry used by Codex/Claude Code, and ``--scenario-plan`` to verify that a
+stdio entry used by Codex/Claude Code, ``--runtime-info`` to confirm the active
+tool/app profile and import freshness, and ``--scenario-plan`` to verify that a
 scenario plan payload exposes the expected preflight fields without mutating a
 live stage.
 """
@@ -87,6 +88,31 @@ def _tool_text_response(response: dict[str, Any]) -> str:
     raise RuntimeError("tools/call response did not include text content")
 
 
+def _runtime_info_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    included_groups = payload.get("included_groups")
+    omitted_tools = payload.get("omitted_tools")
+    return {
+        "tool_profile": payload.get("tool_profile"),
+        "app_profile": payload.get("app_profile"),
+        "tool_count": payload.get("tool_count"),
+        "registered_tool_count": payload.get("registered_tool_count"),
+        "omitted_tool_count": payload.get("omitted_tool_count"),
+        "included_group_count": len(included_groups)
+        if isinstance(included_groups, dict)
+        else None,
+        "omitted_tool_list_count": len(omitted_tools)
+        if isinstance(omitted_tools, list)
+        else None,
+        "custom_include_tokens": payload.get("custom_include_tokens"),
+        "custom_exclude_tokens": payload.get("custom_exclude_tokens"),
+        "source_newer_than_import": payload.get("source_newer_than_import"),
+        "restart_required_for_latest_mcp_code": payload.get(
+            "restart_required_for_latest_mcp_code"
+        ),
+        "has_mcp_runtime_info_tool": payload.get("has_mcp_runtime_info_tool"),
+    }
+
+
 def _scenario_plan_probe_summary(
     plan: dict[str, Any],
     field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
@@ -118,6 +144,7 @@ def _scenario_plan_probe_summary(
 async def probe(
     *,
     workspace: Path | None = None,
+    runtime_info: bool = False,
     scenario_plan: str | None = None,
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
@@ -195,10 +222,29 @@ async def probe(
         print(f"  {mark} {uri}")
 
     exit_status = 0
+    next_id = 4
+    if runtime_info:
+        await send({
+            "jsonrpc": "2.0",
+            "id": next_id,
+            "method": "tools/call",
+            "params": {
+                "name": "mcp_runtime_info",
+                "arguments": {},
+            },
+        })
+        next_id += 1
+        runtime_resp = await recv()
+        runtime_text = _tool_text_response(runtime_resp)
+        runtime_payload = json.loads(runtime_text)
+        runtime_summary = _runtime_info_probe_summary(runtime_payload)
+        print("\n=== mcp_runtime_info smoke ===")
+        print(json.dumps(runtime_summary, indent=2, ensure_ascii=False))
+
     if scenario_plan is not None:
         await send({
             "jsonrpc": "2.0",
-            "id": 4,
+            "id": next_id,
             "method": "tools/call",
             "params": {
                 "name": "scenario_plan",
@@ -258,6 +304,11 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--runtime-info",
+        action="store_true",
+        help="Call mcp_runtime_info and print a compact profile/freshness summary.",
+    )
+    parser.add_argument(
         "--scenario-plan",
         help="Call scenario_plan for this scenario path after tools/resources smoke.",
     )
@@ -295,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
     return asyncio.run(
         probe(
             workspace=args.workspace,
+            runtime_info=args.runtime_info,
             scenario_plan=args.scenario_plan,
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
