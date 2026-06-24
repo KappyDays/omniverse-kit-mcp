@@ -58,7 +58,9 @@ If it fails, read `diagnostic_next_actions` for `diagnostics.reason`,
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
-`extension_clear_logs` -> `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
+`scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
+`scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)` ->
+`extension_clear_logs` ->
 `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
 `scenario_last_report(report_format="markdown")` or
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
@@ -93,9 +95,9 @@ After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
 inspect the same plan shape before restarting a cached MCP host.
 If first-class live tools are not exposed in the current parent host, use
-`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --require-plan-fields`
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --require-plan-fields --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs`
 to smoke the workspace-local stdio MCP entry, confirm profile/import freshness,
-and confirm the plan field shape plus live checklist order without stage
+and confirm the plan field shape plus exact live checklist order without stage
 mutation.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the
@@ -151,12 +153,12 @@ them as the compact proof row for `scenario_validate(smoke/official_asset_verify
 
 Official asset scenario proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
-`extension_clear_logs` -> `scenario_plan(smoke/official_asset_verify_live.yaml)` ->
+`scenario_plan(smoke/official_asset_verify_live.yaml)` ->
+`scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)` ->
+`extension_clear_logs` ->
 `scenario_validate(smoke/official_asset_verify_live.yaml)` ->
-`scenario_last_report(report_format="json", redact_local_paths=true)` ->
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
-`extension_capture_logs(level="WARN")` and
-`extension_capture_logs(level="ERROR")`.
+`extension_capture_logs(level="WARN", stop_after_capture=true)`.
 Before live execution, confirm `scenario_plan.stage_mutation_summary.read_only=false`,
 `scenario_plan.stage_mutation_steps` includes the
 `official_asset_verify_stage_probe` verify row, `scenario_plan.evidence_steps`
@@ -166,10 +168,20 @@ Use `scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)` when you need
 the read-only sync/search/resolve/get catalog diagnostic chain; its
 `stage_mutation_summary.read_only` should be `true` and `stage_mutation_steps`
 should be empty.
+Read-only catalog diagnostics wrapper:
+`mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
+`scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)` ->
+`extension_clear_logs` ->
+`scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)` ->
+`scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
+`extension_capture_logs(level="WARN", stop_after_capture=true)`.
 If first-class live tools are not exposed in the parent host, the same
 workspace-local stdio probe can preflight the plan shape without stage mutation:
-`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke/official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps`.
-After validation, compare JSON `evidence_summary[]` with that plan row and check
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke/official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs`.
+For the read-only catalog diagnostics path, use
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs`.
+After validation, request redacted JSON when you need exact fields; compare
+`evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
 `diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or
 exception failures, also check `diagnostics.error_type` before deciding whether

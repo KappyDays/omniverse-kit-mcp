@@ -68,12 +68,11 @@ frames_to_wait=180, min_points=${variables.lidar_min_points} default 1,
 fail_on_warning=true) -> pause ->
 viewport.frame_prims -> viewport.capture_assert -> cleanup`.
 
-Live proof wrapper: `mcp_runtime_info -> kit_app_start ->
-simulation_get_status -> extension_clear_logs ->
+Live proof wrapper: `mcp_runtime_info -> kit_app_start -> simulation_get_status ->
 scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
+scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true) -> extension_clear_logs ->
 scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
-scenario_last_report(report_format="markdown", redact_local_paths=true) ->
-extension_capture_logs`.
+scenario_last_report(report_format="markdown", redact_local_paths=true) -> extension_capture_logs`.
 Before stage mutation, `scenario_plan` or
 `scenario_validate(..., dry_run=true)` must expose matching `phase_counts`,
 `stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`,
@@ -85,6 +84,8 @@ Check `stage_mutation_steps` against the scratch/test stage boundary,
 `simulation_state_summary.play_state_missing_count` before robot/sensor actions,
 and
 `retry_steps[].key_args` so lidar thresholds match the intended proof.
+The dry-run `scenario_validate` belongs before `extension_clear_logs`; clear logs immediately
+before the mutating validation run so captured WARN/ERRORs belong to the proof itself.
 For controlled failure diagnostics, pass the same
 `input_overrides={"lidar_min_points": 513}` to `scenario_plan` and
 `scenario_validate`; this should fail only `read_lidar_point_cloud`, preserve

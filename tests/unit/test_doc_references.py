@@ -230,8 +230,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "mcp_runtime_info",
         "kit_app_start",
         "simulation_get_status",
-        "extension_clear_logs",
         "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)",
+        "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)",
+        "extension_clear_logs",
         "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)",
         'scenario_last_report(report_format="markdown")',
         'scenario_last_report(report_format="markdown", redact_local_paths=true)',
@@ -253,6 +254,33 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "extension_capture_logs" in invariant
     assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
+    invariant_start = invariant.index("Live proof wrapper:")
+    invariant_end = invariant.index("Before stage mutation", invariant_start)
+    invariant_wrapper = invariant[invariant_start:invariant_end]
+    invariant_sequence = [
+        token
+        for token in sequence
+        if token != 'scenario_last_report(report_format="markdown")'
+    ]
+    invariant_positions = [
+        invariant_wrapper.find(token) for token in invariant_sequence
+    ]
+    invariant_missing = [
+        token for token, pos in zip(invariant_sequence, invariant_positions) if pos < 0
+    ]
+    assert not invariant_missing, (
+        "scenario-validation.md missing robot+RTX wrapper tokens: "
+        + ", ".join(invariant_missing)
+    )
+    assert invariant_positions == sorted(invariant_positions), (
+        "Robot + RTX live proof wrapper is out of order in scenario-validation.md"
+    )
+    assert (
+        "--require-live-validation-tools "
+        "mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,"
+        "scenario_validate,extension_clear_logs,scenario_validate,"
+        "scenario_last_report,extension_capture_logs"
+    ) in wrapper
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
@@ -309,13 +337,12 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "mcp_runtime_info",
         "kit_app_start",
         "simulation_get_status",
-        "extension_clear_logs",
         "scenario_plan(smoke/official_asset_verify_live.yaml)",
+        "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)",
+        "extension_clear_logs",
         "scenario_validate(smoke/official_asset_verify_live.yaml)",
-        'scenario_last_report(report_format="json", redact_local_paths=true)',
         'scenario_last_report(report_format="markdown", redact_local_paths=true)',
-        'extension_capture_logs(level="WARN")',
-        'extension_capture_logs(level="ERROR")',
+        'extension_capture_logs(level="WARN", stop_after_capture=true)',
     ]
 
     start = guide.index("Official asset scenario proof wrapper:")
@@ -347,6 +374,46 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "diagnostics.error_type" in wrapper
     assert "redacted JSON" in wrapper
     assert "redacted Markdown" in wrapper
+    read_only_sequence = [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)",
+        "extension_clear_logs",
+        "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)",
+        'scenario_last_report(report_format="markdown", redact_local_paths=true)',
+        'extension_capture_logs(level="WARN", stop_after_capture=true)',
+    ]
+    read_only_start = wrapper.index("Read-only catalog diagnostics wrapper:")
+    read_only_wrapper = wrapper[read_only_start:]
+    read_only_positions = [
+        read_only_wrapper.find(token) for token in read_only_sequence
+    ]
+    read_only_missing = [
+        token
+        for token, pos in zip(read_only_sequence, read_only_positions)
+        if pos < 0
+    ]
+    assert not read_only_missing, (
+        "mcp-usage-guide.md missing read-only official asset wrapper tokens: "
+        + ", ".join(read_only_missing)
+    )
+    assert read_only_positions == sorted(read_only_positions), (
+        "Read-only official asset wrapper is out of order in mcp-usage-guide.md"
+    )
+    assert (
+        "--require-live-validation-tools "
+        "mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,"
+        "scenario_validate,extension_clear_logs,scenario_validate,"
+        "scenario_last_report,extension_capture_logs"
+    ) in wrapper
+    assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
+    assert (
+        "--require-live-validation-tools "
+        "mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,"
+        "extension_clear_logs,scenario_validate,scenario_last_report,"
+        "extension_capture_logs"
+    ) in wrapper
 
 
 def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
