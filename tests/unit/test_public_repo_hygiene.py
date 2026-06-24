@@ -702,6 +702,62 @@ def test_public_hygiene_script_flags_labeled_process_id_number_history(
     assert "<sensitive-id:process_id_number>" in finding["sample"]
 
 
+def test_public_hygiene_script_flags_labeled_process_id_in_python_history(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test User")
+
+    (repo / "fixture.py").write_text("PUBLIC_REPORT = 'baseline'\n", encoding="utf-8")
+    _commit_all(repo, "baseline")
+
+    leaked_id = "4242"
+    (repo / "fixture.py").write_text(
+        f'PUBLIC_REPORT = "pid={leaked_id}"\n',
+        encoding="utf-8",
+    )
+    _commit_all(repo, "python source process id leak")
+
+    (repo / "fixture.py").write_text(
+        'PUBLIC_REPORT = "pid=<process-id>"\n',
+        encoding="utf-8",
+    )
+    _commit_all(repo, "redact process id")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PROJECT / "scripts" / "review_public_hygiene.py"),
+            "--project",
+            str(repo),
+            "--base",
+            "HEAD~2",
+            "--head",
+            "HEAD",
+            "--format",
+            "json",
+            "--redact-samples",
+        ],
+        text=True,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert result.returncode == 1
+    payload = json.loads(result.stdout)
+    assert payload["finding_count"] == 1
+    finding = payload["findings"][0]
+    assert finding["source"] == "history-added-line"
+    assert finding["label"] == "process_id_number"
+    assert "fixture.py" in finding["detail"]
+    assert leaked_id not in finding["sample"]
+    assert "<sensitive-id:process_id_number>" in finding["sample"]
+
+
 def test_public_hygiene_script_flags_untracked_local_paths(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
