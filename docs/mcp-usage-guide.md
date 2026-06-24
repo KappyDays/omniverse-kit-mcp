@@ -120,7 +120,8 @@ artifact paths look like `<validation-api-capture>/capture_<id>.png`, and run
 the public hygiene checks.
 When retrying RTX lidar reads, preserve `retry_failures[].data_summary` fields
 such as `diagnostics.cached_lidar_instance` and
-`diagnostics.readback_paths_attempted` in evidence notes.
+`diagnostics.readback_paths_attempted` in evidence notes; retry-root
+`Diagnostic Next Actions` also surfaces them for quick triage.
 
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.candidate_counts`,

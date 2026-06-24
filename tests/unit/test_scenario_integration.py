@@ -2510,6 +2510,7 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
             "cached_lidar_sensor",
             "replicator_annotator",
         ],
+        "diagnostics.cached_lidar_instance": True,
     }
     assert report["diagnostic_next_actions"] == [{
         "step_id": "read_lidar",
@@ -2531,6 +2532,7 @@ async def test_scenario_runner_retries_transient_lidar_read_failure():
             "cached_lidar_sensor",
             "replicator_annotator",
         ],
+        "diagnostics.cached_lidar_instance": True,
     }]
     markdown = to_markdown(summary)
     assert "| Step | Phase | Status | Attempts | Duration | Message |" in markdown
@@ -2657,6 +2659,7 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
             "extension_capture_logs",
         ],
         "diagnostics.readback_paths_attempted": ["cached_lidar_sensor"],
+        "diagnostics.cached_lidar_instance": True,
     }
     report = json.loads(to_json(summary))
     assert len(report["failure_summary"]) == 1
@@ -2753,6 +2756,7 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
     assert '"min_points":4' in markdown
     assert "- `read_lidar`: diagnostics.reason=point_count_below_minimum" in markdown
     assert "- `read_lidar attempt 3`: diagnostics.reason=point_count_below_minimum" in markdown
+    assert "diagnostics.cached_lidar_instance=True" in markdown
 
 
 @pytest.mark.asyncio

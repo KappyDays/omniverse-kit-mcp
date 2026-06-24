@@ -936,6 +936,10 @@ def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, A
             "diagnostics.readback_paths_attempted",
             diagnostics.get("readback_paths_attempted"),
         ),
+        (
+            "diagnostics.cached_lidar_instance",
+            diagnostics.get("cached_lidar_instance"),
+        ),
         ("diagnostics.failure_codes", diagnostics.get("failure_codes")),
         (
             "diagnostics.pixel_mean_average",
