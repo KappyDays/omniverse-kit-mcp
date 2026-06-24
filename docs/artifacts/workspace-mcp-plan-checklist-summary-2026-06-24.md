@@ -44,6 +44,17 @@ before mutating a stage.
     `extension_capture_logs`
   - `scratch_stage_required`: `true`
   - `log_capture_recommended`: `true`
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\robot_rtx_sensor_golden_workflow.yaml --input-overrides-json '{"lidar_min_points":513}' --require-plan-fields --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`
+  - passed
+  - `scenario_plan` target: `robot_rtx_sensor_golden_workflow`
+  - `total_steps`: `32`
+  - `play_state_missing_count`: `0`
+  - `requires_play_count`: `2`
+  - `live_validation_step_count`: `9`
+  - `scratch_stage_required`: `true`
+  - `log_capture_recommended`: `true`
+  - This confirms the parent-side controlled lidar failure plan uses the same
+    live checklist and scratch/log flags before any stage mutation.
 - `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`
   - passed
   - `live_validation_step_count`: `9`

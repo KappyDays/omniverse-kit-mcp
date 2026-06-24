@@ -332,6 +332,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         in invariant
     )
     assert "scenario_last_report(markdown)" not in invariant
+    assert "--input-overrides-json '{\"lidar_min_points\":513}'" in guide
+    assert "it still calls only `scenario_plan`" in guide
 
 
 def test_f3b_robot_rtx_public_evidence_redaction_guidance():
