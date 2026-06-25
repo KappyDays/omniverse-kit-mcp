@@ -532,6 +532,25 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert "without exposing the local workspace root" in guide
 
 
+def test_f3b_workspace_live_probe_commands_keep_dry_run_gate():
+    offenders: list[str] = []
+    command_re = re.compile(r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`")
+    for md in sorted((PROJECT / "docs").rglob("*.md")):
+        text = md.read_text(encoding="utf-8")
+        for command in command_re.findall(text):
+            if (
+                "--workspace" in command
+                and "--scenario-validate-live" in command
+                and "--scenario-validate-dry-run" not in command
+            ):
+                offenders.append(f"{md.relative_to(PROJECT)}: {command}")
+
+    assert not offenders, (
+        "workspace live probe commands must keep --scenario-validate-dry-run:\n  "
+        + "\n  ".join(offenders[:20])
+    )
+
+
 def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
     artifact = (
         PROJECT / "docs" / "artifacts" / "probe-assertion-durable-docs-e2e-2026-06-25.md"
