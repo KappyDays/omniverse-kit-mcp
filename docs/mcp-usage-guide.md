@@ -87,11 +87,14 @@ Robot + RTX live proof wrapper:
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
 `extension_capture_logs`.
 Before validation, check `scenario_plan.phase_counts`, `total_steps`,
-`stage_mutation_summary`, `stage_mutation_steps`, `simulation_state_summary`,
+`preflight_requirements`, `stage_mutation_summary`, `stage_mutation_steps`, `simulation_state_summary`,
 `simulation_state_steps`, `timeline_control_steps`, `evidence_steps`, and
 `retry_steps` so a missing setup, stage/sensor mutation, simulation play gate,
 viewport cleanup, lidar evidence, capture evidence, or idempotent retry gate is
 caught before live stage mutation.
+`preflight_requirements.runtime_info.checks` names the profile/freshness checks,
+and robot-tagged scenarios also require the robot probe unknown-profile typed
+error/fallback contract.
 `scenario_plan.live_validation_checklist.steps` mirrors the wrapper order in a
 machine-readable form; follow it before copying any live result into public
 evidence.
@@ -107,6 +110,7 @@ runner-added safeguards, not YAML.
 `dry_run`, `steps`, and `compiled`, so it is safe as a one-call preflight when
 you are already on the validation tool path. Inspect `diagnostic_steps` for
 read-only official asset catalog/status/search/resolve/get probes,
+`preflight_requirements` for the consolidated runtime/scratch/log/play/retry gates,
 `stage_mutation_summary` for read-only vs scratch-stage routing,
 `stage_mutation_steps` for exact stage/live-scene side effects,
 `simulation_state_summary`/`simulation_state_steps` for R2 play-state gates,

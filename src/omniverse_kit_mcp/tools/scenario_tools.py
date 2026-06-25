@@ -507,6 +507,12 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         simulation_state_steps,
         timeline_control_steps,
     )
+    live_validation_checklist = _plan_live_validation_checklist(
+        stage_mutation_summary=stage_mutation_summary,
+        diagnostic_steps=diagnostic_steps,
+        evidence_steps=evidence_steps,
+        simulation_state_summary=simulation_state_summary,
+    )
     return {
         "scenario_id": scenario.scenario_id,
         "name": scenario.name,
@@ -523,13 +529,15 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         "stage_mutation_steps": stage_mutation_steps,
         "evidence_steps": evidence_steps,
         "retry_steps": retry_steps,
-        "simulation_state_summary": simulation_state_summary,
-        "live_validation_checklist": _plan_live_validation_checklist(
+        "preflight_requirements": _plan_preflight_requirements(
+            scenario_tags=scenario.tags,
             stage_mutation_summary=stage_mutation_summary,
-            diagnostic_steps=diagnostic_steps,
-            evidence_steps=evidence_steps,
             simulation_state_summary=simulation_state_summary,
+            live_validation_checklist=live_validation_checklist,
+            retry_steps=retry_steps,
         ),
+        "simulation_state_summary": simulation_state_summary,
+        "live_validation_checklist": live_validation_checklist,
         "simulation_state_steps": simulation_state_steps,
         "timeline_control_steps": timeline_control_steps,
         "phases": phases,
@@ -752,6 +760,61 @@ def _plan_simulation_state_summary(
         "has_simulation_stop": control_counts.get("stop", 0) > 0,
         "timeline_control_counts": dict(sorted(control_counts.items())),
         "warnings": warnings,
+    }
+
+
+def _plan_preflight_requirements(
+    *,
+    scenario_tags: tuple[str, ...],
+    stage_mutation_summary: dict[str, Any],
+    simulation_state_summary: dict[str, Any],
+    live_validation_checklist: dict[str, Any],
+    retry_steps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    runtime_checks = [
+        "tool_profile",
+        "app_profile",
+        "tool_count",
+        "source_newer_than_import=false",
+        "restart_required_for_latest_mcp_code=false",
+    ]
+    if "robot" in scenario_tags:
+        runtime_checks.extend([
+            "robot_probe_result_has_checks=true",
+            "robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE",
+            (
+                "robot_probe_unknown_profile_error_data_path="
+                "data.checks.probe.evidence"
+            ),
+            "robot_probe_unknown_profile_fallback_tool_order",
+        ])
+    return {
+        "runtime_info": {
+            "required": True,
+            "checks": runtime_checks,
+        },
+        "scratch_stage": {
+            "required": bool(stage_mutation_summary.get("requires_scratch_stage")),
+            "pass_condition": "use scratch/test stage for mutating scenarios",
+        },
+        "log_capture": {
+            "recommended": bool(
+                live_validation_checklist.get("log_capture_recommended")
+            ),
+            "pass_condition": "clear logs before mutating run, capture WARN+ after run",
+        },
+        "simulation_play_gate": {
+            "required": bool(simulation_state_summary.get("requires_play")),
+            "missing_before_required_step_count": (
+                simulation_state_summary.get("play_state_missing_count")
+            ),
+            "pass_condition": "play_state_missing_count == 0",
+        },
+        "retry_gate": {
+            "required": bool(retry_steps),
+            "retry_step_count": len(retry_steps),
+            "pass_condition": "retry_steps[].key_args match intended proof thresholds",
+        },
     }
 
 

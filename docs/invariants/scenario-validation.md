@@ -75,7 +75,7 @@ scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
 scenario_last_report(report_format="markdown", redact_local_paths=true) -> extension_capture_logs`.
 Before stage mutation, `scenario_plan` or
 `scenario_validate(..., dry_run=true)` must expose matching `phase_counts`,
-`stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`,
+`preflight_requirements`, `stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`,
 `evidence_steps`, `retry_steps`, `simulation_state_summary`,
 `simulation_state_steps`, `timeline_control_steps`, and
 `live_validation_checklist`;

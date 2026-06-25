@@ -305,6 +305,18 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
     summary = mcp_probe._scenario_plan_probe_summary({
         "scenario_id": "robot_rtx_sensor_golden_workflow",
         "total_steps": 23,
+        "preflight_requirements": {
+            "runtime_info": {
+                "checks": [
+                    "tool_profile",
+                    "robot_probe_unknown_profile_fallback_tool_order",
+                ],
+            },
+            "scratch_stage": {"required": True},
+            "simulation_play_gate": {
+                "missing_before_required_step_count": 0,
+            },
+        },
         "simulation_state_summary": {
             "play_state_missing_count": 0,
             "requires_play_count": 2,
@@ -335,11 +347,21 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
         "scenario_id": "robot_rtx_sensor_golden_workflow",
         "total_steps": 23,
         "required_fields_present": {
+            "preflight_requirements": True,
             "simulation_state_summary": True,
             "simulation_state_steps": True,
             "timeline_control_steps": True,
             "live_validation_checklist": True,
         },
+        "preflight_requirement_keys": [
+            "runtime_info",
+            "scratch_stage",
+            "simulation_play_gate",
+        ],
+        "preflight_runtime_info_checks": [
+            "tool_profile",
+            "robot_probe_unknown_profile_fallback_tool_order",
+        ],
         "play_state_missing_count": 0,
         "requires_play_count": 2,
         "simulation_state_step_count": 1,
@@ -855,6 +877,7 @@ def test_mcp_probe_merges_default_and_custom_required_plan_fields():
         True,
         ["evidence_steps", "simulation_state_summary", ""],
     ) == (
+        "preflight_requirements",
         "simulation_state_summary",
         "simulation_state_steps",
         "timeline_control_steps",

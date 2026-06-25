@@ -2218,6 +2218,48 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
             },
         }
     ]
+    assert plan["preflight_requirements"] == {
+        "runtime_info": {
+            "required": True,
+            "checks": [
+                "tool_profile",
+                "app_profile",
+                "tool_count",
+                "source_newer_than_import=false",
+                "restart_required_for_latest_mcp_code=false",
+                "robot_probe_result_has_checks=true",
+                (
+                    "robot_probe_unknown_profile_error_code="
+                    "ROBOT_PROBE_UNKNOWN_PROFILE"
+                ),
+                (
+                    "robot_probe_unknown_profile_error_data_path="
+                    "data.checks.probe.evidence"
+                ),
+                "robot_probe_unknown_profile_fallback_tool_order",
+            ],
+        },
+        "scratch_stage": {
+            "required": True,
+            "pass_condition": "use scratch/test stage for mutating scenarios",
+        },
+        "log_capture": {
+            "recommended": True,
+            "pass_condition": "clear logs before mutating run, capture WARN+ after run",
+        },
+        "simulation_play_gate": {
+            "required": True,
+            "missing_before_required_step_count": 0,
+            "pass_condition": "play_state_missing_count == 0",
+        },
+        "retry_gate": {
+            "required": True,
+            "retry_step_count": 1,
+            "pass_condition": (
+                "retry_steps[].key_args match intended proof thresholds"
+            ),
+        },
+    }
     assert plan["simulation_state_summary"] == {
         "requires_play": True,
         "requires_play_count": 2,

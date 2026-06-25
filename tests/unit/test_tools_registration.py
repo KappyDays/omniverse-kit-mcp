@@ -512,6 +512,38 @@ async def test_scenario_validate_dry_run_uses_plan_step_counts(tmp_path):
     assert payload["stage_mutation_steps"] == []
     assert payload["evidence_steps"] == []
     assert payload["retry_steps"] == []
+    assert payload["preflight_requirements"] == {
+        "runtime_info": {
+            "required": True,
+            "checks": [
+                "tool_profile",
+                "app_profile",
+                "tool_count",
+                "source_newer_than_import=false",
+                "restart_required_for_latest_mcp_code=false",
+            ],
+        },
+        "scratch_stage": {
+            "required": False,
+            "pass_condition": "use scratch/test stage for mutating scenarios",
+        },
+        "log_capture": {
+            "recommended": False,
+            "pass_condition": "clear logs before mutating run, capture WARN+ after run",
+        },
+        "simulation_play_gate": {
+            "required": False,
+            "missing_before_required_step_count": 0,
+            "pass_condition": "play_state_missing_count == 0",
+        },
+        "retry_gate": {
+            "required": False,
+            "retry_step_count": 0,
+            "pass_condition": (
+                "retry_steps[].key_args match intended proof thresholds"
+            ),
+        },
+    }
     assert payload["live_validation_checklist"]["scratch_stage_required"] is False
     assert payload["live_validation_checklist"]["log_capture_recommended"] is False
     assert [

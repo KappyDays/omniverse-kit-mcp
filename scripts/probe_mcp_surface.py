@@ -21,6 +21,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PY = str(REPO_ROOT / ".venv" / "Scripts" / "python.exe")
 PLAN_REQUIRED_FIELDS = (
+    "preflight_requirements",
     "simulation_state_summary",
     "simulation_state_steps",
     "timeline_control_steps",
@@ -376,12 +377,23 @@ def _scenario_plan_probe_summary(
         for step in retry_steps
         if isinstance(step, dict)
     ]
+    preflight_requirements = plan.get("preflight_requirements")
+    if not isinstance(preflight_requirements, dict):
+        preflight_requirements = {}
+    runtime_info_requirements = preflight_requirements.get("runtime_info")
+    if not isinstance(runtime_info_requirements, dict):
+        runtime_info_requirements = {}
+    runtime_info_checks = runtime_info_requirements.get("checks")
+    if not isinstance(runtime_info_checks, list):
+        runtime_info_checks = []
     return {
         "scenario_id": plan.get("scenario_id"),
         "total_steps": plan.get("total_steps"),
         "required_fields_present": {
             field: field in plan for field in field_names
         },
+        "preflight_requirement_keys": sorted(preflight_requirements),
+        "preflight_runtime_info_checks": runtime_info_checks,
         "play_state_missing_count": simulation_state_summary.get(
             "play_state_missing_count"
         ),
