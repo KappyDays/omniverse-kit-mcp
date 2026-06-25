@@ -710,6 +710,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
                 "evidence_kind": "visual_capture",
                 "status": "passed",
                 "attempts": 1,
+                "passed": True,
             },
         ],
     }
@@ -862,6 +863,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         expected_live_evidence_fields=(
             ("visual_capture", "status", "passed"),
             ("capture_visible_result", "attempts", 1),
+            ("capture_visible_result", "passed", True),
         ),
         expect_live_cleanup_failures=0,
         expected_live_failure_step_errors=(
@@ -1471,6 +1473,66 @@ def test_mcp_probe_rejects_malformed_live_evidence_field_expectation():
         mcp_probe._parse_expected_live_evidence_fields([
             "official_asset_verify:=load_verified",
         ])
+
+
+def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
+    summary = mcp_probe._scenario_live_report_summary({
+        "evidence_summary": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "evidence_kind": "rtx_lidar_point_cloud",
+                "num_points": 512,
+                "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
+                "frames_waited": 180,
+                "warning": None,
+                "truncated": False,
+            },
+            {
+                "step_id": "frame_robot_and_sensors",
+                "evidence_kind": "viewport_framing",
+                "prim_count": 4,
+                "bbox_empty": False,
+                "camera_path": "/OmniverseKit_Persp",
+            },
+            {
+                "step_id": "capture_visible_result",
+                "evidence_kind": "visual_capture",
+                "capture_path": "<local-capture>/capture.png",
+                "sha256": "abc123",
+                "width": 1280,
+                "height": 720,
+                "passed": True,
+            },
+        ],
+    })
+
+    evidence = {
+        row["step_id"]: row
+        for row in summary["evidence"]
+    }
+    assert evidence["read_lidar_point_cloud"] == {
+        "step_id": "read_lidar_point_cloud",
+        "evidence_kind": "rtx_lidar_point_cloud",
+        "num_points": 512,
+        "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
+        "frames_waited": 180,
+        "warning": None,
+        "truncated": False,
+    }
+    assert evidence["frame_robot_and_sensors"] == {
+        "step_id": "frame_robot_and_sensors",
+        "evidence_kind": "viewport_framing",
+        "prim_count": 4,
+        "bbox_empty": False,
+    }
+    assert evidence["capture_visible_result"] == {
+        "step_id": "capture_visible_result",
+        "evidence_kind": "visual_capture",
+        "sha256": "abc123",
+        "width": 1280,
+        "height": 720,
+        "passed": True,
+    }
 
 
 def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value():

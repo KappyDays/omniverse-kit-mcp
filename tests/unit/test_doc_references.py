@@ -297,6 +297,22 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-live-evidence-kind viewport_framing" in wrapper
     assert "--expect-live-evidence-kind visual_capture" in wrapper
     assert (
+        "--expect-live-evidence-field read_lidar_point_cloud:status=passed"
+        in wrapper
+    )
+    assert (
+        "--expect-live-evidence-field read_lidar_point_cloud:num_points=512"
+        in wrapper
+    )
+    assert (
+        "--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false"
+        in wrapper
+    )
+    assert (
+        "--expect-live-evidence-field capture_visible_result:passed=true"
+        in wrapper
+    )
+    assert (
         "--expect-live-failure-step-error "
         "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
     ) in wrapper
@@ -486,6 +502,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md",
         "docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md",
         "docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md",
+        "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
         "docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md",
     ]
 
@@ -497,6 +514,22 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         assert "local absolute" in text or "No raw local capture path" in text
         assert "worker/thread ID" in text or "worker/thread IDs" in text
         assert "secret" in text or "secrets" in text
+
+    field_artifact = (
+        PROJECT
+        / "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert "`--expect-live-evidence-field read_lidar_point_cloud:num_points=512`" in (
+        field_artifact
+    )
+    assert (
+        "`--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false`"
+        in field_artifact
+    )
+    assert (
+        "`--expect-live-evidence-field capture_visible_result:passed=true`"
+        in field_artifact
+    )
 
 
 def test_f3b_official_asset_scenario_proof_wrapper_order():

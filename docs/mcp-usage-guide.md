@@ -135,12 +135,16 @@ parent/root session, rerun the same workspace-local command with
 `--scenario-validate-live`, `--expect-live-cleanup-failures 0`,
 `--expect-live-evidence-kind rtx_lidar_point_cloud`,
 `--expect-live-evidence-kind viewport_framing`, and
-`--expect-live-evidence-kind visual_capture`; the script requires `--workspace`,
+`--expect-live-evidence-kind visual_capture`, plus
+`--expect-live-evidence-field read_lidar_point_cloud:status=passed`,
+`--expect-live-evidence-field read_lidar_point_cloud:num_points=512`,
+`--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false`, and
+`--expect-live-evidence-field capture_visible_result:passed=true`; the script requires `--workspace`,
 `--scenario-plan`, and `--scenario-validate-dry-run`, then follows the wrapper
 order through `kit_app_start`, `simulation_get_status`, `extension_clear_logs`,
 live `scenario_validate`, redacted Markdown `scenario_last_report`, and
 `extension_capture_logs` while failing if the live report loses required
-evidence rows or cleanup preservation.
+evidence rows, expected evidence field values, or cleanup preservation.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the
 default standalone report remains raw JSON+Markdown for local triage.
@@ -182,6 +186,8 @@ are `docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md` and
 `docs/artifacts/robot-rtx-controlled-failure-wrapper-refresh-2026-06-25.md`.
 The live probe assertion options are verified in
 `docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md`; the
+Robot + RTX field-level live evidence assertions are verified in
+`docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md`; the
 controlled-failure step/error-code assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
