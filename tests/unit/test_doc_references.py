@@ -849,6 +849,26 @@ def test_f3b_workspace_live_probe_commands_keep_dry_run_gate():
     )
 
 
+def test_f3b_workspace_live_probe_commands_pin_status_gate():
+    offenders: list[str] = []
+    command_re = re.compile(r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`")
+    for md in sorted((PROJECT / "docs").rglob("*.md")):
+        text = md.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            for command in command_re.findall(line):
+                if (
+                    "..." not in command
+                    and "--scenario-validate-live" in command
+                    and "--expect-live-status" not in command
+                ):
+                    offenders.append(f"{md.relative_to(PROJECT)}: {command}")
+
+    assert not offenders, (
+        "workspace live probe commands must pin --expect-live-status:\n  "
+        + "\n  ".join(offenders[:20])
+    )
+
+
 def test_f3b_artifact_probe_commands_parse(monkeypatch):
     command_re = re.compile(r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`")
     commands_by_artifact: dict[Path, list[str]] = {}
