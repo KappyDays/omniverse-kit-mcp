@@ -217,6 +217,44 @@ async def test_capture_assert_fails_blank_frame():
 
 
 @pytest.mark.asyncio
+async def test_capture_assert_surfaces_capture_error_diagnostics():
+    class BrokenCaptureClient:
+        async def viewport_capture(self, _req):
+            raise RuntimeError("viewport unavailable")
+
+    module = ViewportModule(BrokenCaptureClient())  # type: ignore[arg-type]
+    request = ViewportCaptureAssertRequest(min_mean=8.0, min_variance=1.0)
+    result = await module.capture_assert(_meta(), request)
+
+    assert result.ok is False
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_CAPTURE_ERROR"
+    assert isinstance(result.data, ViewportCaptureAssertResult)
+    assert result.data.passed is False
+    assert result.data.artifact is None
+    assert result.data.failure_codes == ("VIEWPORT_CAPTURE_ERROR",)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "capture_error"
+    assert diagnostics["failure_codes"] == ["VIEWPORT_CAPTURE_ERROR"]
+    assert diagnostics["upstream_error_code"] == "VIEWPORT_CAPTURE_ERROR"
+    assert diagnostics["upstream_message"] == "viewport unavailable"
+    assert diagnostics["pixel_mean_average"] is None
+    assert diagnostics["pixel_variance_average"] is None
+    assert diagnostics["min_mean"] == 8.0
+    assert diagnostics["min_variance"] == 1.0
+    assert diagnostics["fallback_tool_order"] == [
+        "simulation_get_status",
+        "viewport_frame_prims",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]
+    assert any(
+        "simulation_get_status" in item
+        for item in diagnostics["suggested_next"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_set_render_mode_propagates_client_error():
     class BrokenClient:
         async def viewport_set_render_mode(self, _req):

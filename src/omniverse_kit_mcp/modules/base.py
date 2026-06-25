@@ -56,6 +56,7 @@ def error_result[T](
     started_ms: int,
     error_code: str = "MODULE_ERROR",
     exc: BaseException | None = None,
+    data: T | None = None,
 ) -> ModuleResult[T]:
     """Build an error ModuleResult.
 
@@ -73,7 +74,7 @@ def error_result[T](
     return ModuleResult(
         ok=False,
         status=ExecutionStatus.ERROR,
-        data=None,
+        data=data,
         message=message,
         error_code=error_code,
         duration_ms=int(time.time() * 1000) - started_ms,

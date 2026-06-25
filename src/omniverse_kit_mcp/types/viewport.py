@@ -112,7 +112,7 @@ class ViewportCaptureAssertRequest:
 @dataclass(slots=True, frozen=True)
 class ViewportCaptureAssertResult:
     passed: bool
-    artifact: ImageArtifact
+    artifact: ImageArtifact | None
     pixel_mean_average: float | None
     pixel_variance_average: float | None
     failure_codes: tuple[str, ...]

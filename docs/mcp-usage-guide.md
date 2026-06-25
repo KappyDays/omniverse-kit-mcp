@@ -53,7 +53,9 @@ report-compatible evidence kinds: viewport/window `capture` and viewport
 as nonblank evidence.
 If it fails, read `diagnostic_next_actions` for `diagnostics.reason`,
 `diagnostics.failure_codes`, pixel averages, threshold fields, and
-`diagnostics.fallback_tool_order`; the expected first recovery path is
+`diagnostics.fallback_tool_order`; if the capture itself errors, expect
+`diagnostics.reason=capture_error` and `diagnostics.upstream_error_code` on the
+same recovery path. The expected first recovery path is
 `simulation_get_status` -> `viewport_frame_prims` -> `viewport_capture_assert`
 -> `extension_capture_logs`.
 

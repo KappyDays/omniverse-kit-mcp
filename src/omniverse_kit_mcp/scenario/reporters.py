@@ -89,6 +89,10 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
     ("diagnostics.readback_paths_attempted", (("diagnostics", "readback_paths_attempted"),)),
     ("diagnostics.failure_codes", (("diagnostics", "failure_codes"),)),
     (
+        "diagnostics.upstream_error_code",
+        (("diagnostics", "upstream_error_code"),),
+    ),
+    (
         "diagnostics.pixel_mean_average",
         (("diagnostics", "pixel_mean_average"),),
     ),
@@ -943,6 +947,10 @@ def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, A
             diagnostics.get("cached_lidar_instance"),
         ),
         ("diagnostics.failure_codes", diagnostics.get("failure_codes")),
+        (
+            "diagnostics.upstream_error_code",
+            diagnostics.get("upstream_error_code"),
+        ),
         (
             "diagnostics.pixel_mean_average",
             diagnostics.get("pixel_mean_average"),

@@ -505,7 +505,8 @@ viewport_capture_assert(viewport_name: 'str' = 'Viewport', camera_prim_path: 'st
 ```
 
 Capture the 3D viewport with return_stats=True and fail fast on likely black/blank frames using
-pixel mean/variance thresholds. Lower-stress precheck before visual Read.
+pixel mean/variance thresholds. Includes diagnostics for capture errors and assertion failures
+before visual Read.
 
 **Parameters**
 

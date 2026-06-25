@@ -1191,6 +1191,107 @@ def test_report_promotes_viewport_capture_assert_diagnostics():
     assert "diagnostics.min_variance=1.0" in markdown
 
 
+def test_report_promotes_viewport_capture_error_diagnostics():
+    summary = ScenarioRunSummary(
+        scenario_id="viewport_capture_assert_capture_error",
+        status=ExecutionStatus.ERROR,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="capture_visible_result",
+                phase="assert",
+                status=ExecutionStatus.ERROR,
+                message="viewport unavailable",
+                error_code="VIEWPORT_CAPTURE_ERROR",
+                data_summary={
+                    "passed": False,
+                    "artifact": None,
+                    "pixel_mean_average": None,
+                    "pixel_variance_average": None,
+                    "failure_codes": ["VIEWPORT_CAPTURE_ERROR"],
+                    "diagnostics": {
+                        "reason": "capture_error",
+                        "failure_codes": ["VIEWPORT_CAPTURE_ERROR"],
+                        "upstream_error_code": "VIEWPORT_CAPTURE_ERROR",
+                        "upstream_message": "viewport unavailable",
+                        "pixel_mean_average": None,
+                        "pixel_variance_average": None,
+                        "min_mean": 8.0,
+                        "min_variance": 1.0,
+                        "suggested_next": [
+                            (
+                                "Confirm Isaac Sim is running in GUI mode "
+                                "with simulation_get_status, then retry "
+                                "viewport_capture_assert with warmup_frames > 0."
+                            ),
+                            (
+                                "Frame target prims with viewport_frame_prims "
+                                "and capture WARN/ERROR logs if the retry "
+                                "still fails."
+                            ),
+                        ],
+                        "fallback_tool_order": [
+                            "simulation_get_status",
+                            "viewport_frame_prims",
+                            "viewport_capture_assert",
+                            "extension_capture_logs",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+    step_result = report["step_results"][0]
+
+    assert step_result["diagnostic_next_actions"] == {
+        "diagnostics.reason": "capture_error",
+        "suggested_next": [
+            (
+                "Confirm Isaac Sim is running in GUI mode with "
+                "simulation_get_status, then retry viewport_capture_assert "
+                "with warmup_frames > 0."
+            ),
+            (
+                "Frame target prims with viewport_frame_prims and capture "
+                "WARN/ERROR logs if the retry still fails."
+            ),
+        ],
+        "diagnostics.fallback_tool_order": [
+            "simulation_get_status",
+            "viewport_frame_prims",
+            "viewport_capture_assert",
+            "extension_capture_logs",
+        ],
+        "diagnostics.failure_codes": ["VIEWPORT_CAPTURE_ERROR"],
+        "diagnostics.upstream_error_code": "VIEWPORT_CAPTURE_ERROR",
+        "diagnostics.min_mean": 8.0,
+        "diagnostics.min_variance": 1.0,
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "capture_visible_result",
+        "phase": "assert",
+        "source": "step",
+        "status": "error",
+        "error_code": "VIEWPORT_CAPTURE_ERROR",
+        **step_result["diagnostic_next_actions"],
+    }]
+    assert "## Diagnostic Next Actions" in markdown
+    assert "diagnostics.reason=capture_error" in markdown
+    assert "diagnostics.upstream_error_code=VIEWPORT_CAPTURE_ERROR" in markdown
+    assert (
+        "diagnostics.fallback_tool_order=[simulation_get_status, "
+        "viewport_frame_prims, viewport_capture_assert, extension_capture_logs]"
+    ) in markdown
+
+
 def test_markdown_reports_cleanup_failures_as_non_fatal():
     summary = ScenarioRunSummary(
         scenario_id="cleanup_shape",

@@ -2460,7 +2460,7 @@ def register_module_tools(
         min_mean: float = 8.0,
         min_variance: float = 1.0,
     ) -> str:
-        """Capture the 3D viewport with return_stats=True and fail fast on likely black/blank frames using pixel mean/variance thresholds. Lower-stress precheck before visual Read."""
+        """Capture the 3D viewport with return_stats=True and fail fast on likely black/blank frames using pixel mean/variance thresholds. Includes diagnostics for capture errors and assertion failures before visual Read."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportCaptureAssertRequest(
             viewport_name=viewport_name,

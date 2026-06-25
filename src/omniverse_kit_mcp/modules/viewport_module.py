@@ -41,6 +41,13 @@ from omniverse_kit_mcp.types.viewport import (
 
 logger = logging.getLogger(__name__)
 
+_CAPTURE_ASSERT_FALLBACK_TOOL_ORDER = (
+    "simulation_get_status",
+    "viewport_frame_prims",
+    "viewport_capture_assert",
+    "extension_capture_logs",
+)
+
 
 class ViewportModule:
     def __init__(self, client: IsaacRestClient) -> None:
@@ -453,10 +460,23 @@ class ViewportModule:
             ),
         )
         if capture.data is None:
+            failure_code = capture.error_code or "VIEWPORT_CAPTURE_ERROR"
+            data = ViewportCaptureAssertResult(
+                passed=False,
+                artifact=None,
+                pixel_mean_average=None,
+                pixel_variance_average=None,
+                failure_codes=(failure_code,),
+                diagnostics=_capture_assert_capture_error_diagnostics(
+                    request=request,
+                    capture=capture,
+                ),
+            )
             return error_result(
                 capture.message or "Viewport capture failed",
                 started_ms=started,
                 error_code=capture.error_code or "VIEWPORT_CAPTURE_ASSERT_ERROR",
+                data=data,
             )
 
         artifact = capture.data
@@ -520,12 +540,28 @@ def _capture_assert_diagnostics(
         "min_mean": request.min_mean,
         "min_variance": request.min_variance,
         "suggested_next": _capture_assert_suggested_next(reason),
-        "fallback_tool_order": [
-            "simulation_get_status",
-            "viewport_frame_prims",
-            "viewport_capture_assert",
-            "extension_capture_logs",
-        ],
+        "fallback_tool_order": list(_CAPTURE_ASSERT_FALLBACK_TOOL_ORDER),
+    }
+    return diagnostics
+
+
+def _capture_assert_capture_error_diagnostics(
+    *,
+    request: ViewportCaptureAssertRequest,
+    capture: ModuleResult[ImageArtifact],
+) -> dict[str, JsonValue]:
+    upstream_error_code = capture.error_code or "VIEWPORT_CAPTURE_ERROR"
+    diagnostics: dict[str, JsonValue] = {
+        "reason": "capture_error",
+        "failure_codes": [upstream_error_code],
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": capture.message,
+        "pixel_mean_average": None,
+        "pixel_variance_average": None,
+        "min_mean": request.min_mean,
+        "min_variance": request.min_variance,
+        "suggested_next": _capture_assert_suggested_next("capture_error"),
+        "fallback_tool_order": list(_CAPTURE_ASSERT_FALLBACK_TOOL_ORDER),
     }
     return diagnostics
 
@@ -551,6 +587,13 @@ def _capture_assert_suggested_next(reason: str) -> list[str]:
         "capture_stats_missing": [
             "Retry viewport_capture_assert so the capture path returns pixel statistics.",
             "If stats stay missing, run viewport_capture(return_stats=true) and inspect the raw response.",
+        ],
+        "capture_error": [
+            "Confirm Isaac Sim is running in GUI mode with "
+            "simulation_get_status, then retry viewport_capture_assert "
+            "with warmup_frames > 0.",
+            "Frame target prims with viewport_frame_prims and capture "
+            "WARN/ERROR logs if the retry still fails.",
         ],
         "capture_blank_or_flat": [
             "Frame the target prims with viewport_frame_prims, then retry viewport_capture_assert with warmup_frames > 0.",

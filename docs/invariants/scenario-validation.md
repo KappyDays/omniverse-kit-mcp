@@ -121,6 +121,7 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `data_summary.diagnostics.reason`, `data_summary.diagnostics.num_points` / `data_summary.diagnostics.min_points`,
 `data_summary.diagnostics.suggested_next`,
 `data_summary.diagnostics.fallback_tool_order`,
+`data_summary.diagnostics.upstream_error_code`,
 `data_summary.diagnostics.cached_lidar_instance`,
 `data_summary.diagnostics.readback_paths_attempted`,
 `data_summary.raw_keys`, `data_summary.warning`,
