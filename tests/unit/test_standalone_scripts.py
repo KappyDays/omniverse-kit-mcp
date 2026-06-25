@@ -2195,6 +2195,16 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     ]) == 2
 
 
+def test_mcp_probe_help_names_log_capture_stop_boundary(capsys):
+    with pytest.raises(SystemExit) as exc_info:
+        mcp_probe.main(["--help"])
+
+    assert exc_info.value.code == 0
+    output = " ".join(capsys.readouterr().out.split())
+    assert "extension_capture_logs(level=WARN, stop_after_capture=true)" in output
+    assert "extension_capture_logs(stop_after_capture=true)" in output
+
+
 def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):
     captured: dict[str, object] = {}
 

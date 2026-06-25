@@ -1574,7 +1574,7 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "Workspace-only non-stage preflight: call kit_app_start, "
             "simulation_get_status, extension_clear_logs, and "
-            "extension_capture_logs(level=WARN)."
+            "extension_capture_logs(level=WARN, stop_after_capture=true)."
         ),
     )
     parser.add_argument(
@@ -1595,7 +1595,8 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "Mutating smoke: require a workspace entry, call kit_app_start, "
             "simulation_get_status, extension_clear_logs, scenario_validate, "
-            "scenario_last_report(markdown, redacted), and extension_capture_logs. "
+            "scenario_last_report(markdown, redacted), and "
+            "extension_capture_logs(stop_after_capture=true). "
             "Requires --scenario-plan and --scenario-validate-dry-run."
         ),
     )
