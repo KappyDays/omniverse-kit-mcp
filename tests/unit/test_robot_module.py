@@ -3238,6 +3238,110 @@ async def test_robot_install_profile_pick_place_demo_routes_validated_franka_fr3
 
 
 @pytest.mark.asyncio
+async def test_robot_install_profile_pick_place_demo_load_failure_returns_typed_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    class LoadFailureClient(MockIsaacRestClient):
+        async def robot_load(self, payload: dict[str, object]) -> dict:
+            self.calls.append(("robot_load", payload))
+            return {
+                "ok": False,
+                "error_code": "ROBOT_LOAD_ERROR",
+                "message": "profile asset unavailable",
+            }
+
+    client = LoadFailureClient()
+    module = RobotModule(client)
+
+    result = await module.install_pick_place_playback_demo(
+        _meta(),
+        RobotPickPlaceDemoRequest(profile_name="franka_fr3", robot_prim_path="/World/FR3"),
+    )
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR"
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
+    assert result.data.status == "error"
+    assert result.data.profile_name == "franka_fr3"
+    assert result.data.support_status == "validated_pick_place"
+    assert result.data.last_error == "Failed to load robot profile asset for franka_fr3"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "pick_place_profile_load_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_LOAD_ERROR"
+    assert diagnostics["upstream_message"] == "profile asset unavailable"
+    assert diagnostics["resolved_profile"] == "franka_fr3"
+    assert diagnostics["support_status"] == "validated_pick_place"
+    assert diagnostics["robot_prim_path"] == "/World/FR3"
+    assert diagnostics["asset_url"].endswith("/Robots/FrankaRobotics/FrankaFR3/fr3.usd")
+    assert diagnostics["object_size"] == pytest.approx(0.04)
+    assert diagnostics["max_grasp_width_m"] == pytest.approx(0.08)
+    assert diagnostics["fit_clearance_m"] == pytest.approx(0.005)
+    assert diagnostics["load_result_ok"] is False
+    assert diagnostics["load_has_articulation"] is None
+    assert diagnostics["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "official_asset_search",
+        "asset_search",
+        "robot_load",
+        "robot_install_pick_place_playback_demo",
+        "extension_capture_logs",
+    ]
+    assert [call[0] for call in client.calls] == ["robot_load"]
+    assert client.calls[0][1]["prim_path"] == "/World/FR3"
+    assert client.calls[0][1]["usd_url"].endswith(
+        "/Robots/FrankaRobotics/FrankaFR3/fr3.usd"
+    )
+
+
+@pytest.mark.asyncio
+async def test_robot_install_profile_pick_place_demo_no_articulation_returns_typed_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    class NoArticulationClient(MockIsaacRestClient):
+        async def robot_load(self, payload: dict[str, object]) -> dict:
+            self.calls.append(("robot_load", payload))
+            return {"ok": True, "has_articulation": False, "message": "not an arm"}
+
+    client = NoArticulationClient()
+    module = RobotModule(client)
+
+    result = await module.install_pick_place_playback_demo(
+        _meta(),
+        RobotPickPlaceDemoRequest(profile_name="franka_fr3", robot_prim_path="/World/FR3"),
+    )
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR"
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
+    assert result.data.status == "error"
+    assert result.data.profile_name == "franka_fr3"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "pick_place_profile_asset_not_articulation"
+    assert diagnostics["upstream_error_code"] == "ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR"
+    assert diagnostics["upstream_message"] == "not an arm"
+    assert diagnostics["load_result_ok"] is True
+    assert diagnostics["load_has_articulation"] is False
+    assert diagnostics["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "official_asset_search",
+        "asset_search",
+        "robot_load",
+        "robot_install_pick_place_playback_demo",
+        "extension_capture_logs",
+    ]
+    assert [call[0] for call in client.calls] == ["robot_load"]
+    assert client.calls[0][1]["prim_path"] == "/World/FR3"
+
+
+@pytest.mark.asyncio
 async def test_robot_install_profile_pick_place_demo_blocks_factory_franka_candidate_playback():
     from tests.conftest import MockIsaacRestClient
 

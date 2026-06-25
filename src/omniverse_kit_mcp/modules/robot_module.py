@@ -114,6 +114,17 @@ _PICK_PLACE_UNSUPPORTED_FALLBACK_TOOL_ORDER = (
     "robot_probe_arm_profile",
     "robot_install_pick_place_playback_demo",
 )
+_PICK_PLACE_PROFILE_LOAD_FALLBACK_TOOL_ORDER = (
+    "robot_list_arm_profiles",
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "official_asset_search",
+    "asset_search",
+    "robot_load",
+    "robot_install_pick_place_playback_demo",
+    "extension_capture_logs",
+)
 _ROBOT_LOAD_FALLBACK_TOOL_ORDER = (
     "mcp_runtime_info",
     "simulation_get_status",
@@ -1993,16 +2004,40 @@ class RobotModule:
                     "rotation": None,
                 })
                 if not bool(robot_raw.get("ok", True)):
+                    error_code = "ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR"
+                    message = (
+                        f"Failed to load robot profile asset for {profile.profile_name}"
+                    )
                     return error_result(
-                        f"Failed to load robot profile asset for {profile.profile_name}",
+                        message,
                         started_ms=started,
-                        error_code="ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR",
+                        error_code=error_code,
+                        data=_pick_place_profile_load_error_data(
+                            request=request,
+                            profile=profile,
+                            error_code=error_code,
+                            message=message,
+                            robot_raw=robot_raw,
+                        ),
                     )
                 if not bool(robot_raw.get("has_articulation", True)):
+                    error_code = "ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR"
+                    message = (
+                        "Loaded robot profile asset has no articulation: "
+                        f"{profile.profile_name}"
+                    )
                     return error_result(
-                        f"Loaded robot profile asset has no articulation: {profile.profile_name}",
+                        message,
                         started_ms=started,
-                        error_code="ROBOT_PICK_PLACE_PROFILE_LOAD_ERROR",
+                        error_code=error_code,
+                        data=_pick_place_profile_load_error_data(
+                            request=request,
+                            profile=profile,
+                            error_code=error_code,
+                            message=message,
+                            robot_raw=robot_raw,
+                            reason="pick_place_profile_asset_not_articulation",
+                        ),
                     )
             franka_result = await self.install_franka_pick_place_playback_demo(
                 meta,
@@ -2267,6 +2302,80 @@ def _pick_place_demo_status_error_data(
         picking_position=(0.0, 0.0, 0.0),
         end_effector_initial_height=0.0,
         diagnostics=diagnostics,
+        last_error=message,
+    )
+
+
+def _pick_place_profile_load_error_data(
+    *,
+    request: RobotPickPlaceDemoRequest,
+    profile: RobotArmProfile,
+    error_code: str,
+    message: str,
+    robot_raw: dict[str, Any],
+    reason: str = "pick_place_profile_load_error",
+) -> RobotFrankaPickPlaceDemoStatus:
+    upstream_error_code = str(robot_raw.get("error_code") or error_code)
+    upstream_message = str(robot_raw.get("message") or robot_raw.get("error") or message)
+    diagnostics: dict[str, Any] = {
+        "reason": reason,
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "requested_profile": request.profile_name,
+        "resolved_profile": profile.profile_name,
+        "support_status": profile.support_status,
+        "support_reason": profile.support_reason,
+        "controller_strategy": profile.controller_strategy,
+        "profile_family": profile.family,
+        "robot_description": profile.robot_description,
+        "asset_url": profile.asset_url,
+        "robot_prim_path": request.robot_prim_path,
+        "object_prim_path": request.object_prim_path,
+        "target_position": list(request.target_position),
+        "object_initial_position": list(request.object_initial_position),
+        "object_size": request.object_size,
+        "max_grasp_width_m": profile.max_grasp_width_m,
+        "fit_clearance_m": profile.fit_clearance_m,
+        "create_demo_scene": request.create_demo_scene,
+        "load_result_ok": bool(robot_raw.get("ok", True)),
+        "load_has_articulation": robot_raw.get("has_articulation"),
+        "suggested_next": [
+            "Run robot_list_arm_profiles to confirm the selected profile and asset URL.",
+            "Use stage_capture_snapshot and robot_load to verify the profile asset before retrying playback install.",
+            "Retry robot_install_pick_place_playback_demo only after the profile asset loads as an articulation.",
+        ],
+        "fallback_tool_order": list(_PICK_PLACE_PROFILE_LOAD_FALLBACK_TOOL_ORDER),
+    }
+    return RobotFrankaPickPlaceDemoStatus(
+        ok=False,
+        status="error",
+        robot_prim_path=request.robot_prim_path,
+        object_prim_path=request.object_prim_path,
+        target_position=request.target_position,
+        uses_kinematic_carry=False,
+        steps=0,
+        controller_event=0,
+        done=False,
+        placed=False,
+        lifted=False,
+        initial_object_position=request.object_initial_position,
+        final_object_position=request.object_initial_position,
+        final_distance=0.0,
+        max_lift_delta=0.0,
+        object_bbox_center=request.object_initial_position,
+        object_bbox_size=(0.0, 0.0, 0.0),
+        object_fit_ok=False,
+        object_fit_reason=message,
+        object_fit_axis=None,
+        object_fit_limit_m=None,
+        object_fit_measured_m=None,
+        picking_position=request.picking_position or request.object_initial_position,
+        end_effector_initial_height=request.end_effector_initial_height or 0.0,
+        diagnostics=diagnostics,
+        profile_name=profile.profile_name,
+        support_status=profile.support_status,
+        support_reason=profile.support_reason,
+        controller_strategy=profile.controller_strategy,
         last_error=message,
     )
 
