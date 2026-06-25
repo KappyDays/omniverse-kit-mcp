@@ -2353,6 +2353,11 @@ def test_mcp_probe_help_names_log_capture_stop_boundary(capsys):
     output = " ".join(capsys.readouterr().out.split())
     assert "extension_capture_logs(level=WARN, stop_after_capture=true)" in output
     assert "extension_capture_logs(stop_after_capture=true)" in output
+    assert (
+        "scenario_last_report(report_format=markdown, redact_local_paths=true)"
+        in output
+    )
+    assert "scenario_last_report(markdown, redacted)" not in output
     assert "--expect-live-evidence-field" in output
     assert "selector:key=value" in output
     assert "Value is JSON-decoded when possible" in output
