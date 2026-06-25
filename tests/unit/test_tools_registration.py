@@ -654,10 +654,12 @@ async def test_scenario_last_report_can_redact_local_paths(
 
     raw_json = await tool.fn(report_format="json")
     safe_json = await tool.fn(report_format="json", redact_local_paths=True)
+    safe_default_json = await tool.fn(redact_local_paths=True)
     safe_markdown = await tool.fn(
         report_format="markdown", redact_local_paths=True,
     )
 
+    assert safe_default_json == safe_json
     assert _host_local_capture_path() not in safe_json
     assert _host_local_capture_path() not in safe_markdown
     assert "<validation-api-capture>/capture_report.png" in safe_json

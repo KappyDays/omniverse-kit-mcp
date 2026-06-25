@@ -2044,6 +2044,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     ).read_text(encoding="utf-8")
     assert "report_format=\"json\"" in json_boundary
     assert "scenario_last_report(redact_local_paths=true)" in json_boundary
+    assert "test_scenario_last_report_can_redact_local_paths" in json_boundary
+    assert "safe_default_json == safe_json" in json_boundary
     assert "diagnostics.candidate_counts" in diagnostic_map
     assert "diagnostics.asset_checks" in diagnostic_map
     assert "diagnostics.material_checks" in diagnostic_map
