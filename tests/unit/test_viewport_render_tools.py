@@ -13,10 +13,14 @@ from omniverse_kit_mcp.types.viewport import (
     ViewportCaptureAssertRequest,
     ViewportCaptureAssertResult,
     ViewportCaptureRequest,
+    ViewportFocusPrimRequest,
+    ViewportFocusPrimResult,
     ViewportFramePrimsRequest,
     ViewportFramePrimsResult,
     ViewportProjectPointsRequest,
     ViewportProjectPointsResult,
+    ViewportSetCameraLookatRequest,
+    ViewportSetCameraLookatResult,
     ViewportSetFovRequest,
     ViewportSetFovResult,
     ViewportSetRenderModeRequest,
@@ -150,6 +154,40 @@ async def test_project_points_returns_screen_coordinates():
 
 
 @pytest.mark.asyncio
+async def test_project_points_error_returns_typed_diagnostics():
+    class BrokenProjectClient:
+        async def viewport_project_points(self, _req):
+            raise RuntimeError("projection unavailable")
+
+    module = ViewportModule(BrokenProjectClient())  # type: ignore[arg-type]
+    request = ViewportProjectPointsRequest(
+        points=((0.0, 0.0, 0.0), (1.0, 1.0, 1.0)),
+        viewport_name="Viewport",
+        camera_path="/World/Camera",
+        width=640,
+        height=480,
+    )
+    result = await module.project_points(_meta(), request)
+
+    assert result.ok is False
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_PROJECT_POINTS_ERROR"
+    assert isinstance(result.data, ViewportProjectPointsResult)
+    assert result.data.ok is False
+    assert result.data.points == ()
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_project_points_error"
+    assert diagnostics["point_count"] == 2
+    assert diagnostics["camera_path"] == "/World/Camera"
+    assert diagnostics["fallback_tool_order"] == [
+        "stage_capture_snapshot",
+        "viewport_frame_prims",
+        "viewport_project_points",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_frame_prims_returns_camera_pose():
     from tests.conftest import MockIsaacRestClient
 
@@ -226,6 +264,76 @@ async def test_frame_prims_error_returns_typed_diagnostics():
         "extension_capture_logs",
     ]
     assert any("stage_capture_snapshot" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_set_camera_lookat_error_returns_typed_diagnostics():
+    class BrokenLookatClient:
+        async def viewport_set_camera_lookat(self, _req):
+            raise RuntimeError("lookat failed")
+
+    module = ViewportModule(BrokenLookatClient())  # type: ignore[arg-type]
+    request = ViewportSetCameraLookatRequest(
+        eye=(1.0, -2.0, 3.0),
+        target=(0.0, 0.0, 0.5),
+        up=(0.0, 0.0, 1.0),
+        viewport_name="Viewport",
+        camera_path="/World/Camera",
+    )
+    result = await module.set_camera_lookat(_meta(), request)
+
+    assert result.ok is False
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_SET_CAMERA_LOOKAT_ERROR"
+    assert isinstance(result.data, ViewportSetCameraLookatResult)
+    assert result.data.ok is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_set_camera_lookat_error"
+    assert diagnostics["eye"] == [1.0, -2.0, 3.0]
+    assert diagnostics["target"] == [0.0, 0.0, 0.5]
+    assert diagnostics["fallback_tool_order"] == [
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "viewport_set_camera_lookat",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_focus_prim_error_returns_typed_diagnostics():
+    class BrokenFocusClient:
+        async def viewport_focus_prim(self, _req):
+            raise RuntimeError("focus failed")
+
+    module = ViewportModule(BrokenFocusClient())  # type: ignore[arg-type]
+    request = ViewportFocusPrimRequest(
+        prim_path="/World/Robot",
+        viewport_name="Viewport",
+        camera_path="/World/Camera",
+        padding=1.5,
+        select=True,
+    )
+    result = await module.focus_prim(_meta(), request)
+
+    assert result.ok is False
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_FOCUS_PRIM_ERROR"
+    assert isinstance(result.data, ViewportFocusPrimResult)
+    assert result.data.ok is False
+    assert result.data.prim_path == "/World/Robot"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_focus_prim_error"
+    assert diagnostics["prim_path"] == "/World/Robot"
+    assert diagnostics["padding"] == 1.5
+    assert diagnostics["fallback_tool_order"] == [
+        "stage_capture_snapshot",
+        "stage_compute_world_bbox",
+        "simulation_get_status",
+        "viewport_focus_prim",
+        "viewport_frame_prims",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio

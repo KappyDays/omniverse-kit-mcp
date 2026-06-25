@@ -60,6 +60,27 @@ _FRAME_PRIMS_FALLBACK_TOOL_ORDER = (
     "viewport_frame_prims",
     "extension_capture_logs",
 )
+_CAMERA_LOOKAT_FALLBACK_TOOL_ORDER = (
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "viewport_set_camera_lookat",
+    "viewport_capture_assert",
+    "extension_capture_logs",
+)
+_FOCUS_PRIM_FALLBACK_TOOL_ORDER = (
+    "stage_capture_snapshot",
+    "stage_compute_world_bbox",
+    "simulation_get_status",
+    "viewport_focus_prim",
+    "viewport_frame_prims",
+    "extension_capture_logs",
+)
+_PROJECT_POINTS_FALLBACK_TOOL_ORDER = (
+    "stage_capture_snapshot",
+    "viewport_frame_prims",
+    "viewport_project_points",
+    "extension_capture_logs",
+)
 
 
 class ViewportModule:
@@ -351,9 +372,24 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_SET_CAMERA_LOOKAT_ERROR"
             return error_result(
-                str(exc), started_ms=started,
-                error_code="VIEWPORT_SET_CAMERA_LOOKAT_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportSetCameraLookatResult(
+                    ok=False,
+                    viewport_name=request.viewport_name,
+                    camera_path=str(request.camera_path or ""),
+                    eye=request.eye,
+                    target=request.target,
+                    up=request.up,
+                    diagnostics=_camera_lookat_error_diagnostics(
+                        request=request,
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def focus_prim(
@@ -385,9 +421,25 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_FOCUS_PRIM_ERROR"
             return error_result(
-                str(exc), started_ms=started,
-                error_code="VIEWPORT_FOCUS_PRIM_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportFocusPrimResult(
+                    ok=False,
+                    prim_path=request.prim_path,
+                    viewport_name=request.viewport_name,
+                    camera_path=str(request.camera_path or ""),
+                    method="",
+                    target=(0.0, 0.0, 0.0),
+                    selected=False,
+                    diagnostics=_focus_prim_error_diagnostics(
+                        request=request,
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def project_points(
@@ -425,9 +477,24 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_PROJECT_POINTS_ERROR"
             return error_result(
-                str(exc), started_ms=started,
-                error_code="VIEWPORT_PROJECT_POINTS_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportProjectPointsResult(
+                    ok=False,
+                    viewport_name=request.viewport_name,
+                    camera_path=str(request.camera_path or ""),
+                    width=request.width,
+                    height=request.height,
+                    points=(),
+                    diagnostics=_project_points_error_diagnostics(
+                        request=request,
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def frame_prims(
@@ -619,6 +686,78 @@ def _frame_prims_error_diagnostics(
             "If framing keeps failing, capture extension logs and inspect the upstream viewport error.",
         ],
         "fallback_tool_order": list(_FRAME_PRIMS_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _camera_lookat_error_diagnostics(
+    *,
+    request: ViewportSetCameraLookatRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": "viewport_set_camera_lookat_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "viewport_name": request.viewport_name,
+        "camera_path": request.camera_path,
+        "eye": list(request.eye),
+        "target": list(request.target),
+        "up": list(request.up),
+        "suggested_next": [
+            "Run stage_capture_snapshot and simulation_get_status before retrying camera look-at.",
+            "Use viewport_frame_prims when a target prim exists instead of manually guessing camera coordinates.",
+            "Capture WARN/ERROR logs if camera look-at keeps failing.",
+        ],
+        "fallback_tool_order": list(_CAMERA_LOOKAT_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _focus_prim_error_diagnostics(
+    *,
+    request: ViewportFocusPrimRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": "viewport_focus_prim_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": request.prim_path,
+        "viewport_name": request.viewport_name,
+        "camera_path": request.camera_path,
+        "padding": request.padding,
+        "select": request.select,
+        "suggested_next": [
+            "Run stage_capture_snapshot or stage_compute_world_bbox to confirm the target prim exists and has renderable bounds.",
+            "Retry with viewport_frame_prims when focus_prim cannot use the GUI framing path.",
+            "Capture WARN/ERROR logs if both focus_prim and frame_prims fail.",
+        ],
+        "fallback_tool_order": list(_FOCUS_PRIM_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _project_points_error_diagnostics(
+    *,
+    request: ViewportProjectPointsRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": "viewport_project_points_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "viewport_name": request.viewport_name,
+        "camera_path": request.camera_path,
+        "point_count": len(request.points),
+        "width": request.width,
+        "height": request.height,
+        "suggested_next": [
+            "Run viewport_frame_prims first to establish a valid camera before projecting points.",
+            "Run stage_capture_snapshot to confirm the world points correspond to existing target prims.",
+            "Capture WARN/ERROR logs if projection fails after framing.",
+        ],
+        "fallback_tool_order": list(_PROJECT_POINTS_FALLBACK_TOOL_ORDER),
     }
 
 

@@ -2368,7 +2368,7 @@ def register_module_tools(
         viewport_name: str = "Viewport",
         camera_path: str | None = None,
     ) -> str:
-        """Aim a camera at a target via eye/target/up (deadlock-safe USD xformOp author on the REST path; default up=+Z). Moves the active viewport camera (Perspective included) unless camera_path is given. Use for live framing iteration without rebuilding the scene."""
+        """Aim a camera at a target via eye/target/up (deadlock-safe USD xformOp author on the REST path; default up=+Z). Moves the active viewport camera unless camera_path is given. Failures include data.diagnostics.suggested_next and fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportSetCameraLookatRequest(
             eye=tuple(eye),
@@ -2388,7 +2388,7 @@ def register_module_tools(
         padding: float = 1.35,
         select: bool = True,
     ) -> str:
-        """Frame a prim in the viewport, matching the F-key workflow. Selects the prim by default and falls back to authored camera look-at when Kit viewport utility is unavailable."""
+        """Frame a prim in the viewport, matching the F-key workflow. Selects the prim by default and falls back to authored camera look-at when Kit viewport utility is unavailable. Failures include data.diagnostics.prim_path and fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportFocusPrimRequest(
             prim_path=prim_path,
@@ -2408,7 +2408,7 @@ def register_module_tools(
         width: int = 1280,
         height: int = 720,
     ) -> str:
-        """Project world-space XYZ points through the active camera into normalized and pixel viewport coordinates. Use to check whether important prim corners should appear in frame before capture."""
+        """Project world-space XYZ points through the active camera into normalized and pixel viewport coordinates. Use to check whether important prim corners should appear in frame before capture. Failures include data.diagnostics.point_count and fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportProjectPointsRequest(
             points=tuple(tuple(point) for point in points),  # type: ignore[arg-type]

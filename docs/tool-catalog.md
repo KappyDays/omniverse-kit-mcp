@@ -593,7 +593,8 @@ viewport_focus_prim(prim_path: 'str', viewport_name: 'str' = 'Viewport', camera_
 ```
 
 Frame a prim in the viewport, matching the F-key workflow. Selects the prim by default and
-falls back to authored camera look-at when Kit viewport utility is unavailable.
+falls back to authored camera look-at when Kit viewport utility is unavailable. Failures
+include data.diagnostics.prim_path and fallback_tool_order.
 
 **Parameters**
 
@@ -637,6 +638,7 @@ viewport_project_points(points: 'list[list[float]]', viewport_name: 'str' = 'Vie
 
 Project world-space XYZ points through the active camera into normalized and pixel viewport
 coordinates. Use to check whether important prim corners should appear in frame before capture.
+Failures include data.diagnostics.point_count and fallback_tool_order.
 
 **Parameters**
 
@@ -670,8 +672,8 @@ viewport_set_camera_lookat(eye: 'list[float]', target: 'list[float]', up: 'list[
 ```
 
 Aim a camera at a target via eye/target/up (deadlock-safe USD xformOp author on the REST path;
-default up=+Z). Moves the active viewport camera (Perspective included) unless camera_path is
-given. Use for live framing iteration without rebuilding the scene.
+default up=+Z). Moves the active viewport camera unless camera_path is given. Failures include
+data.diagnostics.suggested_next and fallback_tool_order.
 
 **Parameters**
 

@@ -70,6 +70,11 @@ retry `viewport_frame_prims`, and only then open logs. If direct
 `viewport_capture` errors, inspect `diagnostics.reason=viewport_capture_error`,
 requested viewport / camera / size fields, and `diagnostics.fallback_tool_order`
 before changing render or camera code.
+If manual framing helpers fail, inspect their typed data before changing the
+scene: `viewport_focus_prim` exposes `diagnostics.prim_path`,
+`viewport_project_points` exposes `diagnostics.point_count`, and
+`viewport_set_camera_lookat` exposes requested eye/target/up fields. Follow
+their `diagnostics.fallback_tool_order` before widening capture retries.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

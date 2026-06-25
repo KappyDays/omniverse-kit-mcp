@@ -64,6 +64,7 @@ class ViewportProjectPointsResult:
     width: int
     height: int
     points: tuple[ViewportProjectedPoint, ...]
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -250,6 +251,7 @@ class ViewportSetCameraLookatResult:
     eye: tuple[float, float, float]
     target: tuple[float, float, float]
     up: tuple[float, float, float]
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -274,3 +276,4 @@ class ViewportFocusPrimResult:
     bbox_max: tuple[float, float, float] | None = None
     radius: float = 0.0
     selected: bool = False
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
