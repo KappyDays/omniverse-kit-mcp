@@ -2357,6 +2357,10 @@ def test_mcp_probe_help_names_log_capture_stop_boundary(capsys):
         "scenario_last_report(report_format=markdown, redact_local_paths=true)"
         in output
     )
+    assert (
+        "scenario_validate(report_format=json, redact_local_paths=true)"
+        in output
+    )
     assert "scenario_last_report(markdown, redacted)" not in output
     assert "--expect-live-evidence-field" in output
     assert "selector:key=value" in output

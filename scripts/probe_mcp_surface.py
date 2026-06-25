@@ -1615,7 +1615,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Mutating smoke: require a workspace entry, call kit_app_start, "
-            "simulation_get_status, extension_clear_logs, scenario_validate, "
+            "simulation_get_status, extension_clear_logs, "
+            "scenario_validate(report_format=json, redact_local_paths=true), "
             "scenario_last_report(report_format=markdown, redact_local_paths=true), and "
             "extension_capture_logs(stop_after_capture=true). "
             "Requires --scenario-plan and --scenario-validate-dry-run."
