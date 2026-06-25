@@ -557,6 +557,37 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert "smoke/official_asset_catalog_diagnostics.yaml" in scenario_plans
     assert any(call["scenario_validate_dry_run"] for call in calls)
 
+    mutating_live_tools = (
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "scenario_validate",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    )
+    read_only_live_tools = (
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    )
+    for call in calls:
+        if not call["scenario_validate_live"]:
+            continue
+        assert call["workspace"] == Path("workspaces/isaac/instance-1")
+        assert call["runtime_info"] is True
+        assert call["scenario_validate_dry_run"] is True
+        assert call["expect_log_capture_recommended"] is True
+        assert "scenario_last_report" in call["required_live_validation_tools"]
+        assert "extension_capture_logs" in call["required_live_validation_tools"]
+
     def _contains(call: dict[str, object], key: str, expected: tuple) -> bool:
         return set(expected).issubset(set(call[key]))
 
@@ -587,6 +618,8 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     )
     assert robot_success["expect_live_status"] == "passed"
     assert robot_success["expect_live_cleanup_failures"] == 0
+    assert robot_success["expect_scratch_stage_required"] is True
+    assert robot_success["required_live_validation_tools"] == mutating_live_tools
     assert _contains(
         robot_success,
         "expected_live_evidence_kinds",
@@ -616,6 +649,8 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert robot_failure["input_overrides"] == {"lidar_min_points": 513}
     assert robot_failure["expect_live_status"] == "failed"
     assert robot_failure["expect_live_cleanup_failures"] == 0
+    assert robot_failure["expect_scratch_stage_required"] is True
+    assert robot_failure["required_live_validation_tools"] == mutating_live_tools
     assert robot_failure["expect_live_diagnostic_next_actions_min"] == 1
     assert _contains(
         robot_failure,
@@ -640,6 +675,8 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     )
     assert official_verify["expect_live_status"] == "passed"
     assert official_verify["expect_live_cleanup_failures"] == 0
+    assert official_verify["expect_scratch_stage_required"] is True
+    assert official_verify["required_live_validation_tools"] == mutating_live_tools
     assert _contains(
         official_verify,
         "expected_live_evidence_kinds",
@@ -660,6 +697,8 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     )
     assert official_diagnostics["expect_live_status"] == "passed"
     assert official_diagnostics["expect_live_cleanup_failures"] == 0
+    assert official_diagnostics["expect_scratch_stage_required"] is False
+    assert official_diagnostics["required_live_validation_tools"] == read_only_live_tools
     assert official_diagnostics["expect_live_diagnostic_next_actions_min"] == 2
     assert _contains(
         official_diagnostics,
