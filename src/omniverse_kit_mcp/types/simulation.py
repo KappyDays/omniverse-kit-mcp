@@ -27,6 +27,7 @@ class StageWriteResult:
     ok: bool
     prim_path: str
     detail: str | None = None
+    diagnostics: dict[str, object] = field(default_factory=dict)
 
 
 # --- Phase G ---

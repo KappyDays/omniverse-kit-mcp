@@ -231,7 +231,8 @@ stage_create_prim(prim_path: 'str', prim_type: 'str' = 'Xform', position: 'list[
 ```
 
 Create a USD Prim. Types: Xform (empty transform), Cube, Sphere, Cylinder, Cone, Capsule,
-Plane, etc. Optionally set position [x,y,z].
+Plane, etc. Optionally set position [x,y,z]. Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -247,7 +248,7 @@ Plane, etc. Optionally set position [x,y,z].
 stage_delete_prim(prim_path: 'str') -> 'str'
 ```
 
-Delete USD Prim (also removes children).
+Delete USD Prim (also removes children). Failures include data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -270,7 +271,8 @@ stage_load_usd(usd_url: 'str', prim_path: 'str', position: 'list[float] | None' 
 ```
 
 Add USD asset as payload at prim_path (multi-asset composition, not root replace). Optional
-position/rotation.
+position/rotation. Failures include data.diagnostics.reason, usd_url, prim_path,
+suggested_next, and fallback_tool_order.
 
 **Parameters**
 
@@ -287,7 +289,7 @@ position/rotation.
 stage_new() -> 'str'
 ```
 
-Create empty stage (GUI File → New).
+Create empty stage (GUI File → New). Failures include data.diagnostics.fallback_tool_order.
 
 ### `stage_open`
 
@@ -296,6 +298,7 @@ stage_open(url: 'str') -> 'str'
 ```
 
 Open (replace root) USD stage from local path or omniverse:// / https://; waits for load.
+Failures include data.diagnostics.reason, path, suggested_next, and fallback_tool_order.
 
 **Parameters**
 
@@ -309,7 +312,8 @@ Open (replace root) USD stage from local path or omniverse:// / https://; waits 
 stage_save(path: 'str | None' = None) -> 'str'
 ```
 
-Save the current stage — GUI File → Save / Save As. Omit *path* for in-place save.
+Save the current stage — GUI File → Save / Save As. Omit *path* for in-place save. Failures
+include data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -324,7 +328,8 @@ stage_set_property(prim_path: 'str', property_name: 'str', value: 'Any', type_hi
 ```
 
 Set a USD Prim attribute; type_hint specifies USD type
-(Vec3d/Vec3f/Quatd/float/int/bool/string/asset).
+(Vec3d/Vec3f/Quatd/float/int/bool/string/asset). Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -359,8 +364,8 @@ stage_set_semantic_label(prim_path: 'str', label_class: 'str', label_type: 'str'
 
 Apply a semantic label to a prim (inherits to its subtree) so Replicator segmentation / bbox
 annotators classify it. Authors UsdSemantics.LabelsAPI (semantics:labels:<label_type>) + best-
-effort legacy Semantics schema. Fills the gap left by sensor_set_annotator (which attaches
-annotators but cannot label the props). 400 if prim_path not found.
+effort legacy Semantics schema. Fills the gap left by sensor_set_annotator. Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

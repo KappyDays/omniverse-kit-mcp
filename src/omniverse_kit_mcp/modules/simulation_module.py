@@ -63,6 +63,28 @@ _SIMULATION_SET_TIME_FALLBACK_TOOL_ORDER = (
     "simulation_set_time",
     "extension_capture_logs",
 )
+_STAGE_LOAD_USD_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "content_browse",
+    "official_asset_search",
+    "asset_search",
+    "stage_load_usd",
+    "extension_capture_logs",
+)
+_STAGE_WRITE_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "{tool_name}",
+    "extension_capture_logs",
+)
+_STAGE_FILE_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "{tool_name}",
+    "extension_capture_logs",
+)
 
 
 class SimulationModule:
@@ -326,8 +348,19 @@ class SimulationModule:
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:
+            error_code = "STAGE_LOAD_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="STAGE_LOAD_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=_stage_write_error_data(
+                    request=request,
+                    tool_name="stage_load_usd",
+                    reason="stage_load_usd_error",
+                    error_code=error_code,
+                    message=str(exc),
+                    fallback_tool_order=_STAGE_LOAD_USD_FALLBACK_TOOL_ORDER,
+                ),
             )
 
     async def stage_set_property(
@@ -345,8 +378,21 @@ class SimulationModule:
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:
+            error_code = "STAGE_PROPERTY_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="STAGE_PROPERTY_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=_stage_write_error_data(
+                    request=request,
+                    tool_name="stage_set_property",
+                    reason="stage_set_property_error",
+                    error_code=error_code,
+                    message=str(exc),
+                    fallback_tool_order=_stage_tool_fallback_order(
+                        "stage_set_property"
+                    ),
+                ),
             )
 
     async def stage_set_semantic_label(
@@ -364,9 +410,20 @@ class SimulationModule:
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:
+            error_code = "STAGE_SEMANTIC_LABEL_ERROR"
             return error_result(
                 str(exc), started_ms=started,
-                error_code="STAGE_SEMANTIC_LABEL_ERROR",
+                error_code=error_code,
+                data=_stage_write_error_data(
+                    request=request,
+                    tool_name="stage_set_semantic_label",
+                    reason="stage_set_semantic_label_error",
+                    error_code=error_code,
+                    message=str(exc),
+                    fallback_tool_order=_stage_tool_fallback_order(
+                        "stage_set_semantic_label"
+                    ),
+                ),
             )
 
     async def stage_create_prim(
@@ -384,8 +441,21 @@ class SimulationModule:
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:
+            error_code = "PRIM_CREATE_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="PRIM_CREATE_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=_stage_write_error_data(
+                    request=request,
+                    tool_name="stage_create_prim",
+                    reason="stage_create_prim_error",
+                    error_code=error_code,
+                    message=str(exc),
+                    fallback_tool_order=_stage_tool_fallback_order(
+                        "stage_create_prim"
+                    ),
+                ),
             )
 
     async def stage_delete_prim(
@@ -402,8 +472,21 @@ class SimulationModule:
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:
+            error_code = "PRIM_DELETE_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="PRIM_DELETE_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=_stage_write_error_data(
+                    request={"prim_path": prim_path},
+                    tool_name="stage_delete_prim",
+                    reason="stage_delete_prim_error",
+                    error_code=error_code,
+                    message=str(exc),
+                    fallback_tool_order=_stage_tool_fallback_order(
+                        "stage_delete_prim"
+                    ),
+                ),
             )
 
     # --- File operations (Phase B+) ---
@@ -425,8 +508,19 @@ class SimulationModule:
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "STAGE_SAVE_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="STAGE_SAVE_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=_stage_file_error_data(
+                    path=path,
+                    mode="save",
+                    tool_name="stage_save",
+                    reason="stage_save_error",
+                    error_code=error_code,
+                    message=str(exc),
+                ),
             )
 
     async def stage_open(
@@ -447,8 +541,19 @@ class SimulationModule:
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "STAGE_OPEN_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="STAGE_OPEN_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=_stage_file_error_data(
+                    path=url,
+                    mode="open",
+                    tool_name="stage_open",
+                    reason="stage_open_error",
+                    error_code=error_code,
+                    message=str(exc),
+                ),
             )
 
     async def stage_new(
@@ -467,8 +572,19 @@ class SimulationModule:
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "STAGE_NEW_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="STAGE_NEW_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=_stage_file_error_data(
+                    path=None,
+                    mode="new",
+                    tool_name="stage_new",
+                    reason="stage_new_error",
+                    error_code=error_code,
+                    message=str(exc),
+                ),
             )
 
     # --- Internal ---
@@ -678,6 +794,126 @@ def _simulation_set_time_error_diagnostics(
         ],
         "fallback_tool_order": list(_SIMULATION_SET_TIME_FALLBACK_TOOL_ORDER),
     }
+
+
+def _stage_write_error_data(
+    *,
+    request: dict,
+    tool_name: str,
+    reason: str,
+    error_code: str,
+    message: str,
+    fallback_tool_order: tuple[str, ...] | list[str],
+) -> StageWriteResult:
+    prim_path = str(request.get("prim_path") or "")
+    diagnostics = _stage_operation_error_diagnostics(
+        request=request,
+        tool_name=tool_name,
+        reason=reason,
+        error_code=error_code,
+        message=message,
+        fallback_tool_order=fallback_tool_order,
+    )
+    return StageWriteResult(
+        ok=False,
+        prim_path=prim_path,
+        detail=message,
+        diagnostics=diagnostics,
+    )
+
+
+def _stage_file_error_data(
+    *,
+    path: str | None,
+    mode: str,
+    tool_name: str,
+    reason: str,
+    error_code: str,
+    message: str,
+) -> StageFileResult:
+    diagnostics = _stage_operation_error_diagnostics(
+        request={"path": path, "mode": mode},
+        tool_name=tool_name,
+        reason=reason,
+        error_code=error_code,
+        message=message,
+        fallback_tool_order=_stage_file_fallback_order(tool_name),
+    )
+    return StageFileResult(
+        ok=False,
+        path=path,
+        mode=mode,
+        diagnostics=diagnostics,
+    )
+
+
+def _stage_operation_error_diagnostics(
+    *,
+    request: dict,
+    tool_name: str,
+    reason: str,
+    error_code: str,
+    message: str,
+    fallback_tool_order: tuple[str, ...] | list[str],
+) -> dict[str, object]:
+    diagnostics: dict[str, object] = {
+        "reason": reason,
+        "tool_name": tool_name,
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "suggested_next": _stage_operation_suggested_next(reason, tool_name),
+        "fallback_tool_order": list(fallback_tool_order),
+    }
+    for key in (
+        "usd_url",
+        "prim_path",
+        "property_name",
+        "prim_type",
+        "label_type",
+        "label_class",
+        "path",
+        "mode",
+    ):
+        if key in request:
+            diagnostics[key] = request.get(key)
+    return diagnostics
+
+
+def _stage_tool_fallback_order(tool_name: str) -> list[str]:
+    return [
+        tool_name if item == "{tool_name}" else item
+        for item in _STAGE_WRITE_FALLBACK_TOOL_ORDER
+    ]
+
+
+def _stage_file_fallback_order(tool_name: str) -> list[str]:
+    return [
+        tool_name if item == "{tool_name}" else item
+        for item in _STAGE_FILE_FALLBACK_TOOL_ORDER
+    ]
+
+
+def _stage_operation_suggested_next(
+    reason: str,
+    tool_name: str,
+) -> list[str]:
+    if reason == "stage_load_usd_error":
+        return [
+            "Run simulation_get_status to confirm the Kit worker is responsive before retrying the load.",
+            "Verify the USD URL with content_browse or rerun official_asset_search / asset_search instead of substituting a primitive.",
+            "Capture WARN/ERROR logs if stage_load_usd keeps failing or timing out.",
+        ]
+    if reason == "stage_open_error":
+        return [
+            "Run simulation_get_status to confirm the Kit worker is responsive before retrying the stage open.",
+            "Verify the scene URL or path before retrying stage_open.",
+            "Capture WARN/ERROR logs if stage_open keeps failing or timing out.",
+        ]
+    return [
+        "Run stage_capture_snapshot and simulation_get_status to confirm the target prim and timeline state.",
+        f"Retry {tool_name} once after confirming the target state.",
+        "Capture WARN/ERROR logs if the stage operation keeps failing.",
+    ]
 
 
 def _vec3(raw: object) -> tuple[float, float, float] | None:

@@ -17,7 +17,9 @@ from omniverse_kit_mcp.types.simulation import (
     SimulationStepResult,
     SimulationWaitUntilRequest,
     SimulationWaitUntilResult,
+    StageWriteResult,
 )
+from omniverse_kit_mcp.types.stage import StageFileResult
 from tests.conftest import MockIsaacRestClient
 
 
@@ -298,6 +300,47 @@ async def test_wait_until_timeout(meta):
 
 
 @pytest.mark.asyncio
+async def test_stage_load_usd_error_returns_typed_diagnostics(meta):
+    class FailingLoadClient(MockIsaacRestClient):
+        async def stage_load_usd(self, request):  # type: ignore[override]
+            raise RuntimeError("S3 load failed")
+
+    mod = SimulationModule(FailingLoadClient())
+    result = await mod.stage_load_usd(
+        meta,
+        {
+            "usd_url": "https://example.invalid/Assets/Robot.usd",
+            "prim_path": "/World/Robot",
+            "position": None,
+            "rotation": None,
+        },
+    )
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "STAGE_LOAD_ERROR"
+    assert isinstance(result.data, StageWriteResult)
+    assert result.data.ok is False
+    assert result.data.prim_path == "/World/Robot"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "stage_load_usd_error"
+    assert diagnostics["tool_name"] == "stage_load_usd"
+    assert diagnostics["upstream_error_code"] == "STAGE_LOAD_ERROR"
+    assert diagnostics["upstream_message"] == "S3 load failed"
+    assert diagnostics["usd_url"] == "https://example.invalid/Assets/Robot.usd"
+    assert diagnostics["prim_path"] == "/World/Robot"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "content_browse",
+        "official_asset_search",
+        "asset_search",
+        "stage_load_usd",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_stage_set_semantic_label(meta):
     client = MockIsaacRestClient()
     mod = SimulationModule(client)
@@ -323,6 +366,18 @@ async def test_stage_set_semantic_label_propagates_error(meta):
     result = await mod.stage_set_semantic_label(meta, {"prim_path": "/World/Nope", "label_class": "x"})
     assert not result.ok
     assert result.error_code == "STAGE_SEMANTIC_LABEL_ERROR"
+    assert isinstance(result.data, StageWriteResult)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "stage_set_semantic_label_error"
+    assert diagnostics["prim_path"] == "/World/Nope"
+    assert diagnostics["label_class"] == "x"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "stage_set_semantic_label",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio
@@ -337,3 +392,32 @@ async def test_stage_open_stops_when_playing(meta):
     assert result.ok is True
     called = [name for name, _ in client.calls]
     assert called.index("simulation_stop") < called.index("stage_open")
+
+
+@pytest.mark.asyncio
+async def test_stage_open_error_returns_typed_diagnostics(meta):
+    class FailingOpenClient(MockIsaacRestClient):
+        async def stage_open(self, url: str):  # type: ignore[override]
+            raise RuntimeError("open failed")
+
+    mod = SimulationModule(FailingOpenClient())
+    result = await mod.stage_open(meta, "https://example.invalid/scene.usd")
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "STAGE_OPEN_ERROR"
+    assert isinstance(result.data, StageFileResult)
+    assert result.data.ok is False
+    assert result.data.path == "https://example.invalid/scene.usd"
+    assert result.data.mode == "open"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "stage_open_error"
+    assert diagnostics["tool_name"] == "stage_open"
+    assert diagnostics["path"] == "https://example.invalid/scene.usd"
+    assert diagnostics["mode"] == "open"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_open",
+        "extension_capture_logs",
+    ]

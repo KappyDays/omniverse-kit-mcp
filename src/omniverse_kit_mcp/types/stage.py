@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
@@ -16,6 +16,7 @@ class StageFileResult:
     ok: bool
     path: str | None
     mode: str | None = None
+    diagnostics: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

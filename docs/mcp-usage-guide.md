@@ -34,6 +34,10 @@ scenario timing. JSON action entries use flat dotted keys such as
 objects. Prefer the JSON root queue when exact routing matters: it includes
 `phase`, source `status`, final step `error_code`, retry `error_code`, retry
 `attempt`, and `final_step_status` when those fields are available.
+For `STAGE_LOAD_ERROR` / `STAGE_OPEN_ERROR`, inspect `data.diagnostics.reason`,
+the requested `usd_url` or `path`, `upstream_error_code`, `suggested_next`, and
+`fallback_tool_order` before changing assets, replacing the scene, or widening
+retries.
 Failed reports also include JSON `failure_summary` and Markdown `Failure
 Summary` before the full step table. Start there to identify final fatal,
 continued, cleanup, and exhausted-retry rows, then drill into
