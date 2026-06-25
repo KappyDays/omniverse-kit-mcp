@@ -40,6 +40,52 @@ def _assert_no_local_path_fragment(payload: object, root: Path) -> None:
         assert local_form not in text
 
 
+def _assert_official_lookup_diagnostic_schema(
+    diagnostics: dict[str, object],
+    *,
+    reason: str,
+) -> None:
+    assert diagnostics["reason"] == reason
+    for key in (
+        "filters",
+        "candidate_counts",
+        "available_profiles",
+        "available_providers",
+        "available_kinds",
+        "status_counts",
+        "sample_names",
+        "suggested_next",
+        "fallback_tool_order",
+    ):
+        assert key in diagnostics
+
+    counts = diagnostics["candidate_counts"]
+    assert isinstance(counts, dict)
+    for count_key in (
+        "total_entries",
+        "after_kind",
+        "after_app_profile",
+        "after_provider",
+        "after_min_status",
+        "query_matches_before_stale_filter",
+        "after_allow_stale",
+        "query_matches",
+        "result_limit",
+    ):
+        assert count_key in counts
+
+    assert diagnostics["fallback_tool_order"] == [
+        "official_asset_sync_status",
+        "official_asset_search",
+        "official_asset_resolve",
+        "official_asset_verify",
+        "asset_search",
+    ]
+    suggested_next = diagnostics["suggested_next"]
+    assert isinstance(suggested_next, list)
+    assert suggested_next
+
+
 class _ExplodingClient:
     """Any REST call fails — proves asset_search is fully offline (no Isaac)."""
 
@@ -784,7 +830,10 @@ async def test_official_asset_exact_lookup_respects_requested_app_profile(
         assert not result.ok
         assert result.error_code == "OFFICIAL_ASSET_NOT_FOUND"
         diagnostics = result.data["diagnostics"]
-        assert diagnostics["reason"] == "app_profile_not_covered"
+        _assert_official_lookup_diagnostic_schema(
+            diagnostics,
+            reason="app_profile_not_covered",
+        )
         assert diagnostics["candidate_counts"]["total_entries"] == 1
         assert diagnostics["candidate_counts"]["after_app_profile"] == 0
         assert diagnostics["filters"]["app_profile"] == "isaac-sim"
@@ -1082,8 +1131,12 @@ async def test_official_asset_resolve_not_found_reports_diagnostics(
     assert not result.ok
     assert result.error_code == "OFFICIAL_ASSET_NOT_FOUND"
     assert result.data["name_or_id"] == "missing forklift"
-    assert result.data["diagnostics"]["reason"] == "query_no_match"
-    assert result.data["diagnostics"]["filters"]["min_status"] == "discovered"
+    diagnostics = result.data["diagnostics"]
+    _assert_official_lookup_diagnostic_schema(
+        diagnostics,
+        reason="query_no_match",
+    )
+    assert diagnostics["filters"]["min_status"] == "discovered"
 
 
 @pytest.mark.asyncio
