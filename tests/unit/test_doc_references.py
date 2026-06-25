@@ -828,6 +828,33 @@ def test_f3b_probe_assertion_artifacts_mark_request_scoped_log_capture():
     )
 
 
+def test_f3b_stop_guard_artifacts_record_close_metadata():
+    required_markers = (
+        "capture_running=false",
+        "capture_stop_requested=true",
+        "capture_stop_completed=true",
+        "capture_stop_timed_out=false",
+        "capture_stop_timeout_s=1.0",
+    )
+    guarded: list[str] = []
+    offenders: list[str] = []
+    for md in sorted((PROJECT / "docs" / "artifacts").glob("*.md")):
+        text = md.read_text(encoding="utf-8")
+        if "stop-guard" not in text and "Stop guard" not in text:
+            continue
+        rel = str(md.relative_to(PROJECT))
+        guarded.append(rel)
+        missing = [marker for marker in required_markers if marker not in text]
+        if missing:
+            offenders.append(f"{rel}: missing {', '.join(missing)}")
+
+    assert guarded, "Expected at least one stop-guard artifact"
+    assert not offenders, (
+        "Stop-guard artifacts must record close metadata:\n  "
+        + "\n  ".join(offenders)
+    )
+
+
 def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
     artifact = (
         PROJECT / "docs" / "artifacts" / "probe-assertion-durable-docs-e2e-2026-06-25.md"
