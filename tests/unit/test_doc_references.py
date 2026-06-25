@@ -605,6 +605,8 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
         "docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md",
         "docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md",
+        "docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md",
+        "docs/artifacts/robot-rtx-controlled-failure-wrapper-refresh-2026-06-25.md",
         "docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md",
         "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
         "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",

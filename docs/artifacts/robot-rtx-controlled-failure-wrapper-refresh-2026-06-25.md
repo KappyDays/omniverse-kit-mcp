@@ -47,6 +47,6 @@ stage controlled-failure proof, not a default success proof.
 ## Public Safety
 
 This artifact records relative scenario/workspace facts, aggregate counts,
-tool names, error codes, and redacted report facts only. It omits host-local
-absolute paths, process IDs, worker/thread IDs, raw log paths, secrets,
-generated cache paths, and unredacted capture paths.
+tool names, error codes, and redacted report facts only. It omits local absolute
+paths, process IDs, worker/thread IDs, raw log paths, secrets, generated cache
+paths, and unredacted capture paths.
