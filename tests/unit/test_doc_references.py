@@ -362,6 +362,19 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     )
     assert "`--expect-live-status passed`" in invariant
     assert "--expect-live-status passed" in scenario_authoring
+    assert "Robot+RTX scenario authoring gates" in scenario_authoring
+    assert "Robot+RTX scenario authoring gate: success live proof must assert" not in (
+        scenario_authoring
+    )
+    assert "`--expect-live-cleanup-failures 0`" in scenario_authoring
+    assert "`--expect-live-evidence-kind rtx_lidar_point_cloud`" in scenario_authoring
+    assert "`--expect-live-evidence-kind viewport_framing`" in scenario_authoring
+    assert "`--expect-live-evidence-kind visual_capture`" in scenario_authoring
+    assert "current close-gate artifacts" in scenario_authoring
+    assert "older live-pass artifacts are baseline only" in scenario_authoring
+    assert "Current repeatable public proof anchors are" in invariant
+    assert "baseline public-safe evidence" in invariant
+    assert "not the current repeatable proof path" in invariant
     assert (
         "--expect-live-diagnostic-field "
         "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
@@ -1378,6 +1391,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "current public report redaction boundary refresh" in guide
     assert "Runtime redaction coverage" in guide
     assert "current-vs-baseline artifact boundary" in guide
+    assert "Robot + RTX current-proof-anchor boundary" in guide
     assert "current route-table pull-doc boundary refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
@@ -1426,6 +1440,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         ),
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md",
+        "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md",
         (
             "docs/artifacts/"
             "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"

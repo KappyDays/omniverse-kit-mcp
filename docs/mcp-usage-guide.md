@@ -231,6 +231,8 @@ the dry-run/live-proof boundary is guarded in
 `docs/artifacts/dry-run-live-proof-boundary-2026-06-26.md`;
 the current-vs-baseline artifact boundary is guarded in
 `docs/artifacts/current-vs-baseline-artifact-boundary-2026-06-26.md`;
+the Robot + RTX current-proof-anchor boundary is guarded in
+`docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md`;
 the current public report redaction boundary refresh is
 `docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md`;
 the current route-table pull-doc boundary refresh is
