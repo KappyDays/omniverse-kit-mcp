@@ -555,6 +555,251 @@ async def test_mcp_probe_calls_scenario_validate_dry_run_with_plan_args(
     }
 
 
+@pytest.mark.asyncio
+async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
+    monkeypatch,
+    capsys,
+):
+    sent_messages: list[dict] = []
+    runtime_payload = {
+        "tool_profile": "full",
+        "app_profile": "isaac-sim",
+        "tool_count": 152,
+        "source_newer_than_import": False,
+        "restart_required_for_latest_mcp_code": False,
+    }
+    plan_payload = {
+        "scenario_id": "robot_rtx_sensor_golden_workflow",
+        "total_steps": 32,
+        "preflight_requirements": {
+            "runtime_info": {
+                "checks": [
+                    "robot_probe_unknown_profile_fallback_tool_order",
+                ],
+            },
+        },
+        "simulation_state_summary": {
+            "play_state_missing_count": 0,
+            "requires_play_count": 2,
+        },
+        "simulation_state_steps": [],
+        "timeline_control_steps": [],
+        "retry_steps": [],
+        "live_validation_checklist": {
+            "scratch_stage_required": True,
+            "log_capture_recommended": True,
+            "steps": [
+                {"tool": "mcp_runtime_info"},
+                {"tool": "kit_app_start"},
+                {"tool": "simulation_get_status"},
+                {"tool": "scenario_plan"},
+                {"tool": "scenario_validate"},
+                {"tool": "extension_clear_logs"},
+                {"tool": "scenario_validate"},
+                {"tool": "scenario_last_report"},
+                {"tool": "extension_capture_logs"},
+            ],
+        },
+    }
+    dry_run_payload = {
+        **plan_payload,
+        "dry_run": True,
+        "compiled": True,
+        "steps": 32,
+    }
+    live_report_payload = {
+        "scenario_id": "robot_rtx_sensor_golden_workflow",
+        "status": "passed",
+        "passed_steps": 32,
+        "failed_steps": 0,
+        "skipped_steps": 0,
+        "continued_steps": 0,
+        "fatal_failed_steps": 0,
+        "cleanup_failed_steps": 0,
+        "failure_summary": [],
+        "diagnostic_next_actions": [],
+        "evidence_summary": [
+            {"step_id": "capture_visible_result", "evidence_kind": "visual_capture"},
+        ],
+    }
+    module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
+    responses = [
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "serverInfo": {"name": "fake-mcp", "version": "0"},
+                "capabilities": {"tools": {}, "resources": {}},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "tools": [
+                    {"name": "mcp_runtime_info"},
+                    {"name": "kit_app_start"},
+                    {"name": "simulation_get_status"},
+                    {"name": "scenario_plan"},
+                    {"name": "scenario_validate"},
+                    {"name": "extension_clear_logs"},
+                    {"name": "scenario_last_report"},
+                    {"name": "extension_capture_logs"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": {
+                "resources": [
+                    {"uri": "isaacsim://scenario-schema"},
+                    {"uri": "isaacsim://scenarios"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "result": {"content": [{"type": "text", "text": json.dumps(runtime_payload)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "result": {"content": [{"type": "text", "text": json.dumps(plan_payload)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 8,
+            "result": {"content": [{"type": "text", "text": json.dumps(dry_run_payload)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 10,
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(live_report_payload)}]
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 11,
+            "result": {
+                "content": [{"type": "text", "text": "# Scenario Report: redacted"}]
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+    ]
+
+    class FakeStdin:
+        def write(self, data: bytes) -> None:
+            sent_messages.append(json.loads(data.decode("utf-8")))
+
+        async def drain(self) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+    class FakeStdout:
+        def __init__(self, payloads: list[dict]):
+            self._lines = [
+                (json.dumps(payload) + "\n").encode("utf-8")
+                for payload in payloads
+            ]
+
+        async def readline(self) -> bytes:
+            if not self._lines:
+                return b""
+            return self._lines.pop(0)
+
+    class FakeProcess:
+        def __init__(self, payloads: list[dict]):
+            self.stdin = FakeStdin()
+            self.stdout = FakeStdout(payloads)
+
+        async def wait(self) -> int:
+            return 0
+
+        def kill(self) -> None:
+            pass
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        return FakeProcess(responses)
+
+    monkeypatch.setattr(
+        mcp_probe.asyncio,
+        "create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    exit_code = await mcp_probe.probe(
+        workspace=Path("workspaces/isaac/instance-1"),
+        runtime_info=True,
+        scenario_plan="smoke/robot_rtx_sensor_golden_workflow.yaml",
+        scenario_validate_dry_run=True,
+        scenario_validate_live=True,
+        required_plan_fields=("preflight_requirements",),
+        expected_preflight_runtime_checks=(
+            "robot_probe_unknown_profile_fallback_tool_order",
+        ),
+        expect_scratch_stage_required=True,
+        expect_log_capture_recommended=True,
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "=== scenario_validate live summary ===" in output
+    assert "# Scenario Report: redacted" in output
+    tool_calls = [
+        message
+        for message in sent_messages
+        if message.get("method") == "tools/call"
+    ]
+    assert [call["params"]["name"] for call in tool_calls] == [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "scenario_validate",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    ]
+    assert tool_calls[6]["params"]["arguments"] == {
+        "scenario_path": "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        "report_format": "json",
+        "redact_local_paths": True,
+    }
+    assert tool_calls[7]["params"]["arguments"] == {
+        "report_format": "markdown",
+        "redact_local_paths": True,
+    }
+    assert tool_calls[8]["params"]["arguments"] == {
+        "level": "WARN",
+        "stop_after_capture": True,
+    }
+
+
 def test_mcp_probe_parses_required_live_validation_tools():
     assert mcp_probe._parse_required_tool_sequence(
         "mcp_runtime_info, kit_app_start,, scenario_plan ",
@@ -768,6 +1013,25 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     ]) == 2
     assert mcp_probe.main([
         "--scenario-validate-dry-run",
+    ]) == 2
+    assert mcp_probe.main([
+        "--scenario-validate-live",
+        "--scenario-plan",
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        "--scenario-validate-dry-run",
+    ]) == 2
+    assert mcp_probe.main([
+        "--scenario-validate-live",
+        "--workspace",
+        "workspaces/isaac/instance-1",
+        "--scenario-validate-dry-run",
+    ]) == 2
+    assert mcp_probe.main([
+        "--scenario-validate-live",
+        "--workspace",
+        "workspaces/isaac/instance-1",
+        "--scenario-plan",
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
     ]) == 2
 
 

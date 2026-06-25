@@ -124,6 +124,13 @@ If first-class live tools are not exposed in the current parent host, use
 to smoke the workspace-local stdio MCP entry, confirm profile/import freshness,
 and confirm the plan plus `scenario_validate(dry_run=true)` field shape,
 preflight runtime checks, and exact live checklist order without stage mutation.
+When you are ready to run the mutating scratch/test-stage proof from the same
+parent/root session, rerun the same workspace-local command with
+`--scenario-validate-live`; the script requires `--workspace`,
+`--scenario-plan`, and `--scenario-validate-dry-run`, then follows the wrapper
+order through `kit_app_start`, `simulation_get_status`, `extension_clear_logs`,
+live `scenario_validate`, redacted Markdown `scenario_last_report`, and
+`extension_capture_logs`.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the
 default standalone report remains raw JSON+Markdown for local triage.

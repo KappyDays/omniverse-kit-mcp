@@ -14,8 +14,12 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -107,6 +111,14 @@ def _tool_text_response(response: dict[str, Any]) -> str:
             if isinstance(text, str):
                 return text
     raise RuntimeError("tools/call response did not include text content")
+
+
+def _tool_json_response(response: dict[str, Any]) -> dict[str, Any]:
+    text = _tool_text_response(response)
+    parsed = json.loads(text)
+    if not isinstance(parsed, dict):
+        raise RuntimeError("tools/call text content did not decode to an object")
+    return parsed
 
 
 def _runtime_info_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
@@ -354,6 +366,62 @@ def _scenario_validate_dry_run_mismatches(payload: dict[str, Any]) -> list[str]:
     return mismatches
 
 
+def _module_result_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        data = {}
+    summary: dict[str, Any] = {
+        "ok": payload.get("ok"),
+        "status": payload.get("status"),
+        "error_code": payload.get("error_code"),
+        "duration_ms": payload.get("duration_ms"),
+    }
+    for key in (
+        "status",
+        "is_playing",
+        "current_time",
+        "timeline_settled",
+        "timeline_settle_updates",
+    ):
+        if key in data:
+            summary[f"data.{key}"] = data.get(key)
+    return {key: value for key, value in summary.items() if value is not None}
+
+
+def _scenario_live_report_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    failure_summary = payload.get("failure_summary")
+    if not isinstance(failure_summary, list):
+        failure_summary = []
+    evidence_summary = payload.get("evidence_summary")
+    if not isinstance(evidence_summary, list):
+        evidence_summary = []
+    diagnostic_next_actions = payload.get("diagnostic_next_actions")
+    if not isinstance(diagnostic_next_actions, list):
+        diagnostic_next_actions = []
+    return {
+        "scenario_id": payload.get("scenario_id"),
+        "status": payload.get("status"),
+        "passed_steps": payload.get("passed_steps"),
+        "failed_steps": payload.get("failed_steps"),
+        "skipped_steps": payload.get("skipped_steps"),
+        "continued_steps": payload.get("continued_steps"),
+        "fatal_failed_steps": payload.get("fatal_failed_steps"),
+        "cleanup_failed_steps": payload.get("cleanup_failed_steps"),
+        "failure_summary_count": len(failure_summary),
+        "failure_step_ids": [
+            row.get("step_id")
+            for row in failure_summary
+            if isinstance(row, dict) and row.get("step_id") is not None
+        ],
+        "diagnostic_next_action_count": len(diagnostic_next_actions),
+        "evidence_kinds": [
+            row.get("evidence_kind")
+            for row in evidence_summary
+            if isinstance(row, dict) and row.get("evidence_kind") is not None
+        ],
+    }
+
+
 def _scenario_plan_probe_summary(
     plan: dict[str, Any],
     field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
@@ -445,6 +513,7 @@ async def probe(
     require_robot_probe_error_contract: bool = False,
     scenario_plan: str | None = None,
     scenario_validate_dry_run: bool = False,
+    scenario_validate_live: bool = False,
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
     required_live_validation_tools: tuple[str, ...] = (),
@@ -452,6 +521,8 @@ async def probe(
     expected_retry_key_args: tuple[tuple[str, str, Any], ...] = (),
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
+    mcp_response_timeout_s: float = 30.0,
+    mcp_tool_call_timeout_s: float = 900.0,
 ) -> int:
     if workspace is None:
         command, cwd, extra_env = _default_stdio_entry()
@@ -474,11 +545,35 @@ async def probe(
         proc.stdin.write((json.dumps(payload) + "\n").encode("utf-8"))
         await proc.stdin.drain()
 
-    async def recv() -> dict[str, Any]:
-        line = await proc.stdout.readline()
+    async def recv(timeout_s: float) -> dict[str, Any]:
+        try:
+            line = await asyncio.wait_for(
+                proc.stdout.readline(),
+                timeout=timeout_s,
+            )
+        except asyncio.TimeoutError as exc:
+            proc.kill()
+            raise TimeoutError(
+                "timed out waiting for MCP stdio response after "
+                f"{timeout_s:g}s"
+            ) from exc
         if not line:
             raise RuntimeError("server closed stdout early")
         return json.loads(line.decode("utf-8"))
+
+    async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+        nonlocal next_id
+        await send({
+            "jsonrpc": "2.0",
+            "id": next_id,
+            "method": "tools/call",
+            "params": {
+                "name": name,
+                "arguments": arguments or {},
+            },
+        })
+        next_id += 1
+        return await recv(mcp_tool_call_timeout_s)
 
     await send({
         "jsonrpc": "2.0",
@@ -490,7 +585,7 @@ async def probe(
             "clientInfo": {"name": "probe", "version": "0.1"},
         },
     })
-    init_resp = await recv()
+    init_resp = await recv(mcp_response_timeout_s)
     server_info = init_resp.get("result", {}).get("serverInfo", {})
     caps = init_resp.get("result", {}).get("capabilities", {})
     print(f"server: {server_info.get('name')} v{server_info.get('version')}")
@@ -499,7 +594,7 @@ async def probe(
     await send({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
     await send({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
-    tools_resp = await recv()
+    tools_resp = await recv(mcp_response_timeout_s)
     tools = tools_resp.get("result", {}).get("tools", [])
     tool_names = sorted(t["name"] for t in tools)
     print(f"\n=== tools/list: {len(tool_names)} tools ===")
@@ -515,7 +610,7 @@ async def probe(
         print(f"  {mark} {target}")
 
     await send({"jsonrpc": "2.0", "id": 3, "method": "resources/list"})
-    res_resp = await recv()
+    res_resp = await recv(mcp_response_timeout_s)
     resources = res_resp.get("result", {}).get("resources", [])
     res_uris = sorted(r["uri"] for r in resources)
     print(f"\n=== resources/list: {len(res_uris)} resources ===")
@@ -583,17 +678,7 @@ async def probe(
         return passed
 
     if runtime_info:
-        await send({
-            "jsonrpc": "2.0",
-            "id": next_id,
-            "method": "tools/call",
-            "params": {
-                "name": "mcp_runtime_info",
-                "arguments": {},
-            },
-        })
-        next_id += 1
-        runtime_resp = await recv()
+        runtime_resp = await call_tool("mcp_runtime_info")
         runtime_text = _tool_text_response(runtime_resp)
         runtime_payload = json.loads(runtime_text)
         runtime_summary = _runtime_info_probe_summary(runtime_payload)
@@ -613,25 +698,34 @@ async def probe(
                 print(f"  - {mismatch}")
             exit_status = 1
 
+    if scenario_validate_live:
+        kit_start_payload = _tool_json_response(await call_tool("kit_app_start"))
+        print("\n=== kit_app_start ===")
+        print(json.dumps(
+            _module_result_probe_summary(kit_start_payload),
+            indent=2,
+            ensure_ascii=False,
+        ))
+        sim_status_payload = _tool_json_response(await call_tool("simulation_get_status"))
+        print("\n=== simulation_get_status preflight ===")
+        print(json.dumps(
+            _module_result_probe_summary(sim_status_payload),
+            indent=2,
+            ensure_ascii=False,
+        ))
+
     if scenario_plan is not None:
-        await send({
-            "jsonrpc": "2.0",
-            "id": next_id,
-            "method": "tools/call",
-            "params": {
-                "name": "scenario_plan",
-                "arguments": {
-                    "scenario_path": scenario_plan,
-                    **(
-                        {"input_overrides": input_overrides}
-                        if input_overrides is not None
-                        else {}
-                    ),
-                },
+        plan_resp = await call_tool(
+            "scenario_plan",
+            {
+                "scenario_path": scenario_plan,
+                **(
+                    {"input_overrides": input_overrides}
+                    if input_overrides is not None
+                    else {}
+                ),
             },
-        })
-        next_id += 1
-        plan_resp = await recv()
+        )
         plan_text = _tool_text_response(plan_resp)
         plan = json.loads(plan_text)
         summary_fields = required_plan_fields or PLAN_REQUIRED_FIELDS
@@ -645,25 +739,18 @@ async def probe(
         ):
             exit_status = 1
         if scenario_validate_dry_run:
-            await send({
-                "jsonrpc": "2.0",
-                "id": next_id,
-                "method": "tools/call",
-                "params": {
-                    "name": "scenario_validate",
-                    "arguments": {
-                        "scenario_path": scenario_plan,
-                        "dry_run": True,
-                        **(
-                            {"input_overrides": input_overrides}
-                            if input_overrides is not None
-                            else {}
-                        ),
-                    },
+            dry_run_resp = await call_tool(
+                "scenario_validate",
+                {
+                    "scenario_path": scenario_plan,
+                    "dry_run": True,
+                    **(
+                        {"input_overrides": input_overrides}
+                        if input_overrides is not None
+                        else {}
+                    ),
                 },
-            })
-            next_id += 1
-            dry_run_resp = await recv()
+            )
             dry_run_text = _tool_text_response(dry_run_resp)
             dry_run_payload = json.loads(dry_run_text)
             dry_run_summary = _scenario_plan_probe_summary(
@@ -686,8 +773,68 @@ async def probe(
                 plan_summary=dry_run_summary,
             ):
                 exit_status = 1
+        if scenario_validate_live:
+            if exit_status != 0:
+                print("\nskipping live scenario_validate because preflight failed")
+            else:
+                clear_logs_payload = _tool_json_response(
+                    await call_tool("extension_clear_logs")
+                )
+                print("\n=== extension_clear_logs ===")
+                print(json.dumps(
+                    _module_result_probe_summary(clear_logs_payload),
+                    indent=2,
+                    ensure_ascii=False,
+                ))
+                live_report_payload = _tool_json_response(
+                    await call_tool(
+                        "scenario_validate",
+                        {
+                            "scenario_path": scenario_plan,
+                            "report_format": "json",
+                            "redact_local_paths": True,
+                            **(
+                                {"input_overrides": input_overrides}
+                                if input_overrides is not None
+                                else {}
+                            ),
+                        },
+                    )
+                )
+                live_summary = _scenario_live_report_summary(live_report_payload)
+                print("\n=== scenario_validate live summary ===")
+                print(json.dumps(live_summary, indent=2, ensure_ascii=False))
+                if live_report_payload.get("status") != "passed":
+                    exit_status = 1
+                markdown_report = _tool_text_response(
+                    await call_tool(
+                        "scenario_last_report",
+                        {
+                            "report_format": "markdown",
+                            "redact_local_paths": True,
+                        },
+                    )
+                )
+                print("\n=== scenario_last_report markdown redacted ===")
+                print(markdown_report)
+                log_payload = _tool_json_response(
+                    await call_tool(
+                        "extension_capture_logs",
+                        {
+                            "level": "WARN",
+                            "stop_after_capture": True,
+                        },
+                    )
+                )
+                print("\n=== extension_capture_logs WARN+ ===")
+                print(json.dumps(
+                    _module_result_probe_summary(log_payload),
+                    indent=2,
+                    ensure_ascii=False,
+                ))
     elif (
         required_live_validation_tools
+        or expected_preflight_runtime_checks
         or expected_retry_key_args
         or expect_scratch_stage_required is not None
         or expect_log_capture_recommended is not None
@@ -771,8 +918,30 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--scenario-validate-live",
+        action="store_true",
+        help=(
+            "Mutating smoke: require a workspace entry, call kit_app_start, "
+            "simulation_get_status, extension_clear_logs, scenario_validate, "
+            "scenario_last_report(markdown, redacted), and extension_capture_logs. "
+            "Requires --scenario-plan and --scenario-validate-dry-run."
+        ),
+    )
+    parser.add_argument(
         "--input-overrides-json",
         help="JSON object passed as scenario_plan input_overrides.",
+    )
+    parser.add_argument(
+        "--mcp-response-timeout-s",
+        type=float,
+        default=30.0,
+        help="Seconds to wait for MCP initialize/list/resource responses.",
+    )
+    parser.add_argument(
+        "--mcp-tool-call-timeout-s",
+        type=float,
+        default=900.0,
+        help="Seconds to wait for each MCP tools/call response.",
     )
     parser.add_argument(
         "--require-plan-fields",
@@ -866,6 +1035,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.scenario_validate_dry_run and args.scenario_plan is None:
         print("--scenario-validate-dry-run requires --scenario-plan")
         return 2
+    if args.scenario_validate_live:
+        if args.workspace is None:
+            print("--scenario-validate-live requires --workspace")
+            return 2
+        if args.scenario_plan is None:
+            print("--scenario-validate-live requires --scenario-plan")
+            return 2
+        if not args.scenario_validate_dry_run:
+            print("--scenario-validate-live requires --scenario-validate-dry-run")
+            return 2
     runtime_info = (
         args.runtime_info
         or args.expect_tool_profile is not None
@@ -873,6 +1052,7 @@ def main(argv: list[str] | None = None) -> int:
         or args.expect_tool_count is not None
         or args.require_runtime_fresh
         or args.require_robot_probe_error_contract
+        or args.scenario_validate_live
     )
     return asyncio.run(
         probe(
@@ -887,6 +1067,7 @@ def main(argv: list[str] | None = None) -> int:
             ),
             scenario_plan=args.scenario_plan,
             scenario_validate_dry_run=args.scenario_validate_dry_run,
+            scenario_validate_live=args.scenario_validate_live,
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
             required_live_validation_tools=required_live_validation_tools,
@@ -896,6 +1077,8 @@ def main(argv: list[str] | None = None) -> int:
             expected_retry_key_args=expected_retry_key_args,
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,
+            mcp_response_timeout_s=args.mcp_response_timeout_s,
+            mcp_tool_call_timeout_s=args.mcp_tool_call_timeout_s,
         )
     )
 
