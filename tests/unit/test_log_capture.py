@@ -9,9 +9,8 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 import sys
-
-import pytest
-
+import threading
+import time
 
 # Load the in-Extension module directly without requiring the Kit import chain.
 _SERVICE_PATH = (
@@ -149,6 +148,60 @@ def test_start_is_idempotent():
     assert svc._handle is None  # never wired up
     svc.stop()  # idempotent
     svc.stop()
+
+
+def test_request_stop_reports_completed_stop():
+    class FakeLoggingInterface:
+        def __init__(self) -> None:
+            self.removed: list[object] = []
+
+        def remove_logger(self, handle: object) -> None:
+            self.removed.append(handle)
+
+    svc = LogCaptureService()
+    handle = object()
+    logging_iface = FakeLoggingInterface()
+    svc._handle = handle
+    svc._logging_iface = logging_iface
+
+    result = svc.request_stop(timeout_s=1.0)
+
+    assert result["capture_stop_requested"] is True
+    assert result["capture_stop_completed"] is True
+    assert result["capture_stop_timed_out"] is False
+    assert result["capture_running"] is False
+    assert logging_iface.removed == [handle]
+
+
+def test_request_stop_times_out_without_blocking_request_thread():
+    class BlockingLoggingInterface:
+        def __init__(self) -> None:
+            self.entered = threading.Event()
+            self.release = threading.Event()
+
+        def remove_logger(self, handle: object) -> None:
+            self.entered.set()
+            self.release.wait(timeout=2.0)
+
+    svc = LogCaptureService()
+    svc._handle = object()
+    svc._logging_iface = BlockingLoggingInterface()
+
+    started = time.monotonic()
+    result = svc.request_stop(timeout_s=0.01)
+    elapsed = time.monotonic() - started
+
+    assert svc._logging_iface.entered.wait(timeout=0.5)
+    assert elapsed < 0.5
+    assert result["capture_stop_requested"] is True
+    assert result["capture_stop_completed"] is False
+    assert result["capture_stop_timed_out"] is True
+    assert result["capture_running"] is True
+
+    svc._logging_iface.release.set()
+    assert svc._stop_thread is not None
+    svc._stop_thread.join(timeout=1.0)
+    assert svc.is_running() is False
 
 
 def test_level_name_unknown_falls_through():

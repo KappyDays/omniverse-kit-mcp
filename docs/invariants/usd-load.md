@@ -29,6 +29,10 @@ Catalog SoT: `docs/assets/isaac/asset_inventory.md` entry point + `docs/assets/i
 - Verified symptom that MDL loader loop caused carb thread and GIL contention
 - Right before live verification, open the request-scoped capture window with `extension_clear_logs`,
   Only patterns that close immediately after failure with `extension_capture_logs(..., stop_after_capture=True)` are allowed.
+- For stop-after-capture calls, `ok=true` is not enough: also verify
+  `data.capture_stop_timed_out=false` or `data.capture_running=false`. If the
+  hook did not close, follow `docs/tool-diagnostic-map.md` log-capture
+  fallback before running another MDL-heavy load.
 
 ### 3. Zombie recovery only works with `cmd //c "taskkill /F /IM kit.exe /T"`
 

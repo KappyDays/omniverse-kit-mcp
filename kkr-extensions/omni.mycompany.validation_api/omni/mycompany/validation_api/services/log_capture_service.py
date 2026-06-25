@@ -51,6 +51,7 @@ class LogCaptureService:
         self._handle: Any = None
         self._logging_iface: Any = None
         self._maxlen = maxlen
+        self._stop_thread: threading.Thread | None = None
 
     # --- lifecycle ---
 
@@ -86,6 +87,41 @@ class LogCaptureService:
             pass
         self._handle = None
         self._logging_iface = None
+
+    def request_stop(self, timeout_s: float = 1.0) -> dict[str, Any]:
+        """Request hook removal without letting a REST request hang forever.
+
+        Kit/carb logger removal can block when the logging subsystem is already
+        wedged. The normal `stop()` path stays synchronous for shutdown, while
+        request-scoped capture close uses this bounded helper.
+        """
+        timeout_s = max(0.0, float(timeout_s))
+        if self._handle is None:
+            return {
+                "capture_stop_requested": True,
+                "capture_stop_completed": True,
+                "capture_stop_timed_out": False,
+                "capture_stop_timeout_s": timeout_s,
+                "capture_running": False,
+            }
+
+        if self._stop_thread is None or not self._stop_thread.is_alive():
+            self._stop_thread = threading.Thread(
+                target=self.stop,
+                name="validation-api-log-capture-stop",
+                daemon=True,
+            )
+            self._stop_thread.start()
+
+        self._stop_thread.join(timeout_s)
+        completed = not self._stop_thread.is_alive()
+        return {
+            "capture_stop_requested": True,
+            "capture_stop_completed": completed,
+            "capture_stop_timed_out": not completed,
+            "capture_stop_timeout_s": timeout_s,
+            "capture_running": self.is_running(),
+        }
 
     # --- hook ---
 

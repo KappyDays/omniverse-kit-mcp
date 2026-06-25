@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from omniverse_kit_mcp.modules.extension_module import ExtensionModule
-from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
 from omniverse_kit_mcp.types.extension import ExtensionResetRequest, ExtensionTriggerRequest
 from tests.conftest import MockIsaacRestClient
 
@@ -50,6 +50,38 @@ async def test_get_state(ext_module, meta):
     assert result.ok is True
     assert result.data is not None
     assert result.data.enabled is True
+
+
+@pytest.mark.asyncio
+async def test_capture_logs_preserves_stop_metadata(ext_module, meta, mock_client):
+    mock_client.responses["extension_logs"] = {
+        "ok": True,
+        "entries": [],
+        "count": 0,
+        "truncated": False,
+        "level_filter": "WARN",
+        "since_ms": None,
+        "source_filter": None,
+        "capture_running": True,
+        "capture_stop_requested": True,
+        "capture_stop_completed": False,
+        "capture_stop_timed_out": True,
+        "capture_stop_timeout_s": 1.0,
+    }
+
+    result = await ext_module.capture_logs(
+        meta,
+        level="WARN",
+        stop_after_capture=True,
+    )
+
+    assert result.ok is True
+    assert result.data is not None
+    assert result.data.capture_running is True
+    assert result.data.capture_stop_requested is True
+    assert result.data.capture_stop_completed is False
+    assert result.data.capture_stop_timed_out is True
+    assert result.data.capture_stop_timeout_s == 1.0
 
 
 @pytest.mark.asyncio

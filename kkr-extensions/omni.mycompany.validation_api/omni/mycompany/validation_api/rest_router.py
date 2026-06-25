@@ -1088,8 +1088,7 @@ async def extension_logs(
         )
         result["capture_running"] = _log_capture.is_running()
         if stop_after_capture:
-            _log_capture.stop()
-            result["capture_running"] = False
+            result.update(_log_capture.request_stop())
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

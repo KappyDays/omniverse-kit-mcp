@@ -431,6 +431,10 @@ class ExtensionModule:
                 since_ms=raw.get("since_ms"),
                 source_filter=raw.get("source_filter"),
                 capture_running=bool(raw.get("capture_running", False)),
+                capture_stop_requested=bool(raw.get("capture_stop_requested", False)),
+                capture_stop_completed=raw.get("capture_stop_completed"),
+                capture_stop_timed_out=bool(raw.get("capture_stop_timed_out", False)),
+                capture_stop_timeout_s=raw.get("capture_stop_timeout_s"),
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:  # noqa: BLE001

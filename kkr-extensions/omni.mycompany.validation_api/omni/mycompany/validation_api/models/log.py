@@ -30,3 +30,8 @@ class LogCaptureResponseModel(BaseModel):
     level_filter: str
     since_ms: int | None = None
     source_filter: str | None = None
+    capture_running: bool = False
+    capture_stop_requested: bool = False
+    capture_stop_completed: bool | None = None
+    capture_stop_timed_out: bool = False
+    capture_stop_timeout_s: float | None = None

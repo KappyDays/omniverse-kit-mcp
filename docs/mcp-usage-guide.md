@@ -335,6 +335,9 @@ Official asset on-demand live verify wrapper:
 `extension_capture_logs(level="ERROR", stop_after_capture=true)`. Capture logs
 in the same live MCP host session that ran `official_asset_verify`; one-shot
 stdio hosts do not preserve the previous host's in-memory/log-capture state.
+When a stop-after-capture call returns `ok=true`, still check
+`data.capture_stop_timed_out=false` (or `data.capture_running=false`) before
+assuming the request-scoped carb hook closed cleanly.
 Direct `official_asset_verify` response is acceptable as on-demand live evidence
 only after checking `data.verification_status=load_verified`, `data.kind=asset`,
 `data.app_profile=isaac-sim`, and `data.load_quality` (`content_verified_with_bbox`
