@@ -29,6 +29,19 @@ orders without requiring first-class live tools in the parent host.
   `diagnostic_steps` and `stage_mutation_steps` were present, with
   `scratch_stage_required=false` and the 8-tool read-only wrapper order.
 
+## Follow-up live assertion artifacts
+
+- Robot + RTX success exact fields:
+  `docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md`
+- Robot + RTX success numeric threshold:
+  `docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md`
+- Robot + RTX controlled failure diagnostics:
+  `docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`
+- Official asset verify fields:
+  `docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md`
+- Official asset read-only diagnostic fields:
+  `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`
+
 ## Public Boundary
 
 - No mutating live scenario was run for this artifact.

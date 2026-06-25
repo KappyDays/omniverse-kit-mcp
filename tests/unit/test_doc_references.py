@@ -621,6 +621,22 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
     monkeypatch.setattr(mcp_probe, "probe", fake_probe)
 
     assert len(commands) == 3
+    for rel in (
+        "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
+        "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",
+        (
+            "docs/artifacts/"
+            "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
+        ),
+        "docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md",
+        (
+            "docs/artifacts/"
+            "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
+        ),
+    ):
+        assert rel in artifact
+        assert (PROJECT / rel).exists()
+
     for command in commands:
         argv = shlex.split(command)
         assert argv[0] == "scripts/probe_mcp_surface.py"
