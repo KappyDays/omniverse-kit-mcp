@@ -10,7 +10,11 @@ from pathlib import Path
 import httpx
 import pytest
 
-from omniverse_kit_mcp.modules.asset_module import AssetModule, resolve_catalog_asset_url
+from omniverse_kit_mcp.modules.asset_module import (
+    AssetModule,
+    _official_fallback_tool_order,
+    resolve_catalog_asset_url,
+)
 from omniverse_kit_mcp.modules.external_asset import ExternalAssetRegistry
 from omniverse_kit_mcp.types.asset import AssetCategory, AssetItem, AssetListResult
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
@@ -84,6 +88,16 @@ def _assert_official_lookup_diagnostic_schema(
     suggested_next = diagnostics["suggested_next"]
     assert isinstance(suggested_next, list)
     assert suggested_next
+
+
+def test_official_fallback_tool_order_matches_diagnostic_route() -> None:
+    assert _official_fallback_tool_order() == [
+        "official_asset_sync_status",
+        "official_asset_search",
+        "official_asset_resolve",
+        "official_asset_verify",
+        "asset_search",
+    ]
 
 
 class _ExplodingClient:
