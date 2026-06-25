@@ -202,7 +202,9 @@ and controlled-failure diagnostic reason assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`.
 The current post-stop-guard Robot + RTX refresh is
 `docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md`.
-The doc-only durable-rule E2E probe recipe is verified in
+The current doc-only durable-rule E2E refresh is verified in
+`docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md`;
+the baseline recipe remains
 `docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
 supersede them only with a new pass/failure artifact that preserves the same

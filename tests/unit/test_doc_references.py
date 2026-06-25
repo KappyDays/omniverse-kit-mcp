@@ -958,14 +958,15 @@ def test_f3b_log_capture_tool_catalog_names_close_metadata():
 
 
 def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
-    artifact = (
-        PROJECT / "docs" / "artifacts" / "probe-assertion-durable-docs-e2e-2026-06-25.md"
-    ).read_text(encoding="utf-8")
-    raw_commands = re.findall(r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`", artifact)
-    commands = [
-        "scripts/probe_mcp_surface.py"
-        + command[re.search(r"scripts[\\/]probe_mcp_surface\.py", command).end() :]
-        for command in raw_commands
+    artifact_paths = [
+        PROJECT
+        / "docs"
+        / "artifacts"
+        / "probe-assertion-durable-docs-e2e-2026-06-25.md",
+        PROJECT
+        / "docs"
+        / "artifacts"
+        / "probe-assertion-durable-docs-e2e-refresh-2026-06-26.md",
     ]
     calls: list[dict[str, object]] = []
 
@@ -975,53 +976,66 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
 
     monkeypatch.setattr(mcp_probe, "probe", fake_probe)
 
-    assert len(commands) == 3
-    for rel in (
-        "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
-        "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",
-        (
-            "docs/artifacts/"
-            "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
-        ),
-        "docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md",
-        (
-            "docs/artifacts/"
-            "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
-        ),
-    ):
-        assert rel in artifact
-        assert (PROJECT / rel).exists()
+    for artifact_path in artifact_paths:
+        artifact = artifact_path.read_text(encoding="utf-8")
+        raw_commands = re.findall(
+            r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`",
+            artifact,
+        )
+        commands = [
+            "scripts/probe_mcp_surface.py"
+            + command[re.search(r"scripts[\\/]probe_mcp_surface\.py", command).end() :]
+            for command in raw_commands
+        ]
+        start = len(calls)
 
-    for command in commands:
-        argv = shlex.split(command)
-        assert argv[0] == "scripts/probe_mcp_surface.py"
-        assert mcp_probe.main(argv[1:]) == 0, command
+        assert len(commands) == 3
+        for rel in (
+            "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
+            "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",
+            (
+                "docs/artifacts/"
+                "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
+            ),
+            "docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md",
+            (
+                "docs/artifacts/"
+                "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
+            ),
+        ):
+            assert rel in artifact
+            assert (PROJECT / rel).exists()
 
-    plans = {call["scenario_plan"]: call for call in calls}
-    assert set(plans) == {
-        "smoke/robot_rtx_sensor_golden_workflow.yaml",
-        "smoke/official_asset_verify_live.yaml",
-        "smoke/official_asset_catalog_diagnostics.yaml",
-    }
-    robot = plans["smoke/robot_rtx_sensor_golden_workflow.yaml"]
-    assert robot["scenario_validate_dry_run"] is True
-    assert robot["scenario_validate_live"] is False
-    assert "preflight_requirements" in robot["required_plan_fields"]
-    assert "live_validation_checklist" in robot["required_plan_fields"]
-    assert robot["expect_scratch_stage_required"] is True
-    assert robot["expect_log_capture_recommended"] is True
-    assert robot["expected_automatic_cleanup_timeouts"] == (
-        ("__fallback_cleanup_reset", 30.0),
-    )
-    official_verify = plans["smoke/official_asset_verify_live.yaml"]
-    assert official_verify["scenario_validate_dry_run"] is True
-    assert official_verify["scenario_validate_live"] is False
-    assert official_verify["expect_scratch_stage_required"] is True
-    assert "evidence_steps" in official_verify["required_plan_fields"]
-    official_read_only = plans["smoke/official_asset_catalog_diagnostics.yaml"]
-    assert official_read_only["scenario_validate_dry_run"] is True
-    assert official_read_only["scenario_validate_live"] is False
-    assert official_read_only["expect_scratch_stage_required"] is False
+        for command in commands:
+            argv = shlex.split(command)
+            assert argv[0] == "scripts/probe_mcp_surface.py"
+            assert mcp_probe.main(argv[1:]) == 0, command
+
+        plans = {call["scenario_plan"]: call for call in calls[start:]}
+        assert set(plans) == {
+            "smoke/robot_rtx_sensor_golden_workflow.yaml",
+            "smoke/official_asset_verify_live.yaml",
+            "smoke/official_asset_catalog_diagnostics.yaml",
+        }
+        robot = plans["smoke/robot_rtx_sensor_golden_workflow.yaml"]
+        assert robot["scenario_validate_dry_run"] is True
+        assert robot["scenario_validate_live"] is False
+        assert "preflight_requirements" in robot["required_plan_fields"]
+        assert "live_validation_checklist" in robot["required_plan_fields"]
+        assert robot["expect_scratch_stage_required"] is True
+        assert robot["expect_log_capture_recommended"] is True
+        assert robot["expected_automatic_cleanup_timeouts"] == (
+            ("__fallback_cleanup_reset", 30.0),
+        )
+        official_verify = plans["smoke/official_asset_verify_live.yaml"]
+        assert official_verify["scenario_validate_dry_run"] is True
+        assert official_verify["scenario_validate_live"] is False
+        assert official_verify["expect_scratch_stage_required"] is True
+        assert "evidence_steps" in official_verify["required_plan_fields"]
+        official_read_only = plans["smoke/official_asset_catalog_diagnostics.yaml"]
+        assert official_read_only["scenario_validate_dry_run"] is True
+        assert official_read_only["scenario_validate_live"] is False
+        assert official_read_only["expect_scratch_stage_required"] is False
 
 
 def test_f3b_robot_rtx_public_evidence_redaction_guidance():
@@ -1057,6 +1071,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
         ),
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
+        "docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md",
         "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md",
     ]
 
