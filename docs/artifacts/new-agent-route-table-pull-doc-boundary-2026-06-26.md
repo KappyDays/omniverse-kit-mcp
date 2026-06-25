@@ -18,6 +18,9 @@ or official asset live proofs.
   dry-run before explicit live `scenario_validate(<scenario>.yaml)`.
 - The Robot + RTX golden-path task route now points to `scenarios/CLAUDE.md`
   alongside `docs/invariants/scenario-validation.md` and the integration facts.
+- The Robot + RTX golden-path task route now also pins `scenario_plan` before
+  `scenario_validate(..., dry_run=true)` before the live `scenario_validate(...)`
+  call, matching the official asset route-table pattern.
 - Root `CLAUDE.md` now has explicit Robot + RTX and official asset scenario
   proof rows in the required pull-doc table.
 - `tests/unit/test_doc_references.py` guards both route rows so the entry-point
@@ -45,6 +48,26 @@ or official asset live proofs.
   `37 passed`.
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q` passed:
   `944 passed, 16 skipped`.
+- `git diff --check` passed with only existing CRLF normalization warnings for
+  touched text files.
+- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`
+  passed.
+
+## Robot Route Dry-Run Refresh
+
+- The Robot + RTX route row was refreshed to make the route-table command order
+  explicit: `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
+  `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)`
+  -> `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)`.
+- Targeted validation for the refresh:
+  `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_usage_guide_task_routes_point_to_live_proof_pull_docs tests\unit\test_doc_references.py::test_f3b_usage_guide_artifact_links_exist -q`
+  passed: 2 tests.
+- `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_doc_references.py`
+  passed.
+- `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
+  `37 passed`.
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q` passed:
+  `945 passed, 16 skipped`.
 - `git diff --check` passed with only existing CRLF normalization warnings for
   touched text files.
 - `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`

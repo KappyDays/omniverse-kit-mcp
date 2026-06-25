@@ -923,6 +923,23 @@ def test_f3b_usage_guide_task_routes_point_to_live_proof_pull_docs():
         official_route.index("docs/invariants/scenario-validation.md")
     )
     assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in robot_route
+    assert (
+        "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)"
+        in robot_route
+    )
+    assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in (
+        robot_route
+    )
+    assert robot_route.index("scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)") < (
+        robot_route.index(
+            "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)"
+        )
+    )
+    assert robot_route.index(
+        "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)"
+    ) < robot_route.index(
+        "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)"
+    )
     assert "docs/invariants/scenario-validation.md" in robot_route
     assert "scenarios/CLAUDE.md" in robot_route
     assert "src/omniverse_kit_mcp/modules/integration-facts.md" in robot_route
