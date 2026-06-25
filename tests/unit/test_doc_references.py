@@ -1230,6 +1230,9 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
             "smoke/official_asset_catalog_diagnostics.yaml",
         }
         robot = plans["smoke/robot_rtx_sensor_golden_workflow.yaml"]
+        assert robot["runtime_info"] is True
+        assert robot["require_runtime_fresh"] is True
+        assert robot["require_robot_probe_error_contract"] is True
         assert robot["scenario_validate_dry_run"] is True
         assert robot["scenario_validate_live"] is False
         assert "preflight_requirements" in robot["required_plan_fields"]
@@ -1240,11 +1243,17 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
             ("__fallback_cleanup_reset", 30.0),
         )
         official_verify = plans["smoke/official_asset_verify_live.yaml"]
+        assert official_verify["runtime_info"] is True
+        assert official_verify["require_runtime_fresh"] is True
+        assert official_verify["require_robot_probe_error_contract"] is True
         assert official_verify["scenario_validate_dry_run"] is True
         assert official_verify["scenario_validate_live"] is False
         assert official_verify["expect_scratch_stage_required"] is True
         assert "evidence_steps" in official_verify["required_plan_fields"]
         official_read_only = plans["smoke/official_asset_catalog_diagnostics.yaml"]
+        assert official_read_only["runtime_info"] is True
+        assert official_read_only["require_runtime_fresh"] is True
+        assert official_read_only["require_robot_probe_error_contract"] is True
         assert official_read_only["scenario_validate_dry_run"] is True
         assert official_read_only["scenario_validate_live"] is False
         assert official_read_only["expect_scratch_stage_required"] is False
@@ -1574,6 +1583,9 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
         assert call["scenario_plan"] == "smoke/robot_rtx_sensor_golden_workflow.yaml"
         assert call["scenario_validate_dry_run"] is True
         assert call["scenario_validate_live"] is True
+        assert call["runtime_info"] is True
+        assert call["require_runtime_fresh"] is True
+        assert call["require_robot_probe_error_contract"] is True
         assert call["expect_live_status"] == "passed"
         assert call["expect_live_cleanup_failures"] == 0
         assert call["expect_scratch_stage_required"] is True
@@ -2201,6 +2213,9 @@ def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypat
         )
         assert call["scenario_validate_dry_run"] is True
         assert call["scenario_validate_live"] is True
+        assert call["runtime_info"] is True
+        assert call["require_runtime_fresh"] is True
+        assert call["require_robot_probe_error_contract"] is True
         assert call["expect_live_status"] == "passed"
         assert call["expect_live_cleanup_failures"] == 0
         assert call["expect_scratch_stage_required"] is False
@@ -2283,6 +2298,9 @@ def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch)
         assert call["scenario_plan"] == "smoke/official_asset_verify_live.yaml"
         assert call["scenario_validate_dry_run"] is True
         assert call["scenario_validate_live"] is True
+        assert call["runtime_info"] is True
+        assert call["require_runtime_fresh"] is True
+        assert call["require_robot_probe_error_contract"] is True
         assert call["expect_live_status"] == "passed"
         assert call["expect_live_cleanup_failures"] == 0
         assert call["expect_scratch_stage_required"] is True
