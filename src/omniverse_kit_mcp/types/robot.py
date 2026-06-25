@@ -428,3 +428,4 @@ class RobotDrivePhysicsResult:
     ok: bool
     job_id: str
     prim_path: str
+    diagnostics: dict[str, Any] = field(default_factory=dict)

@@ -2821,6 +2821,7 @@ async def test_robot_drive_physics_returns_job_id():
     assert result.ok
     assert isinstance(result.data, RobotDrivePhysicsResult)
     assert result.data.job_id == "drive_test_0001"
+    assert result.data.diagnostics == {}
     drive_calls = [c for c in client.calls if c[0] == "robot_drive_physics"]
     assert len(drive_calls) == 1
     assert drive_calls[0][1]["waypoints"] == [list(p) for p in waypoints]
@@ -2832,7 +2833,11 @@ async def test_robot_drive_physics_server_error_maps():
     from tests.conftest import MockIsaacRestClient
 
     client = MockIsaacRestClient()
-    client.responses["robot_drive_physics"] = {"ok": False, "reason": "wheel DOF unresolvable"}
+    client.responses["robot_drive_physics"] = {
+        "ok": False,
+        "reason": "wheel DOF unresolvable",
+        "diagnostics": {"reason": "wheel_dof_unresolvable"},
+    }
     module = RobotModule(client)
     request = RobotDrivePhysicsRequest(
         prim_path="/World/X",
@@ -2841,8 +2846,68 @@ async def test_robot_drive_physics_server_error_maps():
     result = await module.drive_physics(_meta(), request)
 
     assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "ROBOT_DRIVE_PHYSICS_ERROR"
     assert "DOF" in (result.message or "")
+    assert isinstance(result.data, RobotDrivePhysicsResult)
+    assert result.data.ok is False
+    assert result.data.job_id == ""
+    assert result.data.prim_path == "/World/X"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_drive_physics_error"
+    assert diagnostics["raw_reason"] == "wheel_dof_unresolvable"
+    assert diagnostics["upstream_error_code"] == "ROBOT_DRIVE_PHYSICS_ERROR"
+    assert diagnostics["upstream_message"] == "wheel DOF unresolvable"
+    assert diagnostics["prim_path"] == "/World/X"
+    assert diagnostics["waypoint_count"] == 2
+    assert diagnostics["wheel_radius"] == 0.14
+    assert diagnostics["wheel_base"] == 0.413
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_get_joint_config_static",
+        "robot_drive_physics",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_robot_drive_physics_exception_returns_typed_diagnostics():
+    class FailingClient:
+        async def robot_drive_physics(self, request):
+            raise RuntimeError("physics drive service unavailable")
+
+    module = RobotModule(FailingClient())  # type: ignore[arg-type]
+    request = RobotDrivePhysicsRequest(
+        prim_path="/World/MobileBase",
+        waypoints=((0.0, 0.0, 0.0), (1.0, 0.0, 0.0)),
+        max_linear=0.5,
+        max_angular=0.75,
+        wheel_radius=0.2,
+        wheel_base=0.6,
+        arrival_tolerance=0.1,
+        timeout_s=12.0,
+        lookahead=0.4,
+    )
+    result = await module.drive_physics(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_DRIVE_PHYSICS_ERROR"
+    assert isinstance(result.data, RobotDrivePhysicsResult)
+    assert result.data.ok is False
+    assert result.data.prim_path == "/World/MobileBase"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_drive_physics_error"
+    assert diagnostics["upstream_message"] == "physics drive service unavailable"
+    assert diagnostics["max_linear"] == 0.5
+    assert diagnostics["max_angular"] == 0.75
+    assert diagnostics["wheel_radius"] == 0.2
+    assert diagnostics["wheel_base"] == 0.6
+    assert diagnostics["arrival_tolerance"] == 0.1
+    assert diagnostics["timeout_s"] == 12.0
+    assert diagnostics["lookahead"] == 0.4
 
 
 @pytest.mark.asyncio

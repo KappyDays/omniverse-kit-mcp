@@ -1092,7 +1092,8 @@ def register_module_tools(
         timeline playing (R2). Wheel DOFs auto-resolved by name substring
         scan (wheel_left/right or joint_wheel_*). Always zeros wheels on
         exit (cancel/timeout/exception). Defaults are Nova Carter spec
-        (wheel_radius=0.14, wheel_base=0.413).
+        (wheel_radius=0.14, wheel_base=0.413). Failures include
+        data.diagnostics.fallback_tool_order.
         """
         meta = make_meta(ModuleName.ROBOT)
         # Accept 2D [x, y] (ground plane) or 3D [x, y, z]; pad z=0 for 2D so a

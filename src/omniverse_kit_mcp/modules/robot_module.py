@@ -168,6 +168,14 @@ _ROBOT_GET_STATIC_JOINT_CONFIG_FALLBACK_TOOL_ORDER = (
     "robot_get_joint_config_static",
     "extension_capture_logs",
 )
+_ROBOT_DRIVE_PHYSICS_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_get_joint_config_static",
+    "robot_drive_physics",
+    "extension_capture_logs",
+)
 _PROBE_UNSAFE_TIMEOUT_CLEANUP_PHASES = {
     "simulation_play",
     "warmup_step",
@@ -1707,22 +1715,56 @@ class RobotModule:
                 "lookahead": request.lookahead,
             })
             if not raw.get("ok", False):
+                error_code = "ROBOT_DRIVE_PHYSICS_ERROR"
+                message = str(raw.get("reason", "drive_physics failed"))
+                data = RobotDrivePhysicsResult(
+                    ok=False,
+                    job_id=str(raw.get("job_id", "")),
+                    prim_path=str(raw.get("prim_path", request.prim_path)),
+                    diagnostics=_robot_drive_physics_error_diagnostics(
+                        request=request,
+                        upstream_error_code=error_code,
+                        upstream_message=message,
+                        raw_diagnostics=raw.get("diagnostics"),
+                    ),
+                )
                 return error_result(
-                    raw.get("reason", "drive_physics failed"),
+                    message,
                     started_ms=started,
-                    error_code="ROBOT_DRIVE_PHYSICS_ERROR",
+                    error_code=error_code,
+                    data=data,
                 )
             return ok_result(
                 RobotDrivePhysicsResult(
                     ok=True,
                     job_id=str(raw.get("job_id", "")),
                     prim_path=raw.get("prim_path", request.prim_path),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_DRIVE_PHYSICS_ERROR"
+            data = RobotDrivePhysicsResult(
+                ok=False,
+                job_id="",
+                prim_path=request.prim_path,
+                diagnostics=_robot_drive_physics_error_diagnostics(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_DRIVE_PHYSICS_ERROR",
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def run_franka_pick_place(
@@ -2360,6 +2402,44 @@ def _empty_joint_config_error_data(
         order_reliable=False,
         diagnostics=diagnostics,
     )
+
+
+def _robot_drive_physics_error_diagnostics(
+    *,
+    request: RobotDrivePhysicsRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+    raw_diagnostics: object | None = None,
+) -> dict[str, Any]:
+    diagnostics = (
+        dict(raw_diagnostics)
+        if isinstance(raw_diagnostics, dict)
+        else {}
+    )
+    raw_reason = diagnostics.get("reason")
+    diagnostics.update({
+        "reason": "robot_drive_physics_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": request.prim_path,
+        "waypoint_count": len(request.waypoints),
+        "max_linear": request.max_linear,
+        "max_angular": request.max_angular,
+        "wheel_radius": request.wheel_radius,
+        "wheel_base": request.wheel_base,
+        "arrival_tolerance": request.arrival_tolerance,
+        "timeout_s": request.timeout_s,
+        "lookahead": request.lookahead,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline is playing before retrying physics drive.",
+            "Run stage_capture_snapshot and robot_get_joint_config_static to confirm the mobile base articulation and wheel joints.",
+            "Retry robot_drive_physics only after correcting prim path, waypoints, or wheel geometry parameters.",
+        ],
+        "fallback_tool_order": list(_ROBOT_DRIVE_PHYSICS_FALLBACK_TOOL_ORDER),
+    })
+    if raw_reason is not None:
+        diagnostics.setdefault("raw_reason", raw_reason)
+    return diagnostics
 
 
 def _robot_navigate_to_error_diagnostics(

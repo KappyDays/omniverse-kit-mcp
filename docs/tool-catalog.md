@@ -1477,7 +1477,8 @@ Pursuit (physics-based, writes joint_velocities, spec §8.2).          ASYNC Job
 ``{job_id}``; poll ``job_status``. Requires         timeline playing (R2). Wheel DOFs auto-
 resolved by name substring         scan (wheel_left/right or joint_wheel_*). Always zeros
 wheels on         exit (cancel/timeout/exception). Defaults are Nova Carter spec
-(wheel_radius=0.14, wheel_base=0.413).
+(wheel_radius=0.14, wheel_base=0.413). Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
