@@ -389,6 +389,45 @@ def _automatic_cleanup_timeout_mismatches(
     return mismatches
 
 
+def _live_evidence_kind_mismatches(
+    summary: dict[str, Any],
+    expected_kinds: tuple[str, ...],
+) -> list[str]:
+    if not expected_kinds:
+        return []
+    evidence_kinds = summary.get("evidence_kinds")
+    if not isinstance(evidence_kinds, list):
+        return ["evidence_kinds summary is missing or malformed"]
+    actual = {str(kind) for kind in evidence_kinds}
+    return [
+        f"live evidence kind {expected!r} was not found"
+        for expected in expected_kinds
+        if expected not in actual
+    ]
+
+
+def _live_cleanup_failure_mismatches(
+    summary: dict[str, Any],
+    expected_count: int | None,
+) -> list[str]:
+    if expected_count is None:
+        return []
+    actual = summary.get("cleanup_failed_steps")
+    try:
+        actual_count = int(actual)
+    except (TypeError, ValueError):
+        return [
+            "cleanup_failed_steps expected "
+            f"{expected_count}, got {actual!r}"
+        ]
+    if actual_count == expected_count:
+        return []
+    return [
+        "cleanup_failed_steps expected "
+        f"{expected_count}, got {actual!r}"
+    ]
+
+
 def _preflight_runtime_check_mismatches(
     summary: dict[str, Any],
     expected_checks: tuple[str, ...],
@@ -610,6 +649,8 @@ async def probe(
     expected_preflight_runtime_checks: tuple[str, ...] = (),
     expected_retry_key_args: tuple[tuple[str, str, Any], ...] = (),
     expected_automatic_cleanup_timeouts: tuple[tuple[str, float], ...] = (),
+    expected_live_evidence_kinds: tuple[str, ...] = (),
+    expect_live_cleanup_failures: int | None = None,
     expect_live_status: str = "passed",
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
@@ -921,6 +962,8 @@ async def probe(
                     indent=2,
                     ensure_ascii=False,
                 ))
+                if _module_result_failed(clear_logs_payload):
+                    exit_status = 1
                 live_report_payload = _tool_json_response(
                     await call_tool(
                         "scenario_validate",
@@ -945,6 +988,24 @@ async def probe(
                         f"{expect_live_status!r}, got "
                         f"{live_report_payload.get('status')!r}"
                     )
+                    exit_status = 1
+                evidence_mismatches = _live_evidence_kind_mismatches(
+                    live_summary,
+                    expected_live_evidence_kinds,
+                )
+                if evidence_mismatches:
+                    print("scenario_validate live evidence expectation mismatch:")
+                    for mismatch in evidence_mismatches:
+                        print(f"  - {mismatch}")
+                    exit_status = 1
+                cleanup_mismatches = _live_cleanup_failure_mismatches(
+                    live_summary,
+                    expect_live_cleanup_failures,
+                )
+                if cleanup_mismatches:
+                    print("scenario_validate live cleanup expectation mismatch:")
+                    for mismatch in cleanup_mismatches:
+                        print(f"  - {mismatch}")
                     exit_status = 1
                 markdown_report = _tool_text_response(
                     await call_tool(
@@ -972,6 +1033,8 @@ async def probe(
                     indent=2,
                     ensure_ascii=False,
                 ))
+                if _module_result_failed(log_payload):
+                    exit_status = 1
     elif (
         required_live_validation_tools
         or expected_preflight_runtime_checks
@@ -1085,6 +1148,20 @@ def main(argv: list[str] | None = None) -> int:
             "Expected status for --scenario-validate-live; use 'failed' for "
             "controlled-failure diagnostics."
         ),
+    )
+    parser.add_argument(
+        "--expect-live-evidence-kind",
+        action="append",
+        default=[],
+        help=(
+            "Require scenario_validate live evidence_summary to include this "
+            "evidence_kind; repeat for multiple kinds."
+        ),
+    )
+    parser.add_argument(
+        "--expect-live-cleanup-failures",
+        type=int,
+        help="Require scenario_validate live cleanup_failed_steps to match.",
     )
     parser.add_argument(
         "--input-overrides-json",
@@ -1229,6 +1306,18 @@ def main(argv: list[str] | None = None) -> int:
     elif args.expect_live_status != "passed":
         print("--expect-live-status requires --scenario-validate-live")
         return 2
+    elif args.expect_live_evidence_kind:
+        print("--expect-live-evidence-kind requires --scenario-validate-live")
+        return 2
+    elif args.expect_live_cleanup_failures is not None:
+        print("--expect-live-cleanup-failures requires --scenario-validate-live")
+        return 2
+    if (
+        args.expect_live_cleanup_failures is not None
+        and args.expect_live_cleanup_failures < 0
+    ):
+        print("--expect-live-cleanup-failures must be >= 0")
+        return 2
     runtime_info = (
         args.runtime_info
         or args.expect_tool_profile is not None
@@ -1264,6 +1353,8 @@ def main(argv: list[str] | None = None) -> int:
             expected_automatic_cleanup_timeouts=(
                 expected_automatic_cleanup_timeouts
             ),
+            expected_live_evidence_kinds=tuple(args.expect_live_evidence_kind),
+            expect_live_cleanup_failures=args.expect_live_cleanup_failures,
             expect_live_status=args.expect_live_status,
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,

@@ -801,6 +801,8 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
             ("__fallback_cleanup_reset", 30.0),
         ),
         expect_live_status="failed",
+        expected_live_evidence_kinds=("visual_capture",),
+        expect_live_cleanup_failures=0,
     )
 
     assert exit_code == 0
@@ -808,6 +810,8 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
     assert '"automatic_cleanup_steps": [' in output
     assert '"timeoutSeconds": 30.0' in output
     assert "=== scenario_validate live summary ===" in output
+    assert '"evidence_kinds": [' in output
+    assert '"cleanup_failed_steps": 0' in output
     assert "# Scenario Report: redacted" in output
     tool_calls = [
         message
@@ -1150,6 +1154,50 @@ def test_mcp_probe_automatic_cleanup_timeout_mismatches_report_drift():
     ) == ["automatic cleanup step 'missing_cleanup' was not found"]
 
 
+def test_mcp_probe_live_evidence_kind_mismatches_are_empty_for_expected_kind():
+    summary = {
+        "evidence_kinds": [
+            "rtx_lidar_point_cloud",
+            "viewport_framing",
+            "visual_capture",
+        ],
+    }
+
+    assert mcp_probe._live_evidence_kind_mismatches(
+        summary,
+        ("rtx_lidar_point_cloud", "visual_capture"),
+    ) == []
+
+
+def test_mcp_probe_live_evidence_kind_mismatches_report_missing_kind():
+    assert mcp_probe._live_evidence_kind_mismatches(
+        {"evidence_kinds": ["visual_capture"]},
+        ("rtx_lidar_point_cloud",),
+    ) == ["live evidence kind 'rtx_lidar_point_cloud' was not found"]
+    assert mcp_probe._live_evidence_kind_mismatches(
+        {},
+        ("visual_capture",),
+    ) == ["evidence_kinds summary is missing or malformed"]
+
+
+def test_mcp_probe_live_cleanup_failure_mismatches_are_empty_for_expected_count():
+    assert mcp_probe._live_cleanup_failure_mismatches(
+        {"cleanup_failed_steps": 0},
+        0,
+    ) == []
+
+
+def test_mcp_probe_live_cleanup_failure_mismatches_report_drift():
+    assert mcp_probe._live_cleanup_failure_mismatches(
+        {"cleanup_failed_steps": 1},
+        0,
+    ) == ["cleanup_failed_steps expected 0, got 1"]
+    assert mcp_probe._live_cleanup_failure_mismatches(
+        {},
+        0,
+    ) == ["cleanup_failed_steps expected 0, got None"]
+
+
 def test_mcp_probe_preflight_runtime_check_mismatches_are_empty_for_expected_values():
     summary = {
         "preflight_runtime_info_checks": [
@@ -1258,6 +1306,24 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-live-status",
         "failed",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-live-evidence-kind",
+        "visual_capture",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-live-cleanup-failures",
+        "0",
+    ]) == 2
+    assert mcp_probe.main([
+        "--scenario-validate-live",
+        "--workspace",
+        "workspaces/isaac/instance-1",
+        "--scenario-plan",
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        "--scenario-validate-dry-run",
+        "--expect-live-cleanup-failures",
+        "-1",
     ]) == 2
     assert mcp_probe.main([
         "--live-preflight",

@@ -132,11 +132,15 @@ timeline status, and request-scoped WARN/ERROR log capture before a mutating
 scenario proof.
 When you are ready to run the mutating scratch/test-stage proof from the same
 parent/root session, rerun the same workspace-local command with
-`--scenario-validate-live`; the script requires `--workspace`,
+`--scenario-validate-live`, `--expect-live-cleanup-failures 0`,
+`--expect-live-evidence-kind rtx_lidar_point_cloud`,
+`--expect-live-evidence-kind viewport_framing`, and
+`--expect-live-evidence-kind visual_capture`; the script requires `--workspace`,
 `--scenario-plan`, and `--scenario-validate-dry-run`, then follows the wrapper
 order through `kit_app_start`, `simulation_get_status`, `extension_clear_logs`,
 live `scenario_validate`, redacted Markdown `scenario_last_report`, and
-`extension_capture_logs`.
+`extension_capture_logs` while failing if the live report loses required
+evidence rows or cleanup preservation.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the
 default standalone report remains raw JSON+Markdown for local triage.
@@ -152,9 +156,11 @@ For bounded RTX lidar failure-shape checks, override
 `lidar_min_points` above `lidar_max_points` instead of editing the scenario; the
 expected failure is `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS` on
 `read_lidar_point_cloud` with cleanup preserved.
-For a live controlled-failure probe, add `--scenario-validate-live
---expect-live-status failed` so the wrapper fails only on the wrong terminal
-status, missing report, or missing cleanup/log evidence.
+For a live controlled-failure probe, add `--scenario-validate-live`,
+`--expect-live-status failed`, `--expect-live-cleanup-failures 0`, and
+`--expect-live-evidence-kind rtx_lidar_point_cloud` so the wrapper fails only
+on the wrong terminal status, missing report, missing lidar evidence, or
+missing cleanup/log evidence.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 
@@ -171,6 +177,8 @@ default success path and
 for the `lidar_min_points=513` diagnostics path. Wrapper-specific refreshes
 are `docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md` and
 `docs/artifacts/robot-rtx-controlled-failure-wrapper-refresh-2026-06-25.md`.
+The live probe assertion options are verified in
+`docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
 supersede them only with a new pass/failure artifact that preserves the same
 public-safety boundary.
@@ -249,6 +257,10 @@ If first-class live tools are not exposed in the parent host, the same
 workspace-local stdio probe can preflight the plan and dry-run validate shape
 without stage mutation:
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_verify_live.yaml --scenario-validate-dry-run --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`.
+When promoting that official-asset probe to the mutating scratch/test-stage
+proof, add `--scenario-validate-live`, `--expect-live-cleanup-failures 0`,
+and `--expect-live-evidence-kind official_asset_verify` so the live report
+must preserve the expected verification evidence row.
 For the read-only catalog diagnostics path, use
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true`.
 After validation, request redacted JSON when you need exact fields; compare
