@@ -2302,6 +2302,7 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "docs/artifacts/"
             "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
         ),
+        "docs/artifacts/probe-live-help-report-boundary-2026-06-26.md",
         "docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md",
         (
             "docs/artifacts/"
