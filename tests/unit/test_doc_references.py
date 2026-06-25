@@ -1226,6 +1226,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "same live MCP host session" in on_demand_wrapper
     assert "data.capture_stop_timed_out=false" in on_demand_wrapper
     assert "data.capture_running=false" in on_demand_wrapper
+    assert "extension_capture_logs WARN+" in on_demand_wrapper
+    assert "compact summary" in on_demand_wrapper
     assert (
         "--require-live-validation-tools "
         "mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,"
