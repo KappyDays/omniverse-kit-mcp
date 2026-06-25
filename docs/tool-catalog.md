@@ -1639,7 +1639,8 @@ robot_install_pick_place_playback_demo(profile_name: 'str' = 'franka_fr3', robot
 Install a profile-selected pick/place playback demo. Only validated_pick_place profiles route
 to playback; candidate/IK/profile-only arms return status='unsupported' with blocker
 diagnostics, diagnostics.suggested_next, and diagnostics.fallback_tool_order until durable live
-proof exists.
+proof exists. Installer failures include data.diagnostics.reason=pick_place_demo_install_error
+and data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -1807,7 +1808,8 @@ robot_reset_pick_place_demo() -> 'str'
 ```
 
 Reset the installed Franka pick/place playback demo object pose, robot joints/gripper,
-controller state, and status.
+controller state, and status. Failures include
+data.diagnostics.reason=pick_place_demo_reset_error and data.diagnostics.fallback_tool_order.
 
 ### `robot_run_franka_pick_place`
 

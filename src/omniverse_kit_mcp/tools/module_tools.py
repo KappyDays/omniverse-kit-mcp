@@ -1011,7 +1011,7 @@ def register_module_tools(
         create_demo_scene: bool = True,
         reset_on_play: bool = True,
     ) -> str:
-        """Install a profile-selected pick/place playback demo. Only validated_pick_place profiles route to playback; candidate/IK/profile-only arms return status='unsupported' with blocker diagnostics, diagnostics.suggested_next, and diagnostics.fallback_tool_order until durable live proof exists."""
+        """Install a profile-selected pick/place playback demo. Only validated_pick_place profiles route to playback; candidate/IK/profile-only arms return status='unsupported' with blocker diagnostics, diagnostics.suggested_next, and diagnostics.fallback_tool_order until durable live proof exists. Installer failures include data.diagnostics.reason=pick_place_demo_install_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         target = target_position or [0.45, -0.35, 0.02575]
         initial = object_initial_position or [0.3, 0.35, 0.02575]
@@ -1062,7 +1062,7 @@ def register_module_tools(
 
     @tool()
     async def robot_reset_pick_place_demo() -> str:
-        """Reset the installed Franka pick/place playback demo object pose, robot joints/gripper, controller state, and status."""
+        """Reset the installed Franka pick/place playback demo object pose, robot joints/gripper, controller state, and status. Failures include data.diagnostics.reason=pick_place_demo_reset_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.reset_pick_place_demo(meta)
         return _serialize(result)

@@ -3107,6 +3107,76 @@ async def test_robot_install_pick_place_playback_demo_forwards_explicit_object_a
 
 
 @pytest.mark.asyncio
+async def test_robot_install_pick_place_playback_demo_exception_returns_typed_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingInstallClient(MockIsaacRestClient):
+        async def robot_install_franka_pick_place_playback_demo(
+            self, payload: dict[str, object]
+        ) -> dict:
+            self.calls.append(("robot_install_franka_pick_place_playback_demo", payload))
+            raise RuntimeError("demo installer unavailable")
+
+    client = FailingInstallClient()
+    module = RobotModule(client)
+    request = RobotFrankaPickPlaceDemoRequest(
+        robot_prim_path="/World/FR3",
+        object_prim_path="/World/TestObject",
+        target_position=(0.55, -0.25, 0.08),
+        object_initial_position=(0.2, 0.3, 0.08),
+        object_size=0.06,
+        object_asset_url="https://example.invalid/object.usd",
+        max_grasp_width_m=0.05,
+        fit_clearance_m=0.007,
+        picking_position=(0.2, 0.3, 0.11),
+        end_effector_initial_height=0.22,
+        create_demo_scene=False,
+        reset_on_play=False,
+    )
+
+    result = await module.install_franka_pick_place_playback_demo(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_FRANKA_PICK_PLACE_DEMO_INSTALL_ERROR"
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
+    assert result.data.ok is False
+    assert result.data.status == "error"
+    assert result.data.robot_prim_path == "/World/FR3"
+    assert result.data.object_prim_path == "/World/TestObject"
+    assert result.data.target_position == (0.55, -0.25, 0.08)
+    assert result.data.initial_object_position == (0.2, 0.3, 0.08)
+    assert result.data.picking_position == (0.2, 0.3, 0.11)
+    assert result.data.end_effector_initial_height == pytest.approx(0.22)
+    assert result.data.last_error == "demo installer unavailable"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "pick_place_demo_install_error"
+    assert diagnostics["upstream_error_code"] == (
+        "ROBOT_FRANKA_PICK_PLACE_DEMO_INSTALL_ERROR"
+    )
+    assert diagnostics["upstream_message"] == "demo installer unavailable"
+    assert diagnostics["robot_prim_path"] == "/World/FR3"
+    assert diagnostics["object_prim_path"] == "/World/TestObject"
+    assert diagnostics["target_position"] == [0.55, -0.25, 0.08]
+    assert diagnostics["object_initial_position"] == [0.2, 0.3, 0.08]
+    assert diagnostics["object_size"] == pytest.approx(0.06)
+    assert diagnostics["object_asset_url"] == "https://example.invalid/object.usd"
+    assert diagnostics["max_grasp_width_m"] == pytest.approx(0.05)
+    assert diagnostics["fit_clearance_m"] == pytest.approx(0.007)
+    assert diagnostics["create_demo_scene"] is False
+    assert diagnostics["reset_on_play"] is False
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_install_pick_place_playback_demo",
+        "robot_get_pick_place_demo_status",
+        "extension_capture_logs",
+    ]
+    assert client.calls[0][1]["object_asset_url"] == "https://example.invalid/object.usd"
+
+
+@pytest.mark.asyncio
 async def test_robot_install_profile_pick_place_demo_blocks_franka_panda_until_durable_proof():
     from tests.conftest import MockIsaacRestClient
 
@@ -3460,3 +3530,41 @@ async def test_robot_reset_pick_place_demo_resets_to_idle():
     assert result.data.status == "idle"
     assert result.data.steps == 0
     assert client.calls[-1][0] == "robot_reset_pick_place_demo"
+
+
+@pytest.mark.asyncio
+async def test_robot_reset_pick_place_demo_exception_returns_typed_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingResetClient(MockIsaacRestClient):
+        async def robot_reset_pick_place_demo(self) -> dict:
+            self.calls.append(("robot_reset_pick_place_demo", {}))
+            raise RuntimeError("reset endpoint unavailable")
+
+    client = FailingResetClient()
+    module = RobotModule(client)
+
+    result = await module.reset_pick_place_demo(_meta())
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_FRANKA_PICK_PLACE_DEMO_RESET_ERROR"
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
+    assert result.data.ok is False
+    assert result.data.status == "error"
+    assert result.data.last_error == "reset endpoint unavailable"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "pick_place_demo_reset_error"
+    assert diagnostics["upstream_error_code"] == (
+        "ROBOT_FRANKA_PICK_PLACE_DEMO_RESET_ERROR"
+    )
+    assert diagnostics["upstream_message"] == "reset endpoint unavailable"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_reset_pick_place_demo",
+        "robot_get_pick_place_demo_status",
+        "extension_capture_logs",
+    ]
+    assert client.calls == [("robot_reset_pick_place_demo", {})]

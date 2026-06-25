@@ -93,6 +93,22 @@ _FRANKA_PICK_PLACE_FALLBACK_TOOL_ORDER = (
     "robot_run_franka_pick_place",
     "extension_capture_logs",
 )
+_PICK_PLACE_DEMO_INSTALL_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_install_pick_place_playback_demo",
+    "robot_get_pick_place_demo_status",
+    "extension_capture_logs",
+)
+_PICK_PLACE_DEMO_RESET_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_reset_pick_place_demo",
+    "robot_get_pick_place_demo_status",
+    "extension_capture_logs",
+)
 _PICK_PLACE_UNSUPPORTED_FALLBACK_TOOL_ORDER = (
     "robot_list_arm_profiles",
     "robot_probe_arm_profile",
@@ -1928,14 +1944,21 @@ class RobotModule:
                     started_ms=started,
                     error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_FAILED",
                     data=status,
-                )
+            )
             return ok_result(status, started_ms=started)
         except Exception as exc:
+            error_code = "ROBOT_FRANKA_PICK_PLACE_DEMO_INSTALL_ERROR"
+            data = _pick_place_demo_install_error_data(
+                request=request,
+                error_code=error_code,
+                message=str(exc),
+            )
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_INSTALL_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def install_pick_place_playback_demo(
@@ -2039,11 +2062,17 @@ class RobotModule:
             raw = await self._client.robot_reset_pick_place_demo()
             return ok_result(_parse_pick_place_demo_status(raw), started_ms=started)
         except Exception as exc:
+            error_code = "ROBOT_FRANKA_PICK_PLACE_DEMO_RESET_ERROR"
+            data = _pick_place_demo_reset_error_data(
+                error_code=error_code,
+                message=str(exc),
+            )
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_RESET_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def get_pick_place_demo_status(
@@ -2215,6 +2244,109 @@ def _pick_place_demo_status_error_data(
     return RobotFrankaPickPlaceDemoStatus(
         ok=False,
         status=status,
+        robot_prim_path="",
+        object_prim_path="",
+        target_position=(0.0, 0.0, 0.0),
+        uses_kinematic_carry=False,
+        steps=0,
+        controller_event=0,
+        done=False,
+        placed=False,
+        lifted=False,
+        initial_object_position=(0.0, 0.0, 0.0),
+        final_object_position=(0.0, 0.0, 0.0),
+        final_distance=0.0,
+        max_lift_delta=0.0,
+        object_bbox_center=(0.0, 0.0, 0.0),
+        object_bbox_size=(0.0, 0.0, 0.0),
+        object_fit_ok=False,
+        object_fit_reason=None,
+        object_fit_axis=None,
+        object_fit_limit_m=None,
+        object_fit_measured_m=None,
+        picking_position=(0.0, 0.0, 0.0),
+        end_effector_initial_height=0.0,
+        diagnostics=diagnostics,
+        last_error=message,
+    )
+
+
+def _pick_place_demo_install_error_data(
+    *,
+    request: RobotFrankaPickPlaceDemoRequest,
+    error_code: str,
+    message: str,
+) -> RobotFrankaPickPlaceDemoStatus:
+    diagnostics: dict[str, Any] = {
+        "reason": "pick_place_demo_install_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "robot_prim_path": request.robot_prim_path,
+        "object_prim_path": request.object_prim_path,
+        "target_position": list(request.target_position),
+        "object_initial_position": list(request.object_initial_position),
+        "object_size": request.object_size,
+        "object_asset_url": request.object_asset_url,
+        "max_grasp_width_m": request.max_grasp_width_m,
+        "fit_clearance_m": request.fit_clearance_m,
+        "create_demo_scene": request.create_demo_scene,
+        "reset_on_play": request.reset_on_play,
+        "suggested_next": [
+            "Run simulation_get_status before treating the playback demo installer as available.",
+            "Run stage_capture_snapshot to confirm robot/object/demo-scene prims before retrying install.",
+            "Retry robot_install_pick_place_playback_demo only after correcting object fit, asset URL, or prim paths.",
+        ],
+        "fallback_tool_order": list(_PICK_PLACE_DEMO_INSTALL_FALLBACK_TOOL_ORDER),
+    }
+    return RobotFrankaPickPlaceDemoStatus(
+        ok=False,
+        status="error",
+        robot_prim_path=request.robot_prim_path,
+        object_prim_path=request.object_prim_path,
+        target_position=request.target_position,
+        uses_kinematic_carry=False,
+        steps=0,
+        controller_event=0,
+        done=False,
+        placed=False,
+        lifted=False,
+        initial_object_position=request.object_initial_position,
+        final_object_position=(0.0, 0.0, 0.0),
+        final_distance=0.0,
+        max_lift_delta=0.0,
+        object_bbox_center=(0.0, 0.0, 0.0),
+        object_bbox_size=(0.0, 0.0, 0.0),
+        object_fit_ok=False,
+        object_fit_reason=None,
+        object_fit_axis=None,
+        object_fit_limit_m=None,
+        object_fit_measured_m=None,
+        picking_position=request.picking_position or request.object_initial_position,
+        end_effector_initial_height=request.end_effector_initial_height or 0.0,
+        diagnostics=diagnostics,
+        last_error=message,
+    )
+
+
+def _pick_place_demo_reset_error_data(
+    *,
+    error_code: str,
+    message: str,
+) -> RobotFrankaPickPlaceDemoStatus:
+    diagnostics: dict[str, Any] = {
+        "reason": "pick_place_demo_reset_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the app is responsive before retrying reset.",
+            "Retry robot_get_pick_place_demo_status to see whether the demo status endpoint recovered.",
+            "Capture WARN/ERROR logs if reset keeps failing or status remains unavailable.",
+        ],
+        "fallback_tool_order": list(_PICK_PLACE_DEMO_RESET_FALLBACK_TOOL_ORDER),
+    }
+    return RobotFrankaPickPlaceDemoStatus(
+        ok=False,
+        status="error",
         robot_prim_path="",
         object_prim_path="",
         target_position=(0.0, 0.0, 0.0),
