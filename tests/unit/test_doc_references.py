@@ -694,6 +694,42 @@ def test_f3b_current_probe_docs_expect_full_tool_count():
         )
 
 
+def test_f3b_usage_guide_live_probe_commands_have_assertion_gates(monkeypatch):
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    commands = _MCP_PROBE_COMMAND_RE.findall(guide)
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    for command in commands:
+        argv = shlex.split(command)
+        assert argv[0] == "scripts/probe_mcp_surface.py"
+        assert mcp_probe.main(argv[1:]) == 0, command
+
+    live_calls = [call for call in calls if call["scenario_validate_live"]]
+    assert live_calls, "mcp-usage-guide.md must keep live probe commands"
+    for call in live_calls:
+        has_evidence_assertion = bool(
+            call["expected_live_evidence_kinds"]
+            or call["expected_live_evidence_fields"]
+            or call["expected_live_evidence_field_minimums"]
+        )
+        has_diagnostic_assertion = bool(
+            call["expected_live_failure_step_errors"]
+            or call["expect_live_diagnostic_next_actions_min"] is not None
+            or call["expected_live_diagnostic_fields"]
+        )
+        assert call["scenario_validate_dry_run"] is True
+        assert call["expect_live_cleanup_failures"] == 0
+        assert call["expect_log_capture_recommended"] is True
+        assert call["expect_scratch_stage_required"] is not None
+        assert has_evidence_assertion or has_diagnostic_assertion, call["scenario_plan"]
+
+
 def test_f3b_usage_guide_live_probe_selectors_match_compiled_plans(monkeypatch):
     from omniverse_kit_mcp.scenario.compiler import compile_scenario
     from omniverse_kit_mcp.scenario.loader import load_scenario
