@@ -595,17 +595,32 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
 
 def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
-    rel = "docs/artifacts/official-asset-verify-live-pass-2026-06-25.md"
+    artifacts = [
+        "docs/artifacts/official-asset-verify-live-pass-2026-06-25.md",
+        "docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md",
+    ]
 
-    assert rel in guide
-    artifact = PROJECT / rel
-    assert artifact.exists(), f"Missing official asset evidence artifact: {rel}"
-    text = artifact.read_text(encoding="utf-8")
-    assert "Verification status: `load_verified`" in text
-    assert "Load quality: `content_verified_no_bbox`" in text
-    assert "local absolute paths" in text
-    assert "worker/thread IDs" in text
-    assert "secrets" in text
+    for rel in artifacts:
+        assert rel in guide
+        artifact = PROJECT / rel
+        assert artifact.exists(), f"Missing official asset evidence artifact: {rel}"
+        text = artifact.read_text(encoding="utf-8")
+        assert "local absolute paths" in text
+        assert "worker/thread IDs" in text
+        assert "secrets" in text
+
+    baseline = (
+        PROJECT / "docs/artifacts/official-asset-verify-live-pass-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert "Verification status: `load_verified`" in baseline
+    assert "Load quality: `content_verified_no_bbox`" in baseline
+
+    assertion_artifact = (
+        PROJECT
+        / "docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert "`--expect-live-evidence-kind official_asset_verify`" in assertion_artifact
+    assert "Verification status: `load_verified`" in assertion_artifact
 
 
 def test_f3b_usage_guide_explains_visual_capture_plan_alignment():

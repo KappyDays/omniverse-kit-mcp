@@ -271,10 +271,12 @@ exception failures, also check `diagnostics.error_type` before deciding whether
 to retry or widen the live proof. Use redacted JSON for exact public-safe fields
 and redacted Markdown `Evidence Summary` for the compact evidence note.
 Current public-safe official asset live evidence is
-`docs/artifacts/official-asset-verify-live-pass-2026-06-25.md`; use it as the
-baseline for the bounded `official_asset_verify` load-quality proof and refresh
-it when verification status, load-quality shape, diagnostics, or WARN/ERROR
-counts change.
+`docs/artifacts/official-asset-verify-live-pass-2026-06-25.md`. The live probe
+assertion options for the same workflow are verified in
+`docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md`. Use
+them as the baseline for the bounded `official_asset_verify` load-quality proof
+and refresh them when verification status, load-quality shape, diagnostics,
+evidence kind, cleanup count, or WARN/ERROR counts change.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
