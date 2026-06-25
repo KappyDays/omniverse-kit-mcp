@@ -65,6 +65,33 @@ Diagnostic fields asserted:
 - `diagnostics.readback_paths_attempted=[cached_lidar_sensor]`
 - `diagnostics.cached_lidar_instance=true`
 
+2026-06-26 post-stop-guard refresh:
+
+- Exit code: `0`
+- Live summary: `failed` as expected
+- Steps: `25` passed, `1` failed, `5` skipped
+- Failed step: `read_lidar_point_cloud`
+- Error code: `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
+- Retry key arg asserted: `read_lidar_point_cloud:min_points=513`
+- Evidence kind asserted: `rtx_lidar_point_cloud`
+- Diagnostic next action count: `4`
+- Diagnostic field asserted:
+  `read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
+- Diagnostic values observed:
+  - `diagnostics.num_points=512`
+  - `diagnostics.min_points=513`
+  - `diagnostics.fallback_tool_order=[simulation_step, sensor_lidar_get_point_cloud, extension_capture_logs]`
+  - `diagnostics.readback_paths_attempted=[cached_lidar_sensor]`
+  - `diagnostics.cached_lidar_instance=true`
+- Cleanup failed steps: `0`
+- Probe `extension_capture_logs WARN+` summary:
+  - `data.capture_running=false`
+  - `data.capture_stop_requested=true`
+  - `data.capture_stop_completed=true`
+  - `data.capture_stop_timed_out=false`
+  - `data.capture_stop_timeout_s=1.0`
+- Snapshot path printed by the probe: `tmp_mcp_surface.json`
+
 Public hygiene:
 
 - This artifact records relative scenario/workspace facts, aggregate counts,
