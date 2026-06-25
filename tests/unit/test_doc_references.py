@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import ast
 import re
+import shlex
 from pathlib import Path
 
 import pytest
 import yaml
+
+import scripts.probe_mcp_surface as mcp_probe
 
 PROJECT = Path(__file__).resolve().parents[2]
 ROOT_CLAUDE = PROJECT / "CLAUDE.md"
@@ -31,6 +34,7 @@ _BACKTICK_PYSYM_RE = re.compile(
     r"`([A-Za-z0-9_./\-]+\.py)(?:::([A-Za-z_][A-Za-z0-9_]*))?`"
 )
 _SNAKE_TOKEN_RE = re.compile(r"`([a-z][a-z0-9_]*_[a-z0-9_]+)`")
+_MCP_PROBE_COMMAND_RE = re.compile(r"`(scripts/probe_mcp_surface\.py [^`]+)`")
 
 # Files produced/maintained outside the repo — exclude from F1 (they will
 # never resolve under PROJECT and their presence in docs is expected).
@@ -341,6 +345,30 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "scenario_validate(dry_run=true)" in guide
     assert "--expect-retry-key-arg step:key=value" in scripts_doc
     assert "--scenario-validate-dry-run" in scripts_doc
+
+
+def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    commands = _MCP_PROBE_COMMAND_RE.findall(guide)
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    assert commands, "mcp-usage-guide.md should document probe_mcp_surface.py commands"
+    for command in commands:
+        argv = shlex.split(command)
+        assert argv[0] == "scripts/probe_mcp_surface.py"
+        assert mcp_probe.main(argv[1:]) == 0, command
+
+    scenario_plans = {call["scenario_plan"] for call in calls}
+    assert "smoke/robot_rtx_sensor_golden_workflow.yaml" in scenario_plans
+    assert "smoke/official_asset_verify_live.yaml" in scenario_plans
+    assert "smoke/official_asset_catalog_diagnostics.yaml" in scenario_plans
+    assert any(call["scenario_validate_dry_run"] for call in calls)
 
 
 def test_f3b_robot_rtx_public_evidence_redaction_guidance():
