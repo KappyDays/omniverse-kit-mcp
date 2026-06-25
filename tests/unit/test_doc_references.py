@@ -842,7 +842,35 @@ def test_f3b_usage_guide_task_routes_point_to_live_proof_pull_docs():
     assert "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)" in (
         official_route
     )
+    assert "scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)" in (
+        official_route
+    )
+    assert (
+        "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml, dry_run=true)"
+        in official_route
+    )
+    assert "scenario_plan(smoke/official_asset_verify_live.yaml)" in official_route
     assert "scenario_validate(smoke/official_asset_verify_live.yaml)" in official_route
+    assert (
+        "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)"
+        in official_route
+    )
+    assert official_route.index("scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)") < (
+        official_route.index(
+            "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml, dry_run=true)"
+        )
+    )
+    assert official_route.index(
+        "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml, dry_run=true)"
+    ) < official_route.index("scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)")
+    assert official_route.index("scenario_plan(smoke/official_asset_verify_live.yaml)") < (
+        official_route.index(
+            "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)"
+        )
+    )
+    assert official_route.index(
+        "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)"
+    ) < official_route.index("scenario_validate(smoke/official_asset_verify_live.yaml)")
     assert "docs/references/official-asset-catalog.md" in official_route
     assert "docs/invariants/asset-discovery.md" in official_route
     assert "docs/invariants/scenario-validation.md" in official_route
@@ -1407,6 +1435,8 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "registered tool SoT" in profile_gate_artifact
     route_artifact = (PROJECT / route_boundary).read_text(encoding="utf-8")
     assert "Post-Route Dry-Run Recheck" in route_artifact
+    assert "official asset task route now pins scenario_plan" in route_artifact
+    assert "scenario_validate(..., dry_run=true)" in route_artifact
     assert "smoke/robot_rtx_sensor_golden_workflow.yaml" in route_artifact
     assert "smoke/official_asset_verify_live.yaml" in route_artifact
     assert "smoke/official_asset_catalog_diagnostics.yaml" in route_artifact

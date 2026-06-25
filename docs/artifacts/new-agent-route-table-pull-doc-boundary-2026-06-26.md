@@ -10,6 +10,12 @@ or official asset live proofs.
 - The official asset task route now points to
   `docs/invariants/scenario-validation.md` and `scenarios/CLAUDE.md` in addition
   to the official catalog and asset-discovery docs.
+- The official asset task route now pins `scenario_plan` before
+  `scenario_validate(..., dry_run=true)` before the live `scenario_validate(...)`
+  call for both `smoke/official_asset_verify_live.yaml` and
+  `smoke/official_asset_catalog_diagnostics.yaml`.
+- In assertion wording: official asset task route now pins scenario_plan before
+  dry-run before explicit live `scenario_validate(<scenario>.yaml)`.
 - The Robot + RTX golden-path task route now points to `scenarios/CLAUDE.md`
   alongside `docs/invariants/scenario-validation.md` and the integration facts.
 - Root `CLAUDE.md` now has explicit Robot + RTX and official asset scenario
@@ -26,6 +32,23 @@ or official asset live proofs.
 - No live MCP run is required because this is a docs-only entrypoint routing
   fix. The underlying live proof baselines remain the existing Robot + RTX and
   official asset close-gate artifacts.
+- Current refresh:
+  `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_usage_guide_task_routes_point_to_live_proof_pull_docs tests\unit\test_doc_references.py::test_f3b_root_claude_routes_live_proofs_to_pull_docs tests\unit\test_doc_references.py::test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts -q`
+  initially caught that the route row used shorthand live `scenario_validate(...)`
+  instead of explicit scenario paths. After fixing the row to use explicit live
+  `scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)` and
+  `scenario_validate(smoke/official_asset_verify_live.yaml)`, it passed:
+  `3 passed in 0.26s`.
+- `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_doc_references.py`
+  passed.
+- `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
+  `37 passed`.
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q` passed:
+  `944 passed, 16 skipped`.
+- `git diff --check` passed with only existing CRLF normalization warnings for
+  touched text files.
+- `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`
+  passed.
 
 ## Post-Route Dry-Run Recheck
 
