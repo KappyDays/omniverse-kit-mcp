@@ -42,7 +42,8 @@ stage controlled-failure proof, not a default success proof.
   - `diagnostics.reason=point_count_below_minimum`
   - `diagnostics.fallback_tool_order=[simulation_step, sensor_lidar_get_point_cloud, extension_capture_logs]`
   - `diagnostics.readback_paths_attempted=[cached_lidar_sensor]`
-- Post-run log capture: `extension_capture_logs(level=WARN)` passed.
+- Post-run log capture:
+  `extension_capture_logs(level=WARN, stop_after_capture=true)` passed.
 
 ## Public Safety
 

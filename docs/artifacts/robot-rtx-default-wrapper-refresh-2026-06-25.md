@@ -48,7 +48,8 @@ controlled `lidar_min_points=513` failure proof.
   - visual inspection: the PNG shows NovaCarter centered on the NVIDIA grid,
     with the top RTX lidar visible and four gray lidar target cubes around the
     robot.
-- Post-run log capture: `extension_capture_logs(level=WARN)` passed.
+- Post-run log capture:
+  `extension_capture_logs(level=WARN, stop_after_capture=true)` passed.
 
 ## Public Safety
 

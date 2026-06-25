@@ -713,6 +713,15 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         assert "worker/thread ID" in text or "worker/thread IDs" in text
         assert "secret" in text or "secrets" in text
 
+    for rel in (
+        "docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md",
+        "docs/artifacts/robot-rtx-controlled-failure-wrapper-refresh-2026-06-25.md",
+    ):
+        wrapper_artifact = (PROJECT / rel).read_text(encoding="utf-8")
+        assert "extension_capture_logs(level=WARN, stop_after_capture=true)" in (
+            wrapper_artifact
+        )
+
     field_artifact = (
         PROJECT
         / "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md"
