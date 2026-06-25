@@ -33,6 +33,12 @@ _SIMULATION_STATUS_FALLBACK_TOOL_ORDER = (
     "simulation_get_status",
     "extension_capture_logs",
 )
+_SIMULATION_CONTROL_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "{tool_name}",
+    "extension_capture_logs",
+)
 _SIMULATION_STEP_FALLBACK_TOOL_ORDER = (
     "mcp_runtime_info",
     "simulation_get_status",
@@ -49,6 +55,12 @@ _SIMULATION_WAIT_UNTIL_FALLBACK_TOOL_ORDER = (
     "mcp_runtime_info",
     "simulation_get_status",
     "simulation_wait_until",
+    "extension_capture_logs",
+)
+_SIMULATION_SET_TIME_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "simulation_set_time",
     "extension_capture_logs",
 )
 
@@ -267,12 +279,33 @@ class SimulationModule:
                     status=_parse_status(raw),
                     requested_time=float(raw.get("requested_time", request.time_seconds)),
                     previous_time=float(raw.get("previous_time", 0.0)),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "SIMULATION_SET_TIME_ERROR"
+            diagnostics = _simulation_set_time_error_diagnostics(
+                request=request,
+                error_code=error_code,
+                message=str(exc),
+            )
+            data = SimulationSetTimeResult(
+                status=_simulation_error_status(diagnostics=diagnostics),
+                requested_time=request.time_seconds,
+                previous_time=0.0,
+                diagnostics=diagnostics,
+            )
             return error_result(
-                str(exc), started_ms=started, error_code="SIMULATION_SET_TIME_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                exc=exc,
+                data=data,
             )
 
     # --- Stage WRITE operations ---
@@ -461,8 +494,18 @@ class SimulationModule:
             raw = await method()
             return ok_result(_parse_status(raw), started_ms=started)
         except Exception as exc:
+            error_code = "SIMULATION_CONTROL_ERROR"
+            diagnostics = _simulation_control_error_diagnostics(
+                action=action,
+                error_code=error_code,
+                message=str(exc),
+            )
             return error_result(
-                str(exc), started_ms=started, error_code="SIMULATION_CONTROL_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                exc=exc,
+                data=_simulation_error_status(diagnostics=diagnostics),
             )
 
 
@@ -506,6 +549,31 @@ def _simulation_status_error_data(
             "fallback_tool_order": list(_SIMULATION_STATUS_FALLBACK_TOOL_ORDER),
         },
     )
+
+
+def _simulation_control_error_diagnostics(
+    *,
+    action: str,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    tool_name = f"simulation_{action}"
+    return {
+        "reason": "simulation_control_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "action": action,
+        "tool_name": tool_name,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline endpoint is responsive.",
+            f"Retry {tool_name} once after checking status if the app is healthy.",
+            "Capture WARN/ERROR logs if timeline control keeps failing.",
+        ],
+        "fallback_tool_order": [
+            tool_name if item == "{tool_name}" else item
+            for item in _SIMULATION_CONTROL_FALLBACK_TOOL_ORDER
+        ],
+    }
 
 
 def _simulation_error_status(
@@ -589,6 +657,26 @@ def _simulation_wait_until_error_diagnostics(
             "Capture WARN/ERROR logs if the timeline status is healthy but wait_until still fails.",
         ],
         "fallback_tool_order": list(_SIMULATION_WAIT_UNTIL_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _simulation_set_time_error_diagnostics(
+    *,
+    request: SimulationSetTimeRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "simulation_set_time_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "time_seconds": request.time_seconds,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline endpoint is responsive.",
+            "Retry simulation_set_time with a small non-negative time to isolate seek responsiveness.",
+            "Capture WARN/ERROR logs if timeline seek keeps failing.",
+        ],
+        "fallback_tool_order": list(_SIMULATION_SET_TIME_FALLBACK_TOOL_ORDER),
     }
 
 

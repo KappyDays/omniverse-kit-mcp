@@ -581,21 +581,21 @@ def register_module_tools(
 
     @tool()
     async def simulation_play() -> str:
-        """Start simulation timeline (play button). Does NOT launch the Kit application — use kit_app_start for that."""
+        """Start simulation timeline (play button). Does NOT launch the Kit application — use kit_app_start for that. Failures include data.diagnostics.action and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.play(meta)
         return _serialize(result)
 
     @tool()
     async def simulation_pause() -> str:
-        """Pause simulation timeline."""
+        """Pause simulation timeline. Failures include data.diagnostics.action and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.pause(meta)
         return _serialize(result)
 
     @tool()
     async def simulation_stop() -> str:
-        """Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Kit application — use kit_app_stop for that."""
+        """Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Kit application — use kit_app_stop for that. Failures include data.diagnostics.action and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.stop(meta)
         return _serialize(result)
@@ -654,7 +654,7 @@ def register_module_tools(
 
     @tool()
     async def simulation_set_time(time_seconds: float) -> str:
-        """Seek timeline to time_seconds; preserves current play/stop state."""
+        """Seek timeline to time_seconds; preserves current play/stop state. Failures include data.diagnostics.time_seconds and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SIMULATION)
         request = SimulationSetTimeRequest(time_seconds=time_seconds)
         result = await simulation.set_time(meta, request)

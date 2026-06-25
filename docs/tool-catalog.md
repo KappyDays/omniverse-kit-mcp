@@ -387,7 +387,8 @@ data.diagnostics.suggested_next and data.diagnostics.fallback_tool_order.
 simulation_pause() -> 'str'
 ```
 
-Pause simulation timeline.
+Pause simulation timeline. Failures include data.diagnostics.action and
+data.diagnostics.fallback_tool_order.
 
 ### `simulation_play`
 
@@ -396,7 +397,8 @@ simulation_play() -> 'str'
 ```
 
 Start simulation timeline (play button). Does NOT launch the Kit application — use
-kit_app_start for that.
+kit_app_start for that. Failures include data.diagnostics.action and
+data.diagnostics.fallback_tool_order.
 
 ### `simulation_set_time`
 
@@ -404,7 +406,8 @@ kit_app_start for that.
 simulation_set_time(time_seconds: 'float') -> 'str'
 ```
 
-Seek timeline to time_seconds; preserves current play/stop state.
+Seek timeline to time_seconds; preserves current play/stop state. Failures include
+data.diagnostics.time_seconds and data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -454,7 +457,8 @@ simulation_stop() -> 'str'
 ```
 
 Stop simulation timeline and reset time to 0 (stop button). Does NOT terminate the Kit
-application — use kit_app_stop for that.
+application — use kit_app_stop for that. Failures include data.diagnostics.action and
+data.diagnostics.fallback_tool_order.
 
 ### `simulation_wait_until`
 

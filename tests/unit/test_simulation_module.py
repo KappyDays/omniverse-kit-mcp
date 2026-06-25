@@ -8,6 +8,9 @@ from omniverse_kit_mcp.modules.simulation_module import SimulationModule
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.simulation import (
     SimulationEESpec,
+    SimulationSetTimeRequest,
+    SimulationSetTimeResult,
+    SimulationStatus,
     SimulationStepObserveRequest,
     SimulationStepObserveResult,
     SimulationStepRequest,
@@ -77,6 +80,33 @@ async def test_simulation_status_error_returns_typed_diagnostics(meta):
         "mcp_runtime_info" in item
         for item in result.data.diagnostics["suggested_next"]
     )
+
+
+@pytest.mark.asyncio
+async def test_simulation_control_error_returns_typed_diagnostics(meta):
+    class FailingPlayClient(MockIsaacRestClient):
+        async def simulation_play(self):  # type: ignore[override]
+            raise RuntimeError("play endpoint unavailable")
+
+    mod = SimulationModule(FailingPlayClient())
+    result = await mod.play(meta)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SIMULATION_CONTROL_ERROR"
+    assert isinstance(result.data, SimulationStatus)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "simulation_control_error"
+    assert diagnostics["upstream_error_code"] == "SIMULATION_CONTROL_ERROR"
+    assert diagnostics["upstream_message"] == "play endpoint unavailable"
+    assert diagnostics["action"] == "play"
+    assert diagnostics["tool_name"] == "simulation_play"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "simulation_play",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio
@@ -177,6 +207,33 @@ async def test_simulation_wait_until_error_returns_typed_diagnostics(meta):
         "extension_capture_logs",
     ]
     assert any("simulation_get_status" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_simulation_set_time_error_returns_typed_diagnostics(meta):
+    class FailingSetTimeClient(MockIsaacRestClient):
+        async def simulation_set_time(self, request):  # type: ignore[override]
+            raise RuntimeError("timeline seek failed")
+
+    mod = SimulationModule(FailingSetTimeClient())
+    result = await mod.set_time(meta, SimulationSetTimeRequest(time_seconds=3.25))
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SIMULATION_SET_TIME_ERROR"
+    assert isinstance(result.data, SimulationSetTimeResult)
+    assert result.data.requested_time == 3.25
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "simulation_set_time_error"
+    assert diagnostics["upstream_error_code"] == "SIMULATION_SET_TIME_ERROR"
+    assert diagnostics["upstream_message"] == "timeline seek failed"
+    assert diagnostics["time_seconds"] == 3.25
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "simulation_set_time",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio

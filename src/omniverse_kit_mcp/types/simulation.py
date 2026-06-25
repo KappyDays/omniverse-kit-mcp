@@ -115,6 +115,7 @@ class SimulationSetTimeResult:
     status: SimulationStatus
     requested_time: float
     previous_time: float
+    diagnostics: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
