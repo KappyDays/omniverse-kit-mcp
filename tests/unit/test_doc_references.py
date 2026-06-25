@@ -828,6 +828,27 @@ def test_f3b_usage_guide_task_routes_point_to_live_proof_pull_docs():
     )
 
 
+def test_f3b_root_claude_routes_live_proofs_to_pull_docs():
+    root = ROOT_CLAUDE.read_text(encoding="utf-8")
+    table = root[root.index("## ⚠️ Required pull-doc before work"):root.index(
+        "Fault diagnosis"
+    )]
+    robot_route = next(
+        row for row in table.splitlines() if row.startswith("| Robot + RTX scenario proof")
+    )
+    official_route = next(
+        row for row in table.splitlines() if row.startswith("| Official asset scenario")
+    )
+
+    assert "docs/invariants/scenario-validation.md" in robot_route
+    assert "scenarios/CLAUDE.md" in robot_route
+    assert "src/omniverse_kit_mcp/modules/integration-facts.md" in robot_route
+    assert "docs/references/official-asset-catalog.md" in official_route
+    assert "docs/invariants/asset-discovery.md" in official_route
+    assert "docs/invariants/scenario-validation.md" in official_route
+    assert "scenarios/CLAUDE.md" in official_route
+
+
 def test_f3b_usage_guide_live_probe_commands_have_assertion_gates(monkeypatch):
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     commands = _MCP_PROBE_COMMAND_RE.findall(guide)

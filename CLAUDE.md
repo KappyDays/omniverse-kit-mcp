@@ -25,6 +25,8 @@
 | Extension `.py` edit/reload | `docs/invariants/ext-reload.md` |
 | Extension UI automation (`extension_ui_invoke`) | `docs/invariants/ui-invoke.md` |
 | Scenario YAML Authoring | `docs/invariants/scenario-validation.md` |
+| Robot + RTX scenario proof / live evidence | `docs/invariants/scenario-validation.md`, `scenarios/CLAUDE.md`, `src/omniverse_kit_mcp/modules/integration-facts.md` |
+| Official asset scenario proof / catalog diagnostics | `docs/references/official-asset-catalog.md`, `docs/invariants/asset-discovery.md`, `docs/invariants/scenario-validation.md`, `scenarios/CLAUDE.md` |
 | `viewport_capture` / scene build / use new NVIDIA asset | `docs/invariants/visual-validation.md` |
 | Add multi-app / Modify kit app profile / rename repo/directory | `docs/invariants/multi-app.md` |
 | Public commit/push review | `docs/invariants/public-repo-hygiene.md` |
