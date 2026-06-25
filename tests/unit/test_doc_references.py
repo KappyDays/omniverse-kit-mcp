@@ -520,6 +520,11 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "evidence-field `selector` matches either `evidence_kind` or `step_id`" in (
         scripts_doc
     )
+    assert "field expectation values are JSON-decoded when possible" in scripts_doc
+    assert (
+        "diagnostics.fallback_tool_order='[\"simulation_step\","
+        "\"sensor_lidar_get_point_cloud\",\"extension_capture_logs\"]'"
+    ) in scripts_doc
     assert "--expect-live-cleanup-failures 0" in scripts_doc
     assert "--expect-live-failure-step-error step=ERROR_CODE" in scripts_doc
     assert "--expect-live-diagnostic-next-actions-min 1" in scripts_doc
