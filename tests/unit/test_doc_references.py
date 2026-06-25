@@ -381,6 +381,17 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "--expect-live-diagnostic-field "
         "read_lidar_point_cloud:diagnostics.min_points=513"
     ) in scenario_authoring
+    assert (
+        "--expect-live-diagnostic-field "
+        "read_lidar_point_cloud:diagnostics.fallback_tool_order='["
+        '"simulation_step","sensor_lidar_get_point_cloud",'
+        '"extension_capture_logs"]\''
+    ) in scenario_authoring
+    assert (
+        "--expect-live-diagnostic-field ...:diagnostics.fallback_tool_order='["
+        '"official_asset_sync_status","official_asset_search",'
+        '"official_asset_resolve","official_asset_verify","asset_search"]\''
+    ) in scenario_authoring
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
