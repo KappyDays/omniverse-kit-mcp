@@ -27,6 +27,13 @@ from omniverse_kit_mcp.types.stage import StageFileResult
 
 logger = logging.getLogger(__name__)
 
+_SIMULATION_STATUS_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "kit_app_start",
+    "simulation_get_status",
+    "extension_capture_logs",
+)
+
 
 class SimulationModule:
     def __init__(self, client: IsaacRestClient) -> None:
@@ -47,8 +54,16 @@ class SimulationModule:
             raw = await self._client.simulation_status()
             return ok_result(_parse_status(raw), started_ms=started)
         except Exception as exc:
+            error_code = "SIMULATION_STATUS_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="SIMULATION_STATUS_ERROR"
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                exc=exc,
+                data=_simulation_status_error_data(
+                    error_code=error_code,
+                    message=str(exc),
+                ),
             )
 
     # --- Phase G ---
@@ -375,6 +390,35 @@ def _parse_status(raw: dict) -> SimulationStatus:
         time_codes_per_second=raw.get("time_codes_per_second", 24.0),
         timeline_settled=raw.get("timeline_settled"),
         timeline_settle_updates=raw.get("timeline_settle_updates"),
+        diagnostics=(
+            dict(raw["diagnostics"])
+            if isinstance(raw.get("diagnostics"), dict)
+            else {}
+        ),
+    )
+
+
+def _simulation_status_error_data(
+    *, error_code: str, message: str
+) -> SimulationStatus:
+    return SimulationStatus(
+        is_playing=False,
+        is_stopped=False,
+        current_time=0.0,
+        start_time=0.0,
+        end_time=0.0,
+        time_codes_per_second=0.0,
+        diagnostics={
+            "reason": "simulation_status_error",
+            "upstream_error_code": error_code,
+            "upstream_message": message,
+            "suggested_next": [
+                "Call mcp_runtime_info to confirm the MCP worker is attached to the intended app.",
+                "Use kit_app_start only if no compatible Kit/Isaac worker is running.",
+                "Capture WARN/ERROR logs if simulation_get_status keeps failing.",
+            ],
+            "fallback_tool_order": list(_SIMULATION_STATUS_FALLBACK_TOOL_ORDER),
+        },
     )
 
 

@@ -378,7 +378,8 @@ annotators but cannot label the props). 400 if prim_path not found.
 simulation_get_status() -> 'str'
 ```
 
-Get simulation timeline status: is_playing, current_time, fps, etc.
+Get simulation timeline status: is_playing, current_time, fps, etc.; status failures include
+data.diagnostics.suggested_next and data.diagnostics.fallback_tool_order.
 
 ### `simulation_pause`
 

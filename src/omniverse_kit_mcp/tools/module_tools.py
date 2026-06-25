@@ -602,7 +602,7 @@ def register_module_tools(
 
     @tool()
     async def simulation_get_status() -> str:
-        """Get simulation timeline status: is_playing, current_time, fps, etc."""
+        """Get simulation timeline status: is_playing, current_time, fps, etc.; status failures include data.diagnostics.suggested_next and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.STAGE)
         result = await simulation.get_status(meta)
         return _serialize(result)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from omniverse_kit_mcp.modules.simulation_module import SimulationModule
-from omniverse_kit_mcp.types.common import ModuleName, OperationMeta
+from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from tests.conftest import MockIsaacRestClient
 
 
@@ -34,6 +34,40 @@ async def test_simulation_play_preserves_settle_diagnostics(meta):
     assert result.data is not None
     assert result.data.timeline_settled is True
     assert result.data.timeline_settle_updates == 2
+    assert result.data.diagnostics == {}
+
+
+@pytest.mark.asyncio
+async def test_simulation_status_error_returns_typed_diagnostics(meta):
+    class FailingStatusClient(MockIsaacRestClient):
+        async def simulation_status(self):  # type: ignore[override]
+            raise RuntimeError("timeline unavailable")
+
+    mod = SimulationModule(FailingStatusClient())
+
+    result = await mod.get_status(meta)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SIMULATION_STATUS_ERROR"
+    assert "timeline unavailable" in (result.message or "")
+    assert result.data is not None
+    assert result.data.is_playing is False
+    assert result.data.is_stopped is False
+    assert result.data.diagnostics["reason"] == "simulation_status_error"
+    assert result.data.diagnostics["upstream_error_code"] == (
+        "SIMULATION_STATUS_ERROR"
+    )
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "extension_capture_logs",
+    ]
+    assert any(
+        "mcp_runtime_info" in item
+        for item in result.data.diagnostics["suggested_next"]
+    )
 
 
 @pytest.mark.asyncio

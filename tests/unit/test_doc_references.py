@@ -315,6 +315,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "flat dotted keys" in guide
     assert "not nested `diagnostics`" in guide
     assert "diagnostics.reason" in guide
+    assert "diagnostics.reason=simulation_status_error" in guide
     assert "capture_error" in guide
     assert "diagnostics.upstream_error_code" in guide
     assert "data_summary.diagnostics.upstream_error_code" in invariant

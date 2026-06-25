@@ -17,6 +17,7 @@ class SimulationStatus:
     time_codes_per_second: float
     timeline_settled: bool | None = None
     timeline_settle_updates: int | None = None
+    diagnostics: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
