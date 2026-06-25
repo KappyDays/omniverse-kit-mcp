@@ -422,6 +422,15 @@ def _capture_summary(scenario_id: str = "latest_scenario") -> ScenarioRunSummary
                         "path": capture_path,
                         "sha256": "abc123",
                     },
+                    "process_id": "raw-process-424242",
+                    "worker_thread_id": "raw-worker-thread-abc123",
+                    "nested": {
+                        "child_pids": [
+                            "raw-child-pid-1",
+                            "raw-child-pid-2",
+                        ],
+                        "pending_worktree_id": "raw-pending-worktree-xyz789",
+                    },
                     "passed": True,
                 },
             ),
@@ -653,6 +662,19 @@ async def test_scenario_last_report_can_redact_local_paths(
     assert _host_local_capture_path() not in safe_markdown
     assert "<validation-api-capture>/capture_report.png" in safe_json
     assert "<validation-api-capture>/capture_report.png" in safe_markdown
+    for raw_identifier in (
+        "raw-process-424242",
+        "raw-worker-thread-abc123",
+        "raw-child-pid-1",
+        "raw-child-pid-2",
+        "raw-pending-worktree-xyz789",
+    ):
+        assert raw_identifier not in safe_json
+        assert raw_identifier not in safe_markdown
+    assert "<process-id>" in safe_json
+    assert "<process-id>" in safe_markdown
+    assert "<worker-thread-id>" in safe_json
+    assert "<worker-thread-id>" in safe_markdown
     assert _host_local_capture_path() not in json.dumps(json.loads(safe_json))
     assert raw_json == json.dumps({"scenario_id": "latest_scenario"})
 

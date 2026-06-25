@@ -347,6 +347,8 @@ field-level evidence assertions are verified in
 `docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md`.
 The JSON/Markdown report boundary is refreshed in
 `docs/artifacts/scenario-last-report-json-redaction-boundary-2026-06-26.md`.
+Runtime redaction coverage for process and worker/thread identifiers is recorded
+in `docs/artifacts/scenario-report-redaction-runtime-fields-2026-06-26.md`.
 Read-only catalog diagnostic field assertions are verified in
 `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
 The current post-stop-guard official verify proof is

@@ -1356,6 +1356,9 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     redaction_boundary = (
         "docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md"
     )
+    runtime_redaction = (
+        "docs/artifacts/scenario-report-redaction-runtime-fields-2026-06-26.md"
+    )
     profile_gate = (
         "docs/artifacts/current-probe-runtime-profile-gate-2026-06-26.md"
     )
@@ -1366,6 +1369,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "current doc-only durable-rule E2E refresh" in guide
     assert "current executable probe runtime/profile gate" in guide
     assert "current public report redaction boundary refresh" in guide
+    assert "Runtime redaction coverage" in guide
     assert "current route-table pull-doc boundary refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
@@ -1421,6 +1425,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
         profile_gate,
         redaction_boundary,
+        runtime_redaction,
         route_boundary,
         current_e2e,
         baseline_e2e,
