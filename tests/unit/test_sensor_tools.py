@@ -17,6 +17,8 @@ from omniverse_kit_mcp.types.sensor import (
     SensorAttachRtxLidarResult,
     SensorLidarGetPointCloudRequest,
     SensorLidarGetPointCloudResult,
+    SensorSetAnnotatorRequest,
+    SensorSetAnnotatorResult,
     SensorSetVisualizationRequest,
     SensorSetVisualizationResult,
 )
@@ -521,5 +523,44 @@ async def test_attach_rtx_depth_camera_error_returns_typed_diagnostics():
         "stage_capture_snapshot",
         "simulation_get_status",
         "sensor_attach_rtx_depth_camera",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_set_annotator_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def sensor_set_annotator(self, _req):
+            raise RuntimeError("render product unavailable")
+
+    module = SensorModule(BrokenClient())  # type: ignore[arg-type]
+    request = SensorSetAnnotatorRequest(
+        sensor_prim="/World/Robot/Camera",
+        annotators=("rgb", "distance_to_camera"),
+        resolution=(640, 480),
+    )
+    result = await module.set_annotator(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SENSOR_SET_ANNOTATOR_ERROR"
+    assert isinstance(result.data, SensorSetAnnotatorResult)
+    assert result.data.ok is False
+    assert result.data.sensor_prim == "/World/Robot/Camera"
+    assert result.data.annotators == ()
+    assert result.data.skipped == ("rgb", "distance_to_camera")
+    assert result.data.resolution == (640, 480)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "sensor_set_annotator_error"
+    assert diagnostics["upstream_error_code"] == "SENSOR_SET_ANNOTATOR_ERROR"
+    assert diagnostics["upstream_message"] == "render product unavailable"
+    assert diagnostics["sensor_prim"] == "/World/Robot/Camera"
+    assert diagnostics["annotators"] == ["rgb", "distance_to_camera"]
+    assert diagnostics["resolution"] == [640, 480]
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "sensor_set_annotator",
         "extension_capture_logs",
     ]

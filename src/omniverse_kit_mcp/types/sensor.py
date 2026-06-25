@@ -141,6 +141,7 @@ class SensorSetAnnotatorResult:
     resolution: tuple[int, int]
     backend: str
     render_product: str | None
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

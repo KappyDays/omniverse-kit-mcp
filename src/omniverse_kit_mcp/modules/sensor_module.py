@@ -55,6 +55,13 @@ _RTX_DEPTH_CAMERA_ATTACH_FALLBACK_TOOL_ORDER = (
     "sensor_attach_rtx_depth_camera",
     "extension_capture_logs",
 )
+_SENSOR_SET_ANNOTATOR_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "sensor_set_annotator",
+    "extension_capture_logs",
+)
 
 
 class SensorModule:
@@ -307,13 +314,34 @@ class SensorModule:
                     resolution=(int(resolution_raw[0]), int(resolution_raw[1])),
                     backend=str(raw.get("backend", "")),
                     render_product=raw.get("render_product"),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_SET_ANNOTATOR_ERROR"
+            data = SensorSetAnnotatorResult(
+                ok=False,
+                sensor_prim=request.sensor_prim,
+                annotators=(),
+                skipped=request.annotators,
+                resolution=request.resolution,
+                backend="",
+                render_product=None,
+                diagnostics=_set_annotator_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_SET_ANNOTATOR_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def lidar_get_point_cloud(
@@ -602,4 +630,26 @@ def _rtx_imaging_attach_error_diagnostics(
             f"Retry {attach_tool} only after correcting parent prim, sensor name, or resolution.",
         ],
         "fallback_tool_order": list(fallback_tool_order),
+    }
+
+
+def _set_annotator_error_diagnostics(
+    *,
+    request: SensorSetAnnotatorRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "sensor_set_annotator_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "sensor_prim": request.sensor_prim,
+        "annotators": list(request.annotators),
+        "resolution": list(request.resolution),
+        "suggested_next": [
+            "Confirm the sensor_prim exists and is an RTX camera/depth camera with stage_capture_snapshot.",
+            "Check simulation_get_status and extension_capture_logs for Replicator render product errors.",
+            "Retry sensor_set_annotator only after correcting sensor prim, annotator names, or resolution.",
+        ],
+        "fallback_tool_order": list(_SENSOR_SET_ANNOTATOR_FALLBACK_TOOL_ORDER),
     }

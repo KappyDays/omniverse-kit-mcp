@@ -2161,7 +2161,8 @@ sensor_set_annotator(sensor_prim: 'str', annotators: 'list[str]', resolution: 'l
 
 Attach replicator annotators to camera prim. Valid: rgb, depth, normals, motion_vectors,
 semantic/instance_segmentation, distance_to_camera/image_plane. response.skipped lists
-failures.
+failures; hard failures include data.diagnostics.reason=sensor_set_annotator_error and
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

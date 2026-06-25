@@ -1990,7 +1990,7 @@ def register_module_tools(
         annotators: list[str],
         resolution: list[int] | None = None,
     ) -> str:
-        """Attach replicator annotators to camera prim. Valid: rgb, depth, normals, motion_vectors, semantic/instance_segmentation, distance_to_camera/image_plane. response.skipped lists failures."""
+        """Attach replicator annotators to camera prim. Valid: rgb, depth, normals, motion_vectors, semantic/instance_segmentation, distance_to_camera/image_plane. response.skipped lists failures; hard failures include data.diagnostics.reason=sensor_set_annotator_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SENSOR)
         resolution_tuple = (
             (int(resolution[0]), int(resolution[1])) if resolution

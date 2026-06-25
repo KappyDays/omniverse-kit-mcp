@@ -354,6 +354,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "rtx_camera_attach_error" in diagnostic_map
     assert "rtx_depth_camera_attach_error" in diagnostic_map
     assert "rtx_lidar_attach_error" in diagnostic_map
+    assert "diagnostics.reason=sensor_set_annotator_error" in guide
+    assert "sensor_set_annotator_error" in diagnostic_map
+    assert "SENSOR_SET_ANNOTATOR_ERROR" in invariant
     assert "diagnostics.reason=lidar_read_error" in guide
     assert "diagnostics.reason=lidar_read_error" in invariant
     assert "robot_get_pick_place_demo_status" in guide
