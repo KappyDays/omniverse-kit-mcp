@@ -70,8 +70,8 @@ mcp_runtime_info() -> 'str'
 Report MCP import freshness and active tool profile diagnostics without host-local paths or
 process identifiers: tool/app profile, registered and omitted tool counts, included/omitted
 groups, omitted tools, custom include/exclude tokens, source mtimes, and robot probe result-
-shape fields. If this tool is absent or reports stale source files, restart the MCP host before
-live result-shape validation.
+shape/error-fallback fields. If this tool is absent or reports stale source files, restart the
+MCP host before live result-shape validation.
 
 ### `process_list_kit_instances`
 

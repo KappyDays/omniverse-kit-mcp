@@ -114,6 +114,13 @@ _PICK_PLACE_UNSUPPORTED_FALLBACK_TOOL_ORDER = (
     "robot_probe_arm_profile",
     "robot_install_pick_place_playback_demo",
 )
+_ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER = (
+    "robot_list_arm_profiles",
+    "robot_probe_arm_profiles",
+    "official_asset_search",
+    "asset_search",
+    "robot_load",
+)
 _PICK_PLACE_PROFILE_LOAD_FALLBACK_TOOL_ORDER = (
     "robot_list_arm_profiles",
     "mcp_runtime_info",
@@ -2881,13 +2888,9 @@ def _build_unknown_profile_result(profile: RobotArmProfile) -> RobotArmProfilePr
                     "robot_probe_arm_profile with one listed profile name; "
                     "for direct USD robot assets use robot_load."
                 ),
-                "fallback_tool_order": [
-                    "robot_list_arm_profiles",
-                    "robot_probe_arm_profiles",
-                    "official_asset_search",
-                    "asset_search",
-                    "robot_load",
-                ],
+                "fallback_tool_order": list(
+                    _ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER
+                ),
             },
         )
     }

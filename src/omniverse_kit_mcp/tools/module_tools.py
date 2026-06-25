@@ -32,7 +32,10 @@ from omniverse_kit_mcp.modules.omnigraph_module import OmnigraphModule
 from omniverse_kit_mcp.modules.physics_module import PhysicsModule
 from omniverse_kit_mcp.modules.process_module import ProcessModule
 from omniverse_kit_mcp.modules.replicator_module import ReplicatorModule
-from omniverse_kit_mcp.modules.robot_module import RobotModule
+from omniverse_kit_mcp.modules.robot_module import (
+    _ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER,
+    RobotModule,
+)
 from omniverse_kit_mcp.modules.sensor_module import SensorModule
 from omniverse_kit_mcp.modules.simulation_module import SimulationModule
 from omniverse_kit_mcp.modules.stage_module import StageModule
@@ -221,7 +224,7 @@ def register_module_tools(
 
     @tool()
     async def mcp_runtime_info() -> str:
-        """Report MCP import freshness and active tool profile diagnostics without host-local paths or process identifiers: tool/app profile, registered and omitted tool counts, included/omitted groups, omitted tools, custom include/exclude tokens, source mtimes, and robot probe result-shape fields. If this tool is absent or reports stale source files, restart the MCP host before live result-shape validation."""
+        """Report MCP import freshness and active tool profile diagnostics without host-local paths or process identifiers: tool/app profile, registered and omitted tool counts, included/omitted groups, omitted tools, custom include/exclude tokens, source mtimes, and robot probe result-shape/error-fallback fields. If this tool is absent or reports stale source files, restart the MCP host before live result-shape validation."""
         return json.dumps(
             _mcp_runtime_info_payload(mcp, selection),
             indent=2,
@@ -2894,6 +2897,14 @@ def _mcp_runtime_info_payload(
             "probe_proves_pick_place" in robot_probe_result_fields
             and "pick_place_validation_status" in robot_probe_result_fields
             and "pick_place_validation_reason" in robot_probe_result_fields
+        ),
+        "robot_probe_result_has_checks": "checks" in robot_probe_result_fields,
+        "robot_probe_unknown_profile_error_code": "ROBOT_PROBE_UNKNOWN_PROFILE",
+        "robot_probe_unknown_profile_error_data_path": (
+            "data.checks.probe.evidence"
+        ),
+        "robot_probe_unknown_profile_fallback_tool_order": list(
+            _ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER
         ),
         "robot_probe_batch_result_has_summary": (
             robot_probe_batch_summary_fields <= set(robot_probe_batch_result_fields)

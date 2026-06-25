@@ -755,6 +755,20 @@ async def test_mcp_runtime_info_reports_probe_result_freshness(mcp_server):
     assert payload["robot_probe_result_has_mcp_controllability"] is True
     assert payload["robot_probe_result_has_probe_capability_level"] is True
     assert payload["robot_probe_result_has_pick_place_validation_boundary"] is True
+    assert payload["robot_probe_result_has_checks"] is True
+    assert payload["robot_probe_unknown_profile_error_code"] == (
+        "ROBOT_PROBE_UNKNOWN_PROFILE"
+    )
+    assert payload["robot_probe_unknown_profile_error_data_path"] == (
+        "data.checks.probe.evidence"
+    )
+    assert payload["robot_probe_unknown_profile_fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profiles",
+        "official_asset_search",
+        "asset_search",
+        "robot_load",
+    ]
     assert payload["robot_probe_batch_result_has_summary"] is True
     assert payload["robot_probe_arm_profile_timeout_default_s"] == pytest.approx(90.0)
     assert payload["robot_probe_arm_profiles_per_profile_timeout_default_s"] == (
@@ -771,6 +785,7 @@ async def test_mcp_runtime_info_reports_probe_result_freshness(mcp_server):
     assert "probe_proves_pick_place" in payload["robot_probe_result_fields"]
     assert "pick_place_validation_status" in payload["robot_probe_result_fields"]
     assert "pick_place_validation_reason" in payload["robot_probe_result_fields"]
+    assert "checks" in payload["robot_probe_result_fields"]
     assert "mcp_controllability_counts" in payload["robot_probe_batch_result_fields"]
     assert "mcp_controllability_profiles" in payload["robot_probe_batch_result_fields"]
     assert "probe_capability_level_name_counts" in payload[
