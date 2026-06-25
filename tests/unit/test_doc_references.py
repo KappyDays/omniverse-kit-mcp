@@ -267,6 +267,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     )
     assert "extension_clear_logs" in invariant
     assert 'extension_capture_logs(level="WARN", stop_after_capture=true)' in invariant
+    assert "data.capture_stop_requested=true" in invariant
+    assert "data.capture_stop_completed=true" in invariant
     assert "data.capture_stop_timed_out=false" in invariant
     assert "data.capture_running=false" in invariant
     assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
@@ -1341,6 +1343,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "redacted Markdown" in wrapper
     assert "data.capture_stop_timed_out=false" in invariant
     assert "data.capture_running=false" in invariant
+    assert "data.capture_stop_requested=true" in invariant
+    assert "data.capture_stop_completed=true" in invariant
     assert "--expect-live-status passed" in invariant
     read_only_sequence = [
         "mcp_runtime_info",
@@ -1886,8 +1890,11 @@ def test_f3b_scenario_authoring_guide_mentions_report_and_plan_evidence():
     assert "Markdown `Failure Summary`" in guide
     assert "redact_local_paths=true" in guide
     assert "extension_capture_logs(..., stop_after_capture=true)" in guide
+    assert "data.capture_stop_requested=true" in guide
+    assert "data.capture_stop_completed=true" in guide
     assert "data.capture_stop_timed_out=false" in guide
     assert "data.capture_running=false" in guide
+    assert "capture_stop_timed_out=false` or `data.capture_running=false" not in guide
     assert "scenario_plan` exposes `total_steps`" in guide
     assert "`stage_mutation_summary`" in guide
     assert "stage_mutation_summary.read_only=false" in guide

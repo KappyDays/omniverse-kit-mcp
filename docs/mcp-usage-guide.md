@@ -358,7 +358,8 @@ Official asset on-demand live verify wrapper:
 in the same live MCP host session that ran `official_asset_verify`; one-shot
 stdio hosts do not preserve the previous host's in-memory/log-capture state.
 When a stop-after-capture call returns `ok=true`, still check
-`data.capture_stop_timed_out=false` (or `data.capture_running=false`) before
+`data.capture_stop_requested=true`, `data.capture_stop_completed=true`,
+`data.capture_stop_timed_out=false`, and `data.capture_running=false` before
 assuming the request-scoped carb hook closed cleanly; `probe_mcp_surface.py`
 prints these fields in the `extension_capture_logs WARN+` compact summary and
 fails if the hook remains running, does not complete, or times out.
