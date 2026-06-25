@@ -54,6 +54,11 @@ _CAPTURE_FALLBACK_TOOL_ORDER = (
     "viewport_capture",
     "extension_capture_logs",
 )
+_COMPARISON_FALLBACK_TOOL_ORDER = (
+    "viewport_capture_assert",
+    "viewport_compare_ssim",
+    "extension_capture_logs",
+)
 _FRAME_PRIMS_FALLBACK_TOOL_ORDER = (
     "stage_capture_snapshot",
     "simulation_get_status",
@@ -186,7 +191,21 @@ class ViewportModule:
                 error_code="VIEWPORT_COMPARISON_FAILED",
             )
         except Exception as exc:
-            return error_result(str(exc), started_ms=started, error_code="VIEWPORT_COMPARISON_ERROR")
+            error_code = "VIEWPORT_COMPARISON_ERROR"
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=SSIMComparisonResult(
+                    score=0.0,
+                    passed=False,
+                    diagnostics=_comparison_error_diagnostics(
+                        request=request,
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
+            )
 
     async def set_active_camera(
         self,
@@ -820,6 +839,29 @@ def _frame_prims_error_diagnostics(
             "If framing keeps failing, capture extension logs and inspect the upstream viewport error.",
         ],
         "fallback_tool_order": list(_FRAME_PRIMS_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _comparison_error_diagnostics(
+    *,
+    request: SSIMComparisonRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": "viewport_compare_ssim_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "baseline_artifact_path_provided": bool(request.baseline_artifact_path),
+        "candidate_artifact_path_provided": bool(request.candidate_artifact_path),
+        "min_ssim": request.min_ssim,
+        "crop": list(request.crop) if request.crop is not None else None,
+        "suggested_next": [
+            "Re-run viewport_capture_assert for both images before retrying SSIM comparison.",
+            "Confirm the baseline and candidate artifact paths still exist in the same environment.",
+            "Capture WARN/ERROR logs if the comparison backend keeps failing.",
+        ],
+        "fallback_tool_order": list(_COMPARISON_FALLBACK_TOOL_ORDER),
     }
 
 

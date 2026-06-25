@@ -10,6 +10,8 @@ from omniverse_kit_mcp.modules.viewport_module import ViewportModule
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.viewport import (
     ImageArtifact,
+    SSIMComparisonRequest,
+    SSIMComparisonResult,
     ViewportCaptureAssertRequest,
     ViewportCaptureAssertResult,
     ViewportCaptureRequest,
@@ -151,6 +153,43 @@ async def test_project_points_returns_screen_coordinates():
     assert result.data.width == 640
     assert result.data.points[0].pixel_xy == (320.0, 240.0)
     assert client.calls[-1][0] == "viewport_project_points"
+
+
+@pytest.mark.asyncio
+async def test_compare_ssim_error_returns_typed_diagnostics():
+    class BrokenCompareClient:
+        async def viewport_compare_ssim(self, _req):
+            raise RuntimeError("ssim backend unavailable")
+
+    module = ViewportModule(BrokenCompareClient())  # type: ignore[arg-type]
+    request = SSIMComparisonRequest(
+        baseline_artifact_path="baseline.png",
+        candidate_artifact_path="candidate.png",
+        min_ssim=0.95,
+        crop=(1, 2, 3, 4),
+    )
+
+    result = await module.compare_ssim(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_COMPARISON_ERROR"
+    assert isinstance(result.data, SSIMComparisonResult)
+    assert result.data.score == pytest.approx(0.0)
+    assert result.data.passed is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_compare_ssim_error"
+    assert diagnostics["upstream_error_code"] == "VIEWPORT_COMPARISON_ERROR"
+    assert diagnostics["upstream_message"] == "ssim backend unavailable"
+    assert diagnostics["baseline_artifact_path_provided"] is True
+    assert diagnostics["candidate_artifact_path_provided"] is True
+    assert diagnostics["min_ssim"] == pytest.approx(0.95)
+    assert diagnostics["crop"] == [1, 2, 3, 4]
+    assert diagnostics["fallback_tool_order"] == [
+        "viewport_capture_assert",
+        "viewport_compare_ssim",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio

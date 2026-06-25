@@ -137,6 +137,7 @@ class SSIMComparisonResult:
     diff_heatmap_path: str | None = None
     compared_width: int | None = None
     compared_height: int | None = None
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

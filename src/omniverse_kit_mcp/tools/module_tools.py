@@ -435,7 +435,7 @@ def register_module_tools(
         min_ssim: float = 0.99,
         crop: list[int] | None = None,
     ) -> str:
-        """Compare two viewport images via SSIM (score + pass/fail)."""
+        """Compare two viewport images via SSIM (score + pass/fail). Failures include data.diagnostics.reason=viewport_compare_ssim_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = SSIMComparisonRequest(
             baseline_artifact_path=baseline_artifact_path,
