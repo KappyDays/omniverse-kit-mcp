@@ -621,7 +621,7 @@ async def probe(
     }
     snap_path = REPO_ROOT / "tmp_mcp_surface.json"
     snap_path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
-    print(f"\nsnapshot: {snap_path}")
+    print(f"\nsnapshot: {snap_path.relative_to(REPO_ROOT).as_posix()}")
     return exit_status
 
 

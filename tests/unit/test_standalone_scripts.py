@@ -505,6 +505,8 @@ async def test_mcp_probe_calls_scenario_validate_dry_run_with_plan_args(
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "=== scenario_validate dry-run smoke ===" in output
+    assert "snapshot: tmp_mcp_surface.json" in output
+    assert str(mcp_probe.REPO_ROOT) not in output
     tool_calls = [
         message
         for message in sent_messages
