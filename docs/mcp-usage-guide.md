@@ -158,9 +158,10 @@ expected failure is `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS` on
 `read_lidar_point_cloud` with cleanup preserved.
 For a live controlled-failure probe, add `--scenario-validate-live`,
 `--expect-live-status failed`, `--expect-live-cleanup-failures 0`, and
-`--expect-live-evidence-kind rtx_lidar_point_cloud` so the wrapper fails only
-on the wrong terminal status, missing report, missing lidar evidence, or
-missing cleanup/log evidence.
+`--expect-live-evidence-kind rtx_lidar_point_cloud`, plus
+`--expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
+so the wrapper fails only on the wrong terminal status, wrong failing step/error
+code, missing report, missing lidar evidence, or missing cleanup/log evidence.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 
@@ -178,7 +179,9 @@ for the `lidar_min_points=513` diagnostics path. Wrapper-specific refreshes
 are `docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md` and
 `docs/artifacts/robot-rtx-controlled-failure-wrapper-refresh-2026-06-25.md`.
 The live probe assertion options are verified in
-`docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md`.
+`docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md`; the
+controlled-failure step/error-code assertion is verified in
+`docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
 supersede them only with a new pass/failure artifact that preserves the same
 public-safety boundary.

@@ -296,6 +296,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-live-evidence-kind rtx_lidar_point_cloud" in wrapper
     assert "--expect-live-evidence-kind viewport_framing" in wrapper
     assert "--expect-live-evidence-kind visual_capture" in wrapper
+    assert (
+        "--expect-live-failure-step-error "
+        "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+    ) in wrapper
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
@@ -408,6 +412,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-retry-key-arg step:key=value" in scripts_doc
     assert "--expect-live-evidence-kind kind" in scripts_doc
     assert "--expect-live-cleanup-failures 0" in scripts_doc
+    assert "--expect-live-failure-step-error step=ERROR_CODE" in scripts_doc
     assert "--scenario-validate-dry-run" in scripts_doc
 
 
@@ -478,6 +483,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md",
         "docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md",
         "docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md",
+        "docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md",
     ]
 
     for rel in artifacts:

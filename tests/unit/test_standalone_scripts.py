@@ -698,6 +698,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
             {
                 "step_id": "read_lidar_point_cloud",
                 "status": "failed",
+                "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
             }
         ],
         "diagnostic_next_actions": [],
@@ -852,6 +853,12 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         expect_live_status="failed",
         expected_live_evidence_kinds=("visual_capture",),
         expect_live_cleanup_failures=0,
+        expected_live_failure_step_errors=(
+            (
+                "read_lidar_point_cloud",
+                "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            ),
+        ),
     )
 
     assert exit_code == 0
@@ -859,6 +866,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
     assert '"automatic_cleanup_steps": [' in output
     assert '"timeoutSeconds": 30.0' in output
     assert "=== scenario_validate live summary ===" in output
+    assert '"failure_steps": [' in output
     assert '"evidence_kinds": [' in output
     assert '"cleanup_failed_steps": 0' in output
     assert "# Scenario Report: redacted" in output
@@ -1416,6 +1424,79 @@ def test_mcp_probe_live_cleanup_failure_mismatches_report_drift():
     ) == ["cleanup_failed_steps expected 0, got None"]
 
 
+def test_mcp_probe_parses_expected_live_failure_step_errors():
+    assert mcp_probe._parse_expected_live_failure_step_errors([
+        "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+    ]) == (
+        (
+            "read_lidar_point_cloud",
+            "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+        ),
+    )
+
+
+def test_mcp_probe_rejects_malformed_live_failure_step_error_expectation():
+    with pytest.raises(ValueError, match="step_id=ERROR_CODE"):
+        mcp_probe._parse_expected_live_failure_step_errors([
+            "read_lidar_point_cloud",
+        ])
+    with pytest.raises(ValueError, match="non-empty"):
+        mcp_probe._parse_expected_live_failure_step_errors(["=ERROR_CODE"])
+
+
+def test_mcp_probe_live_failure_step_error_mismatches_are_empty_for_expected_code():
+    summary = {
+        "failure_steps": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            },
+        ],
+    }
+
+    assert mcp_probe._live_failure_step_error_mismatches(
+        summary,
+        (
+            (
+                "read_lidar_point_cloud",
+                "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            ),
+        ),
+    ) == []
+
+
+def test_mcp_probe_live_failure_step_error_mismatches_report_drift():
+    summary = {
+        "failure_steps": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "error_code": "SENSOR_LIDAR_TIMEOUT",
+            },
+        ],
+    }
+
+    assert mcp_probe._live_failure_step_error_mismatches(
+        summary,
+        (
+            (
+                "read_lidar_point_cloud",
+                "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            ),
+        ),
+    ) == [
+        "live failure step 'read_lidar_point_cloud' error_code expected "
+        "'SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS', got 'SENSOR_LIDAR_TIMEOUT'",
+    ]
+    assert mcp_probe._live_failure_step_error_mismatches(
+        summary,
+        (("missing_step", "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"),),
+    ) == ["live failure step 'missing_step' was not found"]
+    assert mcp_probe._live_failure_step_error_mismatches(
+        {},
+        (("read_lidar_point_cloud", "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"),),
+    ) == ["failure_steps summary is missing or malformed"]
+
+
 def test_mcp_probe_preflight_runtime_check_mismatches_are_empty_for_expected_values():
     summary = {
         "preflight_runtime_info_checks": [
@@ -1532,6 +1613,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-live-cleanup-failures",
         "0",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-live-failure-step-error",
+        "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
     ]) == 2
     assert mcp_probe.main([
         "--scenario-validate-live",

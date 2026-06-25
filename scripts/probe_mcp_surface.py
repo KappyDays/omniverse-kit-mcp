@@ -428,6 +428,57 @@ def _live_cleanup_failure_mismatches(
     ]
 
 
+def _parse_expected_live_failure_step_errors(
+    raw_values: list[str],
+) -> tuple[tuple[str, str], ...]:
+    expectations: list[tuple[str, str]] = []
+    for raw in raw_values:
+        if "=" not in raw:
+            raise ValueError(
+                "--expect-live-failure-step-error entries must look like "
+                "step_id=ERROR_CODE"
+            )
+        step_id, error_code = raw.split("=", 1)
+        step_id = step_id.strip()
+        error_code = error_code.strip()
+        if not step_id or not error_code:
+            raise ValueError(
+                "--expect-live-failure-step-error requires non-empty "
+                "step_id and ERROR_CODE"
+            )
+        expectations.append((step_id, error_code))
+    return tuple(expectations)
+
+
+def _live_failure_step_error_mismatches(
+    summary: dict[str, Any],
+    expectations: tuple[tuple[str, str], ...],
+) -> list[str]:
+    if not expectations:
+        return []
+    failure_steps = summary.get("failure_steps")
+    if not isinstance(failure_steps, list):
+        return ["failure_steps summary is missing or malformed"]
+    by_id = {
+        str(step.get("step_id")): step
+        for step in failure_steps
+        if isinstance(step, dict) and step.get("step_id") is not None
+    }
+    mismatches: list[str] = []
+    for step_id, expected in expectations:
+        step = by_id.get(step_id)
+        if step is None:
+            mismatches.append(f"live failure step {step_id!r} was not found")
+            continue
+        actual = step.get("error_code")
+        if actual != expected:
+            mismatches.append(
+                f"live failure step {step_id!r} error_code expected "
+                f"{expected!r}, got {actual!r}"
+            )
+    return mismatches
+
+
 def _preflight_runtime_check_mismatches(
     summary: dict[str, Any],
     expected_checks: tuple[str, ...],
@@ -516,6 +567,14 @@ def _scenario_live_report_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "fatal_failed_steps": payload.get("fatal_failed_steps"),
         "cleanup_failed_steps": payload.get("cleanup_failed_steps"),
         "failure_summary_count": len(failure_summary),
+        "failure_steps": [
+            {
+                "step_id": row.get("step_id"),
+                "error_code": row.get("error_code"),
+            }
+            for row in failure_summary
+            if isinstance(row, dict) and row.get("step_id") is not None
+        ],
         "failure_step_ids": [
             row.get("step_id")
             for row in failure_summary
@@ -651,6 +710,7 @@ async def probe(
     expected_automatic_cleanup_timeouts: tuple[tuple[str, float], ...] = (),
     expected_live_evidence_kinds: tuple[str, ...] = (),
     expect_live_cleanup_failures: int | None = None,
+    expected_live_failure_step_errors: tuple[tuple[str, str], ...] = (),
     expect_live_status: str = "passed",
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
@@ -1007,6 +1067,15 @@ async def probe(
                     for mismatch in cleanup_mismatches:
                         print(f"  - {mismatch}")
                     exit_status = 1
+                failure_step_mismatches = _live_failure_step_error_mismatches(
+                    live_summary,
+                    expected_live_failure_step_errors,
+                )
+                if failure_step_mismatches:
+                    print("scenario_validate live failure-step expectation mismatch:")
+                    for mismatch in failure_step_mismatches:
+                        print(f"  - {mismatch}")
+                    exit_status = 1
                 markdown_report = _tool_text_response(
                     await call_tool(
                         "scenario_last_report",
@@ -1164,6 +1233,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Require scenario_validate live cleanup_failed_steps to match.",
     )
     parser.add_argument(
+        "--expect-live-failure-step-error",
+        action="append",
+        default=[],
+        help=(
+            "Require a scenario_validate live failure_summary step error, "
+            "formatted as step_id=ERROR_CODE; repeat for multiple steps."
+        ),
+    )
+    parser.add_argument(
         "--input-overrides-json",
         help="JSON object passed as scenario_plan input_overrides.",
     )
@@ -1270,6 +1348,15 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         print(f"Invalid probe option: {exc}")
         return 2
+    try:
+        expected_live_failure_step_errors = (
+            _parse_expected_live_failure_step_errors(
+                args.expect_live_failure_step_error,
+            )
+        )
+    except ValueError as exc:
+        print(f"Invalid probe option: {exc}")
+        return 2
     expect_scratch_stage_required = _parse_expected_bool(
         args.expect_scratch_stage_required,
     )
@@ -1311,6 +1398,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     elif args.expect_live_cleanup_failures is not None:
         print("--expect-live-cleanup-failures requires --scenario-validate-live")
+        return 2
+    elif expected_live_failure_step_errors:
+        print("--expect-live-failure-step-error requires --scenario-validate-live")
         return 2
     if (
         args.expect_live_cleanup_failures is not None
@@ -1355,6 +1445,9 @@ def main(argv: list[str] | None = None) -> int:
             ),
             expected_live_evidence_kinds=tuple(args.expect_live_evidence_kind),
             expect_live_cleanup_failures=args.expect_live_cleanup_failures,
+            expected_live_failure_step_errors=(
+                expected_live_failure_step_errors
+            ),
             expect_live_status=args.expect_live_status,
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,
