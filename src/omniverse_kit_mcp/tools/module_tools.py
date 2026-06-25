@@ -738,7 +738,7 @@ def register_module_tools(
         position: list[float] | None = None,
         rotation: list[float] | None = None,
     ) -> str:
-        """Load robot USD at prim_path; detects PhysX ArticulationAPI for joint control. Optional initial position/rotation."""
+        """Load robot USD at prim_path; detects PhysX ArticulationAPI for joint control. Optional initial position/rotation. Failures include diagnostics.suggested_next and diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         request = RobotLoadRequest(
             usd_url=usd_url,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -21,6 +21,7 @@ class RobotLoadResult:
     usd_url: str
     type_name: str
     has_articulation: bool
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

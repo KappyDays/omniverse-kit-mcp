@@ -333,6 +333,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "diagnostics.reason=lidar_read_error" in guide
     assert "diagnostics.reason=lidar_read_error" in invariant
     assert "robot_get_pick_place_demo_status" in guide
+    assert "diagnostics.reason=robot_load_error" in guide
+    assert "ROBOT_LOAD_ERROR" in diagnostic_map
+    assert "CAPABILITY_NOT_SUPPORTED" in diagnostic_map
+    assert "diagnostics.reason=robot_load_error" in diagnostic_map
     assert "diagnostics.timeout_s" in guide
     assert "diagnostics.fallback_tool_order" in guide
     assert "min_points" in guide

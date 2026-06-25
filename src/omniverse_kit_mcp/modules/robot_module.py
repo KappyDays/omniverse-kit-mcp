@@ -91,6 +91,15 @@ _PICK_PLACE_UNSUPPORTED_FALLBACK_TOOL_ORDER = (
     "robot_probe_arm_profile",
     "robot_install_pick_place_playback_demo",
 )
+_ROBOT_LOAD_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "official_asset_search",
+    "asset_search",
+    "robot_load",
+    "extension_capture_logs",
+)
 _PROBE_UNSAFE_TIMEOUT_CLEANUP_PHASES = {
     "simulation_play",
     "warmup_step",
@@ -295,11 +304,39 @@ class RobotModule:
                     usd_url=raw.get("usd_url", request.usd_url),
                     type_name=raw.get("type_name", "unknown"),
                     has_articulation=raw.get("has_articulation", False),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
-            return error_result(str(exc), started_ms=started, exc=exc, error_code="ROBOT_LOAD_ERROR")
+            error_code = (
+                "CAPABILITY_NOT_SUPPORTED"
+                if getattr(exc, "error_code", None) == "CAPABILITY_NOT_SUPPORTED"
+                else "ROBOT_LOAD_ERROR"
+            )
+            data = RobotLoadResult(
+                ok=False,
+                prim_path=request.prim_path,
+                usd_url=request.usd_url,
+                type_name="",
+                has_articulation=False,
+                diagnostics=_robot_load_error_diagnostics(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
+            return error_result(
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
+            )
 
     async def get_joint_positions(
         self,
@@ -1904,6 +1941,29 @@ def _pick_place_demo_status_error_data(
         diagnostics=diagnostics,
         last_error=message,
     )
+
+
+def _robot_load_error_diagnostics(
+    *,
+    request: RobotLoadRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_load_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "usd_url": request.usd_url,
+        "prim_path": request.prim_path,
+        "position": list(request.position) if request.position else None,
+        "rotation": list(request.rotation) if request.rotation else None,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the app is responsive and no async job is blocking stage mutation.",
+            "Run stage_capture_snapshot to check whether the target prim already exists or was partially created.",
+            "Verify the robot USD URL with official_asset_search, official_asset_verify, or asset_search before retrying robot_load.",
+        ],
+        "fallback_tool_order": list(_ROBOT_LOAD_FALLBACK_TOOL_ORDER),
+    }
 
 
 def _default_probe_prim_path(profile_name: str) -> str:

@@ -86,3 +86,6 @@ async def test_robot_module_returns_capability_not_supported_error_code():
 
     assert result.ok is False
     assert result.error_code == "CAPABILITY_NOT_SUPPORTED"
+    assert result.data is not None
+    assert result.data.diagnostics["reason"] == "robot_load_error"
+    assert result.data.diagnostics["upstream_error_code"] == "CAPABILITY_NOT_SUPPORTED"

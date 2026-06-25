@@ -1661,7 +1661,8 @@ robot_load(usd_url: 'str', prim_path: 'str', position: 'list[float] | None' = No
 ```
 
 Load robot USD at prim_path; detects PhysX ArticulationAPI for joint control. Optional initial
-position/rotation.
+position/rotation. Failures include diagnostics.suggested_next and
+diagnostics.fallback_tool_order.
 
 **Parameters**
 

@@ -186,6 +186,7 @@ async def test_robot_load_success():
     assert isinstance(result.data, RobotLoadResult)
     assert result.data.prim_path == "/World/Franka"
     assert result.data.has_articulation is True
+    assert result.data.diagnostics == {}
     load_calls = [c for c in client.calls if c[0] == "robot_load"]
     assert len(load_calls) == 1
     assert load_calls[0][1]["position"] == [1.0, 2.0, 3.0]
@@ -404,6 +405,27 @@ async def test_robot_load_propagates_error():
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "ROBOT_LOAD_ERROR"
     assert "CreatePayloadCommand failed" in (result.message or "")
+    assert isinstance(result.data, RobotLoadResult)
+    assert result.data.ok is False
+    assert result.data.prim_path == "/World/X"
+    assert result.data.usd_url == "bogus"
+    assert result.data.has_articulation is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_load_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_LOAD_ERROR"
+    assert diagnostics["upstream_message"] == "CreatePayloadCommand failed"
+    assert diagnostics["usd_url"] == "bogus"
+    assert diagnostics["prim_path"] == "/World/X"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "official_asset_search",
+        "asset_search",
+        "robot_load",
+        "extension_capture_logs",
+    ]
+    assert any("simulation_get_status" in item for item in diagnostics["suggested_next"])
 
 
 @pytest.mark.asyncio
