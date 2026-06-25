@@ -1089,6 +1089,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
         ),
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
+        "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md",
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
         current_e2e,
         baseline_e2e,

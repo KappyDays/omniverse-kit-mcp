@@ -207,6 +207,8 @@ and controlled-failure diagnostic reason assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`.
 The current post-stop-guard Robot + RTX refresh is
 `docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md`.
+The current final-log close-gate Robot + RTX refresh is
+`docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md`.
 The current doc-only durable-rule E2E refresh is verified in
 `docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md`;
 the baseline recipe remains
