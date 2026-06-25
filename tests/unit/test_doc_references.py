@@ -1255,6 +1255,24 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
     assert "public hygiene checks" in guide
 
 
+def test_f3b_artifacts_with_unredacted_report_calls_are_historical():
+    offenders: list[str] = []
+    for artifact in sorted((PROJECT / "docs" / "artifacts").rglob("*.md")):
+        text = artifact.read_text(encoding="utf-8")
+        if "redact_local_paths=false" not in text:
+            continue
+        if (
+            "Historical note" not in text
+            or "not the current public report contract" not in text
+        ):
+            offenders.append(str(artifact.relative_to(PROJECT)).replace("\\", "/"))
+
+    assert not offenders, (
+        "Artifacts with unredacted report calls must mark the current public "
+        "contract boundary:\n  " + "\n  ".join(offenders)
+    )
+
+
 def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     current_e2e = (
