@@ -15,7 +15,7 @@ Workspace-local MCP stdio entry from `workspaces/isaac/instance-1`:
 scenario_plan(input_overrides={lidar_min_points: 513}) ->
 scenario_validate(dry_run=true, input_overrides={lidar_min_points: 513}) ->
 extension_clear_logs -> scenario_validate(input_overrides={lidar_min_points:
-513}, report_format=json) -> scenario_last_report(markdown,
+513}, report_format=json) -> scenario_last_report(report_format="markdown",
 redact_local_paths=true) -> extension_capture_logs(WARN) ->
 extension_capture_logs(ERROR) -> simulation_get_status`.
 

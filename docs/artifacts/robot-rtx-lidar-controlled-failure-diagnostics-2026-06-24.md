@@ -13,8 +13,8 @@ Workspace-local MCP worker from `workspaces/isaac/instance-1`:
 `mcp_runtime_info -> kit_app_start -> simulation_get_status ->
 extension_clear_logs -> scenario_plan(input_overrides={lidar_min_points: 513})
 -> scenario_validate(input_overrides={lidar_min_points: 513},
-redact_local_paths=true) -> scenario_last_report(json, redact_local_paths=true)
--> scenario_last_report(markdown, redact_local_paths=true) ->
+redact_local_paths=true) -> scenario_last_report(report_format="json", redact_local_paths=true)
+-> scenario_last_report(report_format="markdown", redact_local_paths=true) ->
 extension_capture_logs(WARN) -> extension_capture_logs(ERROR) ->
 simulation_get_status`.
 

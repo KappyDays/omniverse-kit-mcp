@@ -1368,6 +1368,8 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         assert "local absolute" in text or "No raw local capture path" in text
         assert "worker/thread ID" in text or "worker/thread IDs" in text
         assert "secret" in text or "secrets" in text
+        assert "scenario_last_report(markdown" not in text
+        assert "scenario_last_report(json," not in text
 
     for rel in (
         "docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md",
