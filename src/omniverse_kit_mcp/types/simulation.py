@@ -44,6 +44,7 @@ class SimulationStepResult:
     start_time: float
     advance_mode: str
     was_playing: bool
+    diagnostics: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -101,6 +102,7 @@ class SimulationStepObserveResult:
     prim_states: tuple[ObservedPrimState, ...] = field(default_factory=tuple)
     joint_states: tuple[ObservedJointState, ...] = field(default_factory=tuple)
     ee_states: tuple[ObservedEETarget, ...] = field(default_factory=tuple)
+    diagnostics: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

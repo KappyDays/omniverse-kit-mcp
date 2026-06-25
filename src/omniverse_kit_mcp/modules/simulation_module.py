@@ -33,6 +33,18 @@ _SIMULATION_STATUS_FALLBACK_TOOL_ORDER = (
     "simulation_get_status",
     "extension_capture_logs",
 )
+_SIMULATION_STEP_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "simulation_step",
+    "extension_capture_logs",
+)
+_SIMULATION_STEP_OBSERVE_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "simulation_step_observe",
+    "extension_capture_logs",
+)
 
 
 class SimulationModule:
@@ -85,12 +97,35 @@ class SimulationModule:
                     start_time=float(raw.get("start_time", 0.0)),
                     advance_mode=str(raw.get("advance_mode", "")),
                     was_playing=bool(raw.get("was_playing", False)),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "SIMULATION_STEP_ERROR"
+            diagnostics = _simulation_step_error_diagnostics(
+                request=request,
+                error_code=error_code,
+                message=str(exc),
+            )
+            data = SimulationStepResult(
+                status=_simulation_error_status(diagnostics=diagnostics),
+                frames=request.frames,
+                start_time=0.0,
+                advance_mode="",
+                was_playing=False,
+                diagnostics=diagnostics,
+            )
             return error_result(
-                str(exc), started_ms=started, error_code="SIMULATION_STEP_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                exc=exc,
+                data=data,
             )
 
     async def step_observe(
@@ -129,13 +164,35 @@ class SimulationModule:
                     ee_states=tuple(
                         _parse_ee_state(item) for item in raw.get("ee_states") or []
                     ),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "SIMULATION_STEP_OBSERVE_ERROR"
+            diagnostics = _simulation_step_observe_error_diagnostics(
+                request=request,
+                error_code=error_code,
+                message=str(exc),
+            )
+            data = SimulationStepObserveResult(
+                status=_simulation_error_status(diagnostics=diagnostics),
+                frames=request.frames,
+                start_time=0.0,
+                advance_mode="",
+                was_playing=False,
+                diagnostics=diagnostics,
+            )
             return error_result(
-                str(exc), started_ms=started,
-                error_code="SIMULATION_STEP_OBSERVE_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                exc=exc,
+                data=data,
             )
 
     async def wait_until(
@@ -420,6 +477,69 @@ def _simulation_status_error_data(
             "fallback_tool_order": list(_SIMULATION_STATUS_FALLBACK_TOOL_ORDER),
         },
     )
+
+
+def _simulation_error_status(
+    *, diagnostics: dict[str, object],
+) -> SimulationStatus:
+    return SimulationStatus(
+        is_playing=False,
+        is_stopped=False,
+        current_time=0.0,
+        start_time=0.0,
+        end_time=0.0,
+        time_codes_per_second=0.0,
+        diagnostics=dict(diagnostics),
+    )
+
+
+def _simulation_step_error_diagnostics(
+    *,
+    request: SimulationStepRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "simulation_step_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "frames": request.frames,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline and REST endpoint are responsive.",
+            "Retry simulation_step with fewer frames if the status endpoint is healthy.",
+            "Capture WARN/ERROR logs if simulation_step keeps failing or timing out.",
+        ],
+        "fallback_tool_order": list(_SIMULATION_STEP_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _simulation_step_observe_error_diagnostics(
+    *,
+    request: SimulationStepObserveRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "simulation_step_observe_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "frames": request.frames,
+        "observe_prims": list(request.observe_prims),
+        "observe_joints": list(request.observe_joints),
+        "observe_ee": [
+            {
+                "prim_path": spec.prim_path,
+                "end_effector_frame": spec.end_effector_frame,
+            }
+            for spec in request.observe_ee
+        ],
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline and REST endpoint are responsive.",
+            "Retry simulation_step_observe with fewer frames or fewer observe targets.",
+            "Capture WARN/ERROR logs if synchronized observation keeps failing.",
+        ],
+        "fallback_tool_order": list(_SIMULATION_STEP_OBSERVE_FALLBACK_TOOL_ORDER),
+    }
 
 
 def _vec3(raw: object) -> tuple[float, float, float] | None:

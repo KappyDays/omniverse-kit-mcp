@@ -609,7 +609,7 @@ def register_module_tools(
 
     @tool()
     async def simulation_step(frames: int = 1) -> str:
-        """Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play state."""
+        """Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play state. Failures include data.diagnostics.suggested_next and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SIMULATION)
         request = SimulationStepRequest(frames=frames)
         result = await simulation.step(meta, request)
@@ -622,7 +622,7 @@ def register_module_tools(
         observe_joints: list[str] | None = None,
         observe_ee: list[dict[str, Any]] | None = None,
     ) -> str:
-        """Advance N frames, then return synchronized prim/joint/end-effector observations. Use this for deterministic ScriptNode/controller debugging instead of sleep+separate polling."""
+        """Advance N frames, then return synchronized prim/joint/end-effector observations. Use this for deterministic ScriptNode/controller debugging instead of sleep+separate polling; failures include data.diagnostics.suggested_next and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SIMULATION)
         ee_specs = tuple(
             SimulationEESpec(

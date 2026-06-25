@@ -319,6 +319,12 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "not nested `diagnostics`" in guide
     assert "diagnostics.reason" in guide
     assert "diagnostics.reason=simulation_status_error" in guide
+    assert "diagnostics.reason=simulation_step_error" in guide
+    assert "diagnostics.reason=simulation_step_observe_error" in guide
+    assert "diagnostics.reason=simulation_step_error" in invariant
+    assert "SIMULATION_STEP_OBSERVE_ERROR" in invariant
+    assert "simulation_step_error" in diagnostic_map
+    assert "simulation_step_observe_error" in diagnostic_map
     assert "diagnostics.reason=viewport_frame_prims_error" in guide
     assert "VIEWPORT_FRAME_PRIMS_ERROR" in diagnostic_map
     assert "diagnostics.reason=viewport_frame_prims_error" in diagnostic_map

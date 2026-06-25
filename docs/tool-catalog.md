@@ -419,7 +419,8 @@ simulation_step(frames: 'int' = 1) -> 'str'
 ```
 
 Advance timeline by N frames with Isaac Sim 6.0 play-burst semantics; preserves prior play
-state.
+state. Failures include data.diagnostics.suggested_next and
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -434,7 +435,8 @@ simulation_step_observe(frames: 'int' = 1, observe_prims: 'list[str] | None' = N
 ```
 
 Advance N frames, then return synchronized prim/joint/end-effector observations. Use this for
-deterministic ScriptNode/controller debugging instead of sleep+separate polling.
+deterministic ScriptNode/controller debugging instead of sleep+separate polling; failures
+include data.diagnostics.suggested_next and data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

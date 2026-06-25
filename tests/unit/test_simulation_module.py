@@ -6,6 +6,13 @@ import pytest
 
 from omniverse_kit_mcp.modules.simulation_module import SimulationModule
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
+from omniverse_kit_mcp.types.simulation import (
+    SimulationEESpec,
+    SimulationStepObserveRequest,
+    SimulationStepObserveResult,
+    SimulationStepRequest,
+    SimulationStepResult,
+)
 from tests.conftest import MockIsaacRestClient
 
 
@@ -68,6 +75,72 @@ async def test_simulation_status_error_returns_typed_diagnostics(meta):
         "mcp_runtime_info" in item
         for item in result.data.diagnostics["suggested_next"]
     )
+
+
+@pytest.mark.asyncio
+async def test_simulation_step_error_returns_typed_diagnostics(meta):
+    class FailingStepClient(MockIsaacRestClient):
+        async def simulation_step(self, request):  # type: ignore[override]
+            raise RuntimeError("timeline step unavailable")
+
+    mod = SimulationModule(FailingStepClient())
+    result = await mod.step(meta, SimulationStepRequest(frames=8))
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SIMULATION_STEP_ERROR"
+    assert isinstance(result.data, SimulationStepResult)
+    assert result.data.frames == 8
+    assert result.data.status.diagnostics["reason"] == "simulation_step_error"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "simulation_step_error"
+    assert diagnostics["upstream_error_code"] == "SIMULATION_STEP_ERROR"
+    assert diagnostics["upstream_message"] == "timeline step unavailable"
+    assert diagnostics["frames"] == 8
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "simulation_step",
+        "extension_capture_logs",
+    ]
+    assert any("simulation_get_status" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_simulation_step_observe_error_returns_typed_diagnostics(meta):
+    class FailingStepObserveClient(MockIsaacRestClient):
+        async def simulation_step_observe(self, request):  # type: ignore[override]
+            raise RuntimeError("observation failed")
+
+    mod = SimulationModule(FailingStepObserveClient())
+    request = SimulationStepObserveRequest(
+        frames=4,
+        observe_prims=("/World/Robot",),
+        observe_joints=("/World/Robot",),
+        observe_ee=(SimulationEESpec("/World/Robot", "panda_hand"),),
+    )
+    result = await mod.step_observe(meta, request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SIMULATION_STEP_OBSERVE_ERROR"
+    assert isinstance(result.data, SimulationStepObserveResult)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "simulation_step_observe_error"
+    assert diagnostics["upstream_error_code"] == "SIMULATION_STEP_OBSERVE_ERROR"
+    assert diagnostics["upstream_message"] == "observation failed"
+    assert diagnostics["frames"] == 4
+    assert diagnostics["observe_prims"] == ["/World/Robot"]
+    assert diagnostics["observe_joints"] == ["/World/Robot"]
+    assert diagnostics["observe_ee"] == [
+        {"prim_path": "/World/Robot", "end_effector_frame": "panda_hand"}
+    ]
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "simulation_step_observe",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio
