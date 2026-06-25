@@ -532,6 +532,18 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert "without exposing the local workspace root" in guide
 
 
+def test_f3b_usage_guide_artifact_links_exist():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    links = sorted(set(re.findall(r"docs/artifacts/[A-Za-z0-9_./\\-]+\.md", guide)))
+
+    assert links, "mcp-usage-guide.md should link public evidence artifacts"
+    missing = [link for link in links if not (PROJECT / link).exists()]
+    assert not missing, (
+        "mcp-usage-guide.md links missing evidence artifacts:\n  "
+        + "\n  ".join(missing)
+    )
+
+
 def test_f3b_workspace_live_probe_commands_keep_dry_run_gate():
     offenders: list[str] = []
     command_re = re.compile(r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`")
