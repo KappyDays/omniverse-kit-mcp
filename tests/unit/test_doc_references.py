@@ -1328,10 +1328,14 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
     official_catalog = (
         PROJECT / "docs" / "references" / "official-asset-catalog.md"
     ).read_text(encoding="utf-8")
+    tool_catalog = (PROJECT / "docs" / "tool-catalog.md").read_text(encoding="utf-8")
 
     start = guide.index("Official asset on-demand live verify wrapper:")
     end = guide.index("## Timeline Control", start)
     on_demand_wrapper = guide[start:end]
+    tool_start = tool_catalog.index("### `official_asset_verify`")
+    tool_end = tool_catalog.index("## Content - browser", tool_start)
+    official_asset_verify_tool = tool_catalog[tool_start:tool_end]
 
     for source in (on_demand_wrapper, official_catalog):
         assert "Direct `official_asset_verify`" in source
@@ -1359,6 +1363,24 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
     )
     assert "bounded operator check" in catalog_normalized
     assert "do not commit generated verification records" in catalog_normalized
+
+    tool_normalized = " ".join(official_asset_verify_tool.split())
+    for token in (
+        "data.verification_status=load_verified",
+        "data.kind",
+        "data.app_profile",
+        "data.load_quality",
+        "content_verified_with_bbox",
+        "content_verified_no_bbox",
+        "data.diagnostics.reason",
+        "asset_checks/material_checks",
+        "error_type",
+        "suggested_next",
+        "fallback_tool_order",
+        "verification-on-demand.jsonl",
+        "copy only redacted stable fields",
+    ):
+        assert token in tool_normalized
 
 
 def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact():

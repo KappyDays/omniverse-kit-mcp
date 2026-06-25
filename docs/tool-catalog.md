@@ -1308,7 +1308,11 @@ official_asset_verify(asset_id: 'str', app_profile: 'str | None' = None, timeout
 
 On-demand live verification for one official catalog item. Assets use
 stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding,
-and cleanup. Catalog-read errors include diagnostics; use workspace workers for live Kit.
+and cleanup. Success evidence must check data.verification_status=load_verified, data.kind,
+data.app_profile, and data.load_quality (content_verified_with_bbox/content_verified_no_bbox
+for assets). Failed records include data.diagnostics.reason, asset_checks/material_checks,
+error_type, suggested_next, and fallback_tool_order. verification-on-demand.jsonl records are
+ignored; copy only redacted stable fields into public artifacts.
 
 **Parameters**
 

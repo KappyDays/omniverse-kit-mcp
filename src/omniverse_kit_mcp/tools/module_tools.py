@@ -1315,7 +1315,7 @@ def register_module_tools(
         app_profile: str | None = None,
         timeout_s: float | None = None,
     ) -> str:
-        """On-demand live verification for one official catalog item. Assets use stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding, and cleanup. Catalog-read errors include diagnostics; use workspace workers for live Kit."""
+        """On-demand live verification for one official catalog item. Assets use stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding, and cleanup. Success evidence must check data.verification_status=load_verified, data.kind, data.app_profile, and data.load_quality (content_verified_with_bbox/content_verified_no_bbox for assets). Failed records include data.diagnostics.reason, asset_checks/material_checks, error_type, suggested_next, and fallback_tool_order. verification-on-demand.jsonl records are ignored; copy only redacted stable fields into public artifacts."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_verify(
             meta,
