@@ -457,6 +457,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         wrapper.index("--scenario-plan smoke/official_asset_verify_live.yaml"):
         wrapper.index("For the read-only catalog diagnostics path, use")
     ]
+    assert "--scenario-validate-dry-run" in verify_live_probe
     assert "--expect-scratch-stage-required true" in wrapper
     assert "--expect-log-capture-recommended true" in verify_live_probe
     assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
