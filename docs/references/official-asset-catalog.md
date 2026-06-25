@@ -170,6 +170,16 @@ the proof must assert `official_asset_verify:verification_status=load_verified`,
 `official_asset_verify:kind=asset`, and
 `official_asset_verify:app_profile=isaac-sim` when proving the Isaac Sim asset
 workflow.
+For repeatable read-only catalog diagnostics, use
+`smoke/official_asset_catalog_diagnostics.yaml`; keep
+`stage_mutation_summary.read_only=true` and assert
+`search_known_miss:diagnostics.reason=query_no_match` plus
+`get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`.
+Current public proof anchors include
+`docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md` for the
+bounded live proof and
+`docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md` for
+the docs-only tool-order dry-run.
 
 Carry the same `app_profile` through `official_asset_search`,
 `official_asset_resolve`, `official_asset_get`, and `official_asset_verify` when

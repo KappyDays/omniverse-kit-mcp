@@ -1501,6 +1501,21 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
     )
     assert "bounded operator check" in catalog_normalized
     assert "do not commit generated verification records" in catalog_normalized
+    assert "smoke/official_asset_catalog_diagnostics.yaml" in official_catalog
+    assert "stage_mutation_summary.read_only=true" in official_catalog
+    assert "search_known_miss:diagnostics.reason=query_no_match" in official_catalog
+    assert (
+        "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
+        in official_catalog
+    )
+    assert (
+        "docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md"
+        in official_catalog
+    )
+    assert (
+        "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md"
+        in official_catalog
+    )
 
     tool_normalized = " ".join(official_asset_verify_tool.split())
     for token in (
