@@ -29,6 +29,7 @@ If the code modification + attempt with the same hypothesis fails twice → Hypo
 | Window exists? | `window_list` | `windows[].class_name=GLFW30` |
 | Window UI tree? | `extension_get_ui_tree(window=)` | `widgets[]` (USD Composer does not have `omni.kit.ui_test` → 0 widgets + walk_error) |
 | Visual status? | `viewport_capture` / `window_capture` + `Read` tool | PNG (R3) |
+| Viewport framing failed? | `stage_capture_snapshot` → `simulation_get_status` → `viewport_frame_prims` → `extension_capture_logs` | For `VIEWPORT_FRAME_PRIMS_ERROR`, inspect `diagnostics.reason=viewport_frame_prims_error`, requested `diagnostics.prim_paths`, `diagnostics.upstream_error_code`, and `diagnostics.fallback_tool_order` before changing camera code |
 | Kit menu item? | `window_menu_list` / `window_menu_trigger` | `items[]` |
 | Script Editor localhost REST timeout? | `simulation_get_status` from outside Script Editor | Same Kit process blocking on itself; do not call Kit REST synchronously from Script Editor |
 | MDL deadlock? | `simulation_get_status` 92s timeout | → `runbooks/kit-stdin-deadlock.md` |

@@ -231,6 +231,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     invariant = (
         PROJECT / "docs" / "invariants" / "scenario-validation.md"
     ).read_text(encoding="utf-8")
+    diagnostic_map = (PROJECT / "docs" / "tool-diagnostic-map.md").read_text(
+        encoding="utf-8"
+    )
     sequence = [
         "mcp_runtime_info",
         "kit_app_start",
@@ -317,6 +320,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "diagnostics.reason" in guide
     assert "diagnostics.reason=simulation_status_error" in guide
     assert "diagnostics.reason=viewport_frame_prims_error" in guide
+    assert "VIEWPORT_FRAME_PRIMS_ERROR" in diagnostic_map
+    assert "diagnostics.reason=viewport_frame_prims_error" in diagnostic_map
+    assert "diagnostics.prim_paths" in diagnostic_map
+    assert "diagnostics.reason=viewport_frame_prims_error" in invariant
     assert "capture_error" in guide
     assert "diagnostics.upstream_error_code" in guide
     assert "data_summary.diagnostics.upstream_error_code" in invariant

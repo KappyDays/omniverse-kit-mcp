@@ -134,7 +134,7 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `data_summary.diagnostics.pixel_variance_average`,
 `data_summary.diagnostics.min_mean` /
 `data_summary.diagnostics.min_variance` before opening logs. If
-`viewport_capture_assert` fails, follow `simulation_get_status -> viewport_frame_prims -> viewport_capture_assert -> extension_capture_logs`; if `sensor_lidar_get_point_cloud` returns `SENSOR_LIDAR_GET_POINT_CLOUD_ERROR`, follow `diagnostics.reason=lidar_read_error`, `diagnostics.upstream_error_code`, and `diagnostics.fallback_tool_order` before widening retries.
+`viewport_capture_assert` fails, follow `simulation_get_status -> viewport_frame_prims -> viewport_capture_assert -> extension_capture_logs`; if `viewport_frame_prims` itself returns `VIEWPORT_FRAME_PRIMS_ERROR`, follow `diagnostics.reason=viewport_frame_prims_error`, `diagnostics.prim_paths`, `diagnostics.upstream_error_code`, and `diagnostics.fallback_tool_order` before changing camera code; if `sensor_lidar_get_point_cloud` returns `SENSOR_LIDAR_GET_POINT_CLOUD_ERROR`, follow `diagnostics.reason=lidar_read_error`, `diagnostics.upstream_error_code`, and `diagnostics.fallback_tool_order` before widening retries.
 Use `scenario_last_report(report_format="markdown", redact_local_paths=true)`
 for public-safe quick `Diagnostic Next Actions` and `Data Summary Highlights`;
 use default JSON for exact field values before copying anything into public docs.
