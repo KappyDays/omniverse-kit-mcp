@@ -374,7 +374,9 @@ The current docs-only official asset tool-order dry-run refresh is
 current read-only dry-run wrapper gate is
 `docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md`, and
 the current read-only final-log close-gate live refresh is
-`docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`.
+`docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`;
+its continued-failure result shape is guarded in
+`docs/artifacts/official-asset-readonly-result-shape-guard-2026-06-26.md`.
 Use them as the baseline for the bounded `official_asset_verify` load-quality
 proof and read-only catalog diagnostics; refresh them when verification status,
 load-quality shape, diagnostics, evidence kind/fields, cleanup count, continued

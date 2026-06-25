@@ -23,6 +23,10 @@ and did not mutate a stage.
   8-tool read-only wrapper order.
 - Live validation passed with `passed_steps=4`, `failed_steps=1`,
   `continued_steps=1`, `fatal_failed_steps=0`, and `cleanup_failed_steps=0`.
+- The continued `get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND` failure is
+  expected and non-terminal; `--expect-live-status passed` plus
+  `fatal_failed_steps=0` guard against treating it as a terminal scenario
+  status regression.
 - Required diagnostic assertions passed:
   - `search_known_miss:diagnostics.reason=query_no_match`
   - `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`

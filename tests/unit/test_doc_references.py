@@ -2254,6 +2254,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "docs/artifacts/"
             "official-asset-readonly-close-gate-live-refresh-2026-06-26.md"
         ),
+        (
+            "docs/artifacts/"
+            "official-asset-readonly-result-shape-guard-2026-06-26.md"
+        ),
     ]
 
     for rel in artifacts:
@@ -2364,6 +2368,25 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "`continued_steps=1`, `fatal_failed_steps=0`" in (
         read_only_close_gate_normalized
     )
+    assert "`cleanup_failed_steps=0`" in read_only_close_gate
+    assert "--expect-live-status passed" in read_only_close_gate
+    assert "continued `get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`" in (
+        read_only_close_gate
+    )
+    assert "expected and non-terminal" in read_only_close_gate
+    assert "search_known_miss:diagnostics.reason=query_no_match" in (
+        read_only_close_gate
+    )
+    assert (
+        "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
+        in read_only_close_gate
+    )
+    assert (
+        "official_asset_sync_status -> official_asset_search -> "
+        "official_asset_resolve -> official_asset_verify -> asset_search"
+    ) in read_only_close_gate_normalized
+    assert "`data.capture_stop_completed=true`" in read_only_close_gate
+    assert "`data.capture_stop_timed_out=false`" in read_only_close_gate
 
 
 def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypatch):
