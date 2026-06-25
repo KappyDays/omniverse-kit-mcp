@@ -426,6 +426,13 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "diagnostics.reason=sensor_set_annotator_error" in guide
     assert "sensor_set_annotator_error" in diagnostic_map
     assert "SENSOR_SET_ANNOTATOR_ERROR" in invariant
+    assert "RTX lidar point-cloud proof failed?" in diagnostic_map
+    assert "diagnostics.reason=point_count_below_minimum" in diagnostic_map
+    assert "retry_failures[].data_summary" in diagnostic_map
+    assert (
+        "--expect-live-diagnostic-field "
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
+    ) in diagnostic_map
     assert "diagnostics.reason=lidar_read_error" in guide
     assert "diagnostics.reason=lidar_read_error" in invariant
     assert "robot_get_pick_place_demo_status" in guide
@@ -660,6 +667,9 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
 def test_f3b_official_asset_scenario_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
+    diagnostic_map = (PROJECT / "docs" / "tool-diagnostic-map.md").read_text(
+        encoding="utf-8"
+    )
     invariant = (
         PROJECT / "docs" / "invariants" / "scenario-validation.md"
     ).read_text(encoding="utf-8")
@@ -778,6 +788,12 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "official_asset_verify:verification_status=load_verified" in scenario_authoring
     assert "official_asset_verify:kind=asset" in scenario_authoring
     assert "official_asset_verify:app_profile=isaac-sim" in scenario_authoring
+    assert "Official asset verify failed or found nothing?" in diagnostic_map
+    assert "OFFICIAL_ASSET_NOT_FOUND" in diagnostic_map
+    assert "diagnostics.candidate_counts" in diagnostic_map
+    assert "diagnostics.asset_checks" in diagnostic_map
+    assert "diagnostics.material_checks" in diagnostic_map
+    assert "evidence_summary[].evidence_kind=official_asset_verify" in diagnostic_map
     assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
     assert (
         "--require-live-validation-tools "
