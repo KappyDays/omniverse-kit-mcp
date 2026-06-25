@@ -250,7 +250,9 @@ From a parent/root session without first-class live tools, run
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh`
 for the same profile/import-freshness gate through the workspace-local stdio
 entry; expectation options imply the `mcp_runtime_info` call even if
-`--runtime-info` is omitted.
+`--runtime-info` is omitted. The probe writes ignored `tmp_mcp_surface.json`
+and prints only the repo-relative snapshot path, so stdout can be copied into
+public evidence without exposing the local workspace root.
 
 ## Exact Signatures
 

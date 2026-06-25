@@ -369,6 +369,9 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert "smoke/official_asset_verify_live.yaml" in scenario_plans
     assert "smoke/official_asset_catalog_diagnostics.yaml" in scenario_plans
     assert any(call["scenario_validate_dry_run"] for call in calls)
+    assert "ignored `tmp_mcp_surface.json`" in guide
+    assert "repo-relative snapshot path" in guide
+    assert "without exposing the local workspace root" in guide
 
 
 def test_f3b_robot_rtx_public_evidence_redaction_guidance():
