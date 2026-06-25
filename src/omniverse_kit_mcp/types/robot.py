@@ -116,6 +116,7 @@ class RobotGripperControlResult:
     gripper_joint_names: tuple[str, ...]
     gripper_joint_indices: tuple[int, ...]
     dof_count: int
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -135,6 +136,7 @@ class RobotSetEETargetResult:
     lula_import_path: str
     ik_success: bool
     solution: tuple[float, ...]
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

@@ -100,6 +100,21 @@ _ROBOT_LOAD_FALLBACK_TOOL_ORDER = (
     "robot_load",
     "extension_capture_logs",
 )
+_ROBOT_GRIPPER_CONTROL_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_gripper_control",
+    "extension_capture_logs",
+)
+_ROBOT_SET_EE_TARGET_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_get_joint_config_static",
+    "robot_set_ee_target",
+    "extension_capture_logs",
+)
 _PROBE_UNSAFE_TIMEOUT_CLEANUP_PHASES = {
     "simulation_play",
     "warmup_step",
@@ -492,12 +507,35 @@ class RobotModule:
                         int(i) for i in raw.get("gripper_joint_indices", ())
                     ),
                     dof_count=int(raw.get("dof_count", 0)),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_GRIPPER_CONTROL_ERROR"
+            data = RobotGripperControlResult(
+                prim_path=request.prim_path,
+                action=request.action,
+                target_value=float(request.target or 0.0),
+                gripper_joint_names=(),
+                gripper_joint_indices=(),
+                dof_count=0,
+                diagnostics=_robot_gripper_control_error_diagnostics(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_GRIPPER_CONTROL_ERROR",
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def set_ee_target(
@@ -525,12 +563,36 @@ class RobotModule:
                     lula_import_path=str(raw.get("lula_import_path", "")),
                     ik_success=bool(raw.get("ik_success", False)),
                     solution=tuple(float(v) for v in raw.get("solution", ())),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_SET_EE_TARGET_ERROR"
+            data = RobotSetEETargetResult(
+                prim_path=request.prim_path,
+                target_pose=request.target_pose,
+                robot_description=request.robot_description,
+                end_effector_frame=request.end_effector_frame or "",
+                lula_import_path="",
+                ik_success=False,
+                solution=(),
+                diagnostics=_robot_set_ee_target_error_diagnostics(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_SET_EE_TARGET_ERROR",
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def get_ee_pose(
@@ -1963,6 +2025,51 @@ def _robot_load_error_diagnostics(
             "Verify the robot USD URL with official_asset_search, official_asset_verify, or asset_search before retrying robot_load.",
         ],
         "fallback_tool_order": list(_ROBOT_LOAD_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _robot_gripper_control_error_diagnostics(
+    *,
+    request: RobotGripperControlRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_gripper_control_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": request.prim_path,
+        "action": request.action,
+        "target": request.target,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline is playing before retrying gripper control.",
+            "Run stage_capture_snapshot and robot_get_joint_config_static to confirm the robot prim and gripper joints.",
+            "Capture WARN/ERROR logs if the robot prim and gripper joints look correct but control still fails.",
+        ],
+        "fallback_tool_order": list(_ROBOT_GRIPPER_CONTROL_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _robot_set_ee_target_error_diagnostics(
+    *,
+    request: RobotSetEETargetRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_set_ee_target_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": request.prim_path,
+        "target_pose": list(request.target_pose),
+        "robot_description": request.robot_description,
+        "end_effector_frame": request.end_effector_frame,
+        "suggested_next": [
+            "Run simulation_get_status and stage_capture_snapshot before retrying IK control.",
+            "Run robot_get_joint_config_static to confirm the prim is an articulated arm profile with controllable joints.",
+            "Retry robot_set_ee_target only after correcting robot_description, end_effector_frame, or target pose.",
+        ],
+        "fallback_tool_order": list(_ROBOT_SET_EE_TARGET_FALLBACK_TOOL_ORDER),
     }
 
 

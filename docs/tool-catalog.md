@@ -1571,7 +1571,8 @@ robot_gripper_control(prim_path: 'str', action: 'str', target: 'float | None' = 
 ```
 
 Open/close/set gripper joints. action ∈ {open, close, set}; auto-detects finger/gripper DOF
-names. Requires simulation playing.
+names. Requires simulation playing. Failures include
+data.diagnostics.reason=robot_gripper_control_error and data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -1829,7 +1830,8 @@ robot_set_ee_target(prim_path: 'str', target_pose: 'list[float]', robot_descript
 
 Solve Lula IK for a shipped robot description and end-effector pose [x,y,z,qw,qx,qy,qz]; write
 joint positions. Use robot_list_arm_profiles for supported robot_description values and frame
-hints.
+hints. Failures include data.diagnostics.reason=robot_set_ee_target_error and
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

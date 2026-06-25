@@ -30,11 +30,15 @@ from omniverse_kit_mcp.types.robot import (
     RobotFrankaPickPlaceResult,
     RobotFrankaPickPlaceDemoRequest,
     RobotFrankaPickPlaceDemoStatus,
+    RobotGripperControlRequest,
+    RobotGripperControlResult,
     RobotLoadRequest,
     RobotLoadResult,
     RobotNavigateRequest,
     RobotNavigateResult,
     RobotPickPlaceDemoRequest,
+    RobotSetEETargetRequest,
+    RobotSetEETargetResult,
 )
 
 
@@ -426,6 +430,82 @@ async def test_robot_load_propagates_error():
         "extension_capture_logs",
     ]
     assert any("simulation_get_status" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_robot_gripper_control_error_returns_typed_diagnostics():
+    class FailingClient:
+        async def robot_gripper_control(self, request):
+            raise RuntimeError("No gripper joints found")
+
+    module = RobotModule(FailingClient())  # type: ignore[arg-type]
+    request = RobotGripperControlRequest(
+        prim_path="/World/Robot",
+        action="set",
+        target=0.2,
+    )
+    result = await module.gripper_control(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_GRIPPER_CONTROL_ERROR"
+    assert isinstance(result.data, RobotGripperControlResult)
+    assert result.data.prim_path == "/World/Robot"
+    assert result.data.action == "set"
+    assert result.data.target_value == pytest.approx(0.2)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_gripper_control_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_GRIPPER_CONTROL_ERROR"
+    assert diagnostics["upstream_message"] == "No gripper joints found"
+    assert diagnostics["prim_path"] == "/World/Robot"
+    assert diagnostics["action"] == "set"
+    assert diagnostics["target"] == 0.2
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_gripper_control",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_robot_set_ee_target_error_returns_typed_diagnostics():
+    class FailingClient:
+        async def robot_set_ee_target(self, request):
+            raise RuntimeError("IK failed to initialize")
+
+    module = RobotModule(FailingClient())  # type: ignore[arg-type]
+    request = RobotSetEETargetRequest(
+        prim_path="/World/Robot",
+        target_pose=(0.3, 0.1, 0.4, 1.0, 0.0, 0.0, 0.0),
+        robot_description="Franka",
+        end_effector_frame="panda_hand",
+    )
+    result = await module.set_ee_target(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_SET_EE_TARGET_ERROR"
+    assert isinstance(result.data, RobotSetEETargetResult)
+    assert result.data.prim_path == "/World/Robot"
+    assert result.data.ik_success is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_set_ee_target_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_SET_EE_TARGET_ERROR"
+    assert diagnostics["upstream_message"] == "IK failed to initialize"
+    assert diagnostics["prim_path"] == "/World/Robot"
+    assert diagnostics["target_pose"] == [0.3, 0.1, 0.4, 1.0, 0.0, 0.0, 0.0]
+    assert diagnostics["robot_description"] == "Franka"
+    assert diagnostics["end_effector_frame"] == "panda_hand"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_get_joint_config_static",
+        "robot_set_ee_target",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio

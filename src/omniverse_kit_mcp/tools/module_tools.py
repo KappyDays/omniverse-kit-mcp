@@ -825,7 +825,7 @@ def register_module_tools(
         action: str,
         target: float | None = None,
     ) -> str:
-        """Open/close/set gripper joints. action ∈ {open, close, set}; auto-detects finger/gripper DOF names. Requires simulation playing."""
+        """Open/close/set gripper joints. action ∈ {open, close, set}; auto-detects finger/gripper DOF names. Requires simulation playing. Failures include data.diagnostics.reason=robot_gripper_control_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         request = RobotGripperControlRequest(
             prim_path=prim_path, action=action, target=target,
@@ -840,7 +840,7 @@ def register_module_tools(
         robot_description: str = "Franka",
         end_effector_frame: str | None = None,
     ) -> str:
-        """Solve Lula IK for a shipped robot description and end-effector pose [x,y,z,qw,qx,qy,qz]; write joint positions. Use robot_list_arm_profiles for supported robot_description values and frame hints."""
+        """Solve Lula IK for a shipped robot description and end-effector pose [x,y,z,qw,qx,qy,qz]; write joint positions. Use robot_list_arm_profiles for supported robot_description values and frame hints. Failures include data.diagnostics.reason=robot_set_ee_target_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         pose = tuple(float(v) for v in target_pose)
         if len(pose) != 7:

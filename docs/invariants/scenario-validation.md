@@ -138,6 +138,7 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 Use `scenario_last_report(report_format="markdown", redact_local_paths=true)`
 for public-safe quick `Diagnostic Next Actions` and `Data Summary Highlights`;
 use default JSON for exact field values before copying anything into public docs.
+If direct robot controls return `ROBOT_GRIPPER_CONTROL_ERROR` / `ROBOT_SET_EE_TARGET_ERROR`, inspect `diagnostics.reason=robot_gripper_control_error` / `diagnostics.reason=robot_set_ee_target_error`, requested prim/action/target fields, and `diagnostics.fallback_tool_order` before widening retries or changing robot profiles.
 For idempotent retry steps, the scenario runner retries returned non-pass
 results, hard step timeouts, and hard step exceptions; each failed attempt is
 recorded in `retry_failures`.
