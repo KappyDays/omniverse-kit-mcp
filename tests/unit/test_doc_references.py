@@ -662,13 +662,34 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
         assert call["runtime_info"] is True
         assert call["expect_tool_profile"] == "full"
         assert call["expect_app_profile"] == "isaac-sim"
-        assert call["expect_tool_count"] == 152
+        assert call["expect_tool_count"] == len(_expected_tool_names())
         assert call["require_runtime_fresh"] is True
         assert call["require_robot_probe_error_contract"] is True
 
     assert "ignored `tmp_mcp_surface.json`" in guide
     assert "repo-relative snapshot path" in guide
     assert "without exposing the local workspace root" in guide
+
+
+def test_f3b_current_probe_docs_expect_full_tool_count():
+    expected = str(len(_expected_tool_names()))
+    docs = {
+        "docs/mcp-usage-guide.md": (
+            PROJECT / "docs" / "mcp-usage-guide.md"
+        ).read_text(encoding="utf-8"),
+        "scripts/CLAUDE.md": (PROJECT / "scripts" / "CLAUDE.md").read_text(
+            encoding="utf-8"
+        ),
+    }
+
+    for rel, text in docs.items():
+        counts = re.findall(r"--expect-tool-count (\d+)", text)
+        assert counts, f"{rel} must document --expect-tool-count"
+        stale = sorted({count for count in counts if count != expected})
+        assert not stale, (
+            f"{rel} must use current full tool count {expected}; found "
+            + ", ".join(stale)
+        )
 
 
 def test_f3b_usage_guide_live_probe_selectors_match_compiled_plans(monkeypatch):
