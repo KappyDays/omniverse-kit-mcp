@@ -1293,6 +1293,12 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
     assert guide.index(redaction_boundary) < guide.index(baseline_e2e)
     assert guide.index(route_boundary) < guide.index(baseline_e2e)
+    route_artifact = (PROJECT / route_boundary).read_text(encoding="utf-8")
+    assert "Post-Route Dry-Run Recheck" in route_artifact
+    assert "smoke/robot_rtx_sensor_golden_workflow.yaml" in route_artifact
+    assert "smoke/official_asset_verify_live.yaml" in route_artifact
+    assert "smoke/official_asset_catalog_diagnostics.yaml" in route_artifact
+    assert "`tmp_mcp_surface.json` snapshot remained ignored" in route_artifact
     assert (
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md"
         in guide

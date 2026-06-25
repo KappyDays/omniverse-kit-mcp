@@ -27,9 +27,32 @@ or official asset live proofs.
   fix. The underlying live proof baselines remain the existing Robot + RTX and
   official asset close-gate artifacts.
 
+## Post-Route Dry-Run Recheck
+
+After the root/usage-guide route rows were tightened, the workspace-local Isaac
+Sim MCP entry was rechecked with the three doc-only probe commands. All exited
+0 without live stage mutation:
+
+- `smoke/robot_rtx_sensor_golden_workflow.yaml`: `tool_profile=full`,
+  `app_profile=isaac-sim`, `tool_count=152`, `source_newer_than_import=false`,
+  `restart_required_for_latest_mcp_code=false`, `scratch_stage_required=true`,
+  `log_capture_recommended=true`, `live_validation_step_count=9`,
+  `play_state_missing_count=0`, and fallback cleanup
+  `__fallback_cleanup_reset.timeoutSeconds=30`.
+- `smoke/official_asset_verify_live.yaml`: required `diagnostic_steps`,
+  `evidence_steps`, and `stage_mutation_steps` were present, with
+  `scratch_stage_required=true`, `log_capture_recommended=true`, and
+  `live_validation_step_count=9`.
+- `smoke/official_asset_catalog_diagnostics.yaml`: required
+  `diagnostic_steps` and `stage_mutation_steps` were present, with
+  `scratch_stage_required=false`, `log_capture_recommended=true`, and
+  `live_validation_step_count=8`.
+- The generated `tmp_mcp_surface.json` snapshot remained ignored and was not
+  promoted as public evidence.
+
 ## Public Boundary
 
 No raw local absolute paths, local capture paths, worker/thread IDs, process
 IDs, secrets, raw Kit logs, generated catalog records, or private workspace
-state are included. This artifact records only the public route-table boundary
-and the targeted doc-reference guard.
+state are included. This artifact records only the public route-table boundary,
+targeted doc-reference guard, and compact dry-run summaries.
