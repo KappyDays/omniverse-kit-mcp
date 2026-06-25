@@ -330,7 +330,9 @@ For the live diagnostic assertion proof, add `--expect-live-status passed`,
 and fallback order assertions for both diagnostic rows.
 Canonical official asset read-only diagnostic live probe command:
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --scenario-validate-dry-run --scenario-validate-live --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true --expect-live-status passed --expect-live-cleanup-failures 0 --expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND --expect-live-diagnostic-next-actions-min 2 --expect-live-diagnostic-field search_known_miss:diagnostics.reason=query_no_match --expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered --expect-live-diagnostic-field search_known_miss:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]' --expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]'`
-After validation, request redacted JSON when you need exact fields; compare
+After validation, request redacted JSON with
+`scenario_last_report(redact_local_paths=true)` when you need exact fields
+(`report_format="json"` is the default); compare
 `evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
 `diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or
@@ -343,6 +345,8 @@ assertion options for the same workflow are verified in
 `docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md`, and
 field-level evidence assertions are verified in
 `docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md`.
+The JSON/Markdown report boundary is refreshed in
+`docs/artifacts/scenario-last-report-json-redaction-boundary-2026-06-26.md`.
 Read-only catalog diagnostic field assertions are verified in
 `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
 The current post-stop-guard official verify proof is

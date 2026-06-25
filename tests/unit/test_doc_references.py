@@ -1756,6 +1756,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "diagnostics.material_checks" in wrapper
     assert "diagnostics.error_type" in wrapper
     assert "redacted JSON" in wrapper
+    assert "scenario_last_report(redact_local_paths=true)" in wrapper
+    assert 'report_format="json"` is the default' in wrapper
     assert "redacted Markdown" in wrapper
     assert "data.capture_stop_timed_out=false" in invariant
     assert "data.capture_running=false" in invariant
@@ -1904,6 +1906,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "official_asset_verify:load_quality=content_verified_no_bbox"
         in scenario_authoring
     )
+    assert "scenario_last_report(redact_local_paths=true)" in scenario_authoring
+    assert 'report_format="json"` is the default' in scenario_authoring
     assert "--expect-live-status passed" in scenario_authoring
     assert "official read-only catalog diagnostics" in scenario_authoring
     assert "stage_mutation_summary.read_only=true" in scenario_authoring
@@ -1945,15 +1949,30 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         'scenario_last_report(report_format="markdown", redact_local_paths=true)'
         in official_catalog
     )
-    assert "use default JSON `scenario_last_report`" in official_catalog
-    assert "exact fields in the same MCP host" in official_catalog
+    assert "use default JSON" in official_catalog
+    assert "scenario_last_report(redact_local_paths=true)" in official_catalog
+    assert "exact public-safe fields in" in official_catalog
     assert "Official asset verify failed or found nothing?" in diagnostic_map
     assert "OFFICIAL_ASSET_NOT_FOUND" in diagnostic_map
     assert (
         'scenario_last_report(report_format="markdown", redact_local_paths=true)'
         in diagnostic_map
     )
-    assert "default JSON `scenario_last_report` for exact fields" in diagnostic_map
+    assert (
+        "default JSON `scenario_last_report(redact_local_paths=true)` "
+        "for exact public-safe fields"
+    ) in diagnostic_map
+    assert (
+        "docs/artifacts/scenario-last-report-json-redaction-boundary-2026-06-26.md"
+        in guide
+    )
+    json_boundary = (
+        PROJECT
+        / "docs/artifacts/"
+        "scenario-last-report-json-redaction-boundary-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "report_format=\"json\"" in json_boundary
+    assert "scenario_last_report(redact_local_paths=true)" in json_boundary
     assert "diagnostics.candidate_counts" in diagnostic_map
     assert "diagnostics.asset_checks" in diagnostic_map
     assert "diagnostics.material_checks" in diagnostic_map
