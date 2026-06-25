@@ -166,13 +166,16 @@ must be passed to `official_asset_verify` before stage placement or material
 assignment.
 For repeatable scratch/test-stage live proof, use `docs/mcp-usage-guide.md` and
 `docs/invariants/scenario-validation.md` §"Official asset scenario proof sequence";
-the proof must assert `official_asset_verify:verification_status=load_verified`,
+the proof must assert `--expect-live-status passed`,
+`official_asset_verify:verification_status=load_verified`,
 `official_asset_verify:kind=asset`, and
 `official_asset_verify:app_profile=isaac-sim` when proving the Isaac Sim asset
 workflow.
 For repeatable read-only catalog diagnostics, use
 `smoke/official_asset_catalog_diagnostics.yaml`; keep
 `stage_mutation_summary.read_only=true` and assert
+`--expect-live-status passed`,
+`--expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`,
 `search_known_miss:diagnostics.reason=query_no_match` plus
 `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`.
 Current public proof anchors include

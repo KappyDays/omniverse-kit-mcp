@@ -129,6 +129,11 @@ Before live execution, `scenario_plan.stage_mutation_summary.read_only=false`, `
 Live proof assertions are mandatory: `--expect-live-status passed`, `--expect-live-cleanup-failures 0`, `--expect-live-evidence-kind official_asset_verify`, `--expect-live-evidence-field official_asset_verify:verification_status=load_verified`, `--expect-live-evidence-field official_asset_verify:kind=asset`, and `--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`. Compare redacted JSON `evidence_summary[]` for exact fields before copying public evidence.
 For read-only catalog diagnostics, the live scenario status should remain `passed` even though `get_pallet_wrong_profile` is a continued `OFFICIAL_ASSET_NOT_FOUND` failure. Probe the diagnostic shape with `--scenario-validate-dry-run --scenario-validate-live`, `--expect-live-cleanup-failures 0`, `--expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`, `--expect-live-diagnostic-next-actions-min 2`, `--expect-live-diagnostic-field search_known_miss:diagnostics.reason=query_no_match`, and `--expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`.
 
+Read-only official asset diagnostic proof must include `--expect-live-status passed`
+next to the continued `get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`
+assertion so the expected continued failure cannot mask a terminal scenario
+status regression.
+
 ## R3. Viewport capture visual verification obligation
 
 After `viewport_capture`, check the PNG with the `Read` tool.

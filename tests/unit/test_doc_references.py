@@ -1471,8 +1471,13 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "official_asset_verify:verification_status=load_verified" in scenario_authoring
     assert "official_asset_verify:kind=asset" in scenario_authoring
     assert "official_asset_verify:app_profile=isaac-sim" in scenario_authoring
+    assert "--expect-live-status passed" in scenario_authoring
     assert "official read-only catalog diagnostics" in scenario_authoring
     assert "stage_mutation_summary.read_only=true" in scenario_authoring
+    assert (
+        "--expect-live-failure-step-error "
+        "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND"
+    ) in scenario_authoring
     assert "search_known_miss:diagnostics.reason=query_no_match" in scenario_authoring
     assert (
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
@@ -1481,9 +1486,11 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     for source in (asset_discovery, official_catalog):
         assert "Official asset scenario proof sequence" in source
         assert "docs/mcp-usage-guide.md" in source
+        assert "--expect-live-status passed" in source
         assert "official_asset_verify:verification_status=load_verified" in source
         assert "official_asset_verify:kind=asset" in source
         assert "official_asset_verify:app_profile=isaac-sim" in source
+        assert "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND" in source
         assert "data.verification_status=load_verified" in source
         assert "data.kind" in source
         assert "data.app_profile" in source
