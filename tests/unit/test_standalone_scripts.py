@@ -478,6 +478,28 @@ def test_mcp_probe_retry_key_arg_mismatches_report_drift():
     ) == ["retry step 'missing_step' was not found"]
 
 
+def test_mcp_probe_scenario_validate_dry_run_mismatches_are_empty_for_plan():
+    assert mcp_probe._scenario_validate_dry_run_mismatches({
+        "dry_run": True,
+        "compiled": True,
+        "steps": 32,
+        "total_steps": 32,
+    }) == []
+
+
+def test_mcp_probe_scenario_validate_dry_run_mismatches_report_drift():
+    assert mcp_probe._scenario_validate_dry_run_mismatches({
+        "dry_run": False,
+        "compiled": False,
+        "steps": 31,
+        "total_steps": 32,
+    }) == [
+        "dry_run expected True, got False",
+        "compiled expected True, got False",
+        "steps expected total_steps 32, got 31",
+    ]
+
+
 def test_mcp_probe_plan_flag_mismatches_report_drift():
     summary = {
         "scratch_stage_required": False,
@@ -510,6 +532,9 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-retry-key-arg",
         "read_lidar_point_cloud:min_points=513",
+    ]) == 2
+    assert mcp_probe.main([
+        "--scenario-validate-dry-run",
     ]) == 2
 
 

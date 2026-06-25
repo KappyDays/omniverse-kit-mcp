@@ -274,6 +274,20 @@ def _retry_step_max_attempts(step: dict[str, Any]) -> Any:
     return None
 
 
+def _scenario_validate_dry_run_mismatches(payload: dict[str, Any]) -> list[str]:
+    mismatches: list[str] = []
+    if payload.get("dry_run") is not True:
+        mismatches.append(f"dry_run expected True, got {payload.get('dry_run')!r}")
+    if payload.get("compiled") is not True:
+        mismatches.append(f"compiled expected True, got {payload.get('compiled')!r}")
+    if payload.get("steps") != payload.get("total_steps"):
+        mismatches.append(
+            f"steps expected total_steps {payload.get('total_steps')!r}, "
+            f"got {payload.get('steps')!r}"
+        )
+    return mismatches
+
+
 def _scenario_plan_probe_summary(
     plan: dict[str, Any],
     field_names: tuple[str, ...] = PLAN_REQUIRED_FIELDS,
@@ -352,6 +366,7 @@ async def probe(
     expect_tool_count: int | None = None,
     require_runtime_fresh: bool = False,
     scenario_plan: str | None = None,
+    scenario_validate_dry_run: bool = False,
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
     required_live_validation_tools: tuple[str, ...] = (),
@@ -433,6 +448,52 @@ async def probe(
 
     exit_status = 0
     next_id = 4
+
+    def check_plan_expectations(
+        *,
+        label: str,
+        plan_payload: dict[str, Any],
+        plan_summary: dict[str, Any],
+    ) -> bool:
+        passed = True
+        missing_fields = [
+            field
+            for field in required_plan_fields
+            if field not in plan_payload
+        ]
+        if missing_fields:
+            print(f"{label} missing required fields: " + ", ".join(missing_fields))
+            passed = False
+        tool_mismatches = _live_validation_tool_mismatches(
+            plan_summary,
+            required_live_validation_tools,
+        )
+        if tool_mismatches:
+            print(f"{label} live validation tool order mismatch:")
+            for mismatch in tool_mismatches:
+                print(f"  - {mismatch}")
+            passed = False
+        flag_mismatches = _plan_flag_mismatches(
+            plan_summary,
+            expect_scratch_stage_required=expect_scratch_stage_required,
+            expect_log_capture_recommended=expect_log_capture_recommended,
+        )
+        if flag_mismatches:
+            print(f"{label} flag expectation mismatch:")
+            for mismatch in flag_mismatches:
+                print(f"  - {mismatch}")
+            passed = False
+        retry_mismatches = _retry_key_arg_mismatches(
+            plan_summary,
+            expected_retry_key_args,
+        )
+        if retry_mismatches:
+            print(f"{label} retry key-arg expectation mismatch:")
+            for mismatch in retry_mismatches:
+                print(f"  - {mismatch}")
+            passed = False
+        return passed
+
     if runtime_info:
         await send({
             "jsonrpc": "2.0",
@@ -480,6 +541,7 @@ async def probe(
                 },
             },
         })
+        next_id += 1
         plan_resp = await recv()
         plan_text = _tool_text_response(plan_resp)
         plan = json.loads(plan_text)
@@ -487,42 +549,54 @@ async def probe(
         plan_summary = _scenario_plan_probe_summary(plan, summary_fields)
         print("\n=== scenario_plan smoke ===")
         print(json.dumps(plan_summary, indent=2, ensure_ascii=False))
-        missing_fields = [
-            field
-            for field in required_plan_fields
-            if field not in plan
-        ]
-        if missing_fields:
-            print("missing required plan fields: " + ", ".join(missing_fields))
+        if not check_plan_expectations(
+            label="scenario_plan",
+            plan_payload=plan,
+            plan_summary=plan_summary,
+        ):
             exit_status = 1
-        tool_mismatches = _live_validation_tool_mismatches(
-            plan_summary,
-            required_live_validation_tools,
-        )
-        if tool_mismatches:
-            print("live validation tool order mismatch:")
-            for mismatch in tool_mismatches:
-                print(f"  - {mismatch}")
-            exit_status = 1
-        flag_mismatches = _plan_flag_mismatches(
-            plan_summary,
-            expect_scratch_stage_required=expect_scratch_stage_required,
-            expect_log_capture_recommended=expect_log_capture_recommended,
-        )
-        if flag_mismatches:
-            print("scenario plan flag expectation mismatch:")
-            for mismatch in flag_mismatches:
-                print(f"  - {mismatch}")
-            exit_status = 1
-        retry_mismatches = _retry_key_arg_mismatches(
-            plan_summary,
-            expected_retry_key_args,
-        )
-        if retry_mismatches:
-            print("retry key-arg expectation mismatch:")
-            for mismatch in retry_mismatches:
-                print(f"  - {mismatch}")
-            exit_status = 1
+        if scenario_validate_dry_run:
+            await send({
+                "jsonrpc": "2.0",
+                "id": next_id,
+                "method": "tools/call",
+                "params": {
+                    "name": "scenario_validate",
+                    "arguments": {
+                        "scenario_path": scenario_plan,
+                        "dry_run": True,
+                        **(
+                            {"input_overrides": input_overrides}
+                            if input_overrides is not None
+                            else {}
+                        ),
+                    },
+                },
+            })
+            next_id += 1
+            dry_run_resp = await recv()
+            dry_run_text = _tool_text_response(dry_run_resp)
+            dry_run_payload = json.loads(dry_run_text)
+            dry_run_summary = _scenario_plan_probe_summary(
+                dry_run_payload,
+                summary_fields,
+            )
+            print("\n=== scenario_validate dry-run smoke ===")
+            print(json.dumps(dry_run_summary, indent=2, ensure_ascii=False))
+            dry_run_mismatches = _scenario_validate_dry_run_mismatches(
+                dry_run_payload
+            )
+            if dry_run_mismatches:
+                print("scenario_validate dry-run expectation mismatch:")
+                for mismatch in dry_run_mismatches:
+                    print(f"  - {mismatch}")
+                exit_status = 1
+            if not check_plan_expectations(
+                label="scenario_validate dry-run",
+                plan_payload=dry_run_payload,
+                plan_summary=dry_run_summary,
+            ):
+                exit_status = 1
     elif (
         required_live_validation_tools
         or expected_retry_key_args
@@ -590,6 +664,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--scenario-plan",
         help="Call scenario_plan for this scenario path after tools/resources smoke.",
+    )
+    parser.add_argument(
+        "--scenario-validate-dry-run",
+        action="store_true",
+        help=(
+            "After --scenario-plan, also call scenario_validate with dry_run=true "
+            "and apply the same plan-shape expectations without mutating a stage."
+        ),
     )
     parser.add_argument(
         "--input-overrides-json",
@@ -674,6 +756,9 @@ def main(argv: list[str] | None = None) -> int:
     if has_plan_expectations and args.scenario_plan is None:
         print("scenario plan expectations require --scenario-plan")
         return 2
+    if args.scenario_validate_dry_run and args.scenario_plan is None:
+        print("--scenario-validate-dry-run requires --scenario-plan")
+        return 2
     runtime_info = (
         args.runtime_info
         or args.expect_tool_profile is not None
@@ -690,6 +775,7 @@ def main(argv: list[str] | None = None) -> int:
             expect_tool_count=args.expect_tool_count,
             require_runtime_fresh=args.require_runtime_fresh,
             scenario_plan=args.scenario_plan,
+            scenario_validate_dry_run=args.scenario_validate_dry_run,
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
             required_live_validation_tools=required_live_validation_tools,

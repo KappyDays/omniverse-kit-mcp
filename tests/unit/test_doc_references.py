@@ -282,6 +282,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "scenario_validate,extension_clear_logs,scenario_validate,"
         "scenario_last_report,extension_capture_logs"
     ) in wrapper
+    assert "--scenario-validate-dry-run" in wrapper
     assert "--expect-scratch-stage-required true" in wrapper
     assert "--expect-log-capture-recommended true" in wrapper
     assert "retry_steps[].key_args" in guide
@@ -337,7 +338,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-retry-key-arg read_lidar_point_cloud:min_points=513" in guide
     assert "fails if the" in guide
     assert "override does not reach `retry_steps[].key_args.min_points`" in guide
+    assert "scenario_validate(dry_run=true)" in guide
     assert "--expect-retry-key-arg step:key=value" in scripts_doc
+    assert "--scenario-validate-dry-run" in scripts_doc
 
 
 def test_f3b_robot_rtx_public_evidence_redaction_guidance():

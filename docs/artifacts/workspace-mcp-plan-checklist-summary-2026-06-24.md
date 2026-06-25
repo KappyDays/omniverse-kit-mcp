@@ -3,10 +3,11 @@
 ## Scope
 
 Make the workspace-local MCP stdio probe show the actual
-`scenario_plan.live_validation_checklist` wrapper order, not only whether the
-field exists. This gives parent/root sessions a compact read-only way to verify
-the live Robot + RTX or official asset run order and scratch/read-only routing
-before mutating a stage.
+`scenario_plan.live_validation_checklist` wrapper order and optionally execute
+`scenario_validate(dry_run=true)`, not only check whether those fields exist.
+This gives parent/root sessions a compact read-only way to verify the live
+Robot + RTX or official asset run order and scratch/read-only routing before
+mutating a stage.
 
 ## Change
 
@@ -21,6 +22,9 @@ before mutating a stage.
   `--expect-log-capture-recommended` so the same read-only smoke can fail when a
   live-load scenario is no longer marked scratch-bound, or when a read-only
   diagnostics scenario accidentally gains stage-mutation routing.
+- Add `--scenario-validate-dry-run` so the workspace-local stdio smoke can also
+  call `scenario_validate(dry_run=true)` and gate the same plan fields before
+  stage mutation.
 
 ## Validation
 
@@ -44,9 +48,10 @@ before mutating a stage.
     `extension_capture_logs`
   - `scratch_stage_required`: `true`
   - `log_capture_recommended`: `true`
-- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\robot_rtx_sensor_golden_workflow.yaml --input-overrides-json '{"lidar_min_points":513}' --require-plan-fields --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-retry-key-arg read_lidar_point_cloud:min_points=513`
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --input-overrides-json '{"lidar_min_points":513}' --require-plan-fields --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-retry-key-arg read_lidar_point_cloud:min_points=513`
   - passed
-  - `scenario_plan` target: `robot_rtx_sensor_golden_workflow`
+  - `scenario_plan` and `scenario_validate(dry_run=true)` target:
+    `robot_rtx_sensor_golden_workflow`
   - `total_steps`: `32`
   - `play_state_missing_count`: `0`
   - `requires_play_count`: `2`
@@ -57,7 +62,8 @@ before mutating a stage.
   - `log_capture_recommended`: `true`
   - This confirms the parent-side controlled lidar failure plan uses the same
     live checklist and scratch/log flags, and that the threshold override reached
-    the retry key args before any stage mutation.
+    the retry key args in both plan and dry-run validate paths before any stage
+    mutation.
 - `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces\isaac\instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --scenario-plan smoke\official_asset_verify_live.yaml --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`
   - passed
   - `live_validation_step_count`: `9`
@@ -69,8 +75,10 @@ before mutating a stage.
   - `scratch_stage_required`: `false`
   - `log_capture_recommended`: `true`
 
-All three workspace-local stdio probes above are `scenario_plan` smokes. They
-do not execute `scenario_validate` or mutate a live stage.
+The controlled lidar smoke above executes `scenario_validate(dry_run=true)`;
+the remaining workspace-local stdio probes listed here are `scenario_plan`
+smokes. None of them execute a mutating `scenario_validate` or mutate a live
+stage.
 
 ## Public Safety
 
