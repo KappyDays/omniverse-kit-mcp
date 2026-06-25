@@ -1866,6 +1866,28 @@ def test_mcp_probe_live_summary_keeps_public_diagnostic_fields():
                 "diagnostics.cached_lidar_instance": True,
                 "diagnostics.raw_local_path": "<local-log>/log.txt",
             },
+            {
+                "step_id": "verify_pallet_asset",
+                "phase": "assert",
+                "source": "step",
+                "status": "failed",
+                "error_code": "OFFICIAL_ASSET_VERIFY_ERROR",
+                "diagnostics.reason": "asset_load_quality_failed",
+                "diagnostics.target_status": "load_verified",
+                "diagnostics.current_catalog_status": "url_validated",
+                "diagnostics.error_type": "TimeoutError",
+                "diagnostics.failure_codes": ["ASSET_BBOX_EMPTY"],
+                "diagnostics.upstream_error_code": "OFFICIAL_ASSET_VERIFY_ERROR",
+                "diagnostics.timeout_s": 180.0,
+                "diagnostics.asset_checks": {
+                    "load_quality": "empty_content",
+                    "content_has_bbox": False,
+                },
+                "diagnostics.material_checks": {
+                    "created_test_prim": False,
+                    "binding_verified": False,
+                },
+            },
         ],
     })
 
@@ -1886,6 +1908,28 @@ def test_mcp_probe_live_summary_keeps_public_diagnostic_fields():
             ],
             "diagnostics.cached_lidar_instance": True,
         },
+        {
+            "step_id": "verify_pallet_asset",
+            "phase": "assert",
+            "source": "step",
+            "status": "failed",
+            "error_code": "OFFICIAL_ASSET_VERIFY_ERROR",
+            "diagnostics.reason": "asset_load_quality_failed",
+            "diagnostics.target_status": "load_verified",
+            "diagnostics.current_catalog_status": "url_validated",
+            "diagnostics.error_type": "TimeoutError",
+            "diagnostics.failure_codes": ["ASSET_BBOX_EMPTY"],
+            "diagnostics.upstream_error_code": "OFFICIAL_ASSET_VERIFY_ERROR",
+            "diagnostics.timeout_s": 180.0,
+            "diagnostics.asset_checks": {
+                "load_quality": "empty_content",
+                "content_has_bbox": False,
+            },
+            "diagnostics.material_checks": {
+                "created_test_prim": False,
+                "binding_verified": False,
+            },
+        },
     ]
 
 
@@ -1896,6 +1940,11 @@ def test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value
                 "step_id": "read_lidar_point_cloud",
                 "diagnostics.reason": "point_count_below_minimum",
                 "diagnostics.num_points": 512,
+            },
+            {
+                "step_id": "verify_pallet_asset",
+                "diagnostics.reason": "asset_load_quality_failed",
+                "diagnostics.asset_checks": {"load_quality": "empty_content"},
             },
         ],
     }
@@ -1909,6 +1958,11 @@ def test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value
                 "point_count_below_minimum",
             ),
             ("read_lidar_point_cloud", "diagnostics.num_points", 512),
+            (
+                "verify_pallet_asset",
+                "diagnostics.asset_checks",
+                {"load_quality": "empty_content"},
+            ),
         ),
     ) == []
 
