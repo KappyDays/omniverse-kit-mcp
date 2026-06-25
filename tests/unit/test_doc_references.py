@@ -1023,6 +1023,69 @@ def test_f3b_usage_guide_live_probe_selectors_match_compiled_plans(monkeypatch):
             )
 
 
+def test_f3b_scenario_authoring_selectors_match_compiled_plans():
+    from omniverse_kit_mcp.scenario.compiler import compile_scenario
+    from omniverse_kit_mcp.scenario.loader import load_scenario
+    from omniverse_kit_mcp.tools.scenario_tools import _scenario_plan_payload
+
+    scenario_authoring = (PROJECT / "scenarios" / "CLAUDE.md").read_text(
+        encoding="utf-8"
+    )
+
+    def plan_for(rel_path: str) -> dict[str, object]:
+        raw = load_scenario(PROJECT / "scenarios" / rel_path)
+        return _scenario_plan_payload(compile_scenario(raw))
+
+    robot_plan = plan_for("smoke/robot_rtx_sensor_golden_workflow.yaml")
+    robot_evidence_steps = {
+        str(step["id"]): step
+        for step in robot_plan["evidence_steps"]
+        if isinstance(step, dict)
+    }
+    robot_evidence_kinds = {
+        str(step["evidence_kind"])
+        for step in robot_evidence_steps.values()
+        if "evidence_kind" in step
+    }
+    for step_id in (
+        "read_lidar_point_cloud",
+        "frame_robot_and_sensors",
+        "capture_visible_result",
+    ):
+        assert step_id in scenario_authoring
+        assert step_id in robot_evidence_steps
+    for evidence_kind in (
+        "rtx_lidar_point_cloud",
+        "viewport_framing",
+        "visual_capture",
+    ):
+        assert evidence_kind in scenario_authoring
+        assert evidence_kind in robot_evidence_kinds
+
+    official_verify_plan = plan_for("smoke/official_asset_verify_live.yaml")
+    official_verify_evidence_steps = {
+        str(step["id"]): step
+        for step in official_verify_plan["evidence_steps"]
+        if isinstance(step, dict)
+    }
+    assert "official_asset_verify:verification_status=load_verified" in (
+        scenario_authoring
+    )
+    assert official_verify_evidence_steps["verify_pallet_asset"][
+        "evidence_kind"
+    ] == "official_asset_verify"
+
+    official_diagnostic_plan = plan_for("smoke/official_asset_catalog_diagnostics.yaml")
+    official_diagnostic_steps = {
+        str(step["id"]): step
+        for step in official_diagnostic_plan["diagnostic_steps"]
+        if isinstance(step, dict)
+    }
+    for step_id in ("search_known_miss", "get_pallet_wrong_profile"):
+        assert step_id in scenario_authoring
+        assert step_id in official_diagnostic_steps
+
+
 def test_f3b_usage_guide_artifact_links_exist():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     links = sorted(set(re.findall(r"docs/artifacts/[A-Za-z0-9_./\\-]+\.md", guide)))
@@ -1422,6 +1485,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "Robot + RTX current-proof-anchor boundary" in guide
     assert "Diagnostic JSON-array values" in guide
     assert "current route-table pull-doc boundary refresh" in guide
+    assert "scenario authoring selector-to-plan guard" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
     assert guide.index(profile_gate) < guide.index(baseline_e2e)
@@ -1473,6 +1537,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md",
+        "docs/artifacts/scenario-authoring-selector-plan-guard-2026-06-26.md",
         (
             "docs/artifacts/"
             "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"
