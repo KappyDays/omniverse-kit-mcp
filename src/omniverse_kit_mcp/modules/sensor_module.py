@@ -280,6 +280,7 @@ class SensorModule:
                     error_code="SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
                 )
             if request.fail_on_warning and data.warning:
+                _add_lidar_warning_diagnostics(data)
                 return fail_result(
                     (
                         f"Lidar point cloud warning: {data.warning}"
@@ -363,6 +364,26 @@ def _add_lidar_too_few_points_diagnostics(
             "Step more simulation frames before retrying the lidar read.",
             "Lower min_points only for bounded diagnostics if the scan is otherwise healthy.",
             "Inspect readback_paths_attempted and WARN/ERROR logs if the buffer stays short.",
+        ],
+    )
+    data.diagnostics.setdefault(
+        "fallback_tool_order",
+        [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
+    )
+
+
+def _add_lidar_warning_diagnostics(data: SensorLidarGetPointCloudResult) -> None:
+    data.diagnostics.setdefault("reason", "lidar_warning")
+    data.diagnostics.setdefault(
+        "suggested_next",
+        [
+            "Step more simulation frames before retrying the lidar read.",
+            "Inspect raw_keys and WARN/ERROR logs if the warning persists.",
+            "Set fail_on_warning=false only for exploratory reads where warnings are acceptable.",
         ],
     )
     data.diagnostics.setdefault(

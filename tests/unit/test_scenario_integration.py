@@ -889,6 +889,72 @@ def test_report_does_not_promote_reason_only_diagnostics_to_next_actions():
     assert "## Diagnostic Next Actions" not in markdown
 
 
+def test_report_surfaces_lidar_warning_next_actions():
+    summary = ScenarioRunSummary(
+        scenario_id="lidar_warning_next_actions",
+        status=ExecutionStatus.FAILED,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read_lidar",
+                phase="assert",
+                status=ExecutionStatus.FAILED,
+                error_code="SENSOR_LIDAR_POINT_CLOUD_WARNING",
+                data_summary={
+                    "num_points": 3,
+                    "warning": "partial scan buffer",
+                    "raw_keys": ["data"],
+                    "diagnostics": {
+                        "reason": "lidar_warning",
+                        "suggested_next": [
+                            "Step more simulation frames before retrying the lidar read.",
+                            "Inspect raw_keys and WARN/ERROR logs if the warning persists.",
+                        ],
+                        "fallback_tool_order": [
+                            "simulation_step",
+                            "sensor_lidar_get_point_cloud",
+                            "extension_capture_logs",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+    step = report["step_results"][0]
+
+    assert step["diagnostic_next_actions"] == {
+        "diagnostics.reason": "lidar_warning",
+        "suggested_next": [
+            "Step more simulation frames before retrying the lidar read.",
+            "Inspect raw_keys and WARN/ERROR logs if the warning persists.",
+        ],
+        "diagnostics.fallback_tool_order": [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "read_lidar",
+        "phase": "assert",
+        "source": "step",
+        "status": "failed",
+        "error_code": "SENSOR_LIDAR_POINT_CLOUD_WARNING",
+        **step["diagnostic_next_actions"],
+    }]
+    assert "## Diagnostic Next Actions" in markdown
+    assert "diagnostics.reason=lidar_warning" in markdown
+    assert "extension_capture_logs" in markdown
+
+
 def test_report_preserves_retry_next_action_status_and_error_code():
     summary = ScenarioRunSummary(
         scenario_id="retry_next_action_metadata",

@@ -315,6 +315,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "flat dotted keys" in guide
     assert "not nested `diagnostics`" in guide
     assert "diagnostics.reason" in guide
+    assert "SENSOR_LIDAR_POINT_CLOUD_WARNING" in guide
     assert "min_points" in guide
     assert "diagnostics.num_points" in guide
     assert "diagnostics.min_points" in guide

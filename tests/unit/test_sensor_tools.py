@@ -347,6 +347,16 @@ async def test_lidar_get_point_cloud_fails_on_warning_when_requested():
     assert result.error_code == "SENSOR_LIDAR_POINT_CLOUD_WARNING"
     assert result.data is not None
     assert result.data.num_points == 3
+    assert result.data.diagnostics["reason"] == "lidar_warning"
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "simulation_step",
+        "sensor_lidar_get_point_cloud",
+        "extension_capture_logs",
+    ]
+    assert any(
+        "WARN/ERROR logs" in item
+        for item in result.data.diagnostics["suggested_next"]
+    )
     assert "backend=omni.replicator.core" in (result.message or "")
     assert "raw_keys=data" in (result.message or "")
 
