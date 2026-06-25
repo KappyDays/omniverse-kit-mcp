@@ -1132,6 +1132,92 @@ def test_report_surfaces_pick_place_status_timeout_next_actions():
     assert "diagnostics.timeout_s=0.5" in markdown
 
 
+def test_report_surfaces_pick_place_unsupported_next_actions():
+    summary = ScenarioRunSummary(
+        scenario_id="pick_place_unsupported_next_actions",
+        status=ExecutionStatus.PASSED,
+        passed_steps=1,
+        failed_steps=0,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="install_pick_place_playback",
+                phase="action",
+                status=ExecutionStatus.PASSED,
+                data_summary={
+                    "ok": False,
+                    "status": "unsupported",
+                    "profile_name": "ur10",
+                    "support_status": "candidate_pick_place",
+                    "diagnostics": {
+                        "reason": "pick_place_profile_unsupported",
+                        "target_status": "validated_pick_place",
+                        "suggested_next": [
+                            (
+                                "Call robot_list_arm_profiles and choose a "
+                                "support_status=validated_pick_place profile "
+                                "before installing playback."
+                            ),
+                            (
+                                "Use robot_probe_arm_profile only for "
+                                "controllability evidence; probe success is "
+                                "not pick/place validation."
+                            ),
+                        ],
+                        "fallback_tool_order": [
+                            "robot_list_arm_profiles",
+                            "robot_probe_arm_profile",
+                            "robot_install_pick_place_playback_demo",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+    step = report["step_results"][0]
+
+    assert step["diagnostic_next_actions"] == {
+        "diagnostics.reason": "pick_place_profile_unsupported",
+        "diagnostics.target_status": "validated_pick_place",
+        "suggested_next": [
+            (
+                "Call robot_list_arm_profiles and choose a "
+                "support_status=validated_pick_place profile before "
+                "installing playback."
+            ),
+            (
+                "Use robot_probe_arm_profile only for controllability "
+                "evidence; probe success is not pick/place validation."
+            ),
+        ],
+        "diagnostics.fallback_tool_order": [
+            "robot_list_arm_profiles",
+            "robot_probe_arm_profile",
+            "robot_install_pick_place_playback_demo",
+        ],
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "install_pick_place_playback",
+        "phase": "action",
+        "source": "step",
+        "status": "passed",
+        **step["diagnostic_next_actions"],
+    }]
+    assert "## Diagnostic Next Actions" in markdown
+    assert "diagnostics.reason=pick_place_profile_unsupported" in markdown
+    assert "diagnostics.target_status=validated_pick_place" in markdown
+    assert (
+        "diagnostics.fallback_tool_order=[robot_list_arm_profiles, "
+        "robot_probe_arm_profile, robot_install_pick_place_playback_demo]"
+    ) in markdown
+
+
 def test_report_preserves_retry_next_action_status_and_error_code():
     summary = ScenarioRunSummary(
         scenario_id="retry_next_action_metadata",

@@ -86,6 +86,11 @@ _PICK_PLACE_STATUS_FALLBACK_TOOL_ORDER = (
     "robot_get_pick_place_demo_status",
     "extension_capture_logs",
 )
+_PICK_PLACE_UNSUPPORTED_FALLBACK_TOOL_ORDER = (
+    "robot_list_arm_profiles",
+    "robot_probe_arm_profile",
+    "robot_install_pick_place_playback_demo",
+)
 _PROBE_UNSAFE_TIMEOUT_CLEANUP_PHASES = {
     "simulation_play",
     "warmup_step",
@@ -3289,6 +3294,7 @@ def _unsupported_pick_place_demo_status(
     known_blocker_reason = _known_pick_place_blocker_reason(resolved_profile_name)
     diagnostics: dict[str, Any] = {
         "unsupported": True,
+        "reason": "pick_place_profile_unsupported",
         "requested_profile": request.profile_name,
         "resolved_profile": resolved_profile_name,
         "support_status": support_status,
@@ -3298,6 +3304,7 @@ def _unsupported_pick_place_demo_status(
         "adapter_ready": False,
         "known_pick_place_blocker": known_blocker_reason is not None,
         "known_pick_place_blocker_reason": known_blocker_reason,
+        "target_status": "validated_pick_place",
         "required_support_status": "validated_pick_place",
         "validated_pick_place_requires": "durable_live_pick_place_proof",
         "probe_success_is_pick_place_validation": False,
@@ -3305,6 +3312,15 @@ def _unsupported_pick_place_demo_status(
         "mcp_controllability_required": (
             "profile-specific robot_probe_arm_profile or robot_probe_arm_profiles evidence"
         ),
+        "suggested_next": [
+            "Call robot_list_arm_profiles and choose a "
+            "support_status=validated_pick_place profile before installing playback.",
+            "Use robot_probe_arm_profile only for controllability evidence; "
+            "probe success is not pick/place validation.",
+            "Keep this unsupported result as blocker evidence unless durable "
+            "live pick/place proof is added.",
+        ],
+        "fallback_tool_order": list(_PICK_PLACE_UNSUPPORTED_FALLBACK_TOOL_ORDER),
     }
     if profile is not None:
         diagnostics.update({

@@ -2684,9 +2684,20 @@ async def test_robot_install_profile_pick_place_demo_blocks_franka_panda_until_d
     assert result.data.status == "unsupported"
     assert result.data.profile_name == "franka_panda"
     assert result.data.support_status == "candidate_pick_place"
+    assert result.data.diagnostics["reason"] == "pick_place_profile_unsupported"
+    assert result.data.diagnostics["target_status"] == "validated_pick_place"
     assert result.data.diagnostics["known_pick_place_blocker"] is True
     assert "insufficient lift" in (
         result.data.diagnostics["known_pick_place_blocker_reason"]
+    )
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profile",
+        "robot_install_pick_place_playback_demo",
+    ]
+    assert any(
+        "probe success is not pick/place validation" in item
+        for item in result.data.diagnostics["suggested_next"]
     )
     assert client.calls == []
 
@@ -2740,6 +2751,7 @@ async def test_robot_install_profile_pick_place_demo_blocks_factory_franka_candi
     assert result.data.controller_strategy == "same_family_franka_candidate"
     assert result.data.uses_kinematic_carry is False
     assert result.data.diagnostics["unsupported"] is True
+    assert result.data.diagnostics["reason"] == "pick_place_profile_unsupported"
     assert result.data.diagnostics["support_status"] == "candidate_pick_place"
     assert result.data.diagnostics["playback_route"] == "blocked_unvalidated_profile"
     assert result.data.diagnostics["adapter_ready"] is False
@@ -2752,6 +2764,12 @@ async def test_robot_install_profile_pick_place_demo_blocks_factory_franka_candi
         result.data.diagnostics["validated_pick_place_requires"]
         == "durable_live_pick_place_proof"
     )
+    assert result.data.diagnostics["target_status"] == "validated_pick_place"
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profile",
+        "robot_install_pick_place_playback_demo",
+    ]
     assert result.data.diagnostics["probe_success_is_pick_place_validation"] is False
     assert (
         result.data.diagnostics["mcp_controllability_is_pick_place_validation"]
@@ -2781,6 +2799,7 @@ async def test_robot_install_profile_pick_place_demo_reports_candidate_unsupport
     assert result.data.support_status == "candidate_pick_place"
     assert result.data.uses_kinematic_carry is False
     assert result.data.object_fit_ok is False
+    assert result.data.diagnostics["reason"] == "pick_place_profile_unsupported"
     assert result.data.diagnostics["playback_route"] == "blocked_unvalidated_profile"
     assert result.data.diagnostics["adapter_ready"] is False
     assert result.data.diagnostics["known_pick_place_blocker"] is False
@@ -2789,6 +2808,16 @@ async def test_robot_install_profile_pick_place_demo_reports_candidate_unsupport
     assert (
         result.data.diagnostics["validated_pick_place_requires"]
         == "durable_live_pick_place_proof"
+    )
+    assert result.data.diagnostics["target_status"] == "validated_pick_place"
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profile",
+        "robot_install_pick_place_playback_demo",
+    ]
+    assert any(
+        "support_status=validated_pick_place" in item
+        for item in result.data.diagnostics["suggested_next"]
     )
     assert result.data.diagnostics["probe_success_is_pick_place_validation"] is False
     assert result.data.diagnostics["profile_family"] == "ur"
@@ -2813,11 +2842,18 @@ async def test_robot_install_profile_pick_place_demo_reports_unknown_profile():
     assert result.data.status == "unsupported"
     assert result.data.profile_name == "not_a_builtin_arm"
     assert result.data.support_status == "unsupported"
+    assert result.data.diagnostics["reason"] == "pick_place_profile_unsupported"
     assert result.data.diagnostics["playback_route"] == "unknown_profile"
     assert result.data.diagnostics["adapter_ready"] is False
     assert result.data.diagnostics["known_pick_place_blocker"] is False
     assert result.data.diagnostics["known_pick_place_blocker_reason"] is None
+    assert result.data.diagnostics["target_status"] == "validated_pick_place"
     assert result.data.diagnostics["required_support_status"] == "validated_pick_place"
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profile",
+        "robot_install_pick_place_playback_demo",
+    ]
     assert result.data.diagnostics["probe_success_is_pick_place_validation"] is False
     assert "profile_family" not in result.data.diagnostics
     assert client.calls == []
