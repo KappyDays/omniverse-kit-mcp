@@ -18,6 +18,7 @@ If the code modification + attempt with the same hypothesis fails twice → Hypo
 |------|---------------|---------------------|
 | Is this prim this articulation? | `robot_load(usd_url, prim_path)` | `has_articulation` |
 | Robot load failed? | `simulation_get_status` → `stage_capture_snapshot` → `official_asset_search` / `asset_search` → `robot_load` → `extension_capture_logs` | For `ROBOT_LOAD_ERROR` or `CAPABILITY_NOT_SUPPORTED`, inspect `diagnostics.reason=robot_load_error`, `diagnostics.usd_url`, `diagnostics.prim_path`, `diagnostics.upstream_error_code`, and `diagnostics.fallback_tool_order` |
+| RTX sensor attach failed? | `mcp_runtime_info` → `stage_capture_snapshot` → `simulation_get_status` → retry the same `sensor_attach_rtx_*` tool → `extension_capture_logs` | Inspect `diagnostics.reason=rtx_camera_attach_error` / `rtx_depth_camera_attach_error` / `rtx_lidar_attach_error`, `diagnostics.robot_prim`, `diagnostics.upstream_error_code`, and `diagnostics.fallback_tool_order` |
 | Is this USD URL real? | `content_browse(parent_dir)` | Items in `entries[]` (S3 catalog) |
 | Ext registration? | `extension_search(keyword)` | result count > 0 |
 | Enable Ext? | `extension_get_info(ext_id)` | `info.enabled` / `info.path` |

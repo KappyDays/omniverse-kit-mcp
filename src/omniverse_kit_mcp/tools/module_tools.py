@@ -1834,7 +1834,7 @@ def register_module_tools(
         resolution: list[int] | None = None,
         sensor_name: str = "RtxCamera",
     ) -> str:
-        """Attach RTX Camera (RGB) as child xform under robot. mount_offset/mount_rotation relative to parent. Returns sensor prim path."""
+        """Attach RTX Camera (RGB) as child xform under robot. mount_offset/mount_rotation relative to parent. Returns sensor prim path; attach failures include data.diagnostics.suggested_next plus data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SENSOR)
         resolution_tuple = (
             (int(resolution[0]), int(resolution[1])) if resolution else (1280, 720)
@@ -1901,7 +1901,7 @@ def register_module_tools(
         resolution: list[int] | None = None,
         sensor_name: str = "RtxDepthCamera",
     ) -> str:
-        """Attach RTX Camera with depth annotator (distance_to_camera); output is grayscale distance map, not RGB. Same mount convention as sensor_attach_rtx_camera."""
+        """Attach RTX Camera with depth annotator (distance_to_camera); output is grayscale distance map, not RGB. Same mount convention as sensor_attach_rtx_camera; attach failures include data.diagnostics.suggested_next plus data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SENSOR)
         resolution_tuple = (
             (int(resolution[0]), int(resolution[1])) if resolution else (1280, 720)

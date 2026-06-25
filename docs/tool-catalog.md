@@ -2069,7 +2069,8 @@ sensor_attach_rtx_camera(robot_prim: 'str', mount_offset: 'list[float]', mount_r
 ```
 
 Attach RTX Camera (RGB) as child xform under robot. mount_offset/mount_rotation relative to
-parent. Returns sensor prim path.
+parent. Returns sensor prim path; attach failures include data.diagnostics.suggested_next plus
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -2088,7 +2089,8 @@ sensor_attach_rtx_depth_camera(robot_prim: 'str', mount_offset: 'list[float]', m
 ```
 
 Attach RTX Camera with depth annotator (distance_to_camera); output is grayscale distance map,
-not RGB. Same mount convention as sensor_attach_rtx_camera.
+not RGB. Same mount convention as sensor_attach_rtx_camera; attach failures include
+data.diagnostics.suggested_next plus data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

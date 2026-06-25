@@ -71,6 +71,7 @@ async def test_attach_rtx_camera_success():
     assert result.data.sensor_prim_path == "/World/Robot/NovaCarter/FrontRGB"
     assert result.data.sensor_type == "rtx_camera"
     assert result.data.resolution == (1920, 1080)
+    assert result.data.diagnostics == {}
 
     calls = [c for c in client.calls if c[0] == "sensor_attach_rtx_camera"]
     assert len(calls) == 1
@@ -123,6 +124,7 @@ async def test_attach_rtx_depth_camera_success():
     assert result.data.sensor_type == "rtx_depth_camera"
     assert result.data.resolution == (1280, 720)
     assert result.data.annotator == "distance_to_camera"
+    assert result.data.diagnostics == {}
 
 
 @pytest.mark.asyncio
@@ -463,3 +465,61 @@ async def test_attach_rtx_camera_propagates_client_error():
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "SENSOR_ATTACH_RTX_CAMERA_ERROR"
     assert "extension offline" in (result.message or "")
+    assert isinstance(result.data, SensorAttachRtxCameraResult)
+    assert result.data.ok is False
+    assert result.data.parent_prim == "/World/Robot"
+    assert result.data.sensor_type == "rtx_camera"
+    assert result.data.resolution == (1280, 720)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "rtx_camera_attach_error"
+    assert diagnostics["upstream_error_code"] == "SENSOR_ATTACH_RTX_CAMERA_ERROR"
+    assert diagnostics["upstream_message"] == "extension offline"
+    assert diagnostics["robot_prim"] == "/World/Robot"
+    assert diagnostics["sensor_name"] == "RtxCamera"
+    assert diagnostics["resolution"] == [1280, 720]
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "sensor_attach_rtx_camera",
+        "extension_capture_logs",
+    ]
+    assert any("stage_capture_snapshot" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_attach_rtx_depth_camera_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def sensor_attach_rtx_depth_camera(self, _req):
+            raise RuntimeError("depth annotator unavailable")
+
+    module = SensorModule(BrokenClient())  # type: ignore[arg-type]
+    request = SensorAttachRtxDepthCameraRequest(
+        robot_prim="/World/Robot",
+        mount_offset=(0.0, 0.0, 0.0),
+        mount_rotation=(0.0, 0.0, 0.0),
+        sensor_name="DepthSide",
+    )
+    result = await module.attach_rtx_depth_camera(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SENSOR_ATTACH_RTX_DEPTH_CAMERA_ERROR"
+    assert "depth annotator unavailable" in (result.message or "")
+    assert isinstance(result.data, SensorAttachRtxDepthCameraResult)
+    assert result.data.ok is False
+    assert result.data.parent_prim == "/World/Robot"
+    assert result.data.sensor_type == "rtx_depth_camera"
+    assert result.data.annotator is None
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "rtx_depth_camera_attach_error"
+    assert diagnostics["upstream_error_code"] == "SENSOR_ATTACH_RTX_DEPTH_CAMERA_ERROR"
+    assert diagnostics["upstream_message"] == "depth annotator unavailable"
+    assert diagnostics["sensor_name"] == "DepthSide"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "sensor_attach_rtx_depth_camera",
+        "extension_capture_logs",
+    ]

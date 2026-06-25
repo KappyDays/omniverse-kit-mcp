@@ -41,6 +41,20 @@ _RTX_LIDAR_ATTACH_FALLBACK_TOOL_ORDER = (
     "sensor_attach_rtx_lidar",
     "extension_capture_logs",
 )
+_RTX_CAMERA_ATTACH_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "sensor_attach_rtx_camera",
+    "extension_capture_logs",
+)
+_RTX_DEPTH_CAMERA_ATTACH_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "sensor_attach_rtx_depth_camera",
+    "extension_capture_logs",
+)
 
 
 class SensorModule:
@@ -75,13 +89,32 @@ class SensorModule:
                     parent_prim=str(raw.get("parent_prim", request.robot_prim)),
                     sensor_type=str(raw.get("sensor_type", "rtx_camera")),
                     resolution=(int(resolution_raw[0]), int(resolution_raw[1])),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_ATTACH_RTX_CAMERA_ERROR"
+            data = SensorAttachRtxCameraResult(
+                ok=False,
+                sensor_prim_path="",
+                parent_prim=request.robot_prim,
+                sensor_type="rtx_camera",
+                resolution=request.resolution,
+                diagnostics=_rtx_camera_attach_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_ATTACH_RTX_CAMERA_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def attach_rtx_lidar(
@@ -156,13 +189,33 @@ class SensorModule:
                     sensor_type=str(raw.get("sensor_type", "rtx_depth_camera")),
                     resolution=(int(resolution_raw[0]), int(resolution_raw[1])),
                     annotator=raw.get("annotator"),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_ATTACH_RTX_DEPTH_CAMERA_ERROR"
+            data = SensorAttachRtxDepthCameraResult(
+                ok=False,
+                sensor_prim_path="",
+                parent_prim=request.robot_prim,
+                sensor_type="rtx_depth_camera",
+                resolution=request.resolution,
+                annotator=None,
+                diagnostics=_rtx_depth_camera_attach_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_ATTACH_RTX_DEPTH_CAMERA_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def attach_contact(
@@ -486,4 +539,67 @@ def _rtx_lidar_attach_error_diagnostics(
             "Retry sensor_attach_rtx_lidar only after correcting parent prim or config_preset.",
         ],
         "fallback_tool_order": list(_RTX_LIDAR_ATTACH_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _rtx_camera_attach_error_diagnostics(
+    *,
+    request: SensorAttachRtxCameraRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return _rtx_imaging_attach_error_diagnostics(
+        reason="rtx_camera_attach_error",
+        error_code=error_code,
+        message=message,
+        robot_prim=request.robot_prim,
+        sensor_name=request.sensor_name,
+        resolution=request.resolution,
+        attach_tool="sensor_attach_rtx_camera",
+        fallback_tool_order=_RTX_CAMERA_ATTACH_FALLBACK_TOOL_ORDER,
+    )
+
+
+def _rtx_depth_camera_attach_error_diagnostics(
+    *,
+    request: SensorAttachRtxDepthCameraRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return _rtx_imaging_attach_error_diagnostics(
+        reason="rtx_depth_camera_attach_error",
+        error_code=error_code,
+        message=message,
+        robot_prim=request.robot_prim,
+        sensor_name=request.sensor_name,
+        resolution=request.resolution,
+        attach_tool="sensor_attach_rtx_depth_camera",
+        fallback_tool_order=_RTX_DEPTH_CAMERA_ATTACH_FALLBACK_TOOL_ORDER,
+    )
+
+
+def _rtx_imaging_attach_error_diagnostics(
+    *,
+    reason: str,
+    error_code: str,
+    message: str,
+    robot_prim: str,
+    sensor_name: str,
+    resolution: tuple[int, int],
+    attach_tool: str,
+    fallback_tool_order: tuple[str, ...],
+) -> dict[str, object]:
+    return {
+        "reason": reason,
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "robot_prim": robot_prim,
+        "sensor_name": sensor_name,
+        "resolution": list(resolution),
+        "suggested_next": [
+            "Confirm the robot_prim exists with stage_capture_snapshot before retrying.",
+            "Check simulation_get_status and extension_capture_logs for RTX sensor stack errors.",
+            f"Retry {attach_tool} only after correcting parent prim, sensor name, or resolution.",
+        ],
+        "fallback_tool_order": list(fallback_tool_order),
     }

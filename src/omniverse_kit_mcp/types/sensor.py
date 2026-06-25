@@ -22,6 +22,7 @@ class SensorAttachRtxCameraResult:
     parent_prim: str
     sensor_type: str
     resolution: tuple[int, int]
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -62,6 +63,7 @@ class SensorAttachRtxDepthCameraResult:
     sensor_type: str
     resolution: tuple[int, int]
     annotator: str | None
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

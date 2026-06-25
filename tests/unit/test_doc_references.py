@@ -330,6 +330,11 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "SENSOR_LIDAR_POINT_CLOUD_WARNING" in guide
     assert "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR" in invariant
     assert "diagnostics.reason=rtx_lidar_attach_error" in guide
+    assert "diagnostics.reason=rtx_camera_attach_error" in guide
+    assert "rtx_depth_camera_attach_error" in guide
+    assert "rtx_camera_attach_error" in diagnostic_map
+    assert "rtx_depth_camera_attach_error" in diagnostic_map
+    assert "rtx_lidar_attach_error" in diagnostic_map
     assert "diagnostics.reason=lidar_read_error" in guide
     assert "diagnostics.reason=lidar_read_error" in invariant
     assert "robot_get_pick_place_demo_status" in guide
