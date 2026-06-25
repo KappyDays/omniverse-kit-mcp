@@ -62,6 +62,27 @@ _SENSOR_SET_ANNOTATOR_FALLBACK_TOOL_ORDER = (
     "sensor_set_annotator",
     "extension_capture_logs",
 )
+_SENSOR_ATTACH_CONTACT_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "sensor_attach_contact",
+    "extension_capture_logs",
+)
+_SENSOR_ATTACH_IMU_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "sensor_attach_imu",
+    "extension_capture_logs",
+)
+_SENSOR_SET_VISUALIZATION_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "sensor_set_visualization",
+    "extension_capture_logs",
+)
 
 
 class SensorModule:
@@ -248,13 +269,35 @@ class SensorModule:
                     translation=tuple(float(t) for t in translation_raw),  # type: ignore[arg-type]
                     radius=float(raw.get("radius", request.radius)),
                     backend=str(raw.get("backend", "")),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_ATTACH_CONTACT_ERROR"
+            data = SensorAttachContactResult(
+                ok=False,
+                sensor_prim_path="",
+                parent_prim=request.prim_path,
+                sensor_type="contact",
+                frequency=request.frequency,
+                translation=request.translation,
+                radius=request.radius,
+                backend="",
+                diagnostics=_contact_attach_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_ATTACH_CONTACT_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def attach_imu(
@@ -281,13 +324,35 @@ class SensorModule:
                     mount_offset=tuple(float(t) for t in offset_raw),  # type: ignore[arg-type]
                     mount_orientation=tuple(float(q) for q in orient_raw),  # type: ignore[arg-type]
                     backend=str(raw.get("backend", "")),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_ATTACH_IMU_ERROR"
+            data = SensorAttachImuResult(
+                ok=False,
+                sensor_prim_path="",
+                parent_prim=request.prim_path,
+                sensor_type="imu",
+                frequency=request.frequency,
+                mount_offset=request.mount_offset,
+                mount_orientation=request.mount_orientation,
+                backend="",
+                diagnostics=_imu_attach_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_ATTACH_IMU_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def set_annotator(
@@ -447,13 +512,31 @@ class SensorModule:
                     sensor_prim=str(raw.get("sensor_prim", request.sensor_prim)),
                     mode=str(raw.get("mode", request.mode)),
                     sensor_type=raw.get("sensor_type"),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_SET_VISUALIZATION_ERROR"
+            data = SensorSetVisualizationResult(
+                ok=False,
+                sensor_prim=request.sensor_prim,
+                mode=request.mode,
+                sensor_type=None,
+                diagnostics=_set_visualization_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_SET_VISUALIZATION_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
 
@@ -652,4 +735,73 @@ def _set_annotator_error_diagnostics(
             "Retry sensor_set_annotator only after correcting sensor prim, annotator names, or resolution.",
         ],
         "fallback_tool_order": list(_SENSOR_SET_ANNOTATOR_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _contact_attach_error_diagnostics(
+    *,
+    request: SensorAttachContactRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "sensor_attach_contact_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "prim_path": request.prim_path,
+        "sensor_name": request.sensor_name,
+        "frequency": request.frequency,
+        "translation": list(request.translation),
+        "radius": request.radius,
+        "suggested_next": [
+            "Confirm the prim_path exists with stage_capture_snapshot before retrying.",
+            "Check simulation_get_status and extension_capture_logs for PhysX sensor stack errors.",
+            "Retry sensor_attach_contact only after correcting parent prim, sensor name, frequency, or radius.",
+        ],
+        "fallback_tool_order": list(_SENSOR_ATTACH_CONTACT_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _imu_attach_error_diagnostics(
+    *,
+    request: SensorAttachImuRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "sensor_attach_imu_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "prim_path": request.prim_path,
+        "sensor_name": request.sensor_name,
+        "frequency": request.frequency,
+        "mount_offset": list(request.mount_offset),
+        "mount_orientation": list(request.mount_orientation),
+        "suggested_next": [
+            "Confirm the prim_path exists with stage_capture_snapshot before retrying.",
+            "Check simulation_get_status and extension_capture_logs for PhysX sensor stack errors.",
+            "Retry sensor_attach_imu only after correcting parent prim, sensor name, frequency, or mount transform.",
+        ],
+        "fallback_tool_order": list(_SENSOR_ATTACH_IMU_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _set_visualization_error_diagnostics(
+    *,
+    request: SensorSetVisualizationRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "sensor_set_visualization_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "sensor_prim": request.sensor_prim,
+        "mode": request.mode,
+        "suggested_next": [
+            "Confirm the sensor_prim exists with stage_capture_snapshot before retrying.",
+            "Check simulation_get_status and extension_capture_logs for debug draw or sensor visualization errors.",
+            "Retry sensor_set_visualization only after correcting the sensor prim or mode.",
+        ],
+        "fallback_tool_order": list(_SENSOR_SET_VISUALIZATION_FALLBACK_TOOL_ORDER),
     }

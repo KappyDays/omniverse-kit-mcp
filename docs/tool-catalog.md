@@ -2049,7 +2049,8 @@ sensor_attach_contact(prim_path: 'str', sensor_name: 'str' = 'ContactSensor', fr
 ```
 
 Attach PhysX ContactSensor child prim; reports contact forces/collisions once playing. Xform
-fallback when module unavailable (response.backend).
+fallback when module unavailable (response.backend). Failures include data.diagnostics with
+fallback_tool_order.
 
 **Parameters**
 
@@ -2068,7 +2069,8 @@ sensor_attach_imu(prim_path: 'str', sensor_name: 'str' = 'IMUSensor', frequency:
 ```
 
 Attach IMU sensor (accel+gyro+orient) at frequency. mount_offset/mount_orientation in parent
-frame. Same Xform fallback as sensor_attach_contact.
+frame. Same Xform fallback as sensor_attach_contact. Failures include data.diagnostics with
+fallback_tool_order.
 
 **Parameters**
 
@@ -2189,7 +2191,8 @@ sensor_set_visualization(sensor_prim: 'str', mode: 'str' = 'on') -> 'str'
 ```
 
 Toggle debug draw overlay for a sensor. mode ∈ {on, off}. Lidar → point cloud; Camera/Depth →
-frustum+preview. Response includes sensor_type.
+frustum+preview. Response includes sensor_type; failures include data.diagnostics with
+fallback_tool_order.
 
 **Parameters**
 

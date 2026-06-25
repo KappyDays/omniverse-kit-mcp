@@ -78,6 +78,7 @@ class SensorSetVisualizationResult:
     sensor_prim: str
     mode: str
     sensor_type: str | None
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 # --- Phase G ---
@@ -102,6 +103,7 @@ class SensorAttachContactResult:
     translation: tuple[float, float, float]
     radius: float
     backend: str
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -123,6 +125,7 @@ class SensorAttachImuResult:
     mount_offset: tuple[float, float, float]
     mount_orientation: tuple[float, float, float, float]
     backend: str
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

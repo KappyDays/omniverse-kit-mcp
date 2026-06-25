@@ -18,6 +18,7 @@ The generated signature reference remains `docs/tool-catalog.md`.
 | Prove the robot + RTX sensor golden path | `scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)`, `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)`, `scenario_last_report(report_format="markdown", redact_local_paths=true)` for public-safe lidar/timeline/capture highlights; if lidar is empty, inspect JSON `diagnostic_next_actions` or Markdown `Diagnostic Next Actions` before widening the smoke | `docs/invariants/scenario-validation.md`, `src/omniverse_kit_mcp/modules/integration-facts.md` |
 | Work with robot or character motion | `robot_list_arm_profiles`, `robot_load`, `robot_probe_arm_profile`, `robot_gripper_control`, `robot_set_ee_target`, `robot_install_pick_place_playback_demo`, `robot_get_pick_place_demo_status`, `character_load`, `job_status`; choose `support_status=validated_pick_place` before pick/place playback, and inspect load/control errors `diagnostics.reason=robot_load_error`, `diagnostics.reason=robot_gripper_control_error`, `diagnostics.reason=robot_set_ee_target_error`, unsupported/candidate/status-timeout `diagnostic_next_actions`, `diagnostics.target_status`, `diagnostics.timeout_s`, and `diagnostics.fallback_tool_order` before claiming proof or retrying broadly | `src/omniverse_kit_mcp/modules/CLAUDE.md`, `docs/invariants/scenario-validation.md` |
 | Attach RTX sensors to a robot manually | Prefer the smoke scenario route; if manual, follow the robot + RTX sensor sequence in the invariant before calling `sensor_attach_rtx_camera`, `sensor_attach_rtx_depth_camera`, `sensor_attach_rtx_lidar`, `sensor_set_annotator`, or `sensor_lidar_get_point_cloud`; set `min_points>0` and read `diagnostic_next_actions`, `empty_reason`, `diagnostics.suggested_next`, `SENSOR_LIDAR_POINT_CLOUD_WARNING`, attach-error `diagnostics.reason=rtx_camera_attach_error`, `diagnostics.reason=rtx_depth_camera_attach_error`, `diagnostics.reason=rtx_lidar_attach_error`, annotator-error `diagnostics.reason=sensor_set_annotator_error`, and hard-error `diagnostics.reason=lidar_read_error` triage before widening retries | `docs/invariants/scenario-validation.md`, `src/omniverse_kit_mcp/modules/integration-facts.md` |
+| Attach physics sensors or toggle sensor visualization | Use `stage_capture_snapshot` and `simulation_get_status` before calling `sensor_attach_contact`, `sensor_attach_imu`, or `sensor_set_visualization`; on failure inspect `diagnostics.reason=sensor_attach_contact_error`, `diagnostics.reason=sensor_attach_imu_error`, `diagnostics.reason=sensor_set_visualization_error`, requested prim/mount fields, and `diagnostics.fallback_tool_order` before changing stage contents or retrying broadly | `docs/tool-diagnostic-map.md`, `src/omniverse_kit_mcp/modules/integration-facts.md` |
 | Capture GUI or menu evidence | `window_capture`, `window_list`, `window_menu_list`, `window_menu_trigger` | `docs/invariants/visual-validation.md`, `src/omniverse_kit_mcp/tools/CLAUDE.md` |
 | Find a missing capability to wrap | `extension_search`, then duplicate-check `docs/tool-catalog.md` | `docs/references/CLAUDE.md`, `docs/invariants/mcp-tool-add.md` |
 
@@ -155,6 +156,13 @@ such as `diagnostics.num_points`, `diagnostics.min_points`,
 `diagnostics.cached_lidar_instance`, and
 `diagnostics.readback_paths_attempted` in evidence notes; retry-root
 `Diagnostic Next Actions` also surfaces them for quick triage.
+For physics sensor attach and visualization toggles, treat typed failure data
+as the first triage surface: `sensor_attach_contact` exposes requested
+`prim_path`, `sensor_name`, `frequency`, `translation`, and `radius`;
+`sensor_attach_imu` exposes requested mount fields; and
+`sensor_set_visualization` exposes requested `sensor_prim` / `mode`. Follow
+their `diagnostics.fallback_tool_order` before changing stage contents or
+opening logs.
 
 For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.reason`, `diagnostics.candidate_counts`,

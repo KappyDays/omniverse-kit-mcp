@@ -9,6 +9,10 @@ from omniverse_kit_mcp.mcp.server import create_mcp_server
 from omniverse_kit_mcp.modules.sensor_module import SensorModule
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.sensor import (
+    SensorAttachContactRequest,
+    SensorAttachContactResult,
+    SensorAttachImuRequest,
+    SensorAttachImuResult,
     SensorAttachRtxCameraRequest,
     SensorAttachRtxCameraResult,
     SensorAttachRtxDepthCameraRequest,
@@ -145,6 +149,7 @@ async def test_set_visualization_toggle():
         assert result.ok
         assert isinstance(result.data, SensorSetVisualizationResult)
         assert result.data.mode == mode
+        assert result.data.diagnostics == {}
 
 
 @pytest.mark.asyncio
@@ -562,5 +567,128 @@ async def test_set_annotator_error_returns_typed_diagnostics():
         "stage_capture_snapshot",
         "simulation_get_status",
         "sensor_set_annotator",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_attach_contact_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def sensor_attach_contact(self, _req):
+            raise RuntimeError("PhysX contact sensor unavailable")
+
+    module = SensorModule(BrokenClient())  # type: ignore[arg-type]
+    request = SensorAttachContactRequest(
+        prim_path="/World/Robot",
+        sensor_name="FootContact",
+        frequency=120,
+        translation=(0.0, 0.1, 0.2),
+        radius=0.05,
+    )
+
+    result = await module.attach_contact(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SENSOR_ATTACH_CONTACT_ERROR"
+    assert isinstance(result.data, SensorAttachContactResult)
+    assert result.data.ok is False
+    assert result.data.parent_prim == "/World/Robot"
+    assert result.data.sensor_type == "contact"
+    assert result.data.frequency == 120
+    assert result.data.translation == (0.0, 0.1, 0.2)
+    assert result.data.radius == 0.05
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "sensor_attach_contact_error"
+    assert diagnostics["upstream_error_code"] == "SENSOR_ATTACH_CONTACT_ERROR"
+    assert diagnostics["upstream_message"] == "PhysX contact sensor unavailable"
+    assert diagnostics["prim_path"] == "/World/Robot"
+    assert diagnostics["sensor_name"] == "FootContact"
+    assert diagnostics["translation"] == [0.0, 0.1, 0.2]
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "sensor_attach_contact",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_attach_imu_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def sensor_attach_imu(self, _req):
+            raise RuntimeError("IMU backend unavailable")
+
+    module = SensorModule(BrokenClient())  # type: ignore[arg-type]
+    request = SensorAttachImuRequest(
+        prim_path="/World/Robot",
+        sensor_name="BaseIMU",
+        frequency=400,
+        mount_offset=(0.0, 0.0, 0.4),
+        mount_orientation=(1.0, 0.0, 0.0, 0.0),
+    )
+
+    result = await module.attach_imu(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SENSOR_ATTACH_IMU_ERROR"
+    assert isinstance(result.data, SensorAttachImuResult)
+    assert result.data.ok is False
+    assert result.data.parent_prim == "/World/Robot"
+    assert result.data.sensor_type == "imu"
+    assert result.data.frequency == 400
+    assert result.data.mount_offset == (0.0, 0.0, 0.4)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "sensor_attach_imu_error"
+    assert diagnostics["upstream_error_code"] == "SENSOR_ATTACH_IMU_ERROR"
+    assert diagnostics["upstream_message"] == "IMU backend unavailable"
+    assert diagnostics["prim_path"] == "/World/Robot"
+    assert diagnostics["sensor_name"] == "BaseIMU"
+    assert diagnostics["mount_offset"] == [0.0, 0.0, 0.4]
+    assert diagnostics["mount_orientation"] == [1.0, 0.0, 0.0, 0.0]
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "sensor_attach_imu",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_set_visualization_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def sensor_set_visualization(self, _req):
+            raise RuntimeError("debug draw unavailable")
+
+    module = SensorModule(BrokenClient())  # type: ignore[arg-type]
+    request = SensorSetVisualizationRequest(
+        sensor_prim="/World/Robot/TopLidar",
+        mode="on",
+    )
+
+    result = await module.set_visualization(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SENSOR_SET_VISUALIZATION_ERROR"
+    assert isinstance(result.data, SensorSetVisualizationResult)
+    assert result.data.ok is False
+    assert result.data.sensor_prim == "/World/Robot/TopLidar"
+    assert result.data.mode == "on"
+    assert result.data.sensor_type is None
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "sensor_set_visualization_error"
+    assert diagnostics["upstream_error_code"] == "SENSOR_SET_VISUALIZATION_ERROR"
+    assert diagnostics["upstream_message"] == "debug draw unavailable"
+    assert diagnostics["sensor_prim"] == "/World/Robot/TopLidar"
+    assert diagnostics["mode"] == "on"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "sensor_set_visualization",
         "extension_capture_logs",
     ]

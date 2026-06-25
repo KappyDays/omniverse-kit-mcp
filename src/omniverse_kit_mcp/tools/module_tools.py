@@ -1923,7 +1923,7 @@ def register_module_tools(
         sensor_prim: str,
         mode: str = "on",
     ) -> str:
-        """Toggle debug draw overlay for a sensor. mode ∈ {on, off}. Lidar → point cloud; Camera/Depth → frustum+preview. Response includes sensor_type."""
+        """Toggle debug draw overlay for a sensor. mode ∈ {on, off}. Lidar → point cloud; Camera/Depth → frustum+preview. Response includes sensor_type; failures include data.diagnostics with fallback_tool_order."""
         meta = make_meta(ModuleName.SENSOR)
         request = SensorSetVisualizationRequest(
             sensor_prim=sensor_prim,
@@ -1940,7 +1940,7 @@ def register_module_tools(
         translation: list[float] | None = None,
         radius: float = -1.0,
     ) -> str:
-        """Attach PhysX ContactSensor child prim; reports contact forces/collisions once playing. Xform fallback when module unavailable (response.backend)."""
+        """Attach PhysX ContactSensor child prim; reports contact forces/collisions once playing. Xform fallback when module unavailable (response.backend). Failures include data.diagnostics with fallback_tool_order."""
         meta = make_meta(ModuleName.SENSOR)
         translation_tuple = (
             tuple(float(t) for t in translation) if translation
@@ -1964,7 +1964,7 @@ def register_module_tools(
         mount_offset: list[float] | None = None,
         mount_orientation: list[float] | None = None,
     ) -> str:
-        """Attach IMU sensor (accel+gyro+orient) at frequency. mount_offset/mount_orientation in parent frame. Same Xform fallback as sensor_attach_contact."""
+        """Attach IMU sensor (accel+gyro+orient) at frequency. mount_offset/mount_orientation in parent frame. Same Xform fallback as sensor_attach_contact. Failures include data.diagnostics with fallback_tool_order."""
         meta = make_meta(ModuleName.SENSOR)
         offset_tuple = (
             tuple(float(t) for t in mount_offset) if mount_offset
