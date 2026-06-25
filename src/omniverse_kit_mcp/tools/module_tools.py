@@ -1859,7 +1859,7 @@ def register_module_tools(
         config_preset: str = "Example_Rotary",
         sensor_name: str = "RtxLidar",
     ) -> str:
-        """Attach RTX Lidar for point-cloud capture; config_preset selects profile (Example_Rotary/Velodyne_VLS128/…). Returns sensor prim path and annotator id."""
+        """Attach RTX Lidar for point-cloud capture; config_preset selects profile (Example_Rotary/Velodyne_VLS128/…). Returns sensor prim path and annotator id, and attach failures include data.diagnostics.suggested_next plus data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SENSOR)
         request = SensorAttachRtxLidarRequest(
             robot_prim=robot_prim,

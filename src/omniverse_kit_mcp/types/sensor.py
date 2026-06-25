@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 
@@ -42,6 +42,7 @@ class SensorAttachRtxLidarResult:
     config_preset: str
     annotator: str | None
     backend: str
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

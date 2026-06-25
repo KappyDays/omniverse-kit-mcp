@@ -2104,7 +2104,8 @@ sensor_attach_rtx_lidar(robot_prim: 'str', mount_offset: 'list[float]', mount_ro
 ```
 
 Attach RTX Lidar for point-cloud capture; config_preset selects profile
-(Example_Rotary/Velodyne_VLS128/…). Returns sensor prim path and annotator id.
+(Example_Rotary/Velodyne_VLS128/…). Returns sensor prim path and annotator id, and attach
+failures include data.diagnostics.suggested_next plus data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

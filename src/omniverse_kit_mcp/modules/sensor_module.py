@@ -34,6 +34,13 @@ _LIDAR_POINT_CLOUD_FALLBACK_TOOL_ORDER = (
     "sensor_lidar_get_point_cloud",
     "extension_capture_logs",
 )
+_RTX_LIDAR_ATTACH_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "sensor_attach_rtx_lidar",
+    "extension_capture_logs",
+)
 
 
 class SensorModule:
@@ -98,13 +105,34 @@ class SensorModule:
                     config_preset=str(raw.get("config_preset", request.config_preset)),
                     annotator=raw.get("annotator"),
                     backend=str(raw.get("backend", "")),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_ATTACH_RTX_LIDAR_ERROR"
+            data = SensorAttachRtxLidarResult(
+                ok=False,
+                sensor_prim_path="",
+                parent_prim=request.robot_prim,
+                sensor_type="rtx_lidar",
+                config_preset=request.config_preset,
+                annotator=None,
+                backend="",
+                diagnostics=_rtx_lidar_attach_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_ATTACH_RTX_LIDAR_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def attach_rtx_depth_camera(
@@ -436,4 +464,26 @@ def _lidar_read_error_diagnostics(
             "Capture WARN/ERROR logs if the same lidar read error persists.",
         ],
         "fallback_tool_order": list(_LIDAR_POINT_CLOUD_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _rtx_lidar_attach_error_diagnostics(
+    *,
+    request: SensorAttachRtxLidarRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "rtx_lidar_attach_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "robot_prim": request.robot_prim,
+        "config_preset": request.config_preset,
+        "sensor_name": request.sensor_name,
+        "suggested_next": [
+            "Confirm the robot_prim exists with stage_capture_snapshot before retrying.",
+            "Check simulation_get_status and extension_capture_logs for RTX sensor stack errors.",
+            "Retry sensor_attach_rtx_lidar only after correcting parent prim or config_preset.",
+        ],
+        "fallback_tool_order": list(_RTX_LIDAR_ATTACH_FALLBACK_TOOL_ORDER),
     }
