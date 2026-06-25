@@ -330,7 +330,9 @@ Read-only catalog diagnostic field assertions are verified in
 The current post-stop-guard official verify proof is
 `docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md`, and
 the current docs-only official asset tool-order dry-run refresh is
-`docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`.
+`docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`. The
+current read-only final-log close-gate live refresh is
+`docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`.
 Use them as the baseline for the bounded `official_asset_verify` load-quality
 proof and read-only catalog diagnostics; refresh them when verification status,
 load-quality shape, diagnostics, evidence kind/fields, cleanup count, continued
