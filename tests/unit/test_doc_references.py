@@ -2287,6 +2287,23 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     ).read_text(encoding="utf-8")
     assert "`--expect-live-status passed`" in close_gate_artifact
 
+    read_only_close_gate = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-readonly-close-gate-live-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    read_only_close_gate_normalized = " ".join(read_only_close_gate.split())
+    assert "This scenario is read-only and did not mutate a stage" in (
+        read_only_close_gate_normalized
+    )
+    assert "scratch_stage_required=false" in read_only_close_gate
+    assert "Live validation passed with `passed_steps=4`, `failed_steps=1`" in (
+        read_only_close_gate_normalized
+    )
+    assert "`continued_steps=1`, `fatal_failed_steps=0`" in (
+        read_only_close_gate_normalized
+    )
+
 
 def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypatch):
     artifact_paths = (
