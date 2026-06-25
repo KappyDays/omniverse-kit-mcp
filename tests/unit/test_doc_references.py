@@ -1370,6 +1370,8 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         assert "secret" in text or "secrets" in text
         assert "scenario_last_report(markdown" not in text
         assert "scenario_last_report(json," not in text
+        assert "extension_capture_logs(WARN)" not in text
+        assert "extension_capture_logs(ERROR)" not in text
 
     for rel in (
         "docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md",
@@ -2132,6 +2134,8 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         assert "local absolute paths" in text
         assert "worker/thread IDs" in text
         assert "secrets" in text
+        assert "extension_capture_logs(WARN)" not in text
+        assert "extension_capture_logs(ERROR)" not in text
 
     baseline = (
         PROJECT / "docs/artifacts/official-asset-verify-live-pass-2026-06-25.md"

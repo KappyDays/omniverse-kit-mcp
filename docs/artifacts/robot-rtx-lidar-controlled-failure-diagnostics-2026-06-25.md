@@ -16,8 +16,10 @@ scenario_plan(input_overrides={lidar_min_points: 513}) ->
 scenario_validate(dry_run=true, input_overrides={lidar_min_points: 513}) ->
 extension_clear_logs -> scenario_validate(input_overrides={lidar_min_points:
 513}, report_format=json) -> scenario_last_report(report_format="markdown",
-redact_local_paths=true) -> extension_capture_logs(WARN) ->
-extension_capture_logs(ERROR) -> simulation_get_status`.
+redact_local_paths=true) ->
+extension_capture_logs(level="WARN", stop_after_capture=true) ->
+extension_capture_logs(level="ERROR", stop_after_capture=true) ->
+simulation_get_status`.
 
 The scenario is `smoke/robot_rtx_sensor_golden_workflow.yaml`. It is a scratch
 smoke run that starts with `stage_new`, performs cleanup, and does not preserve
