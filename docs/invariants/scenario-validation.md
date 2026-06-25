@@ -7,24 +7,17 @@ If R1/R1a/R2/R3 is violated, the verification result is invalid.
 
 ## R1. The actual output is an actual asset, and the fixture is a primitive.
 
-- **Prohibited**: In user-facing digital twin / 3D modeling / scenario deliverable
-Verification using primitives (Cube/Sphere, etc.) as a substitute for chairs, robots, and characters
+- **Prohibited**: In user-facing deliverables, primitives may not substitute for requested chairs, robots, characters, or environments.
 - **Accept real output**: Real USD from `asset_list` or known S3 path
   - `.../Environments/Office/Props/SM_Armchair.usd`
   - `.../Robots/NVIDIA/NovaCarter/nova_carter.usd`
   - `.../People/Characters/F_Business_02/F_Business_02.usd`
-- **fixture exception**: prototype / unit test / smoke demo / diagnostic scene
-Controlled test objects are allowed as primitives. Example: robot pick/place playback demo
-0.04 m native cube fixture. However, if you specify the actual asset, the same bbox/fit/visual
-Must pass preflight.
+- **fixture exception**: prototype / unit test / smoke demo / diagnostic scenes may use controlled primitives, e.g. the robot pick/place 0.04 m cube fixture. Requested real assets still need bbox/fit/visual preflight.
 - **SoT Catalog** (full S3 URL list): `docs/assets/isaac/asset_inventory.md` + `docs/assets/isaac/assets/*.md` — Candidate asset selection entry point before scenario authoring
 
 ### Reason (actual false positive)
 
-In verification of actual output, the primitives are bbox·pivot·forward axis·physics material·mesh
-False positives occur frequently because the topology characteristics are different from the actual asset. Example: In chair sit verification
-Cube passes, but actual Armchair NavMesh step-up fails. Conversely, controller smoke
-The size and shape of the fixture must be controlled to separate the cause, so primitives are allowed.
+Primitives and real assets differ in bbox, pivot, forward axis, material, and mesh topology; a cube can pass while an Armchair NavMesh step-up fails. Controlled fixtures are allowed only when they isolate the cause being tested.
 
 ## R1a. NavMesh bake requires timeline stopped
 
@@ -68,28 +61,11 @@ frames_to_wait=180, min_points=${variables.lidar_min_points} default 1,
 fail_on_warning=true) -> pause ->
 viewport.frame_prims -> viewport.capture_assert -> cleanup`.
 
-Live proof wrapper: `mcp_runtime_info -> kit_app_start -> simulation_get_status ->
-scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
-scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true) -> extension_clear_logs ->
-scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml) ->
-scenario_last_report(report_format="markdown", redact_local_paths=true) -> extension_capture_logs`.
-Before stage mutation, `scenario_plan` or
-`scenario_validate(..., dry_run=true)` must expose matching `phase_counts`,
-`preflight_requirements`, `stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`,
-`evidence_steps`, `retry_steps`, `simulation_state_summary`,
-`simulation_state_steps`, `timeline_control_steps`, and
-`live_validation_checklist`;
-`stage_mutation_summary.read_only=false` requires scratch/test stage routing.
-Check `stage_mutation_steps` against the scratch/test stage boundary,
-`simulation_state_summary.play_state_missing_count` before robot/sensor actions,
-and
-`retry_steps[].key_args` so lidar thresholds match the intended proof.
-The dry-run `scenario_validate` belongs before `extension_clear_logs`; clear logs immediately
-before the mutating validation run so captured WARN/ERRORs belong to the proof itself.
-For controlled failure diagnostics, pass the same
-`input_overrides={"lidar_min_points": 513}` to `scenario_plan` and
-`scenario_validate`; this should fail only `read_lidar_point_cloud`, preserve
-cleanup, and surface `error_code`, `suggested_next`, and fallback order.
+Live proof wrapper: `mcp_runtime_info -> kit_app_start -> simulation_get_status -> scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml) -> scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true) -> extension_clear_logs -> scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml) -> scenario_last_report(report_format="markdown", redact_local_paths=true) -> extension_capture_logs`.
+Before stage mutation, `scenario_plan` or `scenario_validate(..., dry_run=true)` must expose matching `phase_counts`, `preflight_requirements`, `stage_mutation_summary`, `stage_mutation_steps`, `diagnostic_steps`, `evidence_steps`, `retry_steps`, `simulation_state_summary`, `simulation_state_steps`, `timeline_control_steps`, and `live_validation_checklist`; `stage_mutation_summary.read_only=false` requires scratch/test stage routing. Check `stage_mutation_steps` against the scratch/test stage boundary, plus `simulation_state_summary.play_state_missing_count` and `retry_steps[].key_args`, before live mutation. The dry-run belongs before `extension_clear_logs`; clear logs immediately before the mutating run.
+Parent-side stdio probe must include `--scenario-validate-dry-run`, `--require-plan-fields`, `--expect-scratch-stage-required true`, `--expect-log-capture-recommended true`, and exact `--require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs`.
+Default live proof assertions are mandatory: `--expect-live-cleanup-failures 0`, `--expect-live-evidence-kind rtx_lidar_point_cloud`, `--expect-live-evidence-kind viewport_framing`, `--expect-live-evidence-kind visual_capture`, `--expect-live-evidence-field read_lidar_point_cloud:status=passed`, `--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1`, `--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false`, and `--expect-live-evidence-field capture_visible_result:passed=true`.
+For controlled failure diagnostics, pass the same `input_overrides={"lidar_min_points": 513}` to `scenario_plan` and `scenario_validate`; assert `--expect-live-status failed`, `--expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`, `--expect-live-diagnostic-next-actions-min 1`, and `--expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`. The only fatal step should be `read_lidar_point_cloud`; cleanup must be preserved.
 
 Do not use an RTX lidar prim as a viewport camera. Frame the robot/sensor prims
 with a normal viewport camera and use `sensor.lidar_get_point_cloud` for lidar data.
@@ -143,9 +119,15 @@ For idempotent retry steps, the scenario runner retries returned non-pass
 results, hard step timeouts, and hard step exceptions; each failed attempt is
 recorded in `retry_failures`.
 
+## Official asset scenario proof sequence
+
+Use `smoke/official_asset_catalog_diagnostics.yaml` for read-only sync/search/resolve/get diagnostics and `smoke/official_asset_verify_live.yaml` for bounded scratch/test-stage load-quality proof. Live wrapper: `mcp_runtime_info -> kit_app_start -> simulation_get_status -> scenario_plan(smoke/official_asset_verify_live.yaml) -> scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true) -> extension_clear_logs -> scenario_validate(smoke/official_asset_verify_live.yaml) -> scenario_last_report(report_format="markdown", redact_local_paths=true) -> extension_capture_logs(level="WARN", stop_after_capture=true)`.
+Before live execution, `scenario_plan.stage_mutation_summary.read_only=false`, `scenario_plan.stage_mutation_steps` must include `official_asset_verify_stage_probe`, `scenario_plan.evidence_steps` must include `evidence_kind=official_asset_verify`, and `scenario_plan.diagnostic_steps` must include the preceding catalog probes.
+Live proof assertions are mandatory: `--expect-live-cleanup-failures 0`, `--expect-live-evidence-kind official_asset_verify`, `--expect-live-evidence-field official_asset_verify:verification_status=load_verified`, `--expect-live-evidence-field official_asset_verify:kind=asset`, and `--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`. Compare redacted JSON `evidence_summary[]` for exact fields before copying public evidence.
+
 ## R3. Viewport capture visual verification obligation
 
-After `viewport_capture`, be sure to check the PNG time with the `Read` tool.
+After `viewport_capture`, check the PNG with the `Read` tool.
 
 **If only white/black background** is visible or the asset is small as a dot, **Fail** — in the following order:
 Recapture after adjustment:
@@ -159,13 +141,11 @@ Reset the asset bbox standard distance with "xformOp:translate", [x,y,z])` (smal
 3. **Adjust asset position** — Refer to the bounding box so that the asset center is in front of the viewport
 Relocating the asset itself or camera target
 4. After adjustment, re-invoke `viewport_capture` + re-verify Read. This cycle has a clear geometry
-Repeat until visible — if it fails after 2-3 attempts, replace the task with artifact or new
-Recorded as a runbook candidate
+Repeat until visible; if it fails after 2-3 attempts, record an artifact or runbook candidate.
 
 ## Character standard sequence (T-pose prevention)
 
-When character USD is loaded as a raw reference with `stage_load_usd`, BehaviorAgent/IRA runtime
-Due to missing binding, simulation_play may result in T-pose or stop state.
+When character USD is loaded as a raw reference with `stage_load_usd`, BehaviorAgent/IRA binding can be missing and simulation_play may show T-pose or stop state.
 **Must be `character_load`** (runtime API bind + `anim_graph_bound=true` compatible field).
 
 Standard pattern:
@@ -178,15 +158,11 @@ character_load(...)
   → simulation_play
 ```
 
-Subsequent calls must use `sanitized_prim_path` in the response (skin variants such as F_Business_02
-automatically moves to `/World/Characters/{name}`).
+Subsequent calls must use response `sanitized_prim_path` (skin variants such as F_Business_02 move to `/World/Characters/{name}`).
 
 ## Scenario cleanup (prevent kit.exe shutdown hang)
 
-scenario cleanup uses `simulation_play → simulation_stop` (final physics tick)
-Must be executed before `kit_app_stop`. When omitted, character runtime / NavMesh internal handle cleanup
-kit.exe hangs due to timing issue. canonical pattern:
-`scenarios/smoke/character_control.yaml`
+scenario cleanup uses `simulation_play → simulation_stop` (final physics tick) before `kit_app_stop`; otherwise character runtime / NavMesh handle cleanup can hang kit.exe. Canonical pattern: `scenarios/smoke/character_control.yaml`.
 Runner-added fallback cleanup must stay bounded and report a non-fatal cleanup step result instead of blocking `scenario_validate` report generation.
 
 ## Related Boundaries
@@ -196,5 +172,4 @@ Runner-added fallback cleanup must stay bounded and report a non-fatal cleanup s
 - Asset URL catalog entry point: `docs/assets/isaac/asset_inventory.md`
 - Character domain constraints (actual measurement): `src/omniverse_kit_mcp/modules/CLAUDE.md`
 - USD LOAD 4 CONDITION: `docs/invariants/usd-load.md`
-- Iterative failure/improvement items: Recorded in the relevant work artifact, once it becomes a permanent procedure
-Promote to `docs/runbooks/` or `docs/invariants/`
+- Promote permanent failure/improvement procedures to `docs/runbooks/` or `docs/invariants/`.

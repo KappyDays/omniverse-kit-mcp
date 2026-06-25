@@ -231,6 +231,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     invariant = (
         PROJECT / "docs" / "invariants" / "scenario-validation.md"
     ).read_text(encoding="utf-8")
+    scenario_authoring = (PROJECT / "scenarios" / "CLAUDE.md").read_text(
+        encoding="utf-8"
+    )
     diagnostic_map = (PROJECT / "docs" / "tool-diagnostic-map.md").read_text(
         encoding="utf-8"
     )
@@ -321,6 +324,43 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "--expect-live-diagnostic-field "
         "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
     ) in wrapper
+    assert "--expect-live-evidence-kind rtx_lidar_point_cloud" in invariant
+    assert "--expect-live-evidence-kind viewport_framing" in invariant
+    assert "--expect-live-evidence-kind visual_capture" in invariant
+    assert (
+        "--expect-live-evidence-field read_lidar_point_cloud:status=passed"
+        in invariant
+    )
+    assert (
+        "--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1"
+        in invariant
+    )
+    assert (
+        "--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false"
+        in invariant
+    )
+    assert (
+        "--expect-live-evidence-field capture_visible_result:passed=true"
+        in invariant
+    )
+    assert (
+        "--expect-live-diagnostic-field "
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
+    ) in invariant
+    assert (
+        "--expect-live-evidence-field read_lidar_point_cloud:status=passed"
+        in scenario_authoring
+    )
+    assert (
+        "--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1"
+        in scenario_authoring
+    )
+    assert "frame_robot_and_sensors:bbox_empty=false" in scenario_authoring
+    assert "capture_visible_result:passed=true" in scenario_authoring
+    assert (
+        "--expect-live-diagnostic-field "
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
+    ) in scenario_authoring
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
@@ -568,6 +608,12 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
 def test_f3b_official_asset_scenario_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
+    invariant = (
+        PROJECT / "docs" / "invariants" / "scenario-validation.md"
+    ).read_text(encoding="utf-8")
+    scenario_authoring = (PROJECT / "scenarios" / "CLAUDE.md").read_text(
+        encoding="utf-8"
+    )
     sequence = [
         "mcp_runtime_info",
         "kit_app_start",
@@ -661,6 +707,25 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert (
         "--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim"
     ) in verify_live_probe
+    assert "Official asset scenario proof sequence" in invariant
+    assert "scenario_plan(smoke/official_asset_verify_live.yaml)" in invariant
+    assert "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)" in invariant
+    assert "official_asset_verify_stage_probe" in invariant
+    assert "evidence_kind=official_asset_verify" in invariant
+    assert "--expect-live-evidence-kind official_asset_verify" in invariant
+    assert (
+        "--expect-live-evidence-field "
+        "official_asset_verify:verification_status=load_verified"
+    ) in invariant
+    assert (
+        "--expect-live-evidence-field official_asset_verify:kind=asset"
+    ) in invariant
+    assert (
+        "--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim"
+    ) in invariant
+    assert "official_asset_verify:verification_status=load_verified" in scenario_authoring
+    assert "official_asset_verify:kind=asset" in scenario_authoring
+    assert "official_asset_verify:app_profile=isaac-sim" in scenario_authoring
     assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
     assert (
         "--require-live-validation-tools "
