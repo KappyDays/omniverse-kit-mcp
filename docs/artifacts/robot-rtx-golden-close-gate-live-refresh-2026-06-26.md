@@ -10,7 +10,7 @@ Robot + RTX proof.
 
 ## Command
 
-- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-evidence-kind viewport_framing --expect-live-evidence-kind visual_capture --expect-live-evidence-field read_lidar_point_cloud:status=passed --expect-live-evidence-field-min read_lidar_point_cloud:num_points=1 --expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false --expect-live-evidence-field capture_visible_result:passed=true`
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --expect-live-status passed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-evidence-kind viewport_framing --expect-live-evidence-kind visual_capture --expect-live-evidence-field read_lidar_point_cloud:status=passed --expect-live-evidence-field-min read_lidar_point_cloud:num_points=1 --expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false --expect-live-evidence-field capture_visible_result:passed=true`
 
 ## Result
 
@@ -28,6 +28,7 @@ Robot + RTX proof.
   `frames_to_wait=180`, and `fail_on_warning=true`.
 - Live validation passed with `passed_steps=32`, `failed_steps=0`,
   `continued_steps=0`, `fatal_failed_steps=0`, and `cleanup_failed_steps=0`.
+- The live status gate was asserted with `--expect-live-status passed`.
 - Required evidence assertions passed:
   - `read_lidar_point_cloud:status=passed`
   - `read_lidar_point_cloud:num_points>=1` with observed `num_points=512`
@@ -36,9 +37,9 @@ Robot + RTX proof.
 - Evidence kinds were `rtx_lidar_point_cloud`, `viewport_framing`, and
   `visual_capture`.
 - Visual capture compact proof preserved `width=1280`, `height=720`,
-  `warmup_frames_used=8`, `pixel_mean_average=145.6221607349537`,
-  `pixel_variance_average=1107.4917913058348`, and
-  `sha256=93d64253466136a8cea63515f46a2989b18923acb5c86036cf49f6072c63961c`.
+  `warmup_frames_used=8`, `pixel_mean_average=145.60115198206017`,
+  `pixel_variance_average=1107.8388266359327`, and
+  `sha256=ec784e4891ffb7905a4366f7f5d6260cdd87250a5e5152049533cd8a1a4dac48`.
 - Final `extension_capture_logs(level=WARN, stop_after_capture=true)` passed the
   close gate with:
   - `data.capture_running=false`

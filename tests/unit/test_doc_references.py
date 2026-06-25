@@ -351,6 +351,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "--expect-live-evidence-field capture_visible_result:passed=true"
         in invariant
     )
+    assert "`--expect-live-status passed`" in invariant
+    assert "--expect-live-status passed" in scenario_authoring
     assert (
         "--expect-live-diagnostic-field "
         "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
@@ -583,6 +585,7 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
         marker_key="expected_live_evidence_field_minimums",
         expected=(("read_lidar_point_cloud", "num_points", 1.0),),
     )
+    assert robot_success["expect_live_status"] == "passed"
     assert robot_success["expect_live_cleanup_failures"] == 0
     assert _contains(
         robot_success,
@@ -1127,6 +1130,10 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     ).read_text(encoding="utf-8")
     assert "baseline Robot + RTX sensor golden pass proof" in baseline_artifact
     assert "robot-rtx-golden-stop-guard-refresh-2026-06-26.md" in baseline_artifact
+    close_gate_artifact = (
+        PROJECT / "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "`--expect-live-status passed`" in close_gate_artifact
 
     field_artifact = (
         PROJECT
