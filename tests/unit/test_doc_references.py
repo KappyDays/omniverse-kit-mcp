@@ -886,6 +886,14 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     ) in read_only_probe
     assert "--expect-scratch-stage-required true" in scripts_claude
     assert "--expect-log-capture-recommended true" in scripts_claude
+    assert "only after the dry-run plan gate" in scripts_claude
+    assert "Mutating proof must assert `--expect-scratch-stage-required true`" in (
+        scripts_claude
+    )
+    assert (
+        "read-only diagnostic proof must assert "
+        "`--expect-scratch-stage-required false`"
+    ) in scripts_claude
     assert "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND" in invariant
     assert "search_known_miss:diagnostics.reason=query_no_match" in invariant
     assert (
