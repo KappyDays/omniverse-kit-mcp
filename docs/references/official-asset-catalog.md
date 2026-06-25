@@ -212,10 +212,11 @@ cannot find an entry, inspect `data.diagnostics.reason`, `candidate_counts`,
 `available_profiles`, `available_providers`, `suggested_next`, and
 `fallback_tool_order` before widening the workflow. Prefer the listed official
 catalog recovery steps before using legacy `asset_search`. In scenario runs,
-`scenario_last_report(report_format="markdown")` highlights
-`diagnostics.reason`, available profile/provider filters, key
-`diagnostics.candidate_counts` values, `suggested_next`, and
-`diagnostics.fallback_tool_order`.
+`scenario_last_report(report_format="markdown", redact_local_paths=true)` gives
+the public-safe triage view for `diagnostics.reason`, available profile/provider
+filters, key `diagnostics.candidate_counts` values, `suggested_next`, and
+`diagnostics.fallback_tool_order`; use default JSON `scenario_last_report` for
+exact fields in the same MCP host.
 If `official_asset_sync_status(app_profile=...)` reports `profile_count=0`,
 inspect `data.diagnostics.available_profiles` and
 `data.diagnostics.available_providers` before assuming the catalog is empty.

@@ -1826,6 +1826,12 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         assert "data.diagnostics.suggested_next" in source
         assert "data.diagnostics.fallback_tool_order" in source
         assert "verification-on-demand.jsonl" in source
+    assert (
+        'scenario_last_report(report_format="markdown", redact_local_paths=true)'
+        in official_catalog
+    )
+    assert "use default JSON `scenario_last_report`" in official_catalog
+    assert "exact fields in the same MCP host" in official_catalog
     assert "Official asset verify failed or found nothing?" in diagnostic_map
     assert "OFFICIAL_ASSET_NOT_FOUND" in diagnostic_map
     assert (
