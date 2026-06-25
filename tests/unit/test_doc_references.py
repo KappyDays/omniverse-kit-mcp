@@ -249,6 +249,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         encoding="utf-8"
     )
     tool_catalog = (PROJECT / "docs" / "tool-catalog.md").read_text(encoding="utf-8")
+    integration_facts = (
+        PROJECT / "src" / "omniverse_kit_mcp" / "modules" / "integration-facts.md"
+    ).read_text(encoding="utf-8")
     sequence = [
         "mcp_runtime_info",
         "kit_app_start",
@@ -382,6 +385,39 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "`--expect-live-evidence-kind visual_capture`" in scenario_authoring
     assert "current close-gate artifacts" in scenario_authoring
     assert "older live-pass artifacts are baseline only" in scenario_authoring
+    assert "Robot+RTX golden proof gates" in integration_facts
+    assert "smoke/robot_rtx_sensor_golden_workflow.yaml" in integration_facts
+    assert (
+        "--expect-live-evidence-field read_lidar_point_cloud:status=passed"
+        in integration_facts
+    )
+    assert (
+        "--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1"
+        in integration_facts
+    )
+    assert (
+        "--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false"
+        in integration_facts
+    )
+    assert (
+        "--expect-live-evidence-field capture_visible_result:passed=true"
+        in integration_facts
+    )
+    assert "lidar_min_points=513" in integration_facts
+    assert (
+        "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+        in integration_facts
+    )
+    assert (
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
+        in integration_facts
+    )
+    assert "read_lidar_point_cloud:diagnostics.min_points=513" in integration_facts
+    assert (
+        "read_lidar_point_cloud:diagnostics.fallback_tool_order='["
+        '"simulation_step","sensor_lidar_get_point_cloud",'
+        '"extension_capture_logs"]\''
+    ) in integration_facts
     assert "Current repeatable public proof anchors are" in invariant
     assert "baseline public-safe evidence" in invariant
     assert "not the current repeatable proof path" in invariant
@@ -1545,6 +1581,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md",
+        "docs/artifacts/robot-rtx-integration-facts-proof-gate-2026-06-26.md",
         "docs/artifacts/scenario-authoring-selector-plan-guard-2026-06-26.md",
         (
             "docs/artifacts/"

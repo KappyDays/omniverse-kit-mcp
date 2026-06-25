@@ -241,6 +241,8 @@ the current route-table pull-doc boundary refresh is
 `docs/artifacts/new-agent-route-table-pull-doc-boundary-2026-06-26.md`;
 the scenario authoring selector-to-plan guard is
 `docs/artifacts/scenario-authoring-selector-plan-guard-2026-06-26.md`;
+the integration-facts Robot + RTX proof gate is guarded in
+`docs/artifacts/robot-rtx-integration-facts-proof-gate-2026-06-26.md`;
 the baseline recipe remains
 `docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
