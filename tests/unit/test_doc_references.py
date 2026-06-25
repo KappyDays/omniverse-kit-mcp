@@ -795,6 +795,39 @@ def test_f3b_current_probe_docs_expect_full_tool_count():
         )
 
 
+def test_f3b_usage_guide_task_routes_point_to_live_proof_pull_docs():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    route_table = guide[guide.index("## Task Routes"):guide.index(
+        "Standalone scenario runs"
+    )]
+    rows = route_table.splitlines()
+    official_route = next(
+        row for row in rows if row.startswith("| Choose an official NVIDIA asset")
+    )
+    robot_route = next(
+        row for row in rows if row.startswith("| Prove the robot + RTX sensor")
+    )
+
+    assert "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)" in (
+        official_route
+    )
+    assert "scenario_validate(smoke/official_asset_verify_live.yaml)" in official_route
+    assert "docs/references/official-asset-catalog.md" in official_route
+    assert "docs/invariants/asset-discovery.md" in official_route
+    assert "docs/invariants/scenario-validation.md" in official_route
+    assert "scenarios/CLAUDE.md" in official_route
+    assert official_route.index("docs/invariants/asset-discovery.md") < (
+        official_route.index("docs/invariants/scenario-validation.md")
+    )
+    assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in robot_route
+    assert "docs/invariants/scenario-validation.md" in robot_route
+    assert "scenarios/CLAUDE.md" in robot_route
+    assert "src/omniverse_kit_mcp/modules/integration-facts.md" in robot_route
+    assert robot_route.index("docs/invariants/scenario-validation.md") < (
+        robot_route.index("src/omniverse_kit_mcp/modules/integration-facts.md")
+    )
+
+
 def test_f3b_usage_guide_live_probe_commands_have_assertion_gates(monkeypatch):
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     commands = _MCP_PROBE_COMMAND_RE.findall(guide)
@@ -1210,12 +1243,17 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     redaction_boundary = (
         "docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md"
     )
+    route_boundary = (
+        "docs/artifacts/new-agent-route-table-pull-doc-boundary-2026-06-26.md"
+    )
     baseline_e2e = "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md"
     assert "current doc-only durable-rule E2E refresh" in guide
     assert "current public report redaction boundary refresh" in guide
+    assert "current route-table pull-doc boundary refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
     assert guide.index(redaction_boundary) < guide.index(baseline_e2e)
+    assert guide.index(route_boundary) < guide.index(baseline_e2e)
     assert (
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md"
         in guide
@@ -1244,6 +1282,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         ),
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
         redaction_boundary,
+        route_boundary,
         current_e2e,
         baseline_e2e,
     ]
