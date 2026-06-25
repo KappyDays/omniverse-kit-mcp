@@ -267,6 +267,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     )
     assert "extension_clear_logs" in invariant
     assert 'extension_capture_logs(level="WARN", stop_after_capture=true)' in invariant
+    assert "data.capture_stop_timed_out=false" in invariant
+    assert "data.capture_running=false" in invariant
     assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     invariant_start = invariant.index("Live proof wrapper:")
@@ -1226,6 +1228,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "diagnostics.error_type" in wrapper
     assert "redacted JSON" in wrapper
     assert "redacted Markdown" in wrapper
+    assert "data.capture_stop_timed_out=false" in invariant
+    assert "data.capture_running=false" in invariant
     read_only_sequence = [
         "mcp_runtime_info",
         "kit_app_start",
