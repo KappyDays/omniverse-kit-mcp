@@ -160,8 +160,10 @@ For a live controlled-failure probe, add `--scenario-validate-live`,
 `--expect-live-status failed`, `--expect-live-cleanup-failures 0`, and
 `--expect-live-evidence-kind rtx_lidar_point_cloud`, plus
 `--expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
-so the wrapper fails only on the wrong terminal status, wrong failing step/error
-code, missing report, missing lidar evidence, or missing cleanup/log evidence.
+and `--expect-live-diagnostic-next-actions-min 1` so the wrapper fails only on
+the wrong terminal status, wrong failing step/error code, missing diagnostic
+next action, missing report, missing lidar evidence, or missing cleanup/log
+evidence.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 

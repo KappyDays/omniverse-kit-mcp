@@ -701,7 +701,9 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
                 "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
             }
         ],
-        "diagnostic_next_actions": [],
+        "diagnostic_next_actions": [
+            {"step_id": "read_lidar_point_cloud", "status": "failed"},
+        ],
         "evidence_summary": [
             {"step_id": "capture_visible_result", "evidence_kind": "visual_capture"},
         ],
@@ -859,6 +861,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
                 "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
             ),
         ),
+        expect_live_diagnostic_next_actions_min=1,
     )
 
     assert exit_code == 0
@@ -869,6 +872,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
     assert '"failure_steps": [' in output
     assert '"evidence_kinds": [' in output
     assert '"cleanup_failed_steps": 0' in output
+    assert '"diagnostic_next_action_count": 1' in output
     assert "# Scenario Report: redacted" in output
     tool_calls = [
         message
@@ -1497,6 +1501,24 @@ def test_mcp_probe_live_failure_step_error_mismatches_report_drift():
     ) == ["failure_steps summary is missing or malformed"]
 
 
+def test_mcp_probe_live_diagnostic_next_action_mismatches_are_empty_for_minimum():
+    assert mcp_probe._live_diagnostic_next_action_mismatches(
+        {"diagnostic_next_action_count": 4},
+        1,
+    ) == []
+
+
+def test_mcp_probe_live_diagnostic_next_action_mismatches_report_drift():
+    assert mcp_probe._live_diagnostic_next_action_mismatches(
+        {"diagnostic_next_action_count": 0},
+        1,
+    ) == ["diagnostic_next_action_count expected at least 1, got 0"]
+    assert mcp_probe._live_diagnostic_next_action_mismatches(
+        {},
+        1,
+    ) == ["diagnostic_next_action_count expected at least 1, got None"]
+
+
 def test_mcp_probe_preflight_runtime_check_mismatches_are_empty_for_expected_values():
     summary = {
         "preflight_runtime_info_checks": [
@@ -1619,6 +1641,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
         "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
     ]) == 2
     assert mcp_probe.main([
+        "--expect-live-diagnostic-next-actions-min",
+        "1",
+    ]) == 2
+    assert mcp_probe.main([
         "--scenario-validate-live",
         "--workspace",
         "workspaces/isaac/instance-1",
@@ -1626,6 +1652,16 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
         "smoke/robot_rtx_sensor_golden_workflow.yaml",
         "--scenario-validate-dry-run",
         "--expect-live-cleanup-failures",
+        "-1",
+    ]) == 2
+    assert mcp_probe.main([
+        "--scenario-validate-live",
+        "--workspace",
+        "workspaces/isaac/instance-1",
+        "--scenario-plan",
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        "--scenario-validate-dry-run",
+        "--expect-live-diagnostic-next-actions-min",
         "-1",
     ]) == 2
     assert mcp_probe.main([

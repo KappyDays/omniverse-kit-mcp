@@ -479,6 +479,28 @@ def _live_failure_step_error_mismatches(
     return mismatches
 
 
+def _live_diagnostic_next_action_mismatches(
+    summary: dict[str, Any],
+    expected_min_count: int | None,
+) -> list[str]:
+    if expected_min_count is None:
+        return []
+    actual = summary.get("diagnostic_next_action_count")
+    try:
+        actual_count = int(actual)
+    except (TypeError, ValueError):
+        return [
+            "diagnostic_next_action_count expected at least "
+            f"{expected_min_count}, got {actual!r}"
+        ]
+    if actual_count >= expected_min_count:
+        return []
+    return [
+        "diagnostic_next_action_count expected at least "
+        f"{expected_min_count}, got {actual!r}"
+    ]
+
+
 def _preflight_runtime_check_mismatches(
     summary: dict[str, Any],
     expected_checks: tuple[str, ...],
@@ -711,6 +733,7 @@ async def probe(
     expected_live_evidence_kinds: tuple[str, ...] = (),
     expect_live_cleanup_failures: int | None = None,
     expected_live_failure_step_errors: tuple[tuple[str, str], ...] = (),
+    expect_live_diagnostic_next_actions_min: int | None = None,
     expect_live_status: str = "passed",
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
@@ -1076,6 +1099,15 @@ async def probe(
                     for mismatch in failure_step_mismatches:
                         print(f"  - {mismatch}")
                     exit_status = 1
+                diagnostic_mismatches = _live_diagnostic_next_action_mismatches(
+                    live_summary,
+                    expect_live_diagnostic_next_actions_min,
+                )
+                if diagnostic_mismatches:
+                    print("scenario_validate live diagnostic expectation mismatch:")
+                    for mismatch in diagnostic_mismatches:
+                        print(f"  - {mismatch}")
+                    exit_status = 1
                 markdown_report = _tool_text_response(
                     await call_tool(
                         "scenario_last_report",
@@ -1242,6 +1274,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--expect-live-diagnostic-next-actions-min",
+        type=int,
+        help=(
+            "Require scenario_validate live diagnostic_next_actions to contain "
+            "at least this many entries."
+        ),
+    )
+    parser.add_argument(
         "--input-overrides-json",
         help="JSON object passed as scenario_plan input_overrides.",
     )
@@ -1402,11 +1442,23 @@ def main(argv: list[str] | None = None) -> int:
     elif expected_live_failure_step_errors:
         print("--expect-live-failure-step-error requires --scenario-validate-live")
         return 2
+    elif args.expect_live_diagnostic_next_actions_min is not None:
+        print(
+            "--expect-live-diagnostic-next-actions-min requires "
+            "--scenario-validate-live"
+        )
+        return 2
     if (
         args.expect_live_cleanup_failures is not None
         and args.expect_live_cleanup_failures < 0
     ):
         print("--expect-live-cleanup-failures must be >= 0")
+        return 2
+    if (
+        args.expect_live_diagnostic_next_actions_min is not None
+        and args.expect_live_diagnostic_next_actions_min < 0
+    ):
+        print("--expect-live-diagnostic-next-actions-min must be >= 0")
         return 2
     runtime_info = (
         args.runtime_info
@@ -1447,6 +1499,9 @@ def main(argv: list[str] | None = None) -> int:
             expect_live_cleanup_failures=args.expect_live_cleanup_failures,
             expected_live_failure_step_errors=(
                 expected_live_failure_step_errors
+            ),
+            expect_live_diagnostic_next_actions_min=(
+                args.expect_live_diagnostic_next_actions_min
             ),
             expect_live_status=args.expect_live_status,
             expect_scratch_stage_required=expect_scratch_stage_required,

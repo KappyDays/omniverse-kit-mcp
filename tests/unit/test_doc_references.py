@@ -300,6 +300,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "--expect-live-failure-step-error "
         "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
     ) in wrapper
+    assert "--expect-live-diagnostic-next-actions-min 1" in wrapper
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
@@ -413,6 +414,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-live-evidence-kind kind" in scripts_doc
     assert "--expect-live-cleanup-failures 0" in scripts_doc
     assert "--expect-live-failure-step-error step=ERROR_CODE" in scripts_doc
+    assert "--expect-live-diagnostic-next-actions-min 1" in scripts_doc
     assert "--scenario-validate-dry-run" in scripts_doc
 
 

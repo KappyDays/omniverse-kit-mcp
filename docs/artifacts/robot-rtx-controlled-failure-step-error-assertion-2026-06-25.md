@@ -1,7 +1,8 @@
 # Robot RTX Controlled Failure Step/Error Assertion — 2026-06-25
 
 Purpose: verify that `scripts/probe_mcp_surface.py` can assert the exact
-controlled-failure step and error code for the Robot + RTX lidar workflow.
+controlled-failure step, error code, and diagnostic next-action presence for
+the Robot + RTX lidar workflow.
 
 Command shape:
 
@@ -13,6 +14,7 @@ Command shape:
   - `--expect-live-cleanup-failures 0`
   - `--expect-live-evidence-kind rtx_lidar_point_cloud`
   - `--expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
+  - `--expect-live-diagnostic-next-actions-min 1`
 
 Result:
 
