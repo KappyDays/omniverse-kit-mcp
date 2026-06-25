@@ -122,6 +122,13 @@ For public evidence, request `redact_local_paths=true`; it redacts those local
 identifiers while preserving SHA256/pixel stats and WARN/ERROR counts. Confirm
 artifact paths look like `<validation-api-capture>/capture_<id>.png`, and run
 the public hygiene checks.
+Current public-safe Robot + RTX evidence anchors are
+`docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md` for the
+default success path and
+`docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md`
+for the `lidar_min_points=513` diagnostics path. Use them as the comparison
+baseline when refreshing live proof, and replace or supersede them only with a
+new pass/failure artifact that preserves the same public-safety boundary.
 When retrying RTX lidar reads, preserve `retry_failures[].data_summary` fields
 such as `diagnostics.num_points`, `diagnostics.min_points`,
 `diagnostics.cached_lidar_instance`, and

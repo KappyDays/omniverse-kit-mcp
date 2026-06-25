@@ -359,6 +359,23 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
     assert "public hygiene checks" in guide
 
 
+def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    artifacts = [
+        "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
+        "docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md",
+    ]
+
+    for rel in artifacts:
+        assert rel in guide
+        artifact = PROJECT / rel
+        assert artifact.exists(), f"Missing Robot + RTX evidence artifact: {rel}"
+        text = artifact.read_text(encoding="utf-8")
+        assert "local absolute" in text or "No raw local capture path" in text
+        assert "worker/thread ID" in text or "worker/thread IDs" in text
+        assert "secret" in text or "secrets" in text
+
+
 def test_f3b_official_asset_scenario_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
