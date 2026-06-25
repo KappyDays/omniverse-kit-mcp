@@ -648,6 +648,85 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert "without exposing the local workspace root" in guide
 
 
+def test_f3b_usage_guide_live_probe_selectors_match_compiled_plans(monkeypatch):
+    from omniverse_kit_mcp.scenario.compiler import compile_scenario
+    from omniverse_kit_mcp.scenario.loader import load_scenario
+    from omniverse_kit_mcp.tools.scenario_tools import _scenario_plan_payload
+
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    commands = _MCP_PROBE_COMMAND_RE.findall(guide)
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    for command in commands:
+        argv = shlex.split(command)
+        assert mcp_probe.main(argv[1:]) == 0, command
+
+    live_calls = [call for call in calls if call["scenario_validate_live"] is True]
+    assert live_calls, "usage guide should keep canonical live probe commands"
+
+    plans: dict[str, dict[str, object]] = {}
+    for call in live_calls:
+        scenario_plan = str(call["scenario_plan"])
+        if scenario_plan not in plans:
+            raw = load_scenario(PROJECT / "scenarios" / scenario_plan)
+            plans[scenario_plan] = _scenario_plan_payload(compile_scenario(raw))
+        plan = plans[scenario_plan]
+        evidence_steps = plan["evidence_steps"]
+        assert isinstance(evidence_steps, list)
+        evidence_step_ids = {
+            str(step["id"]) for step in evidence_steps if isinstance(step, dict)
+        }
+        evidence_kinds = {
+            str(step["evidence_kind"])
+            for step in evidence_steps
+            if isinstance(step, dict) and "evidence_kind" in step
+        }
+        evidence_selectors = evidence_step_ids | evidence_kinds
+        phases = plan["phases"]
+        assert isinstance(phases, dict)
+        step_ids = {
+            str(step["id"])
+            for steps in phases.values()
+            if isinstance(steps, list)
+            for step in steps
+            if isinstance(step, dict) and "id" in step
+        }
+
+        for evidence_kind in call["expected_live_evidence_kinds"]:
+            assert evidence_kind in evidence_kinds, (
+                f"{scenario_plan} live command expects evidence kind "
+                f"{evidence_kind!r}, but compiled plan has {sorted(evidence_kinds)!r}"
+            )
+        for selector, _key, _value in call["expected_live_evidence_fields"]:
+            assert selector in evidence_selectors, (
+                f"{scenario_plan} live command expects evidence selector "
+                f"{selector!r}, but compiled plan has {sorted(evidence_selectors)!r}"
+            )
+        for selector, _key, _minimum in call[
+            "expected_live_evidence_field_minimums"
+        ]:
+            assert selector in evidence_selectors, (
+                f"{scenario_plan} live command expects evidence selector "
+                f"{selector!r}, but compiled plan has {sorted(evidence_selectors)!r}"
+            )
+        for step_id, _error_code in call["expected_live_failure_step_errors"]:
+            assert step_id in step_ids, (
+                f"{scenario_plan} live command expects failure step "
+                f"{step_id!r}, but compiled plan has {sorted(step_ids)!r}"
+            )
+        for step_id, _key, _value in call["expected_live_diagnostic_fields"]:
+            assert step_id in step_ids, (
+                f"{scenario_plan} live command expects diagnostic step "
+                f"{step_id!r}, but compiled plan has {sorted(step_ids)!r}"
+            )
+
+
 def test_f3b_usage_guide_artifact_links_exist():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     links = sorted(set(re.findall(r"docs/artifacts/[A-Za-z0-9_./\\-]+\.md", guide)))
