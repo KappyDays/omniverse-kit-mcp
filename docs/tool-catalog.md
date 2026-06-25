@@ -1215,8 +1215,8 @@ official_asset_get(asset_id: 'str', app_profile: 'str | None' = None) -> 'str'
 ```
 
 Return the full generated official asset/material catalog entry by URL-based id. Pass the same
-app_profile used for search/resolve so profile-specific latest pointers and diagnostics are
-used.
+app_profile used for search/resolve so profile-specific latest pointers and diagnostics,
+including catalog-read errors, are used.
 
 **Parameters**
 
@@ -1233,7 +1233,8 @@ official_asset_resolve(name_or_id: 'str', kind: 'str | None' = None, app_profile
 
 Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer
 current app/profile loadability; if stale or not load/assign verified,
-verify_required_before_use is true; not-found errors include diagnostics.reason/suggested_next.
+verify_required_before_use is true; not-found and catalog-read errors include
+diagnostics.reason/suggested_next.
 
 **Parameters**
 
@@ -1252,8 +1253,8 @@ official_asset_search(query: 'str', kind: 'str | None' = None, app_profile: 'str
 
 Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns
 URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; verify
-stale/unverified hits with official_asset_verify before use; zero-result responses include
-diagnostics.reason/suggested_next before falling back to asset_search.
+stale/unverified hits with official_asset_verify before use; zero-result and catalog-read
+errors include diagnostics.reason/suggested_next before falling back to asset_search.
 
 **Parameters**
 
@@ -1274,7 +1275,7 @@ official_asset_sync_status(app_profile: 'str | None' = None) -> 'str'
 ```
 
 Report latest official asset snapshot metadata, provider/app versions, counts, stale status,
-failure counts, and catalog-unavailable diagnostics. No Kit launch required.
+failure counts, and catalog-unavailable/catalog-read diagnostics. No Kit launch required.
 
 **Parameters**
 
@@ -1290,7 +1291,7 @@ official_asset_verify(asset_id: 'str', app_profile: 'str | None' = None, timeout
 
 On-demand live verification for one official catalog item. Assets use
 stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding,
-and cleanup. Use workspace workers for live Kit.
+and cleanup. Catalog-read errors include diagnostics; use workspace workers for live Kit.
 
 **Parameters**
 

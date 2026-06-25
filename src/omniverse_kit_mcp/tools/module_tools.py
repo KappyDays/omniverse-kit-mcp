@@ -1254,7 +1254,7 @@ def register_module_tools(
         allow_stale: bool = True,
         limit: int = 20,
     ) -> str:
-        """Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; verify stale/unverified hits with official_asset_verify before use; zero-result responses include diagnostics.reason/suggested_next before falling back to asset_search."""
+        """Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; verify stale/unverified hits with official_asset_verify before use; zero-result and catalog-read errors include diagnostics.reason/suggested_next before falling back to asset_search."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_search(
             meta,
@@ -1275,7 +1275,7 @@ def register_module_tools(
         app_profile: str | None = None,
         prefer_loadable: bool = True,
     ) -> str:
-        """Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer current app/profile loadability; if stale or not load/assign verified, verify_required_before_use is true; not-found errors include diagnostics.reason/suggested_next."""
+        """Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer current app/profile loadability; if stale or not load/assign verified, verify_required_before_use is true; not-found and catalog-read errors include diagnostics.reason/suggested_next."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_resolve(
             meta,
@@ -1291,7 +1291,7 @@ def register_module_tools(
         asset_id: str,
         app_profile: str | None = None,
     ) -> str:
-        """Return the full generated official asset/material catalog entry by URL-based id. Pass the same app_profile used for search/resolve so profile-specific latest pointers and diagnostics are used."""
+        """Return the full generated official asset/material catalog entry by URL-based id. Pass the same app_profile used for search/resolve so profile-specific latest pointers and diagnostics, including catalog-read errors, are used."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_get(
             meta, asset_id=asset_id, app_profile=app_profile
@@ -1300,7 +1300,7 @@ def register_module_tools(
 
     @tool()
     async def official_asset_sync_status(app_profile: str | None = None) -> str:
-        """Report latest official asset snapshot metadata, provider/app versions, counts, stale status, failure counts, and catalog-unavailable diagnostics. No Kit launch required."""
+        """Report latest official asset snapshot metadata, provider/app versions, counts, stale status, failure counts, and catalog-unavailable/catalog-read diagnostics. No Kit launch required."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_sync_status(meta, app_profile=app_profile)
         return _serialize(result)
@@ -1311,7 +1311,7 @@ def register_module_tools(
         app_profile: str | None = None,
         timeout_s: float | None = None,
     ) -> str:
-        """On-demand live verification for one official catalog item. Assets use stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding, and cleanup. Use workspace workers for live Kit."""
+        """On-demand live verification for one official catalog item. Assets use stage_load_usd+bbox+inspect+cleanup; materials create a test prim, assign MDL, read binding, and cleanup. Catalog-read errors include diagnostics; use workspace workers for live Kit."""
         meta = make_meta(ModuleName.ASSET)
         result = await asset.official_verify(
             meta,

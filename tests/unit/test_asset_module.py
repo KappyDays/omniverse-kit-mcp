@@ -1000,6 +1000,71 @@ async def test_official_asset_get_missing_catalog_reports_unavailable(tmp_path: 
 
 
 @pytest.mark.asyncio
+async def test_official_asset_malformed_catalog_reports_diagnostics(tmp_path: Path):
+    catalog_dir = tmp_path / "official-assets"
+    catalog_dir.mkdir()
+    (catalog_dir / "latest.json").write_text("{not-json", encoding="utf-8")
+    module = AssetModule(_ExplodingClient(), official_catalog_dir=catalog_dir)
+
+    operations = {
+        "official_asset_sync_status": (
+            "OFFICIAL_ASSET_SYNC_STATUS_ERROR",
+            lambda: module.official_sync_status(_meta(), app_profile="isaac-sim"),
+        ),
+        "official_asset_search": (
+            "OFFICIAL_ASSET_SEARCH_ERROR",
+            lambda: module.official_search(
+                _meta(),
+                query="pallet",
+                app_profile="isaac-sim",
+                kind="asset",
+            ),
+        ),
+        "official_asset_resolve": (
+            "OFFICIAL_ASSET_RESOLVE_ERROR",
+            lambda: module.official_resolve(
+                _meta(),
+                name_or_id="pallet",
+                app_profile="isaac-sim",
+            ),
+        ),
+        "official_asset_get": (
+            "OFFICIAL_ASSET_GET_ERROR",
+            lambda: module.official_get(
+                _meta(),
+                asset_id="url:https://example.invalid/asset.usd",
+                app_profile="isaac-sim",
+            ),
+        ),
+        "official_asset_verify": (
+            "OFFICIAL_ASSET_VERIFY_ERROR",
+            lambda: module.official_verify(
+                _meta(),
+                asset_id="url:https://example.invalid/asset.usd",
+                app_profile="isaac-sim",
+                timeout_s=1.0,
+            ),
+        ),
+    }
+
+    for tool_name, (error_code, call) in operations.items():
+        result = await call()
+
+        assert not result.ok
+        assert result.error_code == error_code
+        assert result.data["app_profile"] == "isaac-sim"
+        diagnostics = result.data["diagnostics"]
+        assert diagnostics["reason"] == "catalog_parse_error"
+        assert diagnostics["tool_name"] == tool_name
+        assert diagnostics["upstream_error_code"] == error_code
+        assert diagnostics["error_type"] == "JSONDecodeError"
+        assert diagnostics["checked_catalog_path"] == "<external-catalog>/latest.json"
+        assert "asset_search" in diagnostics["fallback_tool_order"]
+        assert any("Regenerate" in item for item in diagnostics["suggested_next"])
+        _assert_no_local_path_fragment(result.data, tmp_path)
+
+
+@pytest.mark.asyncio
 async def test_official_asset_resolve_not_found_reports_diagnostics(
     synthetic_official_catalog: Path,
 ):

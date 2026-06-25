@@ -154,6 +154,11 @@ For `official_asset_*` zero-result or not-found responses, inspect
 `diagnostics.sample_names`, `diagnostics.suggested_next`, and
 `diagnostics.fallback_tool_order` before changing `kind` / `app_profile` /
 `provider` / `min_status` or falling back to `asset_search`.
+For `OFFICIAL_ASSET_*_ERROR` responses, inspect `diagnostics.reason`,
+`diagnostics.checked_catalog_path`, `diagnostics.error_type`,
+`diagnostics.suggested_next`, and `diagnostics.fallback_tool_order`; if
+`reason=catalog_parse_error`, regenerate the ignored official catalog before
+retrying the official path.
 Markdown `Data Summary Highlights` surfaces those bounded catalog details, so
 use it for first-pass triage and switch to JSON when exact nested values are
 needed.

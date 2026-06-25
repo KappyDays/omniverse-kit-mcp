@@ -368,11 +368,28 @@ class AssetModule:
                 ),
             )
         except Exception as exc:
+            error_code = "OFFICIAL_ASSET_SEARCH_ERROR"
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="OFFICIAL_ASSET_SEARCH_ERROR",
+                error_code=error_code,
+                data=_official_operation_error_data(
+                    self._official_catalog_dir,
+                    app_profile,
+                    tool_name="official_asset_search",
+                    default_reason="official_asset_search_error",
+                    error_code=error_code,
+                    exc=exc,
+                    request={
+                        "query": query,
+                        "kind": kind,
+                        "provider": provider,
+                        "min_status": min_status,
+                        "allow_stale": allow_stale,
+                        "limit": limit,
+                    },
+                ),
             )
 
     async def official_resolve(
@@ -420,11 +437,25 @@ class AssetModule:
                 ),
             )
         except Exception as exc:
+            error_code = "OFFICIAL_ASSET_RESOLVE_ERROR"
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="OFFICIAL_ASSET_RESOLVE_ERROR",
+                error_code=error_code,
+                data=_official_operation_error_data(
+                    self._official_catalog_dir,
+                    app_profile,
+                    tool_name="official_asset_resolve",
+                    default_reason="official_asset_resolve_error",
+                    error_code=error_code,
+                    exc=exc,
+                    request={
+                        "name_or_id": name_or_id,
+                        "kind": kind,
+                        "prefer_loadable": prefer_loadable,
+                    },
+                ),
             )
 
     async def official_get(
@@ -468,11 +499,21 @@ class AssetModule:
                 ),
             )
         except Exception as exc:
+            error_code = "OFFICIAL_ASSET_GET_ERROR"
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="OFFICIAL_ASSET_GET_ERROR",
+                error_code=error_code,
+                data=_official_operation_error_data(
+                    self._official_catalog_dir,
+                    app_profile,
+                    tool_name="official_asset_get",
+                    default_reason="official_asset_get_error",
+                    error_code=error_code,
+                    exc=exc,
+                    request={"asset_id": asset_id},
+                ),
             )
 
     async def official_sync_status(
@@ -558,11 +599,20 @@ class AssetModule:
                 ),
             )
         except Exception as exc:
+            error_code = "OFFICIAL_ASSET_SYNC_STATUS_ERROR"
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="OFFICIAL_ASSET_SYNC_STATUS_ERROR",
+                error_code=error_code,
+                data=_official_operation_error_data(
+                    self._official_catalog_dir,
+                    app_profile,
+                    tool_name="official_asset_sync_status",
+                    default_reason="official_asset_sync_status_error",
+                    error_code=error_code,
+                    exc=exc,
+                ),
             )
 
     async def official_verify(
@@ -650,11 +700,24 @@ class AssetModule:
                 ),
             )
         except Exception as exc:
+            error_code = "OFFICIAL_ASSET_VERIFY_ERROR"
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="OFFICIAL_ASSET_VERIFY_ERROR",
+                error_code=error_code,
+                data=_official_operation_error_data(
+                    self._official_catalog_dir,
+                    app_profile,
+                    tool_name="official_asset_verify",
+                    default_reason="official_asset_verify_error",
+                    error_code=error_code,
+                    exc=exc,
+                    request={
+                        "asset_id": asset_id,
+                        "timeout_s": timeout_s,
+                    },
+                ),
             )
 
     async def _verify_official_entry(
@@ -1212,6 +1275,69 @@ def _official_catalog_unavailable_data(
     }
 
 
+def _official_operation_error_data(
+    catalog_dir: Path,
+    app_profile: str | None,
+    *,
+    tool_name: str,
+    default_reason: str,
+    error_code: str,
+    exc: BaseException,
+    request: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    reason = _official_operation_error_reason(exc, default_reason)
+    data: dict[str, Any] = {
+        "app_profile": app_profile,
+        "diagnostics": {
+            "reason": reason,
+            "tool_name": tool_name,
+            "upstream_error_code": error_code,
+            "error_type": type(exc).__name__,
+            "upstream_message": _official_public_error_message(
+                str(exc) or type(exc).__name__,
+                catalog_dir,
+                app_profile,
+            ),
+            "checked_catalog_path": _official_public_catalog_path(
+                _official_catalog_path(catalog_dir, app_profile)
+            ),
+            "suggested_next": _official_suggested_next(reason),
+            "fallback_tool_order": _official_fallback_tool_order(),
+        },
+    }
+    if request:
+        data["request"] = request
+    return data
+
+
+def _official_operation_error_reason(
+    exc: BaseException,
+    default_reason: str,
+) -> str:
+    if isinstance(exc, json.JSONDecodeError):
+        return "catalog_parse_error"
+    return default_reason
+
+
+def _official_public_error_message(
+    message: str,
+    catalog_dir: Path,
+    app_profile: str | None,
+) -> str:
+    replacements = [
+        (_official_catalog_path(catalog_dir, app_profile), "catalog"),
+        (catalog_dir, "catalog"),
+    ]
+    redacted = message
+    for path, _label in replacements:
+        public = _official_public_catalog_path(path)
+        forms = {str(path), str(path).replace("\\", "/")}
+        for form in forms:
+            if form:
+                redacted = redacted.replace(form, public)
+    return redacted
+
+
 def _official_not_found_data(
     catalog: dict[str, Any],
     *,
@@ -1438,6 +1564,10 @@ def _official_suggested_next(reason: str) -> list[str]:
         "catalog_unavailable": [
             "Generate the ignored official catalog with scripts/sync_official_asset_catalog.py, then retry official_asset_sync_status.",
             "Use asset_search as the offline fallback while the official catalog is unavailable.",
+        ],
+        "catalog_parse_error": [
+            "Regenerate the ignored official catalog with scripts/sync_official_asset_catalog.py, then retry official_asset_sync_status.",
+            "Use asset_search as the offline fallback until the generated catalog can be parsed.",
         ],
         "empty_catalog": [
             "Regenerate the official catalog with provider discovery enabled for the target app profile.",
