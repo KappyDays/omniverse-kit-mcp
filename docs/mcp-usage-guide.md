@@ -358,8 +358,10 @@ Read-only catalog diagnostic field assertions are verified in
 The current post-stop-guard official verify proof is
 `docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md`; the
 current final-log close-gate official verify proof is
-`docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`; and
-the current docs-only official asset tool-order dry-run refresh is
+`docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`;
+its success result shape is guarded in
+`docs/artifacts/official-asset-verify-success-result-shape-guard-2026-06-26.md`.
+The current docs-only official asset tool-order dry-run refresh is
 `docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`. The
 current read-only dry-run wrapper gate is
 `docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md`, and

@@ -2238,6 +2238,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "docs/artifacts/"
             "official-asset-verify-close-gate-live-refresh-2026-06-26.md"
         ),
+        (
+            "docs/artifacts/"
+            "official-asset-verify-success-result-shape-guard-2026-06-26.md"
+        ),
         "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md",
         (
             "docs/artifacts/"
@@ -2314,7 +2318,28 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         / "docs/artifacts/"
         "official-asset-verify-close-gate-live-refresh-2026-06-26.md"
     ).read_text(encoding="utf-8")
+    close_gate_artifact_normalized = " ".join(close_gate_artifact.split())
     assert "`--expect-live-status passed`" in close_gate_artifact
+    assert (
+        "Live validation passed with `passed_steps=5`, `failed_steps=0`, "
+        "`continued_steps=0`, `fatal_failed_steps=0`, and `cleanup_failed_steps=0`."
+        in close_gate_artifact_normalized
+    )
+    assert "Required evidence assertions passed for `official_asset_verify`" in (
+        close_gate_artifact
+    )
+    for token in (
+        "`verification_status=load_verified`",
+        "`kind=asset`",
+        "`app_profile=isaac-sim`",
+        "`load_quality=content_verified_no_bbox`",
+        "`step_id=verify_pallet_asset`",
+        "`attempts=1/1`",
+        "`retry_count=1`",
+        "`data.capture_stop_completed=true`",
+        "`data.capture_stop_timed_out=false`",
+    ):
+        assert token in close_gate_artifact
 
     read_only_close_gate = (
         PROJECT
