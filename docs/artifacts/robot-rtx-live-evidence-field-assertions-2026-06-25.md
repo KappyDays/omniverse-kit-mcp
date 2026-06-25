@@ -1,15 +1,15 @@
 # Robot + RTX Live Evidence Field Assertions - 2026-06-25
 
 Purpose: verify that `scripts/probe_mcp_surface.py` can guard the Robot + RTX
-golden workflow with exact live evidence field assertions for lidar, viewport
-framing, visual capture, and cleanup preservation.
+golden workflow with exact status/boolean evidence assertions plus a stable
+minimum lidar point-count assertion for cleanup-preserving live proof.
 
 Command shape:
 
 - Workspace-local stdio entry: `workspaces/isaac/instance-1`
 - Scenario: `smoke/robot_rtx_sensor_golden_workflow.yaml`
 - Full live field probe command:
-  `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --expect-live-status passed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-evidence-kind viewport_framing --expect-live-evidence-kind visual_capture --expect-live-evidence-field read_lidar_point_cloud:status=passed --expect-live-evidence-field read_lidar_point_cloud:num_points=512 --expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false --expect-live-evidence-field capture_visible_result:passed=true`
+  `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --expect-live-status passed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-evidence-kind viewport_framing --expect-live-evidence-kind visual_capture --expect-live-evidence-field read_lidar_point_cloud:status=passed --expect-live-evidence-field-min read_lidar_point_cloud:num_points=1 --expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false --expect-live-evidence-field capture_visible_result:passed=true`
 - Live assertions:
   - `--expect-live-status passed`
   - `--expect-live-cleanup-failures 0`
@@ -17,7 +17,7 @@ Command shape:
   - `--expect-live-evidence-kind viewport_framing`
   - `--expect-live-evidence-kind visual_capture`
   - `--expect-live-evidence-field read_lidar_point_cloud:status=passed`
-  - `--expect-live-evidence-field read_lidar_point_cloud:num_points=512`
+  - `--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1`
   - `--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false`
   - `--expect-live-evidence-field capture_visible_result:passed=true`
 

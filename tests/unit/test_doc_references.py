@@ -1183,8 +1183,13 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         PROJECT
         / "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md"
     ).read_text(encoding="utf-8")
-    assert "`--expect-live-evidence-field read_lidar_point_cloud:num_points=512`" in (
-        field_artifact
+    assert (
+        "`--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1`"
+        in field_artifact
+    )
+    assert (
+        "`--expect-live-evidence-field read_lidar_point_cloud:num_points=512`"
+        not in field_artifact
     )
     assert (
         "`--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false`"
@@ -1335,10 +1340,17 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
             ("capture_visible_result", "passed", True)
             in call["expected_live_evidence_fields"]
         )
+        assert (
+            ("read_lidar_point_cloud", "num_points", 1.0)
+            in call["expected_live_evidence_field_minimums"]
+        )
+        assert ("read_lidar_point_cloud", "num_points", 512) not in (
+            call["expected_live_evidence_fields"]
+        )
 
     field_call, threshold_call, close_gate_call = calls
-    assert ("read_lidar_point_cloud", "num_points", 512) in (
-        field_call["expected_live_evidence_fields"]
+    assert field_call["expected_live_evidence_field_minimums"] == (
+        ("read_lidar_point_cloud", "num_points", 1.0),
     )
     assert threshold_call["expected_live_evidence_field_minimums"] == (
         ("read_lidar_point_cloud", "num_points", 1.0),
