@@ -746,6 +746,71 @@ def test_f3b_robot_rtx_controlled_failure_artifact_command_parse(monkeypatch):
     )
 
 
+def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
+    artifact_paths = {
+        "field": (
+            PROJECT
+            / "docs/artifacts/"
+            "robot-rtx-live-evidence-field-assertions-2026-06-25.md"
+        ),
+        "threshold": (
+            PROJECT
+            / "docs/artifacts/"
+            "robot-rtx-live-evidence-threshold-assertions-2026-06-25.md"
+        ),
+    }
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    for path in artifact_paths.values():
+        text = path.read_text(encoding="utf-8")
+        commands = re.findall(r"`(scripts/probe_mcp_surface\.py [^`]+)`", text)
+        assert len(commands) == 1
+        argv = shlex.split(commands[0])
+        assert argv[0] == "scripts/probe_mcp_surface.py"
+        assert mcp_probe.main(argv[1:]) == 0
+
+    assert len(calls) == 2
+    for call in calls:
+        assert call["scenario_plan"] == "smoke/robot_rtx_sensor_golden_workflow.yaml"
+        assert call["scenario_validate_dry_run"] is True
+        assert call["scenario_validate_live"] is True
+        assert call["expect_live_status"] == "passed"
+        assert call["expect_live_cleanup_failures"] == 0
+        assert call["expect_scratch_stage_required"] is True
+        assert call["expect_log_capture_recommended"] is True
+        assert call["expected_live_evidence_kinds"] == (
+            "rtx_lidar_point_cloud",
+            "viewport_framing",
+            "visual_capture",
+        )
+        assert (
+            ("read_lidar_point_cloud", "status", "passed")
+            in call["expected_live_evidence_fields"]
+        )
+        assert (
+            ("frame_robot_and_sensors", "bbox_empty", False)
+            in call["expected_live_evidence_fields"]
+        )
+        assert (
+            ("capture_visible_result", "passed", True)
+            in call["expected_live_evidence_fields"]
+        )
+
+    field_call, threshold_call = calls
+    assert ("read_lidar_point_cloud", "num_points", 512) in (
+        field_call["expected_live_evidence_fields"]
+    )
+    assert threshold_call["expected_live_evidence_field_minimums"] == (
+        ("read_lidar_point_cloud", "num_points", 1.0),
+    )
+
+
 def test_f3b_official_asset_scenario_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
