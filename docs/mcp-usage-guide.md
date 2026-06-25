@@ -105,7 +105,9 @@ stage; then inspect `stage_mutation_steps` for exact touched steps. For retried 
 intended failure or success proof. `simulation_state_summary.play_state_missing_count`
 must be `0`; if not, inspect `simulation_state_steps` and add or move a
 `simulation.play` step before the listed robot/sensor action. `automatic: true` cleanup steps are
-runner-added safeguards, not YAML.
+runner-added safeguards, not YAML; inspect their `timeoutSeconds` before a
+live proof because fallback cleanup is bounded independently of the MCP tool
+call timeout.
 `scenario_validate(..., dry_run=true)` returns the same plan fields plus
 `dry_run`, `steps`, and `compiled`, so it is safe as a one-call preflight when
 you are already on the validation tool path. Inspect `diagnostic_steps` for

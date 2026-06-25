@@ -477,6 +477,7 @@ def _scenario_plan_probe_summary(
     runtime_info_checks = runtime_info_requirements.get("checks")
     if not isinstance(runtime_info_checks, list):
         runtime_info_checks = []
+    automatic_cleanup_steps = _automatic_cleanup_step_summaries(plan)
     return {
         "scenario_id": plan.get("scenario_id"),
         "total_steps": plan.get("total_steps"),
@@ -491,6 +492,7 @@ def _scenario_plan_probe_summary(
         "requires_play_count": simulation_state_summary.get("requires_play_count"),
         "simulation_state_step_count": len(simulation_state_steps),
         "timeline_control_step_count": len(timeline_control_steps),
+        "automatic_cleanup_steps": automatic_cleanup_steps,
         "retry_step_count": len(retry_step_summaries),
         "retry_steps": retry_step_summaries,
         "live_validation_step_count": len(live_validation_steps),
@@ -506,6 +508,24 @@ def _scenario_plan_probe_summary(
             else None
         ),
     }
+
+
+def _automatic_cleanup_step_summaries(
+    plan: dict[str, Any],
+) -> list[dict[str, Any]]:
+    phases = plan.get("phases")
+    cleanup_steps = phases.get("cleanup") if isinstance(phases, dict) else []
+    if not isinstance(cleanup_steps, list):
+        return []
+    return [
+        {
+            "step_id": step.get("id"),
+            "action": step.get("action"),
+            "timeoutSeconds": step.get("timeoutSeconds"),
+        }
+        for step in cleanup_steps
+        if isinstance(step, dict) and step.get("automatic") is True
+    ]
 
 
 async def probe(

@@ -323,6 +323,16 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
         },
         "simulation_state_steps": [{"id": "attach_top_lidar"}],
         "timeline_control_steps": [{"id": "play_for_sensor_data"}],
+        "phases": {
+            "cleanup": [
+                {
+                    "id": "__fallback_cleanup_reset",
+                    "action": "reset",
+                    "timeoutSeconds": 30.0,
+                    "automatic": True,
+                }
+            ],
+        },
         "retry_steps": [
             {
                 "id": "read_lidar_point_cloud",
@@ -366,6 +376,13 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
         "requires_play_count": 2,
         "simulation_state_step_count": 1,
         "timeline_control_step_count": 1,
+        "automatic_cleanup_steps": [
+            {
+                "step_id": "__fallback_cleanup_reset",
+                "action": "reset",
+                "timeoutSeconds": 30.0,
+            }
+        ],
         "retry_step_count": 1,
         "retry_steps": [
             {
@@ -584,6 +601,18 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         },
         "simulation_state_steps": [],
         "timeline_control_steps": [],
+        "phases": {
+            "cleanup": [
+                {
+                    "id": "__fallback_cleanup_reset",
+                    "module": "extension",
+                    "action": "reset",
+                    "args": {},
+                    "timeoutSeconds": 30.0,
+                    "automatic": True,
+                }
+            ],
+        },
         "retry_steps": [],
         "live_validation_checklist": {
             "scratch_stage_required": True,
@@ -767,6 +796,8 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
 
     assert exit_code == 0
     output = capsys.readouterr().out
+    assert '"automatic_cleanup_steps": [' in output
+    assert '"timeoutSeconds": 30.0' in output
     assert "=== scenario_validate live summary ===" in output
     assert "# Scenario Report: redacted" in output
     tool_calls = [

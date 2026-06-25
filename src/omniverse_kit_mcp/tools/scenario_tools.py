@@ -35,6 +35,7 @@ from omniverse_kit_mcp.scenario.loader import load_scenario
 from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
 from omniverse_kit_mcp.scenario.runner import (
     ScenarioRunner,
+    _fallback_cleanup_timeout_s,
     _scenario_needs_fallback_cleanup,
 )
 from omniverse_kit_mcp.types.scenario import (
@@ -494,7 +495,11 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
         ],
     }
     if _scenario_needs_fallback_cleanup(scenario):
-        phases["cleanup"].append(_plan_fallback_cleanup_step())
+        phases["cleanup"].append(
+            _plan_fallback_cleanup_step(
+                timeout_s=_fallback_cleanup_timeout_s(scenario),
+            )
+        )
     phase_counts = {phase: len(steps) for phase, steps in phases.items()}
     stage_mutation_steps = _plan_stage_mutation_steps(phases)
     stage_mutation_summary = _plan_stage_mutation_summary(stage_mutation_steps)
@@ -544,12 +549,13 @@ def _scenario_plan_payload(scenario: CompiledScenario) -> dict[str, Any]:
     }
 
 
-def _plan_fallback_cleanup_step() -> dict[str, Any]:
+def _plan_fallback_cleanup_step(*, timeout_s: float) -> dict[str, Any]:
     return {
         "id": "__fallback_cleanup_reset",
         "module": "extension",
         "action": "reset",
         "args": {},
+        "timeoutSeconds": timeout_s,
         "automatic": True,
     }
 

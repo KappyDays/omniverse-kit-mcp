@@ -2151,6 +2151,7 @@ async def test_robot_rtx_sensor_golden_workflow_routes_through_runner():
         "module": "extension",
         "action": "reset",
         "args": {},
+        "timeoutSeconds": 30.0,
         "automatic": True,
     }
     evidence_steps = {step["id"]: step for step in plan["evidence_steps"]}
@@ -3396,6 +3397,49 @@ async def test_scenario_runner_reports_retry_context_on_hard_timeout(monkeypatch
         "error_code": None,
         "message": "Step timed out after 7s",
     },)
+
+
+@pytest.mark.asyncio
+async def test_scenario_runner_bounds_fallback_cleanup_reset_timeout(monkeypatch):
+    from tests.conftest import MockIsaacRestClient, MockLakehouseClient
+
+    runner = _build_runner(MockIsaacRestClient(), MockLakehouseClient())
+
+    async def hanging_reset(_meta, _request):
+        await asyncio.sleep(10)
+
+    monkeypatch.setattr(runner._extension, "reset", hanging_reset)
+    raw = {
+        "apiVersion": "isaacsim.validation/v1",
+        "kind": "Scenario",
+        "metadata": {"id": "test_cleanup_timeout", "name": "cleanup timeout"},
+        "spec": {
+            "defaults": {"stepTimeoutSeconds": 0.01},
+            "assert": [
+                {
+                    "id": "state_probe",
+                    "module": "extension",
+                    "action": "get_state",
+                    "timeoutSeconds": 1,
+                    "args": {},
+                }
+            ],
+        },
+    }
+    scenario = compile_scenario(raw)
+
+    summary = await runner.run(scenario)
+
+    cleanup = next(
+        r for r in summary.step_results
+        if r.step_id == "__fallback_cleanup_reset"
+    )
+    assert summary.status == ExecutionStatus.PASSED
+    assert summary.cleanup_failed_steps == 1
+    assert summary.fatal_failed_steps == 0
+    assert cleanup.status == ExecutionStatus.TIMEOUT
+    assert cleanup.error_code == "SCENARIO_CLEANUP_TIMEOUT"
+    assert cleanup.message == "Fallback cleanup reset timed out after 0.01s"
 
 
 @pytest.mark.asyncio

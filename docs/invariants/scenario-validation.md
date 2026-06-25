@@ -187,6 +187,7 @@ scenario cleanup uses `simulation_play → simulation_stop` (final physics tick)
 Must be executed before `kit_app_stop`. When omitted, character runtime / NavMesh internal handle cleanup
 kit.exe hangs due to timing issue. canonical pattern:
 `scenarios/smoke/character_control.yaml`
+Runner-added fallback cleanup must stay bounded and report a non-fatal cleanup step result instead of blocking `scenario_validate` report generation.
 
 ## Related Boundaries
 

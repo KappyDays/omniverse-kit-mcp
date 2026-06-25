@@ -56,6 +56,7 @@ _NO_FALLBACK_CLEANUP_ACTIONS = frozenset({
     # AssetModule finally blocks; extension reset adds no extra cleanup signal.
     (ModuleName.ASSET, "official_verify"),
 })
+_FALLBACK_CLEANUP_TIMEOUT_S = 30.0
 _RETRY_FAILURE_MESSAGE_LIMIT = 512
 
 
@@ -560,15 +561,33 @@ class ScenarioRunner:
 
         # Run extension reset as final fallback for scenarios that touch live app state.
         started = int(time.time() * 1000)
+        timeout = _fallback_cleanup_timeout_s(scenario)
         try:
-            meta = make_meta(ModuleName.EXTENSION, scenario_id=scenario.scenario_id, step_id="__fallback_cleanup_reset")
-            result = await self._extension.reset(meta, ExtensionResetRequest())
+            meta = make_meta(
+                ModuleName.EXTENSION,
+                scenario_id=scenario.scenario_id,
+                step_id="__fallback_cleanup_reset",
+            )
+            result = await asyncio.wait_for(
+                self._extension.reset(meta, ExtensionResetRequest()),
+                timeout=timeout,
+            )
             results.append(StepResult(
                 step_id="__fallback_cleanup_reset",
                 phase="cleanup",
                 status=result.status,
                 message=result.message,
                 error_code=result.error_code,
+                duration_ms=int(time.time() * 1000) - started,
+            ))
+        except (asyncio.TimeoutError, TimeoutError):
+            logger.warning("Extension reset cleanup timed out after %ss", timeout)
+            results.append(StepResult(
+                step_id="__fallback_cleanup_reset",
+                phase="cleanup",
+                status=ExecutionStatus.TIMEOUT,
+                message=f"Fallback cleanup reset timed out after {timeout}s",
+                error_code="SCENARIO_CLEANUP_TIMEOUT",
                 duration_ms=int(time.time() * 1000) - started,
             ))
         except Exception as exc:
@@ -680,6 +699,13 @@ def _scenario_needs_fallback_cleanup(scenario: CompiledScenario) -> bool:
         (step.module, step.action) not in _NO_FALLBACK_CLEANUP_ACTIONS
         for step in steps
     )
+
+
+def _fallback_cleanup_timeout_s(scenario: CompiledScenario) -> float:
+    scenario_step_timeout = (
+        scenario.defaults.step_timeout_s or _FALLBACK_CLEANUP_TIMEOUT_S
+    )
+    return min(float(scenario_step_timeout), _FALLBACK_CLEANUP_TIMEOUT_S)
 
 
 def _timeout_result(message: str, started_ms: int) -> ModuleResult[Any]:
