@@ -601,6 +601,11 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
         "official_asset_verify",
         "asset_search",
     ]
+    robot_lidar_failure_fallback_order = [
+        "simulation_step",
+        "sensor_lidar_get_point_cloud",
+        "extension_capture_logs",
+    ]
     for call in calls:
         if not call["scenario_validate_live"]:
             continue
@@ -672,6 +677,11 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
                 "read_lidar_point_cloud",
                 "diagnostics.min_points",
                 513,
+            ),
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.fallback_tool_order",
+                robot_lidar_failure_fallback_order,
             ),
         ),
     )
@@ -1368,6 +1378,15 @@ def test_f3b_robot_rtx_controlled_failure_artifact_command_parse(monkeypatch):
                 "read_lidar_point_cloud",
                 "diagnostics.min_points",
                 513,
+            ),
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.fallback_tool_order",
+                [
+                    "simulation_step",
+                    "sensor_lidar_get_point_cloud",
+                    "extension_capture_logs",
+                ],
             ),
         )
         assert call["expected_retry_key_args"] == (

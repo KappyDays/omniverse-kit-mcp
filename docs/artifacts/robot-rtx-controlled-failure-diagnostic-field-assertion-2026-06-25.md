@@ -1,9 +1,9 @@
 # Robot RTX Controlled Failure Diagnostic Field Assertion - 2026-06-25
 
 Purpose: verify that `scripts/probe_mcp_surface.py` can assert the exact
-diagnostic reason and minimum-point override for the Robot + RTX controlled
-lidar failure, not only the failure step, error code, and diagnostic
-next-action count.
+diagnostic reason, minimum-point override, and fallback route for the Robot +
+RTX controlled lidar failure, not only the failure step, error code, and
+diagnostic next-action count.
 
 Command shape:
 
@@ -11,7 +11,7 @@ Command shape:
 - Scenario: `smoke/robot_rtx_sensor_golden_workflow.yaml`
 - Input override: `lidar_min_points=513`
 - Full live diagnostic probe command:
-  `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --input-overrides-json '{"lidar_min_points":513}' --expect-live-status failed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-retry-key-arg read_lidar_point_cloud:min_points=513 --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS --expect-live-diagnostic-next-actions-min 1 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.min_points=513`
+  `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --input-overrides-json '{"lidar_min_points":513}' --expect-live-status failed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-retry-key-arg read_lidar_point_cloud:min_points=513 --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS --expect-live-diagnostic-next-actions-min 1 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.min_points=513 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.fallback_tool_order='["simulation_step","sensor_lidar_get_point_cloud","extension_capture_logs"]'`
 - Live assertions:
   - `--expect-live-status failed`
   - `--expect-live-cleanup-failures 0`
@@ -20,6 +20,7 @@ Command shape:
   - `--expect-live-diagnostic-next-actions-min 1`
   - `--expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
   - `--expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.min_points=513`
+  - `--expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.fallback_tool_order='["simulation_step","sensor_lidar_get_point_cloud","extension_capture_logs"]'`
 
 Result:
 
@@ -55,6 +56,8 @@ Refresh run after full command pin:
   `read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
 - Diagnostic field asserted:
   `read_lidar_point_cloud:diagnostics.min_points=513`
+- Diagnostic field asserted:
+  `read_lidar_point_cloud:diagnostics.fallback_tool_order=[simulation_step, sensor_lidar_get_point_cloud, extension_capture_logs]`
 - Retry key arg asserted: `read_lidar_point_cloud:min_points=513`
 - Cleanup failed steps: `0`
 - WARN+ log capture (stop_after_capture=true): `passed`
@@ -68,6 +71,17 @@ Diagnostic fields asserted:
 - `diagnostics.fallback_tool_order=[simulation_step, sensor_lidar_get_point_cloud, extension_capture_logs]`
 - `diagnostics.readback_paths_attempted=[cached_lidar_sensor]`
 - `diagnostics.cached_lidar_instance=true`
+
+2026-06-26 fallback-route unit refresh:
+
+- `tests/unit/test_sensor_ext_tools.py::test_lidar_empty_fallback_tool_order_matches_empty_readback_triage_route`
+  directly guards the validation-api empty-readback fallback helper route:
+  `simulation_get_status -> simulation_step -> sensor_lidar_get_point_cloud -> extension_capture_logs`.
+- `tests/unit/test_sensor_ext_tools.py::test_lidar_readback_diagnostics_suggests_retry_for_empty_scan_buffer`
+  confirms empty-readback diagnostics use that helper. The controlled
+  `point_count_below_minimum` probe assertion above remains the MCP/module-level
+  route: `simulation_step -> sensor_lidar_get_point_cloud -> extension_capture_logs`.
+- Targeted run: `2 passed`.
 
 2026-06-26 post-stop-guard refresh:
 
@@ -83,6 +97,8 @@ Diagnostic fields asserted:
   `read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
 - Diagnostic field asserted:
   `read_lidar_point_cloud:diagnostics.min_points=513`
+- Diagnostic field asserted:
+  `read_lidar_point_cloud:diagnostics.fallback_tool_order=[simulation_step, sensor_lidar_get_point_cloud, extension_capture_logs]`
 - Diagnostic values observed:
   - `diagnostics.num_points=512`
   - `diagnostics.min_points=513`

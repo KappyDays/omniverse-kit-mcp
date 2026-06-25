@@ -369,6 +369,17 @@ def test_lidar_empty_reason_classifies_zero_gmo_buffer():
     assert reason == "empty_scan_buffer"
 
 
+def test_lidar_empty_fallback_tool_order_matches_empty_readback_triage_route():
+    service = _load_validation_sensor_service()
+
+    assert service._lidar_empty_fallback_tool_order() == [
+        "simulation_get_status",
+        "simulation_step",
+        "sensor_lidar_get_point_cloud",
+        "extension_capture_logs",
+    ]
+
+
 def test_lidar_readback_diagnostics_suggests_retry_for_empty_scan_buffer():
     service = _load_validation_sensor_service()
 
@@ -391,12 +402,7 @@ def test_lidar_readback_diagnostics_suggests_retry_for_empty_scan_buffer():
         "replicator_annotator",
     ]
     assert "retry an idempotent read" in diagnostics["suggested_next"]
-    assert diagnostics["fallback_tool_order"] == [
-        "simulation_get_status",
-        "simulation_step",
-        "sensor_lidar_get_point_cloud",
-        "extension_capture_logs",
-    ]
+    assert diagnostics["fallback_tool_order"] == service._lidar_empty_fallback_tool_order()
 
 
 @pytest.mark.parametrize(

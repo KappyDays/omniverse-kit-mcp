@@ -11,7 +11,7 @@ diagnostic boundary while cleanup and log close behavior remain verified.
 
 ## Command
 
-- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --input-overrides-json '{"lidar_min_points":513}' --expect-live-status failed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-retry-key-arg read_lidar_point_cloud:min_points=513 --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS --expect-live-diagnostic-next-actions-min 1 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.min_points=513`
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --input-overrides-json '{"lidar_min_points":513}' --expect-live-status failed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-retry-key-arg read_lidar_point_cloud:min_points=513 --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS --expect-live-diagnostic-next-actions-min 1 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.min_points=513 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.fallback_tool_order='["simulation_step","sensor_lidar_get_point_cloud","extension_capture_logs"]'`
 
 ## Result
 
@@ -36,6 +36,7 @@ diagnostic boundary while cleanup and log close behavior remain verified.
   - `diagnostic_next_action_count>=1` with observed count `4`
   - `read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
   - `read_lidar_point_cloud:diagnostics.min_points=513`
+  - `read_lidar_point_cloud:diagnostics.fallback_tool_order=[simulation_step, sensor_lidar_get_point_cloud, extension_capture_logs]`
 - Required evidence assertions passed:
   - Evidence kind `rtx_lidar_point_cloud`
   - Observed `read_lidar_point_cloud.num_points=512`
@@ -52,6 +53,23 @@ diagnostic boundary while cleanup and log close behavior remain verified.
   - `data.capture_stop_timeout_s=1.0`
 - The generated `tmp_mcp_surface.json` snapshot is ignored and was not promoted
   as public evidence.
+
+## 2026-06-26 Fallback-Route Assertion Refresh
+
+- The command above was rerun after adding the explicit
+  `--expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.fallback_tool_order=...`
+  gate.
+- Exit code: `0`.
+- Live validation again reported `status=failed` as expected with the only fatal
+  step `read_lidar_point_cloud`, error code
+  `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`, `cleanup_failed_steps=0`, and
+  diagnostic next-action count `4`.
+- The asserted fallback route was preserved in the final failed step and retry
+  diagnostics:
+  `[simulation_step, sensor_lidar_get_point_cloud, extension_capture_logs]`.
+- Final `extension_capture_logs(level=WARN, stop_after_capture=true)` preserved
+  `data.capture_running=false`, `data.capture_stop_requested=true`,
+  `data.capture_stop_completed=true`, and `data.capture_stop_timed_out=false`.
 
 ## Public Boundary
 
