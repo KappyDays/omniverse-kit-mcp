@@ -1797,12 +1797,14 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
 
 
 def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypatch):
-    artifact = (
+    artifact_paths = (
         PROJECT
         / "docs/artifacts/"
-        "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
-    ).read_text(encoding="utf-8")
-    commands = re.findall(r"`(scripts/probe_mcp_surface\.py [^`]+)`", artifact)
+        "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md",
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-readonly-close-gate-live-refresh-2026-06-26.md",
+    )
     calls: list[dict[str, object]] = []
 
     async def fake_probe(**kwargs):
@@ -1811,50 +1813,66 @@ def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypat
 
     monkeypatch.setattr(mcp_probe, "probe", fake_probe)
 
-    assert len(commands) == 1
-    argv = shlex.split(commands[0])
-    assert argv[0] == "scripts/probe_mcp_surface.py"
-    assert mcp_probe.main(argv[1:]) == 0
+    for path in artifact_paths:
+        artifact = path.read_text(encoding="utf-8")
+        commands = re.findall(
+            r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`", artifact
+        )
+        assert len(commands) == 1
+        command = commands[0]
+        command_start = re.search(r"scripts[\\/]probe_mcp_surface\.py", command)
+        assert command_start is not None
+        command = command[command_start.start() :].replace(
+            "scripts\\probe_mcp_surface.py", "scripts/probe_mcp_surface.py"
+        )
+        argv = shlex.split(command)
+        assert argv[0] == "scripts/probe_mcp_surface.py"
+        assert mcp_probe.main(argv[1:]) == 0
 
-    call = calls[0]
-    assert call["scenario_plan"] == "smoke/official_asset_catalog_diagnostics.yaml"
-    assert call["scenario_validate_dry_run"] is True
-    assert call["scenario_validate_live"] is True
-    assert call["expect_live_status"] == "passed"
-    assert call["expect_live_cleanup_failures"] == 0
-    assert call["expect_scratch_stage_required"] is False
-    assert call["expect_log_capture_recommended"] is True
-    assert call["expected_live_failure_step_errors"] == (
-        ("get_pallet_wrong_profile", "OFFICIAL_ASSET_NOT_FOUND"),
-    )
-    assert call["expect_live_diagnostic_next_actions_min"] == 2
-    assert set(call["expected_live_diagnostic_fields"]) == {
-        ("search_known_miss", "diagnostics.reason", "query_no_match"),
-        (
-            "get_pallet_wrong_profile",
-            "diagnostics.reason",
-            "app_profile_not_covered",
-        ),
-    }
-    assert call["required_live_validation_tools"] == (
-        "mcp_runtime_info",
-        "kit_app_start",
-        "simulation_get_status",
-        "scenario_plan",
-        "extension_clear_logs",
-        "scenario_validate",
-        "scenario_last_report",
-        "extension_capture_logs",
-    )
+    assert len(calls) == 2
+    for call in calls:
+        assert call["scenario_plan"] == (
+            "smoke/official_asset_catalog_diagnostics.yaml"
+        )
+        assert call["scenario_validate_dry_run"] is True
+        assert call["scenario_validate_live"] is True
+        assert call["expect_live_status"] == "passed"
+        assert call["expect_live_cleanup_failures"] == 0
+        assert call["expect_scratch_stage_required"] is False
+        assert call["expect_log_capture_recommended"] is True
+        assert call["expected_live_failure_step_errors"] == (
+            ("get_pallet_wrong_profile", "OFFICIAL_ASSET_NOT_FOUND"),
+        )
+        assert call["expect_live_diagnostic_next_actions_min"] == 2
+        assert set(call["expected_live_diagnostic_fields"]) == {
+            ("search_known_miss", "diagnostics.reason", "query_no_match"),
+            (
+                "get_pallet_wrong_profile",
+                "diagnostics.reason",
+                "app_profile_not_covered",
+            ),
+        }
+        assert call["required_live_validation_tools"] == (
+            "mcp_runtime_info",
+            "kit_app_start",
+            "simulation_get_status",
+            "scenario_plan",
+            "extension_clear_logs",
+            "scenario_validate",
+            "scenario_last_report",
+            "extension_capture_logs",
+        )
 
 
 def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch):
-    artifact = (
+    artifact_paths = (
         PROJECT
         / "docs/artifacts/"
-        "official-asset-live-evidence-field-assertions-2026-06-25.md"
-    ).read_text(encoding="utf-8")
-    commands = re.findall(r"`(scripts/probe_mcp_surface\.py [^`]+)`", artifact)
+        "official-asset-live-evidence-field-assertions-2026-06-25.md",
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-verify-close-gate-live-refresh-2026-06-26.md",
+    )
     calls: list[dict[str, object]] = []
 
     async def fake_probe(**kwargs):
@@ -1863,36 +1881,48 @@ def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch)
 
     monkeypatch.setattr(mcp_probe, "probe", fake_probe)
 
-    assert len(commands) == 1
-    argv = shlex.split(commands[0])
-    assert argv[0] == "scripts/probe_mcp_surface.py"
-    assert mcp_probe.main(argv[1:]) == 0
+    for path in artifact_paths:
+        artifact = path.read_text(encoding="utf-8")
+        commands = re.findall(
+            r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`", artifact
+        )
+        assert len(commands) == 1
+        command = commands[0]
+        command_start = re.search(r"scripts[\\/]probe_mcp_surface\.py", command)
+        assert command_start is not None
+        command = command[command_start.start() :].replace(
+            "scripts\\probe_mcp_surface.py", "scripts/probe_mcp_surface.py"
+        )
+        argv = shlex.split(command)
+        assert argv[0] == "scripts/probe_mcp_surface.py"
+        assert mcp_probe.main(argv[1:]) == 0
 
-    call = calls[0]
-    assert call["scenario_plan"] == "smoke/official_asset_verify_live.yaml"
-    assert call["scenario_validate_dry_run"] is True
-    assert call["scenario_validate_live"] is True
-    assert call["expect_live_status"] == "passed"
-    assert call["expect_live_cleanup_failures"] == 0
-    assert call["expect_scratch_stage_required"] is True
-    assert call["expect_log_capture_recommended"] is True
-    assert call["expected_live_evidence_kinds"] == ("official_asset_verify",)
-    assert set(call["expected_live_evidence_fields"]) == {
-        ("official_asset_verify", "verification_status", "load_verified"),
-        ("official_asset_verify", "kind", "asset"),
-        ("official_asset_verify", "app_profile", "isaac-sim"),
-    }
-    assert call["required_live_validation_tools"] == (
-        "mcp_runtime_info",
-        "kit_app_start",
-        "simulation_get_status",
-        "scenario_plan",
-        "scenario_validate",
-        "extension_clear_logs",
-        "scenario_validate",
-        "scenario_last_report",
-        "extension_capture_logs",
-    )
+    assert len(calls) == 2
+    for call in calls:
+        assert call["scenario_plan"] == "smoke/official_asset_verify_live.yaml"
+        assert call["scenario_validate_dry_run"] is True
+        assert call["scenario_validate_live"] is True
+        assert call["expect_live_status"] == "passed"
+        assert call["expect_live_cleanup_failures"] == 0
+        assert call["expect_scratch_stage_required"] is True
+        assert call["expect_log_capture_recommended"] is True
+        assert call["expected_live_evidence_kinds"] == ("official_asset_verify",)
+        assert set(call["expected_live_evidence_fields"]) == {
+            ("official_asset_verify", "verification_status", "load_verified"),
+            ("official_asset_verify", "kind", "asset"),
+            ("official_asset_verify", "app_profile", "isaac-sim"),
+        }
+        assert call["required_live_validation_tools"] == (
+            "mcp_runtime_info",
+            "kit_app_start",
+            "simulation_get_status",
+            "scenario_plan",
+            "scenario_validate",
+            "extension_clear_logs",
+            "scenario_validate",
+            "scenario_last_report",
+            "extension_capture_logs",
+        )
 
 
 def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
