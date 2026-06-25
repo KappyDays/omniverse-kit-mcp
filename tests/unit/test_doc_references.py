@@ -1022,7 +1022,7 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
         start = len(calls)
 
         assert len(commands) == 3
-        for rel in (
+        expected_artifacts = [
             "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
             "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",
             (
@@ -1034,7 +1034,30 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
                 "docs/artifacts/"
                 "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
             ),
-        ):
+        ]
+        if artifact_path.name.endswith("refresh-2026-06-26.md"):
+            expected_artifacts.extend(
+                [
+                    (
+                        "docs/artifacts/"
+                        "robot-rtx-golden-close-gate-live-refresh-2026-06-26.md"
+                    ),
+                    (
+                        "docs/artifacts/"
+                        "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"
+                    ),
+                    (
+                        "docs/artifacts/"
+                        "official-asset-verify-close-gate-live-refresh-2026-06-26.md"
+                    ),
+                    (
+                        "docs/artifacts/"
+                        "official-asset-readonly-close-gate-live-refresh-2026-06-26.md"
+                    ),
+                ]
+            )
+
+        for rel in expected_artifacts:
             assert rel in artifact
             assert (PROJECT / rel).exists()
 
