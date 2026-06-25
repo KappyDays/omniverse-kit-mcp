@@ -477,6 +477,21 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "--expect-log-capture-recommended true" in scripts_claude
 
 
+def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    rel = "docs/artifacts/official-asset-verify-live-pass-2026-06-25.md"
+
+    assert rel in guide
+    artifact = PROJECT / rel
+    assert artifact.exists(), f"Missing official asset evidence artifact: {rel}"
+    text = artifact.read_text(encoding="utf-8")
+    assert "Verification status: `load_verified`" in text
+    assert "Load quality: `content_verified_no_bbox`" in text
+    assert "local absolute paths" in text
+    assert "worker/thread IDs" in text
+    assert "secrets" in text
+
+
 def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
 
