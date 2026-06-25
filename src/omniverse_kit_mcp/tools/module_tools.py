@@ -1011,7 +1011,7 @@ def register_module_tools(
         create_demo_scene: bool = True,
         reset_on_play: bool = True,
     ) -> str:
-        """Install a profile-selected pick/place playback demo. Only validated_pick_place profiles route to playback; candidate/IK/profile-only arms return status='unsupported' with blocker diagnostics until durable live proof exists."""
+        """Install a profile-selected pick/place playback demo. Only validated_pick_place profiles route to playback; candidate/IK/profile-only arms return status='unsupported' with blocker diagnostics, diagnostics.suggested_next, and diagnostics.fallback_tool_order until durable live proof exists."""
         meta = make_meta(ModuleName.ROBOT)
         target = target_position or [0.45, -0.35, 0.02575]
         initial = object_initial_position or [0.3, 0.35, 0.02575]

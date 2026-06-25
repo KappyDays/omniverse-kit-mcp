@@ -359,6 +359,23 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--scenario-validate-dry-run" in scripts_doc
 
 
+def test_f3c_robot_pick_place_catalog_mentions_unsupported_next_actions():
+    catalog = (PROJECT / "docs" / "tool-catalog.md").read_text(encoding="utf-8")
+    start = catalog.index("### `robot_install_pick_place_playback_demo`")
+    end = catalog.index("### `robot_list_arm_profiles`", start)
+    section = catalog[start:end]
+    normalized = " ".join(section.split())
+
+    for token in (
+        "validated_pick_place",
+        "status='unsupported'",
+        "blocker diagnostics",
+        "diagnostics.suggested_next",
+        "diagnostics.fallback_tool_order",
+    ):
+        assert token in normalized
+
+
 def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     commands = _MCP_PROBE_COMMAND_RE.findall(guide)
