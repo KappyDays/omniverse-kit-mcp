@@ -506,6 +506,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-live-diagnostic-field step:key=value" in scripts_doc
     assert "--scenario-validate-dry-run" in scripts_doc
     assert "stop_after_capture=true" in scripts_doc
+    assert "the probe fails unless" in scripts_doc
+    assert "data.capture_stop_requested=true" in scripts_doc
+    assert "data.capture_stop_completed=true" in scripts_doc
     assert "data.capture_stop_timed_out=false" in scripts_doc
     assert "data.capture_running=false" in scripts_doc
 
@@ -1064,6 +1067,11 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "current doc-only durable-rule E2E refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
+    assert (
+        "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md"
+        in guide
+    )
+    assert "fails if the hook remains running" in guide
 
     artifacts = [
         "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
@@ -1080,6 +1088,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
         ),
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
+        "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
         current_e2e,
         baseline_e2e,
     ]

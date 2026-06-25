@@ -60,6 +60,21 @@ def _host_local_capture_path() -> str:
     )
 
 
+def _log_capture_pass() -> dict:
+    return {
+        "ok": True,
+        "status": "passed",
+        "data": {
+            "status": "ready",
+            "capture_running": False,
+            "capture_stop_requested": True,
+            "capture_stop_completed": True,
+            "capture_stop_timed_out": False,
+            "capture_stop_timeout_s": 1.0,
+        },
+    }
+
+
 def _standalone_summary(scenario_id: str = "standalone_dry_run") -> ScenarioRunSummary:
     capture_path = _host_local_capture_path()
     return ScenarioRunSummary(
@@ -721,6 +736,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         ],
     }
     module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
+    log_capture_pass = _log_capture_pass()
     responses = [
         {
             "jsonrpc": "2.0",
@@ -803,7 +819,9 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         {
             "jsonrpc": "2.0",
             "id": 12,
-            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(log_capture_pass)}]
+            },
         },
     ]
 
@@ -1018,6 +1036,7 @@ async def test_mcp_probe_live_expectation_mismatches_set_nonzero_exit(
         "evidence_summary": evidence_rows,
     }
     module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
+    log_capture_pass = _log_capture_pass()
     responses = [
         {
             "jsonrpc": "2.0",
@@ -1100,7 +1119,9 @@ async def test_mcp_probe_live_expectation_mismatches_set_nonzero_exit(
         {
             "jsonrpc": "2.0",
             "id": 12,
-            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(log_capture_pass)}]
+            },
         },
     ]
     _install_fake_mcp_stdio(
@@ -1140,6 +1161,7 @@ async def test_mcp_probe_live_preflight_only_skips_scenario_calls(
         "restart_required_for_latest_mcp_code": False,
     }
     module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
+    log_capture_pass = _log_capture_pass()
     responses = [
         {
             "jsonrpc": "2.0",
@@ -1195,7 +1217,9 @@ async def test_mcp_probe_live_preflight_only_skips_scenario_calls(
         {
             "jsonrpc": "2.0",
             "id": 8,
-            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(log_capture_pass)}]
+            },
         },
     ]
 
@@ -1265,6 +1289,97 @@ async def test_mcp_probe_live_preflight_only_skips_scenario_calls(
         "level": "WARN",
         "stop_after_capture": True,
     }
+
+
+@pytest.mark.asyncio
+async def test_mcp_probe_live_preflight_fails_when_log_capture_does_not_close(
+    monkeypatch,
+    capsys,
+):
+    sent_messages: list[dict] = []
+    module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
+    log_capture_open = {
+        "ok": True,
+        "status": "passed",
+        "data": {
+            "capture_running": True,
+            "capture_stop_requested": True,
+            "capture_stop_completed": False,
+            "capture_stop_timed_out": True,
+            "capture_stop_timeout_s": 1.0,
+        },
+    }
+    responses = [
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "serverInfo": {"name": "fake-mcp", "version": "0"},
+                "capabilities": {"tools": {}, "resources": {}},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "tools": [
+                    {"name": "mcp_runtime_info"},
+                    {"name": "kit_app_start"},
+                    {"name": "simulation_get_status"},
+                    {"name": "extension_clear_logs"},
+                    {"name": "extension_capture_logs"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": {"resources": []},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "result": {"content": [{"type": "text", "text": "{}"}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 8,
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(log_capture_open)}]
+            },
+        },
+    ]
+    _install_fake_mcp_stdio(
+        monkeypatch,
+        responses=responses,
+        sent_messages=sent_messages,
+    )
+
+    exit_code = await mcp_probe.probe(
+        workspace=Path("workspaces/isaac/instance-1"),
+        live_preflight=True,
+    )
+
+    assert exit_code == 1
+    output = capsys.readouterr().out
+    assert "extension_capture_logs close expectation mismatch:" in output
+    assert "data.capture_stop_completed expected True, got False" in output
+    assert "data.capture_stop_timed_out expected False, got True" in output
 
 
 def test_mcp_probe_parses_required_live_validation_tools():
@@ -2363,6 +2478,27 @@ def test_mcp_probe_module_result_summary_includes_error_diagnostics():
             "kit_app_restart",
         ],
     }
+
+
+def test_mcp_probe_log_capture_close_mismatches_are_empty_for_closed_capture():
+    summary = mcp_probe._module_result_probe_summary(_log_capture_pass())
+
+    assert mcp_probe._log_capture_close_mismatches(summary) == []
+
+
+def test_mcp_probe_log_capture_close_mismatches_report_open_capture():
+    summary = {
+        "data.capture_running": True,
+        "data.capture_stop_requested": True,
+        "data.capture_stop_completed": False,
+        "data.capture_stop_timed_out": True,
+    }
+
+    assert mcp_probe._log_capture_close_mismatches(summary) == [
+        "data.capture_stop_completed expected True, got False",
+        "data.capture_stop_timed_out expected False, got True",
+        "data.capture_running expected False, got True",
+    ]
 
 
 def test_mcp_probe_runtime_info_mismatches_are_empty_for_expected_shape():

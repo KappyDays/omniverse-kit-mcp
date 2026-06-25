@@ -864,6 +864,20 @@ def _module_result_failed(payload: dict[str, Any]) -> bool:
     return payload.get("status") in {"error", "failed", "timeout"}
 
 
+def _log_capture_close_mismatches(summary: dict[str, Any]) -> list[str]:
+    expected = {
+        "data.capture_stop_requested": True,
+        "data.capture_stop_completed": True,
+        "data.capture_stop_timed_out": False,
+        "data.capture_running": False,
+    }
+    return [
+        f"{key} expected {expected_value!r}, got {summary.get(key)!r}"
+        for key, expected_value in expected.items()
+        if summary.get(key) != expected_value
+    ]
+
+
 def _scenario_live_report_summary(payload: dict[str, Any]) -> dict[str, Any]:
     failure_summary = payload.get("failure_summary")
     if not isinstance(failure_summary, list):
@@ -1284,13 +1298,16 @@ async def probe(
                     },
                 )
             )
+            log_summary = _module_result_probe_summary(log_payload)
             print("\n=== extension_capture_logs WARN+ preflight ===")
-            print(json.dumps(
-                _module_result_probe_summary(log_payload),
-                indent=2,
-                ensure_ascii=False,
-            ))
+            print(json.dumps(log_summary, indent=2, ensure_ascii=False))
             if _module_result_failed(log_payload):
+                exit_status = 1
+            log_close_mismatches = _log_capture_close_mismatches(log_summary)
+            if log_close_mismatches:
+                print("extension_capture_logs close expectation mismatch:")
+                for mismatch in log_close_mismatches:
+                    print(f"  - {mismatch}")
                 exit_status = 1
 
     if scenario_plan is not None:
@@ -1486,13 +1503,16 @@ async def probe(
                         },
                     )
                 )
+                log_summary = _module_result_probe_summary(log_payload)
                 print("\n=== extension_capture_logs WARN+ ===")
-                print(json.dumps(
-                    _module_result_probe_summary(log_payload),
-                    indent=2,
-                    ensure_ascii=False,
-                ))
+                print(json.dumps(log_summary, indent=2, ensure_ascii=False))
                 if _module_result_failed(log_payload):
+                    exit_status = 1
+                log_close_mismatches = _log_capture_close_mismatches(log_summary)
+                if log_close_mismatches:
+                    print("extension_capture_logs close expectation mismatch:")
+                    for mismatch in log_close_mismatches:
+                        print(f"  - {mismatch}")
                     exit_status = 1
     elif (
         required_live_validation_tools

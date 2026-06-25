@@ -129,7 +129,12 @@ preflight runtime checks, bounded automatic cleanup, and exact live checklist
 order without stage mutation.
 Use `--live-preflight` by itself when you only need non-stage Kit attach,
 timeline status, and request-scoped WARN/ERROR log capture before a mutating
-scenario proof.
+scenario proof. The preflight fails if `extension_capture_logs(level="WARN",
+stop_after_capture=true)` does not close with
+`data.capture_stop_requested=true`, `data.capture_stop_completed=true`,
+`data.capture_stop_timed_out=false`, and `data.capture_running=false`; the
+current live preflight proof is
+`docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md`.
 When you are ready to run the mutating scratch/test-stage proof from the same
 parent/root session, rerun the same workspace-local command with
 `--scenario-validate-live`, `--expect-live-cleanup-failures 0`,
@@ -346,7 +351,8 @@ stdio hosts do not preserve the previous host's in-memory/log-capture state.
 When a stop-after-capture call returns `ok=true`, still check
 `data.capture_stop_timed_out=false` (or `data.capture_running=false`) before
 assuming the request-scoped carb hook closed cleanly; `probe_mcp_surface.py`
-prints these fields in the `extension_capture_logs WARN+` compact summary.
+prints these fields in the `extension_capture_logs WARN+` compact summary and
+fails if the hook remains running, does not complete, or times out.
 Direct `official_asset_verify` response is acceptable as on-demand live evidence
 only after checking `data.verification_status=load_verified`, `data.kind=asset`,
 `data.app_profile=isaac-sim`, and `data.load_quality` (`content_verified_with_bbox`
