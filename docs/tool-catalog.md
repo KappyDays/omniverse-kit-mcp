@@ -599,7 +599,8 @@ viewport_frame_prims(prim_paths: 'list[str]', viewport_name: 'str' = 'Viewport',
 ```
 
 Compute a camera eye/target/up that frames the given prim bboxes and optionally author it to
-the active camera. Reduces camera-placement trial-and-error before viewport_capture.
+the active camera. Reduces camera-placement trial-and-error before viewport_capture; failures
+include diagnostics.suggested_next and diagnostics.fallback_tool_order.
 
 **Parameters**
 

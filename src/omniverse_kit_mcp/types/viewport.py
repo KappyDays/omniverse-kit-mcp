@@ -91,6 +91,7 @@ class ViewportFramePrimsResult:
     distance: float
     combined_bbox: dict[str, object]
     prim_bboxes: tuple[dict[str, object], ...]
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

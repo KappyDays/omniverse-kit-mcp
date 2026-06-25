@@ -58,6 +58,11 @@ If it fails, read `diagnostic_next_actions` for `diagnostics.reason`,
 same recovery path. The expected first recovery path is
 `simulation_get_status` -> `viewport_frame_prims` -> `viewport_capture_assert`
 -> `extension_capture_logs`.
+If `viewport_frame_prims` itself errors, expect
+`diagnostics.reason=viewport_frame_prims_error` with requested prim paths,
+upstream error details, and `diagnostics.fallback_tool_order`; first confirm
+the prims with `stage_capture_snapshot`, then check `simulation_get_status`,
+retry `viewport_frame_prims`, and only then open logs.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

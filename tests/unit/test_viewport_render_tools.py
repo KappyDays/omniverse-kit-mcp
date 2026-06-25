@@ -152,6 +152,26 @@ async def test_frame_prims_returns_camera_pose():
     from tests.conftest import MockIsaacRestClient
 
     client = MockIsaacRestClient()
+    client.responses["viewport_frame_prims"] = {
+        "ok": True,
+        "viewport_name": "Viewport",
+        "camera_path": "/OmniverseKit_Persp",
+        "prim_paths": ["/World/Cube"],
+        "eye": [2.0, -1.0, 1.5],
+        "target": [0.5, 0.5, 0.5],
+        "up": [0.0, 0.0, 1.0],
+        "fov_deg": 60.0,
+        "distance": 2.0,
+        "combined_bbox": {
+            "min": [0.0, 0.0, 0.0],
+            "max": [1.0, 1.0, 1.0],
+            "center": [0.5, 0.5, 0.5],
+            "size": [1.0, 1.0, 1.0],
+            "is_empty": False,
+        },
+        "prim_bboxes": [],
+        "diagnostics": {"source": "mock"},
+    }
     module = ViewportModule(client)
     request = ViewportFramePrimsRequest(
         prim_paths=("/World/Cube",),
@@ -165,7 +185,45 @@ async def test_frame_prims_returns_camera_pose():
     assert isinstance(result.data, ViewportFramePrimsResult)
     assert result.data.prim_paths == ("/World/Cube",)
     assert result.data.eye[2] > result.data.target[2]
+    assert result.data.diagnostics == {"source": "mock"}
     assert client.calls[-1][0] == "viewport_frame_prims"
+
+
+@pytest.mark.asyncio
+async def test_frame_prims_error_returns_typed_diagnostics():
+    class BrokenFrameClient:
+        async def viewport_frame_prims(self, _req):
+            raise RuntimeError("camera framing unavailable")
+
+    module = ViewportModule(BrokenFrameClient())  # type: ignore[arg-type]
+    request = ViewportFramePrimsRequest(
+        prim_paths=("/World/Robot", "/World/Lidar"),
+        viewport_name="Viewport",
+        camera_path="/World/Camera",
+        set_camera=True,
+    )
+    result = await module.frame_prims(_meta(), request)
+
+    assert result.ok is False
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_FRAME_PRIMS_ERROR"
+    assert isinstance(result.data, ViewportFramePrimsResult)
+    assert result.data.ok is False
+    assert result.data.viewport_name == "Viewport"
+    assert result.data.camera_path == "/World/Camera"
+    assert result.data.prim_paths == ("/World/Robot", "/World/Lidar")
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_frame_prims_error"
+    assert diagnostics["upstream_error_code"] == "VIEWPORT_FRAME_PRIMS_ERROR"
+    assert diagnostics["upstream_message"] == "camera framing unavailable"
+    assert diagnostics["prim_paths"] == ["/World/Robot", "/World/Lidar"]
+    assert diagnostics["fallback_tool_order"] == [
+        "stage_capture_snapshot",
+        "simulation_get_status",
+        "viewport_frame_prims",
+        "extension_capture_logs",
+    ]
+    assert any("stage_capture_snapshot" in item for item in diagnostics["suggested_next"])
 
 
 @pytest.mark.asyncio

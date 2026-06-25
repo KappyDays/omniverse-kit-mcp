@@ -47,6 +47,12 @@ _CAPTURE_ASSERT_FALLBACK_TOOL_ORDER = (
     "viewport_capture_assert",
     "extension_capture_logs",
 )
+_FRAME_PRIMS_FALLBACK_TOOL_ORDER = (
+    "stage_capture_snapshot",
+    "simulation_get_status",
+    "viewport_frame_prims",
+    "extension_capture_logs",
+)
 
 
 class ViewportModule:
@@ -430,13 +436,37 @@ class ViewportModule:
                     distance=float(raw.get("distance", 0.0)),
                     combined_bbox=dict(raw.get("combined_bbox", {})),
                     prim_bboxes=tuple(raw.get("prim_bboxes", ())),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),  # type: ignore[arg-type]
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            data = ViewportFramePrimsResult(
+                ok=False,
+                viewport_name=request.viewport_name,
+                camera_path=str(request.camera_path or ""),
+                prim_paths=request.prim_paths,
+                eye=(0.0, 0.0, 0.0),
+                target=(0.0, 0.0, 0.0),
+                up=request.up,
+                fov_deg=request.fov_deg,
+                distance=0.0,
+                combined_bbox={},
+                prim_bboxes=(),
+                diagnostics=_frame_prims_error_diagnostics(
+                    request=request,
+                    upstream_error_code="VIEWPORT_FRAME_PRIMS_ERROR",
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started,
                 error_code="VIEWPORT_FRAME_PRIMS_ERROR",
+                data=data,
             )
 
     async def capture_assert(
@@ -543,6 +573,30 @@ def _capture_assert_diagnostics(
         "fallback_tool_order": list(_CAPTURE_ASSERT_FALLBACK_TOOL_ORDER),
     }
     return diagnostics
+
+
+def _frame_prims_error_diagnostics(
+    *,
+    request: ViewportFramePrimsRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": "viewport_frame_prims_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "viewport_name": request.viewport_name,
+        "camera_path": request.camera_path,
+        "prim_paths": list(request.prim_paths),
+        "include_purposes": list(request.include_purposes),
+        "set_camera": request.set_camera,
+        "suggested_next": [
+            "Run stage_capture_snapshot and confirm the target prim paths exist before retrying viewport_frame_prims.",
+            "Run simulation_get_status to confirm the app is responsive before changing camera settings.",
+            "If framing keeps failing, capture extension logs and inspect the upstream viewport error.",
+        ],
+        "fallback_tool_order": list(_FRAME_PRIMS_FALLBACK_TOOL_ORDER),
+    }
 
 
 def _capture_assert_capture_error_diagnostics(

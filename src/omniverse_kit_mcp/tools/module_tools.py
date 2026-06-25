@@ -2432,7 +2432,7 @@ def register_module_tools(
         up: list[float] | None = None,
         set_camera: bool = True,
     ) -> str:
-        """Compute a camera eye/target/up that frames the given prim bboxes and optionally author it to the active camera. Reduces camera-placement trial-and-error before viewport_capture."""
+        """Compute a camera eye/target/up that frames the given prim bboxes and optionally author it to the active camera. Reduces camera-placement trial-and-error before viewport_capture; failures include diagnostics.suggested_next and diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportFramePrimsRequest(
             prim_paths=tuple(prim_paths),
