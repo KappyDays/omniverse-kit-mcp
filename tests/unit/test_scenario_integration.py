@@ -955,6 +955,97 @@ def test_report_surfaces_lidar_warning_next_actions():
     assert "extension_capture_logs" in markdown
 
 
+def test_report_surfaces_lidar_read_error_next_actions():
+    summary = ScenarioRunSummary(
+        scenario_id="lidar_read_error_next_actions",
+        status=ExecutionStatus.ERROR,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="read_lidar",
+                phase="assert",
+                status=ExecutionStatus.ERROR,
+                error_code="SENSOR_LIDAR_GET_POINT_CLOUD_ERROR",
+                data_summary={
+                    "ok": False,
+                    "sensor_prim": "/World/Cam",
+                    "num_points": 0,
+                    "frames_waited": 0,
+                    "diagnostics": {
+                        "reason": "lidar_read_error",
+                        "upstream_error_code": (
+                            "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR"
+                        ),
+                        "upstream_message": "not rtx_lidar",
+                        "num_points": 0,
+                        "min_points": 0,
+                        "suggested_next": [
+                            (
+                                "Confirm the prim is an RTX lidar created by "
+                                "sensor_attach_rtx_lidar."
+                            ),
+                            (
+                                "Step more simulation frames, then retry "
+                                "sensor_lidar_get_point_cloud."
+                            ),
+                        ],
+                        "fallback_tool_order": [
+                            "simulation_step",
+                            "sensor_lidar_get_point_cloud",
+                            "extension_capture_logs",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+    step = report["step_results"][0]
+
+    assert step["diagnostic_next_actions"] == {
+        "diagnostics.reason": "lidar_read_error",
+        "diagnostics.num_points": 0,
+        "diagnostics.min_points": 0,
+        "suggested_next": [
+            (
+                "Confirm the prim is an RTX lidar created by "
+                "sensor_attach_rtx_lidar."
+            ),
+            (
+                "Step more simulation frames, then retry "
+                "sensor_lidar_get_point_cloud."
+            ),
+        ],
+        "diagnostics.fallback_tool_order": [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
+        "diagnostics.upstream_error_code": "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR",
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "read_lidar",
+        "phase": "assert",
+        "source": "step",
+        "status": "error",
+        "error_code": "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR",
+        **step["diagnostic_next_actions"],
+    }]
+    assert "## Diagnostic Next Actions" in markdown
+    assert "diagnostics.reason=lidar_read_error" in markdown
+    assert (
+        "diagnostics.upstream_error_code=SENSOR_LIDAR_GET_POINT_CLOUD_ERROR"
+        in markdown
+    )
+
+
 def test_report_preserves_retry_next_action_status_and_error_code():
     summary = ScenarioRunSummary(
         scenario_id="retry_next_action_metadata",

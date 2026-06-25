@@ -377,8 +377,29 @@ async def test_lidar_get_point_cloud_propagates_400():
     result = await module.lidar_get_point_cloud(_meta(), request)
 
     assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR"
     assert "rtx_lidar" in (result.message or "")
+    assert result.data is not None
+    assert result.data.ok is False
+    assert result.data.sensor_prim == "/World/Cam"
+    assert result.data.num_points == 0
+    assert result.data.frames_waited == 0
+    assert result.data.diagnostics["reason"] == "lidar_read_error"
+    assert result.data.diagnostics["upstream_error_code"] == (
+        "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR"
+    )
+    assert result.data.diagnostics["num_points"] == 0
+    assert result.data.diagnostics["min_points"] == 0
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "simulation_step",
+        "sensor_lidar_get_point_cloud",
+        "extension_capture_logs",
+    ]
+    assert any(
+        "sensor_attach_rtx_lidar" in item
+        for item in result.data.diagnostics["suggested_next"]
+    )
 
 
 @pytest.mark.asyncio

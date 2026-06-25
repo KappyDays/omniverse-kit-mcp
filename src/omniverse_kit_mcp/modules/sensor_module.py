@@ -29,6 +29,12 @@ from omniverse_kit_mcp.types.sensor import (
 
 logger = logging.getLogger(__name__)
 
+_LIDAR_POINT_CLOUD_FALLBACK_TOOL_ORDER = (
+    "simulation_step",
+    "sensor_lidar_get_point_cloud",
+    "extension_capture_logs",
+)
+
 
 class SensorModule:
     """RTX Camera / Lidar / Depth Camera attachment + visualization toggle (Phase E).
@@ -292,9 +298,30 @@ class SensorModule:
                 )
             return ok_result(data, started_ms=started)
         except Exception as exc:  # noqa: BLE001
+            error_code = "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR"
+            data = SensorLidarGetPointCloudResult(
+                ok=False,
+                sensor_prim=request.sensor_prim,
+                annotator="",
+                backend="",
+                num_points=0,
+                points=(),
+                intensities=(),
+                truncated=False,
+                frames_waited=0,
+                raw_keys=(),
+                warning=None,
+                empty_reason=None,
+                diagnostics=_lidar_read_error_diagnostics(
+                    request=request,
+                    error_code=error_code,
+                    message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="SENSOR_LIDAR_GET_POINT_CLOUD_ERROR",
+                error_code=error_code,
+                data=data,
             )
     async def set_visualization(
         self, meta: OperationMeta, request: SensorSetVisualizationRequest,
@@ -368,11 +395,7 @@ def _add_lidar_too_few_points_diagnostics(
     )
     data.diagnostics.setdefault(
         "fallback_tool_order",
-        [
-            "simulation_step",
-            "sensor_lidar_get_point_cloud",
-            "extension_capture_logs",
-        ],
+        list(_LIDAR_POINT_CLOUD_FALLBACK_TOOL_ORDER),
     )
 
 
@@ -388,9 +411,29 @@ def _add_lidar_warning_diagnostics(data: SensorLidarGetPointCloudResult) -> None
     )
     data.diagnostics.setdefault(
         "fallback_tool_order",
-        [
-            "simulation_step",
-            "sensor_lidar_get_point_cloud",
-            "extension_capture_logs",
-        ],
+        list(_LIDAR_POINT_CLOUD_FALLBACK_TOOL_ORDER),
     )
+
+
+def _lidar_read_error_diagnostics(
+    *,
+    request: SensorLidarGetPointCloudRequest,
+    error_code: str,
+    message: str,
+) -> dict[str, object]:
+    return {
+        "reason": "lidar_read_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "sensor_prim": request.sensor_prim,
+        "num_points": 0,
+        "max_points": request.max_points,
+        "frames_to_wait": request.frames_to_wait,
+        "min_points": request.min_points,
+        "suggested_next": [
+            "Confirm the prim is an RTX lidar created by sensor_attach_rtx_lidar.",
+            "Step more simulation frames, then retry sensor_lidar_get_point_cloud.",
+            "Capture WARN/ERROR logs if the same lidar read error persists.",
+        ],
+        "fallback_tool_order": list(_LIDAR_POINT_CLOUD_FALLBACK_TOOL_ORDER),
+    }
