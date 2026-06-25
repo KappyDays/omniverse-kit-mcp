@@ -928,6 +928,7 @@ def test_f3b_stop_guard_artifacts_record_close_metadata():
         text = md.read_text(encoding="utf-8")
         is_stop_guard_proof = (
             "stop-guard" in md.name
+            or "close-gate" in md.name
             or "Stop guard check:" in text
             or "post-stop-guard refresh:" in text
         )
