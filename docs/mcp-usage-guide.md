@@ -287,6 +287,7 @@ should be empty.
 Read-only catalog diagnostics wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
 `scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)` ->
+`scenario_validate(smoke/official_asset_catalog_diagnostics.yaml, dry_run=true)` ->
 `extension_clear_logs` ->
 `scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)` ->
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
@@ -342,7 +343,9 @@ current final-log close-gate official verify proof is
 `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`; and
 the current docs-only official asset tool-order dry-run refresh is
 `docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`. The
-current read-only final-log close-gate live refresh is
+current read-only dry-run wrapper gate is
+`docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md`, and
+the current read-only final-log close-gate live refresh is
 `docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`.
 Use them as the baseline for the bounded `official_asset_verify` load-quality
 proof and read-only catalog diagnostics; refresh them when verification status,

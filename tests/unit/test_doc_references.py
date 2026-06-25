@@ -1533,6 +1533,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "kit_app_start",
         "simulation_get_status",
         "scenario_plan(smoke/official_asset_catalog_diagnostics.yaml)",
+        "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml, dry_run=true)",
         "extension_clear_logs",
         "scenario_validate(smoke/official_asset_catalog_diagnostics.yaml)",
         'scenario_last_report(report_format="markdown", redact_local_paths=true)',
