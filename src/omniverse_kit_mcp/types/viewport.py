@@ -157,6 +157,7 @@ class ViewportCreateResult:
     width: int
     height: int
     docked: bool
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -169,6 +170,7 @@ class ViewportDestroyResult:
     ok: bool
     viewport_name: str
     destroyed: bool
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 # --- Phase F: Render extension --------------------------------------------
@@ -186,6 +188,7 @@ class ViewportSetRenderModeResult:
     viewport_name: str
     mode: str
     setting_value: str
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -200,6 +203,7 @@ class ViewportSetRenderQualityResult:
     samples: int
     denoiser: str
     aa_op: int
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -216,6 +220,7 @@ class ViewportToggleOverlayResult:
     overlay: str
     visible: bool
     setting_path: str
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -232,6 +237,7 @@ class ViewportSetFovResult:
     fov_deg: float
     focal_length: float
     horizontal_aperture: float
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

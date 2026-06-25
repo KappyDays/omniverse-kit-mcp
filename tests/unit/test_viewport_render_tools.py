@@ -478,3 +478,121 @@ async def test_set_render_mode_propagates_client_error():
     assert not result.ok
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "VIEWPORT_SET_RENDER_MODE_ERROR"
+    assert isinstance(result.data, ViewportSetRenderModeResult)
+    assert result.data.ok is False
+    assert result.data.mode == "RealTime"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_set_render_mode_error"
+    assert diagnostics["tool_name"] == "viewport_set_render_mode"
+    assert diagnostics["upstream_error_code"] == "VIEWPORT_SET_RENDER_MODE_ERROR"
+    assert diagnostics["upstream_message"] == "rtx offline"
+    assert diagnostics["request"] == {"viewport_name": "Viewport", "mode": "RealTime"}
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "viewport_set_render_mode",
+        "viewport_set_render_quality",
+        "viewport_toggle_overlay",
+        "viewport_set_fov",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_set_render_quality_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def viewport_set_render_quality(self, _req):
+            raise RuntimeError("quality rejected")
+
+    module = ViewportModule(BrokenClient())  # type: ignore[arg-type]
+    request = ViewportSetRenderQualityRequest(samples=32, denoiser="DLSS")
+    result = await module.set_render_quality(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_SET_RENDER_QUALITY_ERROR"
+    assert isinstance(result.data, ViewportSetRenderQualityResult)
+    assert result.data.samples == 32
+    assert result.data.denoiser == "DLSS"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_set_render_quality_error"
+    assert diagnostics["request"] == {"samples": 32, "denoiser": "DLSS"}
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "viewport_set_render_mode",
+        "viewport_set_render_quality",
+        "viewport_toggle_overlay",
+        "viewport_set_fov",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_toggle_overlay_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def viewport_toggle_overlay(self, _req):
+            raise RuntimeError("overlay setting unavailable")
+
+    module = ViewportModule(BrokenClient())  # type: ignore[arg-type]
+    request = ViewportToggleOverlayRequest(
+        viewport_name="Viewport", overlay="stats", visible=False,
+    )
+    result = await module.toggle_overlay(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_TOGGLE_OVERLAY_ERROR"
+    assert isinstance(result.data, ViewportToggleOverlayResult)
+    assert result.data.overlay == "stats"
+    assert result.data.visible is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_toggle_overlay_error"
+    assert diagnostics["request"] == {
+        "viewport_name": "Viewport",
+        "overlay": "stats",
+        "visible": False,
+    }
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "viewport_set_render_mode",
+        "viewport_set_render_quality",
+        "viewport_toggle_overlay",
+        "viewport_set_fov",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_set_fov_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def viewport_set_fov(self, _req):
+            raise RuntimeError("camera unavailable")
+
+    module = ViewportModule(BrokenClient())  # type: ignore[arg-type]
+    request = ViewportSetFovRequest(viewport_name="Viewport", fov_deg=42.0)
+    result = await module.set_fov(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_SET_FOV_ERROR"
+    assert isinstance(result.data, ViewportSetFovResult)
+    assert result.data.fov_deg == pytest.approx(42.0)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_set_fov_error"
+    assert diagnostics["upstream_message"] == "camera unavailable"
+    assert diagnostics["request"] == {"viewport_name": "Viewport", "fov_deg": 42.0}
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "viewport_set_render_mode",
+        "viewport_set_render_quality",
+        "viewport_toggle_overlay",
+        "viewport_set_fov",
+        "viewport_capture_assert",
+        "extension_capture_logs",
+    ]

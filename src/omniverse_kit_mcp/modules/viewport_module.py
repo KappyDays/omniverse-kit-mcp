@@ -81,6 +81,24 @@ _PROJECT_POINTS_FALLBACK_TOOL_ORDER = (
     "viewport_project_points",
     "extension_capture_logs",
 )
+_VIEWPORT_WINDOW_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "window_list",
+    "viewport_create",
+    "viewport_destroy",
+    "extension_capture_logs",
+)
+_VIEWPORT_RENDER_SETTINGS_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "viewport_set_render_mode",
+    "viewport_set_render_quality",
+    "viewport_toggle_overlay",
+    "viewport_set_fov",
+    "viewport_capture_assert",
+    "extension_capture_logs",
+)
 
 
 class ViewportModule:
@@ -220,8 +238,33 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_CREATE_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="VIEWPORT_CREATE_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportCreateResult(
+                    ok=False,
+                    viewport_name=request.viewport_name,
+                    existed=False,
+                    camera_path=request.camera_path,
+                    width=request.width,
+                    height=request.height,
+                    docked=request.docked,
+                    diagnostics=_viewport_window_error_diagnostics(
+                        reason="viewport_create_error",
+                        tool_name="viewport_create",
+                        request={
+                            "viewport_name": request.viewport_name,
+                            "camera_path": request.camera_path,
+                            "width": request.width,
+                            "height": request.height,
+                            "docked": request.docked,
+                        },
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def destroy(
@@ -242,8 +285,23 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_DESTROY_ERROR"
             return error_result(
-                str(exc), started_ms=started, error_code="VIEWPORT_DESTROY_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportDestroyResult(
+                    ok=False,
+                    viewport_name=request.viewport_name,
+                    destroyed=False,
+                    diagnostics=_viewport_window_error_diagnostics(
+                        reason="viewport_destroy_error",
+                        tool_name="viewport_destroy",
+                        request={"viewport_name": request.viewport_name},
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     # --- Phase F: Render extension --------------------------------------
@@ -267,9 +325,27 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_SET_RENDER_MODE_ERROR"
             return error_result(
-                str(exc), started_ms=started,
-                error_code="VIEWPORT_SET_RENDER_MODE_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportSetRenderModeResult(
+                    ok=False,
+                    viewport_name=request.viewport_name,
+                    mode=request.mode,
+                    setting_value="",
+                    diagnostics=_viewport_render_settings_error_diagnostics(
+                        reason="viewport_set_render_mode_error",
+                        tool_name="viewport_set_render_mode",
+                        request={
+                            "viewport_name": request.viewport_name,
+                            "mode": request.mode,
+                        },
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def set_render_quality(
@@ -291,9 +367,27 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_SET_RENDER_QUALITY_ERROR"
             return error_result(
-                str(exc), started_ms=started,
-                error_code="VIEWPORT_SET_RENDER_QUALITY_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportSetRenderQualityResult(
+                    ok=False,
+                    samples=request.samples,
+                    denoiser=request.denoiser,
+                    aa_op=0,
+                    diagnostics=_viewport_render_settings_error_diagnostics(
+                        reason="viewport_set_render_quality_error",
+                        tool_name="viewport_set_render_quality",
+                        request={
+                            "samples": request.samples,
+                            "denoiser": request.denoiser,
+                        },
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def toggle_overlay(
@@ -317,9 +411,29 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_TOGGLE_OVERLAY_ERROR"
             return error_result(
-                str(exc), started_ms=started,
-                error_code="VIEWPORT_TOGGLE_OVERLAY_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportToggleOverlayResult(
+                    ok=False,
+                    viewport_name=request.viewport_name,
+                    overlay=request.overlay,
+                    visible=request.visible,
+                    setting_path="",
+                    diagnostics=_viewport_render_settings_error_diagnostics(
+                        reason="viewport_toggle_overlay_error",
+                        tool_name="viewport_toggle_overlay",
+                        request={
+                            "viewport_name": request.viewport_name,
+                            "overlay": request.overlay,
+                            "visible": request.visible,
+                        },
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def set_fov(
@@ -343,9 +457,29 @@ class ViewportModule:
                 started_ms=started,
             )
         except Exception as exc:  # noqa: BLE001
+            error_code = "VIEWPORT_SET_FOV_ERROR"
             return error_result(
-                str(exc), started_ms=started,
-                error_code="VIEWPORT_SET_FOV_ERROR",
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                data=ViewportSetFovResult(
+                    ok=False,
+                    viewport_name=request.viewport_name,
+                    camera_path="",
+                    fov_deg=request.fov_deg,
+                    focal_length=0.0,
+                    horizontal_aperture=0.0,
+                    diagnostics=_viewport_render_settings_error_diagnostics(
+                        reason="viewport_set_fov_error",
+                        tool_name="viewport_set_fov",
+                        request={
+                            "viewport_name": request.viewport_name,
+                            "fov_deg": request.fov_deg,
+                        },
+                        upstream_error_code=error_code,
+                        upstream_message=str(exc),
+                    ),
+                ),
             )
 
     async def set_camera_lookat(
@@ -686,6 +820,52 @@ def _frame_prims_error_diagnostics(
             "If framing keeps failing, capture extension logs and inspect the upstream viewport error.",
         ],
         "fallback_tool_order": list(_FRAME_PRIMS_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _viewport_window_error_diagnostics(
+    *,
+    reason: str,
+    tool_name: str,
+    request: dict[str, JsonValue],
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": reason,
+        "tool_name": tool_name,
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "request": request,
+        "suggested_next": [
+            "Run mcp_runtime_info and simulation_get_status before retrying viewport window operations.",
+            "Run window_list to confirm the expected viewport/window state before changing window code.",
+            "Capture WARN/ERROR logs if the viewport window operation keeps failing.",
+        ],
+        "fallback_tool_order": list(_VIEWPORT_WINDOW_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _viewport_render_settings_error_diagnostics(
+    *,
+    reason: str,
+    tool_name: str,
+    request: dict[str, JsonValue],
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": reason,
+        "tool_name": tool_name,
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "request": request,
+        "suggested_next": [
+            "Run simulation_get_status before retrying viewport render setting changes.",
+            "Use viewport_capture_assert after a successful retry to confirm the render is nonblank.",
+            "Capture WARN/ERROR logs if render settings keep failing.",
+        ],
+        "fallback_tool_order": list(_VIEWPORT_RENDER_SETTINGS_FALLBACK_TOOL_ORDER),
     }
 
 

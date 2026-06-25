@@ -2017,7 +2017,7 @@ def register_module_tools(
         height: int = 720,
         docked: bool = False,
     ) -> str:
-        """Create secondary omni.kit.viewport.window; bind to camera_path if provided. Reuses existing viewport with same name (response.existed=true)."""
+        """Create secondary omni.kit.viewport.window; bind to camera_path if provided. Reuses existing viewport with same name (response.existed=true). Failures include data.diagnostics.reason=viewport_create_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportCreateRequest(
             viewport_name=viewport_name,
@@ -2031,7 +2031,7 @@ def register_module_tools(
 
     @tool()
     async def viewport_destroy(viewport_name: str) -> str:
-        """Destroy secondary viewport window by name. Idempotent — destroyed=False if not found."""
+        """Destroy secondary viewport window by name. Idempotent — destroyed=False if not found. Failures include data.diagnostics.reason=viewport_destroy_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportDestroyRequest(viewport_name=viewport_name)
         result = await viewport.destroy(meta, request)
@@ -2309,7 +2309,7 @@ def register_module_tools(
         viewport_name: str = "Viewport",
         mode: str = "RealTime",
     ) -> str:
-        """Switch RTX renderer mode. mode ∈ {RealTime, PathTracing}; PathTracing is more accurate but slower."""
+        """Switch RTX renderer mode. mode ∈ {RealTime, PathTracing}; PathTracing is more accurate but slower. Failures include data.diagnostics.reason=viewport_set_render_mode_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportSetRenderModeRequest(
             viewport_name=viewport_name,
@@ -2323,7 +2323,7 @@ def register_module_tools(
         samples: int = 1,
         denoiser: str = "auto",
     ) -> str:
-        """Tune RTX path-tracing render quality. *samples* = path-tracing samples per pixel (higher = less noise, slower). *denoiser* ∈ {auto, DLSS, NRD, off}."""
+        """Tune RTX path-tracing render quality. *samples* = path-tracing samples per pixel (higher = less noise, slower). *denoiser* ∈ {auto, DLSS, NRD, off}. Failures include data.diagnostics.reason=viewport_set_render_quality_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportSetRenderQualityRequest(
             samples=samples,
@@ -2338,7 +2338,7 @@ def register_module_tools(
         overlay: str = "gridlines",
         visible: bool = True,
     ) -> str:
-        """Toggle viewport overlay. overlay ∈ {gridlines, axis, stats}; stats toggles RTX FPS overlay."""
+        """Toggle viewport overlay. overlay ∈ {gridlines, axis, stats}; stats toggles RTX FPS overlay. Failures include data.diagnostics.reason=viewport_toggle_overlay_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportToggleOverlayRequest(
             viewport_name=viewport_name,
@@ -2353,7 +2353,7 @@ def register_module_tools(
         viewport_name: str = "Viewport",
         fov_deg: float = 60.0,
     ) -> str:
-        """Set viewport camera horizontal FOV in degrees (converts to focalLength). Writes to active camera prim (fallback: /OmniverseKit_Persp)."""
+        """Set viewport camera horizontal FOV in degrees (converts to focalLength). Writes to active camera prim (fallback: /OmniverseKit_Persp). Failures include data.diagnostics.reason=viewport_set_fov_error and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.VIEWPORT)
         request = ViewportSetFovRequest(
             viewport_name=viewport_name, fov_deg=fov_deg,

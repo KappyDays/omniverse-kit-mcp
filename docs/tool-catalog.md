@@ -560,7 +560,8 @@ viewport_create(viewport_name: 'str', camera_path: 'str | None' = None, width: '
 ```
 
 Create secondary omni.kit.viewport.window; bind to camera_path if provided. Reuses existing
-viewport with same name (response.existed=true).
+viewport with same name (response.existed=true). Failures include
+data.diagnostics.reason=viewport_create_error and data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -578,7 +579,9 @@ viewport with same name (response.existed=true).
 viewport_destroy(viewport_name: 'str') -> 'str'
 ```
 
-Destroy secondary viewport window by name. Idempotent — destroyed=False if not found.
+Destroy secondary viewport window by name. Idempotent — destroyed=False if not found. Failures
+include data.diagnostics.reason=viewport_destroy_error and
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -692,7 +695,8 @@ viewport_set_fov(viewport_name: 'str' = 'Viewport', fov_deg: 'float' = 60.0) -> 
 ```
 
 Set viewport camera horizontal FOV in degrees (converts to focalLength). Writes to active
-camera prim (fallback: /OmniverseKit_Persp).
+camera prim (fallback: /OmniverseKit_Persp). Failures include
+data.diagnostics.reason=viewport_set_fov_error and data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -708,7 +712,8 @@ viewport_set_render_mode(viewport_name: 'str' = 'Viewport', mode: 'str' = 'RealT
 ```
 
 Switch RTX renderer mode. mode ∈ {RealTime, PathTracing}; PathTracing is more accurate but
-slower.
+slower. Failures include data.diagnostics.reason=viewport_set_render_mode_error and
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -724,7 +729,9 @@ viewport_set_render_quality(samples: 'int' = 1, denoiser: 'str' = 'auto') -> 'st
 ```
 
 Tune RTX path-tracing render quality. *samples* = path-tracing samples per pixel (higher = less
-noise, slower). *denoiser* ∈ {auto, DLSS, NRD, off}.
+noise, slower). *denoiser* ∈ {auto, DLSS, NRD, off}. Failures include
+data.diagnostics.reason=viewport_set_render_quality_error and
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -740,6 +747,8 @@ viewport_toggle_overlay(viewport_name: 'str' = 'Viewport', overlay: 'str' = 'gri
 ```
 
 Toggle viewport overlay. overlay ∈ {gridlines, axis, stats}; stats toggles RTX FPS overlay.
+Failures include data.diagnostics.reason=viewport_toggle_overlay_error and
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

@@ -89,3 +89,57 @@ async def test_viewport_create_error_propagation():
     assert not result.ok
     assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "VIEWPORT_CREATE_ERROR"
+    assert isinstance(result.data, ViewportCreateResult)
+    assert result.data.ok is False
+    assert result.data.viewport_name == "Viewport_Err"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_create_error"
+    assert diagnostics["tool_name"] == "viewport_create"
+    assert diagnostics["upstream_error_code"] == "VIEWPORT_CREATE_ERROR"
+    assert diagnostics["upstream_message"] == "kit not responding"
+    assert diagnostics["request"] == {
+        "viewport_name": "Viewport_Err",
+        "camera_path": None,
+        "width": 1280,
+        "height": 720,
+        "docked": False,
+    }
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "window_list",
+        "viewport_create",
+        "viewport_destroy",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_viewport_destroy_error_returns_typed_diagnostics():
+    class BrokenClient:
+        async def viewport_destroy(self, _req):
+            raise RuntimeError("destroy failed")
+
+    module = ViewportModule(BrokenClient())  # type: ignore[arg-type]
+    request = ViewportDestroyRequest(viewport_name="Viewport_Err")
+    result = await module.destroy(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_DESTROY_ERROR"
+    assert isinstance(result.data, ViewportDestroyResult)
+    assert result.data.ok is False
+    assert result.data.viewport_name == "Viewport_Err"
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_destroy_error"
+    assert diagnostics["tool_name"] == "viewport_destroy"
+    assert diagnostics["upstream_message"] == "destroy failed"
+    assert diagnostics["request"] == {"viewport_name": "Viewport_Err"}
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "window_list",
+        "viewport_create",
+        "viewport_destroy",
+        "extension_capture_logs",
+    ]
