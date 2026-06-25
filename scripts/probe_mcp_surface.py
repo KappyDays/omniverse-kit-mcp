@@ -512,6 +512,84 @@ def _live_evidence_field_mismatches(
     return mismatches
 
 
+def _parse_expected_live_evidence_field_minimums(
+    raw_values: list[str],
+) -> tuple[tuple[str, str, float], ...]:
+    expectations: list[tuple[str, str, float]] = []
+    for raw in raw_values:
+        if ":" not in raw:
+            raise ValueError(
+                "--expect-live-evidence-field-min entries must look like "
+                "selector:key=minimum"
+            )
+        selector, rest = raw.split(":", 1)
+        if "=" not in rest:
+            raise ValueError(
+                "--expect-live-evidence-field-min entries must look like "
+                "selector:key=minimum"
+            )
+        key, raw_value = rest.split("=", 1)
+        selector = selector.strip()
+        key = key.strip()
+        if not selector or not key:
+            raise ValueError(
+                "--expect-live-evidence-field-min requires non-empty selector "
+                "and key"
+            )
+        try:
+            minimum = float(raw_value)
+        except ValueError as exc:
+            raise ValueError(
+                "--expect-live-evidence-field-min minimum must be numeric"
+            ) from exc
+        expectations.append((selector, key, minimum))
+    return tuple(expectations)
+
+
+def _live_evidence_field_minimum_mismatches(
+    summary: dict[str, Any],
+    expectations: tuple[tuple[str, str, float], ...],
+) -> list[str]:
+    if not expectations:
+        return []
+    evidence_rows = summary.get("evidence")
+    if not isinstance(evidence_rows, list):
+        return ["evidence summary is missing or malformed"]
+    mismatches: list[str] = []
+    for selector, key, expected_minimum in expectations:
+        matching_rows = [
+            row
+            for row in evidence_rows
+            if isinstance(row, dict)
+            and (
+                row.get("evidence_kind") == selector
+                or row.get("step_id") == selector
+            )
+        ]
+        if not matching_rows:
+            mismatches.append(f"live evidence row {selector!r} was not found")
+            continue
+        actual_values = [row.get(key) for row in matching_rows if key in row]
+        if not actual_values:
+            mismatches.append(
+                f"live evidence row {selector!r} field {key!r} was not found"
+            )
+            continue
+        actual_numbers: list[float] = []
+        for actual in actual_values:
+            try:
+                actual_numbers.append(float(actual))
+            except (TypeError, ValueError):
+                continue
+        if any(actual >= expected_minimum for actual in actual_numbers):
+            continue
+        mismatches.append(
+            f"live evidence row {selector!r} field {key!r} expected at least "
+            f"{expected_minimum!r}, got {actual_values!r}"
+        )
+    return mismatches
+
+
 def _live_cleanup_failure_mismatches(
     summary: dict[str, Any],
     expected_count: int | None,
@@ -851,6 +929,7 @@ async def probe(
     expected_automatic_cleanup_timeouts: tuple[tuple[str, float], ...] = (),
     expected_live_evidence_kinds: tuple[str, ...] = (),
     expected_live_evidence_fields: tuple[tuple[str, str, Any], ...] = (),
+    expected_live_evidence_field_minimums: tuple[tuple[str, str, float], ...] = (),
     expect_live_cleanup_failures: int | None = None,
     expected_live_failure_step_errors: tuple[tuple[str, str], ...] = (),
     expect_live_diagnostic_next_actions_min: int | None = None,
@@ -1213,6 +1292,20 @@ async def probe(
                     for mismatch in evidence_field_mismatches:
                         print(f"  - {mismatch}")
                     exit_status = 1
+                evidence_field_minimum_mismatches = (
+                    _live_evidence_field_minimum_mismatches(
+                        live_summary,
+                        expected_live_evidence_field_minimums,
+                    )
+                )
+                if evidence_field_minimum_mismatches:
+                    print(
+                        "scenario_validate live evidence field minimum "
+                        "expectation mismatch:"
+                    )
+                    for mismatch in evidence_field_minimum_mismatches:
+                        print(f"  - {mismatch}")
+                    exit_status = 1
                 cleanup_mismatches = _live_cleanup_failure_mismatches(
                     live_summary,
                     expect_live_cleanup_failures,
@@ -1403,6 +1496,17 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--expect-live-evidence-field-min",
+        action="append",
+        default=[],
+        help=(
+            "Require a numeric scenario_validate live evidence_summary field "
+            "to be at least a value, formatted as selector:key=minimum where "
+            "selector matches evidence_kind or step_id; repeat for multiple "
+            "expectations."
+        ),
+    )
+    parser.add_argument(
         "--expect-live-cleanup-failures",
         type=int,
         help="Require scenario_validate live cleanup_failed_steps to match.",
@@ -1539,6 +1643,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Invalid probe option: {exc}")
         return 2
     try:
+        expected_live_evidence_field_minimums = (
+            _parse_expected_live_evidence_field_minimums(
+                args.expect_live_evidence_field_min,
+            )
+        )
+    except ValueError as exc:
+        print(f"Invalid probe option: {exc}")
+        return 2
+    try:
         expected_live_failure_step_errors = (
             _parse_expected_live_failure_step_errors(
                 args.expect_live_failure_step_error,
@@ -1588,6 +1701,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     elif expected_live_evidence_fields:
         print("--expect-live-evidence-field requires --scenario-validate-live")
+        return 2
+    elif expected_live_evidence_field_minimums:
+        print("--expect-live-evidence-field-min requires --scenario-validate-live")
         return 2
     elif args.expect_live_cleanup_failures is not None:
         print("--expect-live-cleanup-failures requires --scenario-validate-live")
@@ -1650,6 +1766,9 @@ def main(argv: list[str] | None = None) -> int:
             ),
             expected_live_evidence_kinds=tuple(args.expect_live_evidence_kind),
             expected_live_evidence_fields=expected_live_evidence_fields,
+            expected_live_evidence_field_minimums=(
+                expected_live_evidence_field_minimums
+            ),
             expect_live_cleanup_failures=args.expect_live_cleanup_failures,
             expected_live_failure_step_errors=(
                 expected_live_failure_step_errors

@@ -865,6 +865,9 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
             ("capture_visible_result", "attempts", 1),
             ("capture_visible_result", "passed", True),
         ),
+        expected_live_evidence_field_minimums=(
+            ("capture_visible_result", "attempts", 1.0),
+        ),
         expect_live_cleanup_failures=0,
         expected_live_failure_step_errors=(
             (
@@ -1475,6 +1478,35 @@ def test_mcp_probe_rejects_malformed_live_evidence_field_expectation():
         ])
 
 
+def test_mcp_probe_parses_expected_live_evidence_field_minimums():
+    assert mcp_probe._parse_expected_live_evidence_field_minimums([
+        "read_lidar_point_cloud:num_points=1",
+        "capture_visible_result:pixel_variance_average=0.5",
+    ]) == (
+        ("read_lidar_point_cloud", "num_points", 1.0),
+        ("capture_visible_result", "pixel_variance_average", 0.5),
+    )
+
+
+def test_mcp_probe_rejects_malformed_live_evidence_field_minimum():
+    with pytest.raises(ValueError, match="selector:key=minimum"):
+        mcp_probe._parse_expected_live_evidence_field_minimums([
+            "read_lidar_point_cloud",
+        ])
+    with pytest.raises(ValueError, match="selector:key=minimum"):
+        mcp_probe._parse_expected_live_evidence_field_minimums([
+            "read_lidar_point_cloud:num_points",
+        ])
+    with pytest.raises(ValueError, match="non-empty"):
+        mcp_probe._parse_expected_live_evidence_field_minimums([
+            "read_lidar_point_cloud:=1",
+        ])
+    with pytest.raises(ValueError, match="minimum must be numeric"):
+        mcp_probe._parse_expected_live_evidence_field_minimums([
+            "read_lidar_point_cloud:num_points=many",
+        ])
+
+
 def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
     summary = mcp_probe._scenario_live_report_summary({
         "evidence_summary": [
@@ -1533,6 +1565,74 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
         "height": 720,
         "passed": True,
     }
+
+
+def test_mcp_probe_live_evidence_field_minimum_mismatches_are_empty():
+    summary = {
+        "evidence": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "evidence_kind": "rtx_lidar_point_cloud",
+                "num_points": 512,
+            },
+            {
+                "step_id": "capture_visible_result",
+                "evidence_kind": "visual_capture",
+                "pixel_variance_average": 1107.7,
+            },
+        ],
+    }
+
+    assert mcp_probe._live_evidence_field_minimum_mismatches(
+        summary,
+        (
+            ("read_lidar_point_cloud", "num_points", 1.0),
+            ("visual_capture", "pixel_variance_average", 1.0),
+        ),
+    ) == []
+
+
+def test_mcp_probe_live_evidence_field_minimum_mismatches_report_drift():
+    summary = {
+        "evidence": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "evidence_kind": "rtx_lidar_point_cloud",
+                "num_points": 0,
+                "frames_waited": "many",
+            },
+        ],
+    }
+
+    assert mcp_probe._live_evidence_field_minimum_mismatches(
+        summary,
+        (("read_lidar_point_cloud", "num_points", 1.0),),
+    ) == [
+        "live evidence row 'read_lidar_point_cloud' field 'num_points' "
+        "expected at least 1.0, got [0]",
+    ]
+    assert mcp_probe._live_evidence_field_minimum_mismatches(
+        summary,
+        (("read_lidar_point_cloud", "frames_waited", 1.0),),
+    ) == [
+        "live evidence row 'read_lidar_point_cloud' field 'frames_waited' "
+        "expected at least 1.0, got ['many']",
+    ]
+    assert mcp_probe._live_evidence_field_minimum_mismatches(
+        summary,
+        (("read_lidar_point_cloud", "pixel_variance_average", 1.0),),
+    ) == [
+        "live evidence row 'read_lidar_point_cloud' field "
+        "'pixel_variance_average' was not found",
+    ]
+    assert mcp_probe._live_evidence_field_minimum_mismatches(
+        summary,
+        (("visual_capture", "pixel_variance_average", 1.0),),
+    ) == ["live evidence row 'visual_capture' was not found"]
+    assert mcp_probe._live_evidence_field_minimum_mismatches(
+        {},
+        (("read_lidar_point_cloud", "num_points", 1.0),),
+    ) == ["evidence summary is missing or malformed"]
 
 
 def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value():
@@ -1818,6 +1918,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-live-evidence-field",
         "official_asset_verify:verification_status=load_verified",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-live-evidence-field-min",
+        "read_lidar_point_cloud:num_points=1",
     ]) == 2
     assert mcp_probe.main([
         "--expect-live-cleanup-failures",

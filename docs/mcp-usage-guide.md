@@ -137,7 +137,7 @@ parent/root session, rerun the same workspace-local command with
 `--expect-live-evidence-kind viewport_framing`, and
 `--expect-live-evidence-kind visual_capture`, plus
 `--expect-live-evidence-field read_lidar_point_cloud:status=passed`,
-`--expect-live-evidence-field read_lidar_point_cloud:num_points=512`,
+`--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1`,
 `--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false`, and
 `--expect-live-evidence-field capture_visible_result:passed=true`; the script requires `--workspace`,
 `--scenario-plan`, and `--scenario-validate-dry-run`, then follows the wrapper
@@ -187,7 +187,9 @@ are `docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md` and
 The live probe assertion options are verified in
 `docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md`; the
 Robot + RTX field-level live evidence assertions are verified in
-`docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md`; the
+`docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md`, and
+numeric threshold assertions are verified in
+`docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md`; the
 controlled-failure step/error-code assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or

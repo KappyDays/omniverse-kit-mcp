@@ -301,7 +301,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         in wrapper
     )
     assert (
-        "--expect-live-evidence-field read_lidar_point_cloud:num_points=512"
+        "--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1"
         in wrapper
     )
     assert (
@@ -429,6 +429,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-retry-key-arg step:key=value" in scripts_doc
     assert "--expect-live-evidence-kind kind" in scripts_doc
     assert "--expect-live-evidence-field kind:key=value" in scripts_doc
+    assert "--expect-live-evidence-field-min kind:key=minimum" in scripts_doc
     assert "--expect-live-cleanup-failures 0" in scripts_doc
     assert "--expect-live-failure-step-error step=ERROR_CODE" in scripts_doc
     assert "--expect-live-diagnostic-next-actions-min 1" in scripts_doc
@@ -503,6 +504,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md",
         "docs/artifacts/probe-live-evidence-cleanup-assertions-2026-06-25.md",
         "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
+        "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",
         "docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md",
     ]
 
@@ -530,6 +532,17 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "`--expect-live-evidence-field capture_visible_result:passed=true`"
         in field_artifact
     )
+
+    threshold_artifact = (
+        PROJECT
+        / "docs/artifacts/"
+        "robot-rtx-live-evidence-threshold-assertions-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert (
+        "`--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1`"
+        in threshold_artifact
+    )
+    assert "minimum threshold `>=1`" in threshold_artifact
 
 
 def test_f3b_official_asset_scenario_proof_wrapper_order():
