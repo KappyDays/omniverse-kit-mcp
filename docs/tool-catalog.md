@@ -1500,7 +1500,8 @@ robot_get_ee_pose(prim_path: 'str', end_effector_frame: 'str | None' = None) -> 
 ```
 
 Read the current end-effector world pose [position + qw,qx,qy,qz]. Prefer this for checking
-whether a Franka controller is approaching the object before grasp.
+whether a Franka controller is approaching the object before grasp. Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -1697,7 +1698,8 @@ robot_navigate_path(prim_path: 'str', waypoints: 'list[list[float]]', duration_s
 ```
 
 Dispatch multi-waypoint navigate as async Job; returns job_id. Each waypoint [x,y,z];
-duration_s total (weighted by segment length). Requires timeline playing.
+duration_s total (weighted by segment length). Requires timeline playing. Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -1714,7 +1716,7 @@ robot_navigate_to(prim_path: 'str', target: 'list[float]', duration_s: 'float' =
 ```
 
 Dispatch a linear-interpolation navigate-to as an async Job. Returns a job_id — poll
-job_status(job_id) until status='done'.
+job_status(job_id) until status='done'. Failures include data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
@@ -1857,7 +1859,8 @@ robot_set_joint_positions(prim_path: 'str', positions: 'list[float]') -> 'str'
 ```
 
 Set articulation joint positions (SingleArticulation). Raises 400 if no PhysX articulation;
-wrap in continueOnFailure for optional calls.
+wrap in continueOnFailure for optional calls. Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 

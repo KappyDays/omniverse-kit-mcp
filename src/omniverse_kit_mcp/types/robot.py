@@ -67,6 +67,7 @@ class JointPositionsSetRequest:
 class JointPositionsSetResult:
     prim_path: str
     positions_count: int
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -81,6 +82,7 @@ class RobotNavigateResult:
     job_id: str
     prim_path: str
     target: tuple[float, float, float]
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 # --- Phase G ---
@@ -99,6 +101,7 @@ class RobotNavigatePathResult:
     prim_path: str
     num_waypoints: int
     duration_s: float
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -270,6 +273,7 @@ class RobotEEPose:
     position: tuple[float, float, float]
     orientation: tuple[float, float, float, float]
     source: str
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

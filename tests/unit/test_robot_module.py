@@ -34,6 +34,9 @@ from omniverse_kit_mcp.types.robot import (
     RobotGripperControlResult,
     RobotLoadRequest,
     RobotLoadResult,
+    RobotEEPose,
+    RobotNavigatePathRequest,
+    RobotNavigatePathResult,
     RobotNavigateRequest,
     RobotNavigateResult,
     RobotPickPlaceDemoRequest,
@@ -349,6 +352,7 @@ async def test_robot_set_joint_positions():
     assert result.ok
     assert isinstance(result.data, JointPositionsSetResult)
     assert result.data.positions_count == 7
+    assert result.data.diagnostics == {}
     set_calls = [c for c in client.calls if c[0] == "robot_set_joint_positions"]
     assert len(set_calls) == 1
     assert set_calls[0][1]["positions"] == positions
@@ -369,8 +373,25 @@ async def test_robot_set_joint_positions_surfaces_http_400():
     result = await module.set_joint_positions(_meta(), request)
 
     assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "ROBOT_SET_JOINTS_ERROR"
     assert "articulation" in (result.message or "").lower()
+    assert isinstance(result.data, JointPositionsSetResult)
+    assert result.data.prim_path == "/X"
+    assert result.data.positions_count == 1
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_set_joint_positions_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_SET_JOINTS_ERROR"
+    assert diagnostics["prim_path"] == "/X"
+    assert diagnostics["positions_count"] == 1
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_get_joint_config_static",
+        "robot_set_joint_positions",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio
@@ -389,8 +410,82 @@ async def test_robot_navigate_returns_job_id():
     assert result.ok
     assert isinstance(result.data, RobotNavigateResult)
     assert result.data.job_id == "job_test_0001"
+    assert result.data.diagnostics == {}
     nav_calls = [c for c in client.calls if c[0] == "robot_navigate"]
     assert nav_calls[0][1]["duration_s"] == 2.0
+
+
+@pytest.mark.asyncio
+async def test_robot_navigate_to_error_returns_typed_diagnostics():
+    class FailingClient:
+        async def robot_navigate(self, request):
+            raise RuntimeError("timeline is not playing")
+
+    module = RobotModule(FailingClient())  # type: ignore[arg-type]
+    request = RobotNavigateRequest(
+        prim_path="/World/Robot",
+        target=(1.0, 2.0, 3.0),
+        duration_s=2.5,
+    )
+    result = await module.navigate_to(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_NAVIGATE_ERROR"
+    assert isinstance(result.data, RobotNavigateResult)
+    assert result.data.job_id == ""
+    assert result.data.prim_path == "/World/Robot"
+    assert result.data.target == (1.0, 2.0, 3.0)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_navigate_to_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_NAVIGATE_ERROR"
+    assert diagnostics["upstream_message"] == "timeline is not playing"
+    assert diagnostics["target"] == [1.0, 2.0, 3.0]
+    assert diagnostics["duration_s"] == 2.5
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_navigate_to",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_robot_navigate_path_error_returns_typed_diagnostics():
+    class FailingClient:
+        async def robot_navigate_path(self, request):
+            raise RuntimeError("path planner unavailable")
+
+    module = RobotModule(FailingClient())  # type: ignore[arg-type]
+    request = RobotNavigatePathRequest(
+        prim_path="/World/Robot",
+        waypoints=((0.0, 0.0, 0.0), (1.0, 0.0, 0.0)),
+        duration_s=4.0,
+    )
+    result = await module.navigate_path(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_NAVIGATE_PATH_ERROR"
+    assert isinstance(result.data, RobotNavigatePathResult)
+    assert result.data.job_id == ""
+    assert result.data.prim_path == "/World/Robot"
+    assert result.data.num_waypoints == 2
+    assert result.data.duration_s == 4.0
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_navigate_path_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_NAVIGATE_PATH_ERROR"
+    assert diagnostics["upstream_message"] == "path planner unavailable"
+    assert diagnostics["waypoint_count"] == 2
+    assert diagnostics["duration_s"] == 4.0
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_navigate_path",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio
@@ -504,6 +599,43 @@ async def test_robot_set_ee_target_error_returns_typed_diagnostics():
         "stage_capture_snapshot",
         "robot_get_joint_config_static",
         "robot_set_ee_target",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_robot_get_ee_pose_error_returns_typed_diagnostics():
+    class FailingClient:
+        async def robot_get_ee_pose(
+            self,
+            prim_path: str,
+            end_effector_frame: str | None = None,
+        ):
+            raise RuntimeError("end-effector frame not found")
+
+    module = RobotModule(FailingClient())  # type: ignore[arg-type]
+    result = await module.get_ee_pose(_meta(), "/World/Robot", "tool0")
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_GET_EE_POSE_ERROR"
+    assert isinstance(result.data, RobotEEPose)
+    assert result.data.prim_path == "/World/Robot"
+    assert result.data.end_effector_frame == "tool0"
+    assert result.data.position == (0.0, 0.0, 0.0)
+    assert result.data.orientation == (1.0, 0.0, 0.0, 0.0)
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_get_ee_pose_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_GET_EE_POSE_ERROR"
+    assert diagnostics["upstream_message"] == "end-effector frame not found"
+    assert diagnostics["prim_path"] == "/World/Robot"
+    assert diagnostics["end_effector_frame"] == "tool0"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_get_joint_config_static",
+        "robot_get_ee_pose",
         "extension_capture_logs",
     ]
 

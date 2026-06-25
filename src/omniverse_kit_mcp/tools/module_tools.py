@@ -775,7 +775,7 @@ def register_module_tools(
         prim_path: str,
         positions: list[float],
     ) -> str:
-        """Set articulation joint positions (SingleArticulation). Raises 400 if no PhysX articulation; wrap in continueOnFailure for optional calls."""
+        """Set articulation joint positions (SingleArticulation). Raises 400 if no PhysX articulation; wrap in continueOnFailure for optional calls. Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         request = JointPositionsSetRequest(
             prim_path=prim_path,
@@ -790,7 +790,7 @@ def register_module_tools(
         target: list[float],
         duration_s: float = 1.0,
     ) -> str:
-        """Dispatch a linear-interpolation navigate-to as an async Job. Returns a job_id — poll job_status(job_id) until status='done'."""
+        """Dispatch a linear-interpolation navigate-to as an async Job. Returns a job_id — poll job_status(job_id) until status='done'. Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         request = RobotNavigateRequest(
             prim_path=prim_path,
@@ -806,7 +806,7 @@ def register_module_tools(
         waypoints: list[list[float]],
         duration_s: float = 5.0,
     ) -> str:
-        """Dispatch multi-waypoint navigate as async Job; returns job_id. Each waypoint [x,y,z]; duration_s total (weighted by segment length). Requires timeline playing."""
+        """Dispatch multi-waypoint navigate as async Job; returns job_id. Each waypoint [x,y,z]; duration_s total (weighted by segment length). Requires timeline playing. Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         pts = tuple(
             (float(w[0]), float(w[1]), float(w[2])) for w in waypoints
@@ -859,7 +859,7 @@ def register_module_tools(
         prim_path: str,
         end_effector_frame: str | None = None,
     ) -> str:
-        """Read the current end-effector world pose [position + qw,qx,qy,qz]. Prefer this for checking whether a Franka controller is approaching the object before grasp."""
+        """Read the current end-effector world pose [position + qw,qx,qy,qz]. Prefer this for checking whether a Franka controller is approaching the object before grasp. Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_ee_pose(meta, prim_path, end_effector_frame)
         return _serialize(result)

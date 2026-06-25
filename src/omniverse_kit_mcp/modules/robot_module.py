@@ -115,6 +115,36 @@ _ROBOT_SET_EE_TARGET_FALLBACK_TOOL_ORDER = (
     "robot_set_ee_target",
     "extension_capture_logs",
 )
+_ROBOT_SET_JOINT_POSITIONS_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_get_joint_config_static",
+    "robot_set_joint_positions",
+    "extension_capture_logs",
+)
+_ROBOT_NAVIGATE_TO_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_navigate_to",
+    "extension_capture_logs",
+)
+_ROBOT_NAVIGATE_PATH_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_navigate_path",
+    "extension_capture_logs",
+)
+_ROBOT_GET_EE_POSE_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_get_joint_config_static",
+    "robot_get_ee_pose",
+    "extension_capture_logs",
+)
 _PROBE_UNSAFE_TIMEOUT_CLEANUP_PHASES = {
     "simulation_play",
     "warmup_step",
@@ -426,12 +456,31 @@ class RobotModule:
                 JointPositionsSetResult(
                     prim_path=raw.get("prim_path", request.prim_path),
                     positions_count=int(raw.get("positions_count", len(request.positions))),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_SET_JOINTS_ERROR"
+            data = JointPositionsSetResult(
+                prim_path=request.prim_path,
+                positions_count=len(request.positions),
+                diagnostics=_robot_set_joint_positions_error_diagnostics(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_SET_JOINTS_ERROR"
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def navigate_to(
@@ -451,12 +500,32 @@ class RobotModule:
                     job_id=raw["job_id"],
                     prim_path=raw.get("prim_path", request.prim_path),
                     target=tuple(raw.get("target", list(request.target))),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_NAVIGATE_ERROR"
+            data = RobotNavigateResult(
+                job_id="",
+                prim_path=request.prim_path,
+                target=request.target,
+                diagnostics=_robot_navigate_to_error_diagnostics(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_NAVIGATE_ERROR"
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def navigate_path(
@@ -477,12 +546,33 @@ class RobotModule:
                     prim_path=raw.get("prim_path", request.prim_path),
                     num_waypoints=int(raw.get("num_waypoints", len(request.waypoints))),
                     duration_s=float(raw.get("duration_s", request.duration_s)),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_NAVIGATE_PATH_ERROR"
+            data = RobotNavigatePathResult(
+                job_id="",
+                prim_path=request.prim_path,
+                num_waypoints=len(request.waypoints),
+                duration_s=request.duration_s,
+                diagnostics=_robot_navigate_path_error_diagnostics(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_NAVIGATE_PATH_ERROR",
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def gripper_control(
@@ -618,13 +708,33 @@ class RobotModule:
                     position=tuple(float(v) for v in position),  # type: ignore[arg-type]
                     orientation=tuple(float(v) for v in orientation),  # type: ignore[arg-type]
                     source=str(raw.get("source", "")),
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_GET_EE_POSE_ERROR"
+            data = RobotEEPose(
+                prim_path=prim_path,
+                end_effector_frame=end_effector_frame or "",
+                position=(0.0, 0.0, 0.0),
+                orientation=(1.0, 0.0, 0.0, 0.0),
+                source="",
+                diagnostics=_robot_get_ee_pose_error_diagnostics(
+                    prim_path=prim_path,
+                    end_effector_frame=end_effector_frame,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
                 str(exc), started_ms=started, exc=exc,
-                error_code="ROBOT_GET_EE_POSE_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def probe_arm_profile(
@@ -2070,6 +2180,93 @@ def _robot_set_ee_target_error_diagnostics(
             "Retry robot_set_ee_target only after correcting robot_description, end_effector_frame, or target pose.",
         ],
         "fallback_tool_order": list(_ROBOT_SET_EE_TARGET_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _robot_set_joint_positions_error_diagnostics(
+    *,
+    request: JointPositionsSetRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_set_joint_positions_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": request.prim_path,
+        "positions_count": len(request.positions),
+        "suggested_next": [
+            "Run simulation_get_status to confirm the app is responsive before retrying joint writes.",
+            "Run stage_capture_snapshot and robot_get_joint_config_static to confirm the articulation prim and joint order.",
+            "Retry robot_set_joint_positions only after matching the positions length to the reported DOF count.",
+        ],
+        "fallback_tool_order": list(_ROBOT_SET_JOINT_POSITIONS_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _robot_navigate_to_error_diagnostics(
+    *,
+    request: RobotNavigateRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_navigate_to_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": request.prim_path,
+        "target": list(request.target),
+        "duration_s": request.duration_s,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline is playing before retrying navigation.",
+            "Run stage_capture_snapshot to confirm the robot prim exists and is not inside a reset/probe scratch path.",
+            "Retry robot_navigate_to only after correcting the prim path, target, or duration.",
+        ],
+        "fallback_tool_order": list(_ROBOT_NAVIGATE_TO_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _robot_navigate_path_error_diagnostics(
+    *,
+    request: RobotNavigatePathRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_navigate_path_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": request.prim_path,
+        "waypoint_count": len(request.waypoints),
+        "duration_s": request.duration_s,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the timeline is playing before retrying path navigation.",
+            "Run stage_capture_snapshot to confirm the robot prim exists and the path is being applied to the intended robot.",
+            "Retry robot_navigate_path only after correcting waypoints or duration.",
+        ],
+        "fallback_tool_order": list(_ROBOT_NAVIGATE_PATH_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _robot_get_ee_pose_error_diagnostics(
+    *,
+    prim_path: str,
+    end_effector_frame: str | None,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_get_ee_pose_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": prim_path,
+        "end_effector_frame": end_effector_frame,
+        "suggested_next": [
+            "Run stage_capture_snapshot and robot_get_joint_config_static to confirm the robot prim and articulation metadata.",
+            "Retry robot_get_ee_pose with a known profile frame from robot_probe_arm_profile evidence if a specific frame fails.",
+            "Capture WARN/ERROR logs if static metadata looks correct but pose readback still fails.",
+        ],
+        "fallback_tool_order": list(_ROBOT_GET_EE_POSE_FALLBACK_TOOL_ORDER),
     }
 
 
