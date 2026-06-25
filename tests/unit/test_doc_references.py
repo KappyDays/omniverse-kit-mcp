@@ -632,6 +632,7 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
             ("official_asset_verify", "app_profile", "isaac-sim"),
         ),
     )
+    assert official_verify["expect_live_status"] == "passed"
     assert official_verify["expect_live_cleanup_failures"] == 0
     assert _contains(
         official_verify,
@@ -1332,6 +1333,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "evidence_kind=official_asset_verify" in wrapper
     assert "evidence_summary[]" in wrapper
     assert "verification_status" in wrapper
+    assert "--expect-live-status passed" in wrapper
     assert "diagnostics.asset_checks" in wrapper
     assert "diagnostics.material_checks" in wrapper
     assert "diagnostics.error_type" in wrapper
@@ -1339,6 +1341,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "redacted Markdown" in wrapper
     assert "data.capture_stop_timed_out=false" in invariant
     assert "data.capture_running=false" in invariant
+    assert "--expect-live-status passed" in invariant
     read_only_sequence = [
         "mcp_runtime_info",
         "kit_app_start",
@@ -1750,6 +1753,13 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         in field_assertion_artifact
     )
     assert "Verification status: `load_verified`" in field_assertion_artifact
+
+    close_gate_artifact = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-verify-close-gate-live-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "`--expect-live-status passed`" in close_gate_artifact
 
 
 def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypatch):
