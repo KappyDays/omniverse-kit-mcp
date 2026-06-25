@@ -1369,6 +1369,20 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             wrapper_artifact
         )
 
+    plan_override_artifact = (
+        PROJECT / "docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert "--require-robot-probe-error-contract" in plan_override_artifact
+    assert (
+        "robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE"
+        in plan_override_artifact
+    )
+    assert (
+        "--expect-preflight-runtime-check "
+        "robot_probe_unknown_profile_fallback_tool_order"
+    ) in plan_override_artifact
+    assert "Probe called `scenario_plan` only" in plan_override_artifact
+
     baseline_artifact = (
         PROJECT / "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md"
     ).read_text(encoding="utf-8")
