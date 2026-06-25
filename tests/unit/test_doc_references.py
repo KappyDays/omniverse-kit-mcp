@@ -1973,6 +1973,16 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "Verification status: `load_verified`" in baseline
     assert "Load quality: `content_verified_no_bbox`" in baseline
 
+    historical_smoke = (
+        PROJECT / "docs/artifacts/official-asset-verify-live-smoke-2026-06-23.md"
+    ).read_text(encoding="utf-8")
+    assert "Historical evidence" in historical_smoke
+    assert "Do not use this artifact as the current repeatable proof" in (
+        historical_smoke
+    )
+    assert "scenario_validate(..., dry_run=true)" in historical_smoke
+    assert "load_quality=content_verified_no_bbox" in historical_smoke
+
     assertion_artifact = (
         PROJECT
         / "docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md"

@@ -1,5 +1,14 @@
 # Official Asset Verify Live Smoke — 2026-06-23
 
+> Historical evidence. Do not use this artifact as the current repeatable proof
+> command or load-quality contract. Current official asset live proof must follow
+> `docs/mcp-usage-guide.md`, `docs/invariants/scenario-validation.md`, and the
+> current artifacts:
+> `docs/artifacts/official-asset-verify-live-pass-2026-06-25.md` and
+> `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`.
+> Those current gates require `scenario_validate(..., dry_run=true)` before live
+> execution and assert `load_quality=content_verified_no_bbox`.
+
 ## Scope
 
 Bounded Isaac Sim worker smoke for one official catalog asset using
