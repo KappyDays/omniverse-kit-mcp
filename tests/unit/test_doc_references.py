@@ -1484,6 +1484,22 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     ).read_text(encoding="utf-8")
     assert "`--expect-live-status passed`" in close_gate_artifact
 
+    controlled_close_gate = (
+        PROJECT
+        / "docs/artifacts/"
+        "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    controlled_close_gate_normalized = " ".join(controlled_close_gate.split())
+    assert "status=failed` as expected" in controlled_close_gate_normalized
+    assert "`passed_steps=25`, `failed_steps=1`, `skipped_steps=5`" in (
+        controlled_close_gate_normalized
+    )
+    assert "`fatal_failed_steps=1`, and `cleanup_failed_steps=0`" in (
+        controlled_close_gate_normalized
+    )
+    assert "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS" in controlled_close_gate
+    assert "diagnostic next-action count `4`" in controlled_close_gate
+
     field_artifact = (
         PROJECT
         / "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md"
