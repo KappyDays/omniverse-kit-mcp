@@ -400,6 +400,11 @@ async def test_mcp_probe_calls_scenario_validate_dry_run_with_plan_args(
         "diagnostic_steps": [],
         "evidence_steps": [{"id": "verify_pallet_asset"}],
         "stage_mutation_steps": [{"id": "verify_pallet_asset"}],
+        "preflight_requirements": {
+            "runtime_info": {
+                "checks": ["tool_profile"],
+            },
+        },
         "live_validation_checklist": {
             "scratch_stage_required": True,
             "log_capture_recommended": True,
@@ -520,6 +525,7 @@ async def test_mcp_probe_calls_scenario_validate_dry_run_with_plan_args(
             "mcp_runtime_info",
             "scenario_validate",
         ),
+        expected_preflight_runtime_checks=("tool_profile",),
         expect_scratch_stage_required=True,
         expect_log_capture_recommended=True,
     )
@@ -662,6 +668,45 @@ def test_mcp_probe_retry_key_arg_mismatches_report_drift():
     ) == ["retry step 'missing_step' was not found"]
 
 
+def test_mcp_probe_preflight_runtime_check_mismatches_are_empty_for_expected_values():
+    summary = {
+        "preflight_runtime_info_checks": [
+            "tool_profile",
+            "robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE",
+        ],
+    }
+
+    assert mcp_probe._preflight_runtime_check_mismatches(
+        summary,
+        (
+            "tool_profile",
+            "robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE",
+        ),
+    ) == []
+
+
+def test_mcp_probe_preflight_runtime_check_mismatches_report_drift():
+    assert mcp_probe._preflight_runtime_check_mismatches(
+        {
+            "preflight_runtime_info_checks": [
+                "tool_profile",
+            ],
+        },
+        ("robot_probe_unknown_profile_fallback_tool_order",),
+    ) == [
+        (
+            "preflight runtime check "
+            "'robot_probe_unknown_profile_fallback_tool_order' was not found"
+        ),
+    ]
+    assert mcp_probe._preflight_runtime_check_mismatches(
+        {},
+        ("tool_profile",),
+    ) == [
+        "preflight_runtime_info_checks summary is missing or malformed",
+    ]
+
+
 def test_mcp_probe_scenario_validate_dry_run_mismatches_are_empty_for_plan():
     assert mcp_probe._scenario_validate_dry_run_mismatches({
         "dry_run": True,
@@ -712,6 +757,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-log-capture-recommended",
         "false",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-preflight-runtime-check",
+        "robot_probe_unknown_profile_fallback_tool_order",
     ]) == 2
     assert mcp_probe.main([
         "--expect-retry-key-arg",

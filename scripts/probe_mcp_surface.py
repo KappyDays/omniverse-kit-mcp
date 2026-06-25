@@ -314,6 +314,23 @@ def _retry_key_arg_mismatches(
     return mismatches
 
 
+def _preflight_runtime_check_mismatches(
+    summary: dict[str, Any],
+    expected_checks: tuple[str, ...],
+) -> list[str]:
+    if not expected_checks:
+        return []
+    checks = summary.get("preflight_runtime_info_checks")
+    if not isinstance(checks, list):
+        return ["preflight_runtime_info_checks summary is missing or malformed"]
+    actual = {str(check) for check in checks}
+    return [
+        f"preflight runtime check {expected!r} was not found"
+        for expected in expected_checks
+        if expected not in actual
+    ]
+
+
 def _retry_step_max_attempts(step: dict[str, Any]) -> Any:
     if step.get("max_attempts") is not None:
         return step.get("max_attempts")
@@ -431,6 +448,7 @@ async def probe(
     input_overrides: dict[str, Any] | None = None,
     required_plan_fields: tuple[str, ...] = (),
     required_live_validation_tools: tuple[str, ...] = (),
+    expected_preflight_runtime_checks: tuple[str, ...] = (),
     expected_retry_key_args: tuple[tuple[str, str, Any], ...] = (),
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
@@ -542,6 +560,15 @@ async def probe(
         if flag_mismatches:
             print(f"{label} flag expectation mismatch:")
             for mismatch in flag_mismatches:
+                print(f"  - {mismatch}")
+            passed = False
+        preflight_mismatches = _preflight_runtime_check_mismatches(
+            plan_summary,
+            expected_preflight_runtime_checks,
+        )
+        if preflight_mismatches:
+            print(f"{label} preflight runtime-check expectation mismatch:")
+            for mismatch in preflight_mismatches:
                 print(f"  - {mismatch}")
             passed = False
         retry_mismatches = _retry_key_arg_mismatches(
@@ -779,6 +806,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Require scenario_plan.live_validation_checklist.log_capture_recommended.",
     )
     parser.add_argument(
+        "--expect-preflight-runtime-check",
+        action="append",
+        default=[],
+        help=(
+            "Require a scenario_plan preflight_requirements.runtime_info.checks "
+            "entry; repeat for multiple checks."
+        ),
+    )
+    parser.add_argument(
         "--expect-retry-key-arg",
         action="append",
         default=[],
@@ -819,6 +855,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     has_plan_expectations = (
         bool(required_live_validation_tools)
+        or bool(args.expect_preflight_runtime_check)
         or bool(expected_retry_key_args)
         or expect_scratch_stage_required is not None
         or expect_log_capture_recommended is not None
@@ -853,6 +890,9 @@ def main(argv: list[str] | None = None) -> int:
             input_overrides=input_overrides,
             required_plan_fields=required_plan_fields,
             required_live_validation_tools=required_live_validation_tools,
+            expected_preflight_runtime_checks=tuple(
+                args.expect_preflight_runtime_check
+            ),
             expected_retry_key_args=expected_retry_key_args,
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,

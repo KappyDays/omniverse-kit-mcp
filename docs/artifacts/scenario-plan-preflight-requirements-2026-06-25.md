@@ -46,3 +46,15 @@ reported:
 
 This smoke used the workspace-local Isaac Sim stdio MCP entry and did not run
 the mutating scenario.
+
+## Follow-Up Probe Assertion Evidence
+
+The workspace-local probe was rerun with explicit preflight runtime-check
+expectations:
+
+- `--expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE`
+- `--expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order`
+
+The command exited successfully, proving the probe now fails on missing
+`scenario_plan.preflight_requirements.runtime_info.checks` entries instead of
+only printing them.

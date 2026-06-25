@@ -120,10 +120,10 @@ After editing `src/omniverse_kit_mcp`, use
 `scripts/run_scenario_standalone.py --dry-run --input-overrides-json {...}` to
 inspect the same plan shape before restarting a cached MCP host.
 If first-class live tools are not exposed in the current parent host, use
-`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --require-plan-fields --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`
 to smoke the workspace-local stdio MCP entry, confirm profile/import freshness,
-and confirm the plan plus `scenario_validate(dry_run=true)` field shape and
-exact live checklist order without stage mutation.
+and confirm the plan plus `scenario_validate(dry_run=true)` field shape,
+preflight runtime checks, and exact live checklist order without stage mutation.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the
 default standalone report remains raw JSON+Markdown for local triage.
