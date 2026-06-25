@@ -221,6 +221,8 @@ The current doc-only durable-rule E2E refresh is verified in
 `docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md`;
 the current executable probe runtime/profile gate is guarded by
 `docs/artifacts/current-probe-runtime-profile-gate-2026-06-26.md`;
+the live assertion CLI boundary is guarded in
+`docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md`;
 the current public report redaction boundary refresh is
 `docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md`;
 the current route-table pull-doc boundary refresh is

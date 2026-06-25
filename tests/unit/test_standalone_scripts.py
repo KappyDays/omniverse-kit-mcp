@@ -2424,6 +2424,77 @@ def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):
     )
 
 
+@pytest.mark.parametrize(
+    ("extra_args", "expected_message"),
+    (
+        (
+            ["--expect-live-status", "failed"],
+            "--expect-live-status requires --scenario-validate-live",
+        ),
+        (
+            ["--expect-live-evidence-kind", "rtx_lidar_point_cloud"],
+            "--expect-live-evidence-kind requires --scenario-validate-live",
+        ),
+        (
+            [
+                "--expect-live-evidence-field",
+                "read_lidar_point_cloud:status=passed",
+            ],
+            "--expect-live-evidence-field requires --scenario-validate-live",
+        ),
+        (
+            [
+                "--expect-live-evidence-field-min",
+                "read_lidar_point_cloud:num_points=1",
+            ],
+            "--expect-live-evidence-field-min requires --scenario-validate-live",
+        ),
+        (
+            ["--expect-live-cleanup-failures", "0"],
+            "--expect-live-cleanup-failures requires --scenario-validate-live",
+        ),
+        (
+            [
+                "--expect-live-failure-step-error",
+                "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            ],
+            "--expect-live-failure-step-error requires --scenario-validate-live",
+        ),
+        (
+            ["--expect-live-diagnostic-next-actions-min", "1"],
+            "--expect-live-diagnostic-next-actions-min requires --scenario-validate-live",
+        ),
+        (
+            [
+                "--expect-live-diagnostic-field",
+                "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum",
+            ],
+            "--expect-live-diagnostic-field requires --scenario-validate-live",
+        ),
+    ),
+)
+def test_mcp_probe_main_rejects_live_assertions_without_live_mode(
+    monkeypatch,
+    capsys,
+    extra_args,
+    expected_message,
+):
+    async def fake_probe(**kwargs):
+        raise AssertionError("probe must not run when live assertions lack live mode")
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    exit_code = mcp_probe.main([
+        "--scenario-plan",
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        "--scenario-validate-dry-run",
+        *extra_args,
+    ])
+
+    assert exit_code == 2
+    assert expected_message in capsys.readouterr().out
+
+
 def test_mcp_probe_summarizes_runtime_info_shape():
     summary = mcp_probe._runtime_info_probe_summary({
         "tool_profile": "full",
