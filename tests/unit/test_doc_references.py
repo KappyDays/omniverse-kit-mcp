@@ -59,6 +59,17 @@ _F4_LOCAL_FIXTURES_ALLOWED = frozenset({
     "scenarios/smoke/usd_load_robot.yaml",
 })
 
+_OFFICIAL_READONLY_FALLBACK_ASSERTIONS = (
+    "--expect-live-diagnostic-field "
+    "search_known_miss:diagnostics.fallback_tool_order="
+    "'[\"official_asset_sync_status\",\"official_asset_search\","
+    "\"official_asset_resolve\",\"official_asset_verify\",\"asset_search\"]'",
+    "--expect-live-diagnostic-field "
+    "get_pallet_wrong_profile:diagnostics.fallback_tool_order="
+    "'[\"official_asset_sync_status\",\"official_asset_search\","
+    "\"official_asset_resolve\",\"official_asset_verify\",\"asset_search\"]'",
+)
+
 
 def _referenced_path_exists(rel: str, md_parent: Path) -> bool:
     """Resolve a referenced relative path through several strategies.
@@ -249,7 +260,6 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         'scenario_last_report(report_format="markdown", redact_local_paths=true)',
         'extension_capture_logs(level="WARN", stop_after_capture=true)',
     ]
-
     start = guide.index("Robot + RTX live proof wrapper:")
     end = guide.index("For `official_asset_*`", start)
     wrapper = guide[start:end]
@@ -407,11 +417,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         '"simulation_step","sensor_lidar_get_point_cloud",'
         '"extension_capture_logs"]\''
     ) in scenario_authoring
-    assert (
-        "--expect-live-diagnostic-field ...:diagnostics.fallback_tool_order='["
-        '"official_asset_sync_status","official_asset_search",'
-        '"official_asset_resolve","official_asset_verify","asset_search"]\''
-    ) in scenario_authoring
+    for fallback_assertion in _OFFICIAL_READONLY_FALLBACK_ASSERTIONS:
+        assert fallback_assertion in scenario_authoring
+    assert "...:diagnostics.fallback_tool_order" not in scenario_authoring
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
@@ -2086,7 +2094,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
         in scenario_authoring
     )
-    assert "diagnostics.fallback_tool_order" in scenario_authoring
+    for fallback_assertion in _OFFICIAL_READONLY_FALLBACK_ASSERTIONS:
+        assert fallback_assertion in scenario_authoring
+    assert "...:diagnostics.fallback_tool_order" not in scenario_authoring
     assert "official_asset_sync_status" in scenario_authoring
     assert "asset_search" in scenario_authoring
     for source in (asset_discovery, official_catalog):
@@ -2174,8 +2184,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "--expect-live-diagnostic-field "
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
     ) in read_only_probe
-    assert "search_known_miss:diagnostics.fallback_tool_order" in read_only_probe
-    assert "get_pallet_wrong_profile:diagnostics.fallback_tool_order" in read_only_probe
+    for fallback_assertion in _OFFICIAL_READONLY_FALLBACK_ASSERTIONS:
+        assert fallback_assertion in read_only_probe
     assert "official_asset_sync_status" in read_only_probe
     assert "asset_search" in read_only_probe
     assert "--expect-scratch-stage-required true" in scripts_claude
@@ -2194,7 +2204,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
         in invariant
     )
-    assert "diagnostics.fallback_tool_order" in invariant
+    for fallback_assertion in _OFFICIAL_READONLY_FALLBACK_ASSERTIONS:
+        assert fallback_assertion in invariant
+    assert "...:diagnostics.fallback_tool_order" not in invariant
     assert "official_asset_sync_status" in invariant
     assert "asset_search" in invariant
     assert "EXTENSION_LOGS_ERROR" in diagnostic_map
@@ -2211,7 +2223,11 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
         in diagnostic_map
     )
-    assert "diagnostics.fallback_tool_order" in diagnostic_map
+    for fallback_assertion in _OFFICIAL_READONLY_FALLBACK_ASSERTIONS:
+        assert fallback_assertion in diagnostic_map
+    assert "diagnostics.fallback_tool_order=[official_asset_sync_status" not in (
+        diagnostic_map
+    )
     assert "official_asset_sync_status" in diagnostic_map
     assert "asset_search" in diagnostic_map
 
@@ -2389,6 +2405,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         (
             "docs/artifacts/"
             "official-asset-readonly-result-shape-guard-2026-06-26.md"
+        ),
+        (
+            "docs/artifacts/"
+            "official-asset-readonly-fallback-assertion-boundary-2026-06-26.md"
         ),
     ]
 

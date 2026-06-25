@@ -387,6 +387,8 @@ the current read-only final-log close-gate live refresh is
 `docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`;
 its continued-failure result shape is guarded in
 `docs/artifacts/official-asset-readonly-result-shape-guard-2026-06-26.md`.
+The exact read-only fallback diagnostic field assertions are guarded in
+`docs/artifacts/official-asset-readonly-fallback-assertion-boundary-2026-06-26.md`.
 Use them as the baseline for the bounded `official_asset_verify` load-quality
 proof and read-only catalog diagnostics; refresh them when verification status,
 load-quality shape, diagnostics, evidence kind/fields, cleanup count, continued
