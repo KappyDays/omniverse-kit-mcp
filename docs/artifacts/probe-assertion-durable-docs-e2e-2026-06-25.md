@@ -31,7 +31,7 @@ orders without requiring first-class live tools in the parent host.
 
 ## Follow-up live assertion artifacts
 
-- Robot + RTX success exact fields:
+- Robot + RTX success status/boolean fields:
   `docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md`
 - Robot + RTX success numeric threshold:
   `docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md`
