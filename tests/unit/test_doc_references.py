@@ -503,6 +503,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-live-diagnostic-next-actions-min 1" in scripts_doc
     assert "--expect-live-diagnostic-field step:key=value" in scripts_doc
     assert "--scenario-validate-dry-run" in scripts_doc
+    assert "stop_after_capture=true" in scripts_doc
+    assert "data.capture_stop_timed_out=false" in scripts_doc
+    assert "data.capture_running=false" in scripts_doc
 
 
 def test_f3c_robot_pick_place_catalog_mentions_unsupported_next_actions():
