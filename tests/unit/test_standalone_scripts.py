@@ -714,6 +714,18 @@ def test_mcp_probe_summarizes_runtime_info_shape():
         "source_newer_than_import": False,
         "restart_required_for_latest_mcp_code": False,
         "has_mcp_runtime_info_tool": True,
+        "robot_probe_result_has_checks": True,
+        "robot_probe_unknown_profile_error_code": "ROBOT_PROBE_UNKNOWN_PROFILE",
+        "robot_probe_unknown_profile_error_data_path": (
+            "data.checks.probe.evidence"
+        ),
+        "robot_probe_unknown_profile_fallback_tool_order": [
+            "robot_list_arm_profiles",
+            "robot_probe_arm_profiles",
+            "official_asset_search",
+            "asset_search",
+            "robot_load",
+        ],
     })
 
     assert summary == {
@@ -729,6 +741,18 @@ def test_mcp_probe_summarizes_runtime_info_shape():
         "source_newer_than_import": False,
         "restart_required_for_latest_mcp_code": False,
         "has_mcp_runtime_info_tool": True,
+        "robot_probe_result_has_checks": True,
+        "robot_probe_unknown_profile_error_code": "ROBOT_PROBE_UNKNOWN_PROFILE",
+        "robot_probe_unknown_profile_error_data_path": (
+            "data.checks.probe.evidence"
+        ),
+        "robot_probe_unknown_profile_fallback_tool_order": [
+            "robot_list_arm_profiles",
+            "robot_probe_arm_profiles",
+            "official_asset_search",
+            "asset_search",
+            "robot_load",
+        ],
     }
 
 
@@ -739,6 +763,18 @@ def test_mcp_probe_runtime_info_mismatches_are_empty_for_expected_shape():
         "tool_count": 152,
         "source_newer_than_import": False,
         "restart_required_for_latest_mcp_code": False,
+        "robot_probe_result_has_checks": True,
+        "robot_probe_unknown_profile_error_code": "ROBOT_PROBE_UNKNOWN_PROFILE",
+        "robot_probe_unknown_profile_error_data_path": (
+            "data.checks.probe.evidence"
+        ),
+        "robot_probe_unknown_profile_fallback_tool_order": [
+            "robot_list_arm_profiles",
+            "robot_probe_arm_profiles",
+            "official_asset_search",
+            "asset_search",
+            "robot_load",
+        ],
     }
 
     assert mcp_probe._runtime_info_mismatches(
@@ -747,16 +783,23 @@ def test_mcp_probe_runtime_info_mismatches_are_empty_for_expected_shape():
         expect_app_profile="isaac-sim",
         expect_tool_count=152,
         require_runtime_fresh=True,
+        require_robot_probe_error_contract=True,
     ) == []
 
 
-def test_mcp_probe_runtime_info_mismatches_report_profile_count_and_staleness():
+def test_mcp_probe_runtime_info_mismatches_report_profile_count_staleness_and_robot_contract():
     summary = {
         "tool_profile": "app",
         "app_profile": "usd-composer",
         "tool_count": 148,
         "source_newer_than_import": True,
         "restart_required_for_latest_mcp_code": True,
+        "robot_probe_result_has_checks": False,
+        "robot_probe_unknown_profile_error_code": "OLD_CODE",
+        "robot_probe_unknown_profile_error_data_path": "data",
+        "robot_probe_unknown_profile_fallback_tool_order": [
+            "robot_list_arm_profiles",
+        ],
     }
 
     assert mcp_probe._runtime_info_mismatches(
@@ -765,12 +808,28 @@ def test_mcp_probe_runtime_info_mismatches_report_profile_count_and_staleness():
         expect_app_profile="isaac-sim",
         expect_tool_count=152,
         require_runtime_fresh=True,
+        require_robot_probe_error_contract=True,
     ) == [
         "tool_profile expected 'full', got 'app'",
         "app_profile expected 'isaac-sim', got 'usd-composer'",
         "tool_count expected 152, got 148",
         "source_newer_than_import is true",
         "restart_required_for_latest_mcp_code is true",
+        "robot_probe_result_has_checks is not true",
+        (
+            "robot_probe_unknown_profile_error_code expected "
+            "'ROBOT_PROBE_UNKNOWN_PROFILE', got 'OLD_CODE'"
+        ),
+        (
+            "robot_probe_unknown_profile_error_data_path expected "
+            "'data.checks.probe.evidence', got 'data'"
+        ),
+        (
+            "robot_probe_unknown_profile_fallback_tool_order expected "
+            "['robot_list_arm_profiles', 'robot_probe_arm_profiles', "
+            "'official_asset_search', 'asset_search', 'robot_load'], got "
+            "['robot_list_arm_profiles']"
+        ),
     ]
 
 

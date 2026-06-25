@@ -26,6 +26,13 @@ PLAN_REQUIRED_FIELDS = (
     "timeline_control_steps",
     "live_validation_checklist",
 )
+ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER = (
+    "robot_list_arm_profiles",
+    "robot_probe_arm_profiles",
+    "official_asset_search",
+    "asset_search",
+    "robot_load",
+)
 
 
 def _load_workspace_stdio_entry(workspace: Path) -> tuple[list[str], Path, dict[str, str]]:
@@ -123,6 +130,18 @@ def _runtime_info_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
             "restart_required_for_latest_mcp_code"
         ),
         "has_mcp_runtime_info_tool": payload.get("has_mcp_runtime_info_tool"),
+        "robot_probe_result_has_checks": payload.get(
+            "robot_probe_result_has_checks"
+        ),
+        "robot_probe_unknown_profile_error_code": payload.get(
+            "robot_probe_unknown_profile_error_code"
+        ),
+        "robot_probe_unknown_profile_error_data_path": payload.get(
+            "robot_probe_unknown_profile_error_data_path"
+        ),
+        "robot_probe_unknown_profile_fallback_tool_order": payload.get(
+            "robot_probe_unknown_profile_fallback_tool_order"
+        ),
     }
 
 
@@ -133,6 +152,7 @@ def _runtime_info_mismatches(
     expect_app_profile: str | None = None,
     expect_tool_count: int | None = None,
     require_runtime_fresh: bool = False,
+    require_robot_probe_error_contract: bool = False,
 ) -> list[str]:
     mismatches: list[str] = []
     if (
@@ -164,6 +184,34 @@ def _runtime_info_mismatches(
             mismatches.append("source_newer_than_import is true")
         if summary.get("restart_required_for_latest_mcp_code") is True:
             mismatches.append("restart_required_for_latest_mcp_code is true")
+    if require_robot_probe_error_contract:
+        if summary.get("robot_probe_result_has_checks") is not True:
+            mismatches.append("robot_probe_result_has_checks is not true")
+        if summary.get("robot_probe_unknown_profile_error_code") != (
+            "ROBOT_PROBE_UNKNOWN_PROFILE"
+        ):
+            mismatches.append(
+                "robot_probe_unknown_profile_error_code expected "
+                "'ROBOT_PROBE_UNKNOWN_PROFILE', got "
+                f"{summary.get('robot_probe_unknown_profile_error_code')!r}"
+            )
+        if summary.get("robot_probe_unknown_profile_error_data_path") != (
+            "data.checks.probe.evidence"
+        ):
+            mismatches.append(
+                "robot_probe_unknown_profile_error_data_path expected "
+                "'data.checks.probe.evidence', got "
+                f"{summary.get('robot_probe_unknown_profile_error_data_path')!r}"
+            )
+        if tuple(summary.get(
+            "robot_probe_unknown_profile_fallback_tool_order"
+        ) or ()) != ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER:
+            mismatches.append(
+                "robot_probe_unknown_profile_fallback_tool_order expected "
+                f"{list(ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER)!r}, "
+                "got "
+                f"{summary.get('robot_probe_unknown_profile_fallback_tool_order')!r}"
+            )
     return mismatches
 
 
@@ -365,6 +413,7 @@ async def probe(
     expect_app_profile: str | None = None,
     expect_tool_count: int | None = None,
     require_runtime_fresh: bool = False,
+    require_robot_probe_error_contract: bool = False,
     scenario_plan: str | None = None,
     scenario_validate_dry_run: bool = False,
     input_overrides: dict[str, Any] | None = None,
@@ -517,6 +566,7 @@ async def probe(
             expect_app_profile=expect_app_profile,
             expect_tool_count=expect_tool_count,
             require_runtime_fresh=require_runtime_fresh,
+            require_robot_probe_error_contract=require_robot_probe_error_contract,
         )
         if runtime_mismatches:
             print("runtime expectation mismatch:")
@@ -662,6 +712,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--require-robot-probe-error-contract",
+        action="store_true",
+        help=(
+            "Fail unless mcp_runtime_info exposes the robot_probe_arm_profile "
+            "unknown-profile typed error data path and fallback tool order."
+        ),
+    )
+    parser.add_argument(
         "--scenario-plan",
         help="Call scenario_plan for this scenario path after tools/resources smoke.",
     )
@@ -765,6 +823,7 @@ def main(argv: list[str] | None = None) -> int:
         or args.expect_app_profile is not None
         or args.expect_tool_count is not None
         or args.require_runtime_fresh
+        or args.require_robot_probe_error_contract
     )
     return asyncio.run(
         probe(
@@ -774,6 +833,9 @@ def main(argv: list[str] | None = None) -> int:
             expect_app_profile=args.expect_app_profile,
             expect_tool_count=args.expect_tool_count,
             require_runtime_fresh=args.require_runtime_fresh,
+            require_robot_probe_error_contract=(
+                args.require_robot_probe_error_contract
+            ),
             scenario_plan=args.scenario_plan,
             scenario_validate_dry_run=args.scenario_validate_dry_run,
             input_overrides=input_overrides,
