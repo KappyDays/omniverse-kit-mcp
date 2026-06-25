@@ -1885,7 +1885,7 @@ def register_module_tools(
         min_points: int = 0,
         fail_on_warning: bool = False,
     ) -> str:
-        """Read one frame of RTX Lidar XYZ point cloud (symmetric readback for sensor_attach_rtx_lidar). Reuses annotator stamped on sensor prim. Empty/short/warned reads and hard read errors return diagnostics.suggested_next and diagnostics.fallback_tool_order; scenario reports promote these to diagnostic_next_actions. Set min_points>0 or fail_on_warning=True to fail live proof loops instead of silently accepting empty/warned data; warning failures use SENSOR_LIDAR_POINT_CLOUD_WARNING. Truncates to max_points (≤100000)."""
+        """Read one frame of RTX Lidar XYZ point cloud (symmetric readback for sensor_attach_rtx_lidar). Reuses annotator stamped on sensor prim. Empty/short/warned reads and hard read errors return diagnostics.suggested_next and diagnostics.fallback_tool_order; scenario reports promote these to diagnostic_next_actions. Set min_points>0 or fail_on_warning=True to fail live proof loops instead of silently accepting empty/warned data. Short reads expose diagnostics.reason=point_count_below_minimum plus diagnostics.num_points/min_points; warning failures use SENSOR_LIDAR_POINT_CLOUD_WARNING with diagnostics.reason=lidar_warning; hard read errors use diagnostics.reason=lidar_read_error. Truncates to max_points (<=100000)."""
         meta = make_meta(ModuleName.SENSOR)
         request = SensorLidarGetPointCloudRequest(
             sensor_prim=sensor_prim,

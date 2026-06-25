@@ -237,6 +237,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     diagnostic_map = (PROJECT / "docs" / "tool-diagnostic-map.md").read_text(
         encoding="utf-8"
     )
+    tool_catalog = (PROJECT / "docs" / "tool-catalog.md").read_text(encoding="utf-8")
     sequence = [
         "mcp_runtime_info",
         "kit_app_start",
@@ -253,6 +254,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     start = guide.index("Robot + RTX live proof wrapper:")
     end = guide.index("For `official_asset_*`", start)
     wrapper = guide[start:end]
+    lidar_tool_start = tool_catalog.index("### `sensor_lidar_get_point_cloud`")
+    lidar_tool_end = tool_catalog.index("### `sensor_set_annotator`", lidar_tool_start)
+    lidar_tool = tool_catalog[lidar_tool_start:lidar_tool_end]
     positions = [wrapper.find(token) for token in sequence]
     missing = [token for token, pos in zip(sequence, positions) if pos < 0]
     assert not missing, "mcp-usage-guide.md missing robot+RTX wrapper tokens: " + ", ".join(
@@ -418,9 +422,13 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "SENSOR_LIDAR_POINT_CLOUD_WARNING" in guide
     assert "SENSOR_LIDAR_POINT_CLOUD_WARNING" in invariant
     assert "SENSOR_LIDAR_POINT_CLOUD_WARNING" in diagnostic_map
+    assert "SENSOR_LIDAR_POINT_CLOUD_WARNING" in lidar_tool
     assert "diagnostics.reason=lidar_warning" in guide
     assert "diagnostics.reason=lidar_warning" in invariant
     assert "diagnostics.reason=lidar_warning" in diagnostic_map
+    assert "diagnostics.reason=lidar_warning" in lidar_tool
+    assert "diagnostics.reason=point_count_below_minimum" in lidar_tool
+    assert "diagnostics.reason=lidar_read_error" in lidar_tool
     assert "SENSOR_LIDAR_GET_POINT_CLOUD_ERROR" in invariant
     assert "diagnostics.reason=rtx_lidar_attach_error" in guide
     assert "diagnostics.reason=rtx_camera_attach_error" in guide
@@ -453,6 +461,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "diagnostics.timeout_s" in guide
     assert "diagnostics.fallback_tool_order" in guide
     assert "min_points" in guide
+    assert "diagnostics.num_points/min_points" in lidar_tool
     assert "diagnostics.num_points" in guide
     assert "diagnostics.min_points" in guide
     assert (
