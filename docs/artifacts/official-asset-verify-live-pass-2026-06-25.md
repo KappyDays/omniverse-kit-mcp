@@ -20,6 +20,14 @@ extension_capture_logs(level="WARN", stop_after_capture=true) ->
 extension_capture_logs(level="ERROR", stop_after_capture=true) ->
 simulation_get_status`
 
+Command-boundary note: this baseline run predates the current exact-field
+public report contract and records `scenario_validate(...,
+report_format="json")`. Current replay/probe runs that will feed public
+evidence must use `scenario_validate(..., report_format="json",
+redact_local_paths=true)` or the current `probe_mcp_surface.py
+--scenario-validate-live` wrapper, then copy only redacted JSON fields and the
+redacted Markdown report.
+
 ## Runtime
 
 - MCP server: `isaacsim-validation-mcp` `1.27.0`

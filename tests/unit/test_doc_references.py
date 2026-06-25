@@ -2232,6 +2232,12 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     ).read_text(encoding="utf-8")
     assert "Verification status: `load_verified`" in baseline
     assert "Load quality: `content_verified_no_bbox`" in baseline
+    assert "Command-boundary note" in baseline
+    assert (
+        'scenario_validate(..., report_format="json", redact_local_paths=true)'
+        in " ".join(baseline.split())
+    )
+    assert "copy only redacted JSON fields" in baseline
 
     historical_smoke = (
         PROJECT / "docs/artifacts/official-asset-verify-live-smoke-2026-06-23.md"
