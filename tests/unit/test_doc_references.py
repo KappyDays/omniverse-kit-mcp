@@ -535,6 +535,114 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert "smoke/official_asset_verify_live.yaml" in scenario_plans
     assert "smoke/official_asset_catalog_diagnostics.yaml" in scenario_plans
     assert any(call["scenario_validate_dry_run"] for call in calls)
+
+    def _contains(call: dict[str, object], key: str, expected: tuple) -> bool:
+        return set(expected).issubset(set(call[key]))
+
+    def _live_call(
+        scenario_plan: str,
+        *,
+        marker_key: str,
+        expected: tuple,
+    ) -> dict[str, object]:
+        matches = [
+            call
+            for call in calls
+            if call["scenario_plan"] == scenario_plan
+            and call["scenario_validate_dry_run"] is True
+            and call["scenario_validate_live"] is True
+            and _contains(call, marker_key, expected)
+        ]
+        assert matches, (
+            "mcp-usage-guide.md should keep a live probe command for "
+            f"{scenario_plan} with {marker_key}={expected!r}"
+        )
+        return matches[0]
+
+    robot_success = _live_call(
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        marker_key="expected_live_evidence_field_minimums",
+        expected=(("read_lidar_point_cloud", "num_points", 1.0),),
+    )
+    assert robot_success["expect_live_cleanup_failures"] == 0
+    assert _contains(
+        robot_success,
+        "expected_live_evidence_kinds",
+        ("rtx_lidar_point_cloud", "viewport_framing", "visual_capture"),
+    )
+    assert _contains(
+        robot_success,
+        "expected_live_evidence_fields",
+        (
+            ("read_lidar_point_cloud", "status", "passed"),
+            ("frame_robot_and_sensors", "bbox_empty", False),
+            ("capture_visible_result", "passed", True),
+        ),
+    )
+
+    robot_failure = _live_call(
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        marker_key="expected_live_diagnostic_fields",
+        expected=(
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.reason",
+                "point_count_below_minimum",
+            ),
+        ),
+    )
+    assert robot_failure["input_overrides"] == {"lidar_min_points": 513}
+    assert robot_failure["expect_live_status"] == "failed"
+    assert robot_failure["expect_live_cleanup_failures"] == 0
+    assert robot_failure["expect_live_diagnostic_next_actions_min"] == 1
+    assert _contains(
+        robot_failure,
+        "expected_live_failure_step_errors",
+        (
+            (
+                "read_lidar_point_cloud",
+                "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            ),
+        ),
+    )
+
+    official_verify = _live_call(
+        "smoke/official_asset_verify_live.yaml",
+        marker_key="expected_live_evidence_fields",
+        expected=(
+            ("official_asset_verify", "verification_status", "load_verified"),
+            ("official_asset_verify", "kind", "asset"),
+            ("official_asset_verify", "app_profile", "isaac-sim"),
+        ),
+    )
+    assert official_verify["expect_live_cleanup_failures"] == 0
+    assert _contains(
+        official_verify,
+        "expected_live_evidence_kinds",
+        ("official_asset_verify",),
+    )
+
+    official_diagnostics = _live_call(
+        "smoke/official_asset_catalog_diagnostics.yaml",
+        marker_key="expected_live_diagnostic_fields",
+        expected=(
+            ("search_known_miss", "diagnostics.reason", "query_no_match"),
+            (
+                "get_pallet_wrong_profile",
+                "diagnostics.reason",
+                "app_profile_not_covered",
+            ),
+        ),
+    )
+    assert official_diagnostics["expect_live_status"] == "passed"
+    assert official_diagnostics["expect_live_cleanup_failures"] == 0
+    assert official_diagnostics["expect_live_diagnostic_next_actions_min"] == 2
+    assert _contains(
+        official_diagnostics,
+        "expected_live_failure_step_errors",
+        (("get_pallet_wrong_profile", "OFFICIAL_ASSET_NOT_FOUND"),),
+    )
+
     assert "ignored `tmp_mcp_surface.json`" in guide
     assert "repo-relative snapshot path" in guide
     assert "without exposing the local workspace root" in guide
