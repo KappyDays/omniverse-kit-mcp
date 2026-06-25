@@ -1257,6 +1257,23 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert read_only_positions == sorted(read_only_positions), (
         "Read-only official asset wrapper is out of order in mcp-usage-guide.md"
     )
+    invariant_official_start = invariant.index("Read-only catalog diagnostics wrapper:")
+    invariant_official = invariant[invariant_official_start:]
+    invariant_read_only_positions = [
+        invariant_official.find(token) for token in read_only_sequence
+    ]
+    invariant_read_only_missing = [
+        token
+        for token, pos in zip(read_only_sequence, invariant_read_only_positions)
+        if pos < 0
+    ]
+    assert not invariant_read_only_missing, (
+        "scenario-validation.md missing read-only official asset wrapper tokens: "
+        + ", ".join(invariant_read_only_missing)
+    )
+    assert invariant_read_only_positions == sorted(invariant_read_only_positions), (
+        "Read-only official asset wrapper is out of order in scenario-validation.md"
+    )
     on_demand_sequence = [
         "mcp_runtime_info",
         "kit_app_start",
