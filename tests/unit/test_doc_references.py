@@ -1270,6 +1270,19 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         assert "official_asset_verify:verification_status=load_verified" in source
         assert "official_asset_verify:kind=asset" in source
         assert "official_asset_verify:app_profile=isaac-sim" in source
+        assert "data.verification_status=load_verified" in source
+        assert "data.kind" in source
+        assert "data.app_profile" in source
+        assert "data.load_quality" in source
+        assert "content_verified_with_bbox" in source
+        assert "content_verified_no_bbox" in source
+        assert "data.diagnostics.reason" in source
+        assert "data.diagnostics.asset_checks" in source
+        assert "data.diagnostics.material_checks" in source
+        assert "data.diagnostics.error_type" in source
+        assert "data.diagnostics.suggested_next" in source
+        assert "data.diagnostics.fallback_tool_order" in source
+        assert "verification-on-demand.jsonl" in source
     assert "Official asset verify failed or found nothing?" in diagnostic_map
     assert "OFFICIAL_ASSET_NOT_FOUND" in diagnostic_map
     assert "diagnostics.candidate_counts" in diagnostic_map

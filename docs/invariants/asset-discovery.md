@@ -58,6 +58,17 @@ and `docs/mcp-usage-guide.md`; the proof must assert
 `official_asset_verify:kind=asset`, and
 `official_asset_verify:app_profile=isaac-sim` on the `official_asset_verify`
 evidence row.
+Direct on-demand `official_asset_verify` response is only bounded operator
+evidence. Accept it before placement only after checking
+`data.verification_status=load_verified`, `data.kind`, `data.app_profile`, and
+`data.load_quality` (`content_verified_with_bbox` or
+`content_verified_no_bbox` for asset loads). On failed records inspect
+`data.diagnostics.reason`, `data.diagnostics.asset_checks` or
+`data.diagnostics.material_checks`, `data.diagnostics.error_type`,
+`data.diagnostics.suggested_next`, and `data.diagnostics.fallback_tool_order`
+before retrying or falling back to `asset_search`. `official_asset_verify`
+appends ignored `verification-on-demand.jsonl`; commit only redacted stable
+fields and keep generated verification files out of public artifacts.
 1. **`asset_search(query, category=None, limit=20)` — Legacy curated catalog, offline.** Curation markdown
 Read the catalog directly from the MCP server process + ranking → `[{name, url, category,
    source_file}]`. Live REST / Isaac Startup **Not Required**. Example: `asset_search("forklift")`,
