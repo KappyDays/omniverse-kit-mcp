@@ -1275,6 +1275,60 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
     assert "public hygiene checks" in guide
 
 
+def test_f3b_current_probe_commands_pin_runtime_profile_gate():
+    expected_tool_count = str(len(_expected_tool_names()))
+    assert expected_tool_count != "0"
+    current_sources = (
+        "docs/mcp-usage-guide.md",
+        "docs/artifacts/extension-log-capture-stop-guard-2026-06-26.md",
+        "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
+        "docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md",
+        "docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md",
+        "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
+        "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",
+        "docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md",
+        "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md",
+        "docs/artifacts/robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md",
+        "docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md",
+        "docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md",
+        "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md",
+        "docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md",
+        "docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md",
+        "docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md",
+    )
+    scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
+    for token in (
+        "--runtime-info",
+        "--expect-tool-profile full",
+        "--expect-app-profile isaac-sim",
+        f"--expect-tool-count {expected_tool_count}",
+        "--require-runtime-fresh",
+        "--require-robot-probe-error-contract",
+    ):
+        assert token in scripts_claude
+
+    for rel in current_sources:
+        text = (PROJECT / rel).read_text(encoding="utf-8")
+        commands = re.findall(
+            r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`",
+            text,
+        )
+        assert commands, f"{rel} has no executable probe command"
+        for command in commands:
+            command_start = re.search(r"scripts[\\/]probe_mcp_surface\.py", command)
+            assert command_start is not None
+            command = command[command_start.start() :].replace(
+                "scripts\\probe_mcp_surface.py", "scripts/probe_mcp_surface.py"
+            )
+            command = " ".join(command.split())
+            assert "--expect-tool-profile full" in command, rel
+            assert "--expect-app-profile isaac-sim" in command, rel
+            assert f"--expect-tool-count {expected_tool_count}" in command, rel
+            assert "--require-runtime-fresh" in command, rel
+            assert "--require-robot-probe-error-contract" in command, rel
+            assert "--runtime-info" in command or "--live-preflight" in command, rel
+
+
 def test_f3b_artifacts_with_unredacted_report_calls_are_historical():
     offenders: list[str] = []
     for artifact in sorted((PROJECT / "docs" / "artifacts").rglob("*.md")):
@@ -1302,17 +1356,28 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     redaction_boundary = (
         "docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md"
     )
+    profile_gate = (
+        "docs/artifacts/current-probe-runtime-profile-gate-2026-06-26.md"
+    )
     route_boundary = (
         "docs/artifacts/new-agent-route-table-pull-doc-boundary-2026-06-26.md"
     )
     baseline_e2e = "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md"
     assert "current doc-only durable-rule E2E refresh" in guide
+    assert "current executable probe runtime/profile gate" in guide
     assert "current public report redaction boundary refresh" in guide
     assert "current route-table pull-doc boundary refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
+    assert guide.index(profile_gate) < guide.index(baseline_e2e)
     assert guide.index(redaction_boundary) < guide.index(baseline_e2e)
     assert guide.index(route_boundary) < guide.index(baseline_e2e)
+    profile_gate_artifact = (PROJECT / profile_gate).read_text(encoding="utf-8")
+    assert "test_f3b_current_probe_commands_pin_runtime_profile_gate" in (
+        profile_gate_artifact
+    )
+    assert "--expect-tool-count 152" in profile_gate_artifact
+    assert "registered tool SoT" in profile_gate_artifact
     route_artifact = (PROJECT / route_boundary).read_text(encoding="utf-8")
     assert "Post-Route Dry-Run Recheck" in route_artifact
     assert "smoke/robot_rtx_sensor_golden_workflow.yaml" in route_artifact
@@ -1354,6 +1419,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"
         ),
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
+        profile_gate,
         redaction_boundary,
         route_boundary,
         current_e2e,
