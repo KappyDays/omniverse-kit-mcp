@@ -705,7 +705,12 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
             {"step_id": "read_lidar_point_cloud", "status": "failed"},
         ],
         "evidence_summary": [
-            {"step_id": "capture_visible_result", "evidence_kind": "visual_capture"},
+            {
+                "step_id": "capture_visible_result",
+                "evidence_kind": "visual_capture",
+                "status": "passed",
+                "attempts": 1,
+            },
         ],
     }
     module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
@@ -854,6 +859,10 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         ),
         expect_live_status="failed",
         expected_live_evidence_kinds=("visual_capture",),
+        expected_live_evidence_fields=(
+            ("visual_capture", "status", "passed"),
+            ("capture_visible_result", "attempts", 1),
+        ),
         expect_live_cleanup_failures=0,
         expected_live_failure_step_errors=(
             (
@@ -871,6 +880,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
     assert "=== scenario_validate live summary ===" in output
     assert '"failure_steps": [' in output
     assert '"evidence_kinds": [' in output
+    assert '"evidence": [' in output
     assert '"cleanup_failed_steps": 0' in output
     assert '"diagnostic_next_action_count": 1' in output
     assert "# Scenario Report: redacted" in output
@@ -908,22 +918,47 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     (
-        "evidence_kinds",
+        "evidence_rows",
         "cleanup_failed_steps",
+        "expected_live_evidence_fields",
         "expected_message",
         "absent_message",
     ),
     (
         (
-            ("visual_capture",),
+            [{"step_id": "evidence_0", "evidence_kind": "visual_capture"}],
             0,
+            (),
             "live evidence kind 'official_asset_verify' was not found",
             "scenario_validate live cleanup expectation mismatch:",
         ),
         (
-            ("official_asset_verify",),
+            [
+                {
+                    "step_id": "verify_pallet_asset",
+                    "evidence_kind": "official_asset_verify",
+                    "verification_status": "load_verified",
+                },
+            ],
             1,
+            (),
             "cleanup_failed_steps expected 0, got 1",
+            "scenario_validate live evidence expectation mismatch:",
+        ),
+        (
+            [
+                {
+                    "step_id": "verify_pallet_asset",
+                    "evidence_kind": "official_asset_verify",
+                    "verification_status": "discovered",
+                },
+            ],
+            0,
+            (("official_asset_verify", "verification_status", "load_verified"),),
+            (
+                "live evidence row 'official_asset_verify' field "
+                "'verification_status' expected 'load_verified', got ['discovered']"
+            ),
             "scenario_validate live evidence expectation mismatch:",
         ),
     ),
@@ -931,8 +966,9 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
 async def test_mcp_probe_live_expectation_mismatches_set_nonzero_exit(
     monkeypatch,
     capsys,
-    evidence_kinds,
+    evidence_rows,
     cleanup_failed_steps,
+    expected_live_evidence_fields,
     expected_message,
     absent_message,
 ):
@@ -961,10 +997,7 @@ async def test_mcp_probe_live_expectation_mismatches_set_nonzero_exit(
         "cleanup_failed_steps": cleanup_failed_steps,
         "failure_summary": [],
         "diagnostic_next_actions": [],
-        "evidence_summary": [
-            {"step_id": f"evidence_{index}", "evidence_kind": evidence_kind}
-            for index, evidence_kind in enumerate(evidence_kinds)
-        ],
+        "evidence_summary": evidence_rows,
     }
     module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
     responses = [
@@ -1064,6 +1097,7 @@ async def test_mcp_probe_live_expectation_mismatches_set_nonzero_exit(
         scenario_validate_dry_run=True,
         scenario_validate_live=True,
         expected_live_evidence_kinds=("official_asset_verify",),
+        expected_live_evidence_fields=expected_live_evidence_fields,
         expect_live_cleanup_failures=0,
     )
 
@@ -1410,6 +1444,93 @@ def test_mcp_probe_live_evidence_kind_mismatches_report_missing_kind():
     ) == ["evidence_kinds summary is missing or malformed"]
 
 
+def test_mcp_probe_parses_expected_live_evidence_fields():
+    assert mcp_probe._parse_expected_live_evidence_fields([
+        "official_asset_verify:verification_status=load_verified",
+        "verify_pallet_asset:attempt=2",
+        "official_asset_verify:stale=false",
+        'official_asset_verify:name="aluminumpallet_a01.usd"',
+    ]) == (
+        ("official_asset_verify", "verification_status", "load_verified"),
+        ("verify_pallet_asset", "attempt", 2),
+        ("official_asset_verify", "stale", False),
+        ("official_asset_verify", "name", "aluminumpallet_a01.usd"),
+    )
+
+
+def test_mcp_probe_rejects_malformed_live_evidence_field_expectation():
+    with pytest.raises(ValueError, match="selector:key=value"):
+        mcp_probe._parse_expected_live_evidence_fields([
+            "official_asset_verify",
+        ])
+    with pytest.raises(ValueError, match="selector:key=value"):
+        mcp_probe._parse_expected_live_evidence_fields([
+            "official_asset_verify:verification_status",
+        ])
+    with pytest.raises(ValueError, match="non-empty"):
+        mcp_probe._parse_expected_live_evidence_fields([
+            "official_asset_verify:=load_verified",
+        ])
+
+
+def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value():
+    summary = {
+        "evidence": [
+            {
+                "step_id": "verify_pallet_asset",
+                "evidence_kind": "official_asset_verify",
+                "verification_status": "load_verified",
+                "kind": "asset",
+                "app_profile": "isaac-sim",
+            },
+        ],
+    }
+
+    assert mcp_probe._live_evidence_field_mismatches(
+        summary,
+        (
+            ("official_asset_verify", "verification_status", "load_verified"),
+            ("verify_pallet_asset", "app_profile", "isaac-sim"),
+        ),
+    ) == []
+
+
+def test_mcp_probe_live_evidence_field_mismatches_report_drift():
+    summary = {
+        "evidence": [
+            {
+                "step_id": "verify_pallet_asset",
+                "evidence_kind": "official_asset_verify",
+                "verification_status": "discovered",
+                "kind": "asset",
+            },
+        ],
+    }
+
+    assert mcp_probe._live_evidence_field_mismatches(
+        summary,
+        (("official_asset_verify", "verification_status", "load_verified"),),
+    ) == [
+        "live evidence row 'official_asset_verify' field 'verification_status' "
+        "expected 'load_verified', got ['discovered']",
+    ]
+    assert mcp_probe._live_evidence_field_mismatches(
+        summary,
+        (("official_asset_verify", "app_profile", "isaac-sim"),),
+    ) == [
+        "live evidence row 'official_asset_verify' field 'app_profile' "
+        "was not found",
+    ]
+    assert mcp_probe._live_evidence_field_mismatches(
+        summary,
+        (("visual_capture", "status", "passed"),),
+    ) == ["live evidence row 'visual_capture' was not found"]
+    assert mcp_probe._live_evidence_field_mismatches(
+        {},
+        (("official_asset_verify", "verification_status", "load_verified"),),
+    ) == ["evidence summary is missing or malformed"]
+
+
 def test_mcp_probe_live_cleanup_failure_mismatches_are_empty_for_expected_count():
     assert mcp_probe._live_cleanup_failure_mismatches(
         {"cleanup_failed_steps": 0},
@@ -1631,6 +1752,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-live-evidence-kind",
         "visual_capture",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-live-evidence-field",
+        "official_asset_verify:verification_status=load_verified",
     ]) == 2
     assert mcp_probe.main([
         "--expect-live-cleanup-failures",

@@ -264,8 +264,12 @@ without stage mutation:
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_verify_live.yaml --scenario-validate-dry-run --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true`.
 When promoting that official-asset probe to the mutating scratch/test-stage
 proof, add `--scenario-validate-live`, `--expect-live-cleanup-failures 0`,
-and `--expect-live-evidence-kind official_asset_verify` so the live report
-must preserve the expected verification evidence row.
+`--expect-live-evidence-kind official_asset_verify`,
+`--expect-live-evidence-field official_asset_verify:verification_status=load_verified`,
+`--expect-live-evidence-field official_asset_verify:kind=asset`, and
+`--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim` so
+the live report must preserve the expected verification evidence row and
+field values.
 For the read-only catalog diagnostics path, use
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true`.
 After validation, request redacted JSON when you need exact fields; compare
@@ -278,10 +282,12 @@ and redacted Markdown `Evidence Summary` for the compact evidence note.
 Current public-safe official asset live evidence is
 `docs/artifacts/official-asset-verify-live-pass-2026-06-25.md`. The live probe
 assertion options for the same workflow are verified in
-`docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md`. Use
-them as the baseline for the bounded `official_asset_verify` load-quality proof
-and refresh them when verification status, load-quality shape, diagnostics,
-evidence kind, cleanup count, or WARN/ERROR counts change.
+`docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md`, and
+field-level evidence assertions are verified in
+`docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md`.
+Use them as the baseline for the bounded `official_asset_verify` load-quality
+proof and refresh them when verification status, load-quality shape,
+diagnostics, evidence kind/fields, cleanup count, or WARN/ERROR counts change.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

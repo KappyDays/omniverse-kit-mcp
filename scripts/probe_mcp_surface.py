@@ -38,6 +38,24 @@ ROBOT_PROBE_UNKNOWN_PROFILE_FALLBACK_TOOL_ORDER = (
     "asset_search",
     "robot_load",
 )
+LIVE_EVIDENCE_SUMMARY_FIELDS = (
+    "step_id",
+    "phase",
+    "status",
+    "attempts",
+    "max_attempts",
+    "retry_failure_count",
+    "evidence_kind",
+    "kind",
+    "name",
+    "app_profile",
+    "verification_status",
+    "attempt",
+    "timeout_s",
+    "retry_count",
+    "error",
+    "error_code",
+)
 
 
 def _load_workspace_stdio_entry(workspace: Path) -> tuple[list[str], Path, dict[str, str]]:
@@ -406,6 +424,76 @@ def _live_evidence_kind_mismatches(
     ]
 
 
+def _parse_expected_live_evidence_fields(
+    raw_values: list[str],
+) -> tuple[tuple[str, str, Any], ...]:
+    expectations: list[tuple[str, str, Any]] = []
+    for raw in raw_values:
+        if ":" not in raw:
+            raise ValueError(
+                "--expect-live-evidence-field entries must look like "
+                "selector:key=value"
+            )
+        selector, rest = raw.split(":", 1)
+        if "=" not in rest:
+            raise ValueError(
+                "--expect-live-evidence-field entries must look like "
+                "selector:key=value"
+            )
+        key, raw_value = rest.split("=", 1)
+        selector = selector.strip()
+        key = key.strip()
+        raw_value = raw_value.strip()
+        if not selector or not key:
+            raise ValueError(
+                "--expect-live-evidence-field requires non-empty selector and key"
+            )
+        try:
+            value: Any = json.loads(raw_value)
+        except json.JSONDecodeError:
+            value = raw_value
+        expectations.append((selector, key, value))
+    return tuple(expectations)
+
+
+def _live_evidence_field_mismatches(
+    summary: dict[str, Any],
+    expectations: tuple[tuple[str, str, Any], ...],
+) -> list[str]:
+    if not expectations:
+        return []
+    evidence_rows = summary.get("evidence")
+    if not isinstance(evidence_rows, list):
+        return ["evidence summary is missing or malformed"]
+    mismatches: list[str] = []
+    for selector, key, expected in expectations:
+        matching_rows = [
+            row
+            for row in evidence_rows
+            if isinstance(row, dict)
+            and (
+                row.get("evidence_kind") == selector
+                or row.get("step_id") == selector
+            )
+        ]
+        if not matching_rows:
+            mismatches.append(f"live evidence row {selector!r} was not found")
+            continue
+        actual_values = [row.get(key) for row in matching_rows if key in row]
+        if not actual_values:
+            mismatches.append(
+                f"live evidence row {selector!r} field {key!r} was not found"
+            )
+            continue
+        if any(actual == expected for actual in actual_values):
+            continue
+        mismatches.append(
+            f"live evidence row {selector!r} field {key!r} expected "
+            f"{expected!r}, got {actual_values!r}"
+        )
+    return mismatches
+
+
 def _live_cleanup_failure_mismatches(
     summary: dict[str, Any],
     expected_count: int | None,
@@ -608,6 +696,19 @@ def _scenario_live_report_summary(payload: dict[str, Any]) -> dict[str, Any]:
             for row in evidence_summary
             if isinstance(row, dict) and row.get("evidence_kind") is not None
         ],
+        "evidence": [
+            {
+                field: row.get(field)
+                for field in LIVE_EVIDENCE_SUMMARY_FIELDS
+                if field in row
+            }
+            for row in evidence_summary
+            if isinstance(row, dict)
+            and (
+                row.get("evidence_kind") is not None
+                or row.get("step_id") is not None
+            )
+        ],
     }
 
 
@@ -731,6 +832,7 @@ async def probe(
     expected_retry_key_args: tuple[tuple[str, str, Any], ...] = (),
     expected_automatic_cleanup_timeouts: tuple[tuple[str, float], ...] = (),
     expected_live_evidence_kinds: tuple[str, ...] = (),
+    expected_live_evidence_fields: tuple[tuple[str, str, Any], ...] = (),
     expect_live_cleanup_failures: int | None = None,
     expected_live_failure_step_errors: tuple[tuple[str, str], ...] = (),
     expect_live_diagnostic_next_actions_min: int | None = None,
@@ -1081,6 +1183,18 @@ async def probe(
                     for mismatch in evidence_mismatches:
                         print(f"  - {mismatch}")
                     exit_status = 1
+                evidence_field_mismatches = _live_evidence_field_mismatches(
+                    live_summary,
+                    expected_live_evidence_fields,
+                )
+                if evidence_field_mismatches:
+                    print(
+                        "scenario_validate live evidence field expectation "
+                        "mismatch:"
+                    )
+                    for mismatch in evidence_field_mismatches:
+                        print(f"  - {mismatch}")
+                    exit_status = 1
                 cleanup_mismatches = _live_cleanup_failure_mismatches(
                     live_summary,
                     expect_live_cleanup_failures,
@@ -1260,6 +1374,17 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--expect-live-evidence-field",
+        action="append",
+        default=[],
+        help=(
+            "Require a scenario_validate live evidence_summary field, formatted "
+            "as selector:key=value where selector matches evidence_kind or "
+            "step_id. Value is JSON-decoded when possible; repeat for multiple "
+            "expectations."
+        ),
+    )
+    parser.add_argument(
         "--expect-live-cleanup-failures",
         type=int,
         help="Require scenario_validate live cleanup_failed_steps to match.",
@@ -1389,6 +1514,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Invalid probe option: {exc}")
         return 2
     try:
+        expected_live_evidence_fields = _parse_expected_live_evidence_fields(
+            args.expect_live_evidence_field,
+        )
+    except ValueError as exc:
+        print(f"Invalid probe option: {exc}")
+        return 2
+    try:
         expected_live_failure_step_errors = (
             _parse_expected_live_failure_step_errors(
                 args.expect_live_failure_step_error,
@@ -1435,6 +1567,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     elif args.expect_live_evidence_kind:
         print("--expect-live-evidence-kind requires --scenario-validate-live")
+        return 2
+    elif expected_live_evidence_fields:
+        print("--expect-live-evidence-field requires --scenario-validate-live")
         return 2
     elif args.expect_live_cleanup_failures is not None:
         print("--expect-live-cleanup-failures requires --scenario-validate-live")
@@ -1496,6 +1631,7 @@ def main(argv: list[str] | None = None) -> int:
                 expected_automatic_cleanup_timeouts
             ),
             expected_live_evidence_kinds=tuple(args.expect_live_evidence_kind),
+            expected_live_evidence_fields=expected_live_evidence_fields,
             expect_live_cleanup_failures=args.expect_live_cleanup_failures,
             expected_live_failure_step_errors=(
                 expected_live_failure_step_errors

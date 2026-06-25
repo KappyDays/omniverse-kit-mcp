@@ -412,6 +412,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "scenario_validate(dry_run=true)" in guide
     assert "--expect-retry-key-arg step:key=value" in scripts_doc
     assert "--expect-live-evidence-kind kind" in scripts_doc
+    assert "--expect-live-evidence-field kind:key=value" in scripts_doc
     assert "--expect-live-cleanup-failures 0" in scripts_doc
     assert "--expect-live-failure-step-error step=ERROR_CODE" in scripts_doc
     assert "--expect-live-diagnostic-next-actions-min 1" in scripts_doc
@@ -584,6 +585,16 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "--expect-log-capture-recommended true" in verify_live_probe
     assert "--expect-live-cleanup-failures 0" in verify_live_probe
     assert "--expect-live-evidence-kind official_asset_verify" in verify_live_probe
+    assert (
+        "--expect-live-evidence-field "
+        "official_asset_verify:verification_status=load_verified"
+    ) in verify_live_probe
+    assert (
+        "--expect-live-evidence-field official_asset_verify:kind=asset"
+    ) in verify_live_probe
+    assert (
+        "--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim"
+    ) in verify_live_probe
     assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
     assert (
         "--require-live-validation-tools "
@@ -606,6 +617,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     artifacts = [
         "docs/artifacts/official-asset-verify-live-pass-2026-06-25.md",
         "docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md",
+        (
+            "docs/artifacts/"
+            "official-asset-live-evidence-field-assertions-2026-06-25.md"
+        ),
     ]
 
     for rel in artifacts:
@@ -629,6 +644,24 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     ).read_text(encoding="utf-8")
     assert "`--expect-live-evidence-kind official_asset_verify`" in assertion_artifact
     assert "Verification status: `load_verified`" in assertion_artifact
+
+    field_assertion_artifact = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-live-evidence-field-assertions-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert (
+        "`--expect-live-evidence-field "
+        "official_asset_verify:verification_status=load_verified`"
+    ) in field_assertion_artifact
+    assert "`--expect-live-evidence-field official_asset_verify:kind=asset`" in (
+        field_assertion_artifact
+    )
+    assert (
+        "`--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`"
+        in field_assertion_artifact
+    )
+    assert "Verification status: `load_verified`" in field_assertion_artifact
 
 
 def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
