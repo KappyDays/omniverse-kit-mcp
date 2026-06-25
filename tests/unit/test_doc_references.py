@@ -1828,6 +1828,11 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         assert "verification-on-demand.jsonl" in source
     assert "Official asset verify failed or found nothing?" in diagnostic_map
     assert "OFFICIAL_ASSET_NOT_FOUND" in diagnostic_map
+    assert (
+        'scenario_last_report(report_format="markdown", redact_local_paths=true)'
+        in diagnostic_map
+    )
+    assert "default JSON `scenario_last_report` for exact fields" in diagnostic_map
     assert "diagnostics.candidate_counts" in diagnostic_map
     assert "diagnostics.asset_checks" in diagnostic_map
     assert "diagnostics.material_checks" in diagnostic_map
