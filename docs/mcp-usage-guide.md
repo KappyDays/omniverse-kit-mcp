@@ -327,6 +327,19 @@ Official asset on-demand live verify wrapper:
 `extension_capture_logs(level="ERROR", stop_after_capture=true)`. Capture logs
 in the same live MCP host session that ran `official_asset_verify`; one-shot
 stdio hosts do not preserve the previous host's in-memory/log-capture state.
+Direct `official_asset_verify` response is acceptable as on-demand live evidence
+only after checking `data.verification_status=load_verified`, `data.kind=asset`,
+`data.app_profile=isaac-sim`, and `data.load_quality` (`content_verified_with_bbox`
+or `content_verified_no_bbox` for asset loads). This does not replace the
+scenario/probe wrapper when repeatable public proof is required. If the direct
+response reports `data.verification_status=failed`, inspect
+`data.diagnostics.reason`, `data.diagnostics.asset_checks` or
+`data.diagnostics.material_checks`, `data.diagnostics.error_type`,
+`data.diagnostics.suggested_next`, and `data.diagnostics.fallback_tool_order`
+before retrying, widening the search, or falling back to legacy `asset_search`.
+`official_asset_verify` also appends ignored `verification-on-demand.jsonl`
+records; keep generated catalog/verification files out of public commits and
+copy only redacted, stable response fields plus WARN/ERROR counts into artifacts.
 
 ## Timeline Control
 

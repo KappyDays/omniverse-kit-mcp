@@ -1131,6 +1131,44 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     )
 
 
+def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
+    guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    official_catalog = (
+        PROJECT / "docs" / "references" / "official-asset-catalog.md"
+    ).read_text(encoding="utf-8")
+
+    start = guide.index("Official asset on-demand live verify wrapper:")
+    end = guide.index("## Timeline Control", start)
+    on_demand_wrapper = guide[start:end]
+
+    for source in (on_demand_wrapper, official_catalog):
+        assert "Direct `official_asset_verify`" in source
+        assert "`data.verification_status=load_verified`" in source
+        assert "`data.kind=asset`" in source
+        assert "`data.app_profile=isaac-sim`" in source
+        assert "`data.load_quality`" in source
+        assert "`content_verified_with_bbox`" in source
+        assert "`content_verified_no_bbox`" in source
+        assert "`data.diagnostics.reason`" in source
+        assert "`data.diagnostics.asset_checks`" in source
+        assert "`data.diagnostics.material_checks`" in source
+        assert "`data.diagnostics.error_type`" in source
+        assert "`data.diagnostics.suggested_next`" in source
+        assert "`data.diagnostics.fallback_tool_order`" in source
+        assert "`verification-on-demand.jsonl`" in source
+
+    on_demand_normalized = " ".join(on_demand_wrapper.split())
+    catalog_normalized = " ".join(official_catalog.split())
+    assert "does not replace the scenario/probe wrapper" in on_demand_normalized
+    assert "repeatable public proof is required" in on_demand_normalized
+    assert "copy only redacted, stable response fields" in on_demand_normalized
+    assert "keep generated catalog/verification files out of public commits" in (
+        on_demand_normalized
+    )
+    assert "bounded operator check" in catalog_normalized
+    assert "do not commit generated verification records" in catalog_normalized
+
+
 def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     artifacts = [

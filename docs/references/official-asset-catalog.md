@@ -179,6 +179,19 @@ the workflow starts from a profile-specific latest pointer such as
 not found and recovered through the reported diagnostics rather than verified or
 used directly.
 
+Direct `official_asset_verify` on-demand response accepts an Isaac Sim asset proof
+only when the response preserves `data.verification_status=load_verified`,
+`data.kind=asset`, `data.app_profile=isaac-sim`, and `data.load_quality`
+(`content_verified_with_bbox` or `content_verified_no_bbox`). Direct proof is a
+bounded operator check; use the scenario/probe wrapper from
+`docs/mcp-usage-guide.md` when repeatable public evidence or field assertions are
+required. On failure, inspect `data.diagnostics.reason`,
+`data.diagnostics.asset_checks` or `data.diagnostics.material_checks`,
+`data.diagnostics.error_type`, `data.diagnostics.suggested_next`, and
+`data.diagnostics.fallback_tool_order` before retrying or falling back to
+legacy `asset_search`. The direct verifier writes ignored
+`verification-on-demand.jsonl`; do not commit generated verification records.
+
 When `official_asset_search` returns zero candidates, or when
 `official_asset_resolve`, `official_asset_get`, or `official_asset_verify`
 cannot find an entry, inspect `data.diagnostics.reason`, `candidate_counts`,
