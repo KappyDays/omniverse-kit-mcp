@@ -816,7 +816,7 @@ def test_f3b_artifact_probe_commands_parse(monkeypatch):
 
 def test_f3b_probe_assertion_artifacts_mark_request_scoped_log_capture():
     offenders: list[str] = []
-    for md in sorted((PROJECT / "docs" / "artifacts").glob("*2026-06-25.md")):
+    for md in sorted((PROJECT / "docs" / "artifacts").glob("*.md")):
         text = md.read_text(encoding="utf-8")
         if "WARN+ log capture" in text and "stop_after_capture=true" not in text:
             offenders.append(str(md.relative_to(PROJECT)))
