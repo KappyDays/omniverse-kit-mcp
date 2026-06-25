@@ -800,6 +800,147 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
     }
 
 
+@pytest.mark.asyncio
+async def test_mcp_probe_live_preflight_only_skips_scenario_calls(
+    monkeypatch,
+    capsys,
+):
+    sent_messages: list[dict] = []
+    runtime_payload = {
+        "tool_profile": "full",
+        "app_profile": "isaac-sim",
+        "tool_count": 152,
+        "source_newer_than_import": False,
+        "restart_required_for_latest_mcp_code": False,
+    }
+    module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
+    responses = [
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "serverInfo": {"name": "fake-mcp", "version": "0"},
+                "capabilities": {"tools": {}, "resources": {}},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "tools": [
+                    {"name": "mcp_runtime_info"},
+                    {"name": "kit_app_start"},
+                    {"name": "simulation_get_status"},
+                    {"name": "extension_clear_logs"},
+                    {"name": "extension_capture_logs"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": {
+                "resources": [
+                    {"uri": "isaacsim://scenario-schema"},
+                    {"uri": "isaacsim://scenarios"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "result": {"content": [{"type": "text", "text": json.dumps(runtime_payload)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 8,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+    ]
+
+    class FakeStdin:
+        def write(self, data: bytes) -> None:
+            sent_messages.append(json.loads(data.decode("utf-8")))
+
+        async def drain(self) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+    class FakeStdout:
+        def __init__(self, payloads: list[dict]):
+            self._lines = [
+                (json.dumps(payload) + "\n").encode("utf-8")
+                for payload in payloads
+            ]
+
+        async def readline(self) -> bytes:
+            if not self._lines:
+                return b""
+            return self._lines.pop(0)
+
+    class FakeProcess:
+        def __init__(self, payloads: list[dict]):
+            self.stdin = FakeStdin()
+            self.stdout = FakeStdout(payloads)
+
+        async def wait(self) -> int:
+            return 0
+
+        def kill(self) -> None:
+            pass
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        return FakeProcess(responses)
+
+    monkeypatch.setattr(
+        mcp_probe.asyncio,
+        "create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    exit_code = await mcp_probe.probe(
+        workspace=Path("workspaces/isaac/instance-1"),
+        live_preflight=True,
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "=== extension_capture_logs WARN+ preflight ===" in output
+    tool_calls = [
+        message
+        for message in sent_messages
+        if message.get("method") == "tools/call"
+    ]
+    assert [call["params"]["name"] for call in tool_calls] == [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "extension_clear_logs",
+        "extension_capture_logs",
+    ]
+    assert tool_calls[-1]["params"]["arguments"] == {
+        "level": "WARN",
+        "stop_after_capture": True,
+    }
+
+
 def test_mcp_probe_parses_required_live_validation_tools():
     assert mcp_probe._parse_required_tool_sequence(
         "mcp_runtime_info, kit_app_start,, scenario_plan ",
@@ -1013,6 +1154,9 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     ]) == 2
     assert mcp_probe.main([
         "--scenario-validate-dry-run",
+    ]) == 2
+    assert mcp_probe.main([
+        "--live-preflight",
     ]) == 2
     assert mcp_probe.main([
         "--scenario-validate-live",

@@ -124,6 +124,9 @@ If first-class live tools are not exposed in the current parent host, use
 to smoke the workspace-local stdio MCP entry, confirm profile/import freshness,
 and confirm the plan plus `scenario_validate(dry_run=true)` field shape,
 preflight runtime checks, and exact live checklist order without stage mutation.
+Use `--live-preflight` by itself when you only need non-stage Kit attach,
+timeline status, and request-scoped WARN/ERROR log capture before a mutating
+scenario proof.
 When you are ready to run the mutating scratch/test-stage proof from the same
 parent/root session, rerun the same workspace-local command with
 `--scenario-validate-live`; the script requires `--workspace`,

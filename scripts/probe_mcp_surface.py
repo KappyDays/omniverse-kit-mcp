@@ -388,6 +388,12 @@ def _module_result_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in summary.items() if value is not None}
 
 
+def _module_result_failed(payload: dict[str, Any]) -> bool:
+    if payload.get("ok") is False:
+        return True
+    return payload.get("status") in {"error", "failed", "timeout"}
+
+
 def _scenario_live_report_summary(payload: dict[str, Any]) -> dict[str, Any]:
     failure_summary = payload.get("failure_summary")
     if not isinstance(failure_summary, list):
@@ -511,6 +517,7 @@ async def probe(
     expect_tool_count: int | None = None,
     require_runtime_fresh: bool = False,
     require_robot_probe_error_contract: bool = False,
+    live_preflight: bool = False,
     scenario_plan: str | None = None,
     scenario_validate_dry_run: bool = False,
     scenario_validate_live: bool = False,
@@ -524,6 +531,7 @@ async def probe(
     mcp_response_timeout_s: float = 30.0,
     mcp_tool_call_timeout_s: float = 900.0,
 ) -> int:
+    runtime_info = runtime_info or live_preflight or scenario_validate_live
     if workspace is None:
         command, cwd, extra_env = _default_stdio_entry()
     else:
@@ -698,7 +706,7 @@ async def probe(
                 print(f"  - {mismatch}")
             exit_status = 1
 
-    if scenario_validate_live:
+    if live_preflight or scenario_validate_live:
         kit_start_payload = _tool_json_response(await call_tool("kit_app_start"))
         print("\n=== kit_app_start ===")
         print(json.dumps(
@@ -706,6 +714,8 @@ async def probe(
             indent=2,
             ensure_ascii=False,
         ))
+        if _module_result_failed(kit_start_payload):
+            exit_status = 1
         sim_status_payload = _tool_json_response(await call_tool("simulation_get_status"))
         print("\n=== simulation_get_status preflight ===")
         print(json.dumps(
@@ -713,6 +723,37 @@ async def probe(
             indent=2,
             ensure_ascii=False,
         ))
+        if _module_result_failed(sim_status_payload):
+            exit_status = 1
+        if live_preflight:
+            clear_logs_payload = _tool_json_response(
+                await call_tool("extension_clear_logs")
+            )
+            print("\n=== extension_clear_logs preflight ===")
+            print(json.dumps(
+                _module_result_probe_summary(clear_logs_payload),
+                indent=2,
+                ensure_ascii=False,
+            ))
+            if _module_result_failed(clear_logs_payload):
+                exit_status = 1
+            log_payload = _tool_json_response(
+                await call_tool(
+                    "extension_capture_logs",
+                    {
+                        "level": "WARN",
+                        "stop_after_capture": True,
+                    },
+                )
+            )
+            print("\n=== extension_capture_logs WARN+ preflight ===")
+            print(json.dumps(
+                _module_result_probe_summary(log_payload),
+                indent=2,
+                ensure_ascii=False,
+            ))
+            if _module_result_failed(log_payload):
+                exit_status = 1
 
     if scenario_plan is not None:
         plan_resp = await call_tool(
@@ -906,6 +947,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--live-preflight",
+        action="store_true",
+        help=(
+            "Workspace-only non-stage preflight: call kit_app_start, "
+            "simulation_get_status, extension_clear_logs, and "
+            "extension_capture_logs(level=WARN)."
+        ),
+    )
+    parser.add_argument(
         "--scenario-plan",
         help="Call scenario_plan for this scenario path after tools/resources smoke.",
     )
@@ -1035,6 +1085,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.scenario_validate_dry_run and args.scenario_plan is None:
         print("--scenario-validate-dry-run requires --scenario-plan")
         return 2
+    if args.live_preflight and args.workspace is None:
+        print("--live-preflight requires --workspace")
+        return 2
     if args.scenario_validate_live:
         if args.workspace is None:
             print("--scenario-validate-live requires --workspace")
@@ -1052,6 +1105,7 @@ def main(argv: list[str] | None = None) -> int:
         or args.expect_tool_count is not None
         or args.require_runtime_fresh
         or args.require_robot_probe_error_contract
+        or args.live_preflight
         or args.scenario_validate_live
     )
     return asyncio.run(
@@ -1065,6 +1119,7 @@ def main(argv: list[str] | None = None) -> int:
             require_robot_probe_error_contract=(
                 args.require_robot_probe_error_contract
             ),
+            live_preflight=args.live_preflight,
             scenario_plan=args.scenario_plan,
             scenario_validate_dry_run=args.scenario_validate_dry_run,
             scenario_validate_live=args.scenario_validate_live,

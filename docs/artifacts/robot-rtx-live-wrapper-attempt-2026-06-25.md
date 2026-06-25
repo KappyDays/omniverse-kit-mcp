@@ -32,3 +32,19 @@ Raw process identifiers and host-local paths are intentionally omitted.
 - Before rerunning the full golden workflow, use the live wrapper with line
   buffered output and consider a bounded controlled-failure override or a
   smaller read-only/live preflight to isolate where Kit stops responding.
+
+## Non-Stage Live Preflight Follow-Up
+
+After adding `--live-preflight`, the workspace-local Isaac Sim instance-1
+preflight completed without stage mutation:
+
+- `mcp_runtime_info`: `tool_profile=full`, `app_profile=isaac-sim`,
+  `tool_count=152`, source freshness clean.
+- `kit_app_start`: `ok=true`, `status=started`.
+- `simulation_get_status`: `ok=true`, `is_playing=false`, `current_time=0.0`.
+- `extension_clear_logs`: `ok=true`.
+- `extension_capture_logs(level=WARN, stop_after_capture=true)`: `ok=true`.
+
+This narrows the previous hang to the mutating robot/RTX scenario path rather
+than workspace MCP startup, Kit attach, timeline status, or request-scoped log
+capture.
