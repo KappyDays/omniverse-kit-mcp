@@ -977,6 +977,13 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "official_asset_verify:verification_status=load_verified" in scenario_authoring
     assert "official_asset_verify:kind=asset" in scenario_authoring
     assert "official_asset_verify:app_profile=isaac-sim" in scenario_authoring
+    assert "official read-only catalog diagnostics" in scenario_authoring
+    assert "stage_mutation_summary.read_only=true" in scenario_authoring
+    assert "search_known_miss:diagnostics.reason=query_no_match" in scenario_authoring
+    assert (
+        "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
+        in scenario_authoring
+    )
     for source in (asset_discovery, official_catalog):
         assert "Official asset scenario proof sequence" in source
         assert "docs/mcp-usage-guide.md" in source
