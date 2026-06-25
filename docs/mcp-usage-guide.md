@@ -106,9 +106,11 @@ default standalone report remains raw JSON+Markdown for local triage.
 When using `input_overrides`, pass the same override dict to `scenario_plan` and
 `scenario_validate` so the plan preview reflects the exact variable-substituted
 prim paths and asset URLs that will run.
-For parent-side plan-only smoke, add `--input-overrides-json '{"lidar_min_points":513}' --expect-retry-key-arg read_lidar_point_cloud:min_points=513`
-to `probe_mcp_surface.py`; it still calls only `scenario_plan` and fails if the
-override does not reach `retry_steps[].key_args.min_points`.
+For parent-side plan-only smoke, remove `--scenario-validate-dry-run` from the
+workspace-local probe command and add `--input-overrides-json '{"lidar_min_points":513}' --expect-retry-key-arg read_lidar_point_cloud:min_points=513`;
+it then calls only `scenario_plan` and fails if the override does not reach `retry_steps[].key_args.min_points`.
+Current public-safe plan-only override probe evidence is
+`docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md`.
 For bounded RTX lidar failure-shape checks, override
 `lidar_min_points` above `lidar_max_points` instead of editing the scenario; the
 expected failure is `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS` on

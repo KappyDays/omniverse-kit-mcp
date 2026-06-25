@@ -338,6 +338,8 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         in invariant
     )
     assert "scenario_last_report(markdown)" not in invariant
+    assert "remove `--scenario-validate-dry-run`" in guide
+    assert "it then calls only `scenario_plan`" in guide
     assert "--input-overrides-json '{\"lidar_min_points\":513}'" in guide
     assert "--expect-retry-key-arg read_lidar_point_cloud:min_points=513" in guide
     assert "fails if the" in guide
@@ -395,6 +397,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     artifacts = [
         "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
         "docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md",
+        "docs/artifacts/robot-rtx-plan-only-override-probe-2026-06-25.md",
     ]
 
     for rel in artifacts:
