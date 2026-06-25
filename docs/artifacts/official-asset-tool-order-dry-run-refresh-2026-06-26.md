@@ -30,5 +30,5 @@ without mutating a stage.
 ## Public Boundary
 
 Only stable command lines and compact plan/dry-run summaries are recorded here.
-No local capture paths, private filesystem roots, or generated catalog records
-are included.
+No local absolute paths, local capture paths, private filesystem roots,
+worker/thread IDs, secrets, or generated catalog records are included.

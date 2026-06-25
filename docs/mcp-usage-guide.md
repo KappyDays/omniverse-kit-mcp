@@ -200,6 +200,8 @@ controlled-failure step/error-code assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`,
 and controlled-failure diagnostic reason assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`.
+The current post-stop-guard Robot + RTX refresh is
+`docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md`.
 The doc-only durable-rule E2E probe recipe is verified in
 `docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
@@ -318,6 +320,10 @@ field-level evidence assertions are verified in
 `docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md`.
 Read-only catalog diagnostic field assertions are verified in
 `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
+The current post-stop-guard official verify proof is
+`docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md`, and
+the current docs-only official asset tool-order dry-run refresh is
+`docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`.
 Use them as the baseline for the bounded `official_asset_verify` load-quality
 proof and read-only catalog diagnostics; refresh them when verification status,
 load-quality shape, diagnostics, evidence kind/fields, cleanup count, continued

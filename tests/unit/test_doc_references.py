@@ -971,6 +971,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "docs/artifacts/"
             "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
         ),
+        "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
         "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md",
     ]
 
@@ -1532,6 +1533,8 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "docs/artifacts/"
             "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
         ),
+        "docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md",
+        "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md",
     ]
 
     for rel in artifacts:
