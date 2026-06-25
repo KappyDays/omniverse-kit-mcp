@@ -196,7 +196,7 @@ For public evidence, request `redact_local_paths=true`; it redacts those local
 identifiers while preserving SHA256/pixel stats and WARN/ERROR counts. Confirm
 artifact paths look like `<validation-api-capture>/capture_<id>.png`, and run
 the public hygiene checks.
-Current public-safe Robot + RTX evidence anchors are
+Baseline public-safe Robot + RTX evidence anchors are
 `docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md` for the
 default success path and
 `docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md`
@@ -229,6 +229,8 @@ the live assertion CLI boundary is guarded in
 `docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md`;
 the dry-run/live-proof boundary is guarded in
 `docs/artifacts/dry-run-live-proof-boundary-2026-06-26.md`;
+the current-vs-baseline artifact boundary is guarded in
+`docs/artifacts/current-vs-baseline-artifact-boundary-2026-06-26.md`;
 the current public report redaction boundary refresh is
 `docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md`;
 the current route-table pull-doc boundary refresh is
@@ -349,7 +351,7 @@ After validation, request redacted JSON with
 exception failures, also check `diagnostics.error_type` before deciding whether
 to retry or widen the live proof. Use redacted JSON for exact public-safe fields
 and redacted Markdown `Evidence Summary` for the compact evidence note.
-Current public-safe official asset live evidence is
+Baseline public-safe official asset live evidence is
 `docs/artifacts/official-asset-verify-live-pass-2026-06-25.md`. The live probe
 assertion options for the same workflow are verified in
 `docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md`, and

@@ -1377,6 +1377,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "current executable probe runtime/profile gate" in guide
     assert "current public report redaction boundary refresh" in guide
     assert "Runtime redaction coverage" in guide
+    assert "current-vs-baseline artifact boundary" in guide
     assert "current route-table pull-doc boundary refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
@@ -1477,6 +1478,11 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     baseline_artifact = (
         PROJECT / "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md"
     ).read_text(encoding="utf-8")
+    assert "Baseline public-safe Robot + RTX evidence anchors are" in guide
+    assert "Current public-safe Robot + RTX evidence anchors are" not in guide
+    assert guide.index("Baseline public-safe Robot + RTX evidence anchors are") < (
+        guide.index("The current final-log close-gate Robot + RTX refresh")
+    )
     assert "baseline Robot + RTX sensor golden pass proof" in baseline_artifact
     assert "Historical note" in baseline_artifact
     assert "`redact_local_paths=false`" in baseline_artifact
@@ -2274,6 +2280,11 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     baseline = (
         PROJECT / "docs/artifacts/official-asset-verify-live-pass-2026-06-25.md"
     ).read_text(encoding="utf-8")
+    assert "Baseline public-safe official asset live evidence is" in guide
+    assert "Current public-safe official asset live evidence is" not in guide
+    assert guide.index("Baseline public-safe official asset live evidence is") < (
+        guide.index("current final-log close-gate official verify proof")
+    )
     assert "Verification status: `load_verified`" in baseline
     assert "Load quality: `content_verified_no_bbox`" in baseline
     assert "Command-boundary note" in baseline
