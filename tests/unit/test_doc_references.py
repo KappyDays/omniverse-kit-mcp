@@ -1386,6 +1386,15 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
         assert "`data.diagnostics.fallback_tool_order`" in source
         assert "`verification-on-demand.jsonl`" in source
 
+    for token in (
+        "diagnostics.asset_checks",
+        "diagnostics.material_checks",
+        "diagnostics.error_type",
+        "diagnostics.target_status",
+        "diagnostics.current_catalog_status",
+    ):
+        assert token in mcp_probe.LIVE_DIAGNOSTIC_NEXT_ACTION_FIELDS
+
     on_demand_normalized = " ".join(on_demand_wrapper.split())
     catalog_normalized = " ".join(official_catalog.split())
     assert "does not replace the scenario/probe wrapper" in on_demand_normalized
