@@ -2141,6 +2141,60 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     ]) == 2
 
 
+def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):
+    captured: dict[str, object] = {}
+
+    async def fake_probe(**kwargs):
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    exit_code = mcp_probe.main([
+        "--workspace",
+        "workspaces/isaac/instance-1",
+        "--scenario-plan",
+        "smoke/robot_rtx_sensor_golden_workflow.yaml",
+        "--scenario-validate-dry-run",
+        "--scenario-validate-live",
+        "--input-overrides-json",
+        '{"lidar_min_points":513}',
+        "--expect-live-status",
+        "failed",
+        "--expect-live-evidence-kind",
+        "rtx_lidar_point_cloud",
+        "--expect-live-evidence-field",
+        "read_lidar_point_cloud:status=passed",
+        "--expect-live-evidence-field-min",
+        "read_lidar_point_cloud:num_points=1",
+        "--expect-live-diagnostic-field",
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum",
+    ])
+
+    assert exit_code == 0
+    assert captured["workspace"] == Path("workspaces/isaac/instance-1")
+    assert captured["runtime_info"] is True
+    assert captured["scenario_plan"] == "smoke/robot_rtx_sensor_golden_workflow.yaml"
+    assert captured["scenario_validate_dry_run"] is True
+    assert captured["scenario_validate_live"] is True
+    assert captured["input_overrides"] == {"lidar_min_points": 513}
+    assert captured["expect_live_status"] == "failed"
+    assert captured["expected_live_evidence_kinds"] == ("rtx_lidar_point_cloud",)
+    assert captured["expected_live_evidence_fields"] == (
+        ("read_lidar_point_cloud", "status", "passed"),
+    )
+    assert captured["expected_live_evidence_field_minimums"] == (
+        ("read_lidar_point_cloud", "num_points", 1.0),
+    )
+    assert captured["expected_live_diagnostic_fields"] == (
+        (
+            "read_lidar_point_cloud",
+            "diagnostics.reason",
+            "point_count_below_minimum",
+        ),
+    )
+
+
 def test_mcp_probe_summarizes_runtime_info_shape():
     summary = mcp_probe._runtime_info_probe_summary({
         "tool_profile": "full",
