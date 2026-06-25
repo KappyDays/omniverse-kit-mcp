@@ -321,10 +321,11 @@ Official asset on-demand live verify wrapper:
 `official_asset_resolve(app_profile=..., prefer_loadable=true)` ->
 `official_asset_get(app_profile=...)` ->
 `official_asset_verify(app_profile=..., timeout_s=180)` ->
-`simulation_get_status` -> `extension_capture_logs(level="WARN")` and
-`extension_capture_logs(level="ERROR")`. Capture logs in the same live MCP host
-session that ran `official_asset_verify`; one-shot stdio hosts do not preserve
-the previous host's in-memory/log-capture state.
+`simulation_get_status` ->
+`extension_capture_logs(level="WARN", stop_after_capture=true)` ->
+`extension_capture_logs(level="ERROR", stop_after_capture=true)`. Capture logs
+in the same live MCP host session that ran `official_asset_verify`; one-shot
+stdio hosts do not preserve the previous host's in-memory/log-capture state.
 
 ## Timeline Control
 

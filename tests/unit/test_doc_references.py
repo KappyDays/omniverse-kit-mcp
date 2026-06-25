@@ -952,6 +952,43 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert read_only_positions == sorted(read_only_positions), (
         "Read-only official asset wrapper is out of order in mcp-usage-guide.md"
     )
+    on_demand_sequence = [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "extension_clear_logs",
+        "official_asset_sync_status(app_profile=...)",
+        'official_asset_search(app_profile=..., min_status="load_verified")',
+        "official_asset_resolve(app_profile=..., prefer_loadable=true)",
+        "official_asset_get(app_profile=...)",
+        "official_asset_verify(app_profile=..., timeout_s=180)",
+        "simulation_get_status",
+        'extension_capture_logs(level="WARN", stop_after_capture=true)',
+        'extension_capture_logs(level="ERROR", stop_after_capture=true)',
+    ]
+    on_demand_start = guide.index("Official asset on-demand live verify wrapper:")
+    on_demand_end = guide.index("## Timeline Control", on_demand_start)
+    on_demand_wrapper = guide[on_demand_start:on_demand_end]
+    on_demand_positions = []
+    search_from = 0
+    for token in on_demand_sequence:
+        pos = on_demand_wrapper.find(token, search_from)
+        on_demand_positions.append(pos)
+        if pos >= 0:
+            search_from = pos + len(token)
+    on_demand_missing = [
+        token
+        for token, pos in zip(on_demand_sequence, on_demand_positions)
+        if pos < 0
+    ]
+    assert not on_demand_missing, (
+        "mcp-usage-guide.md missing on-demand official asset wrapper tokens: "
+        + ", ".join(on_demand_missing)
+    )
+    assert on_demand_positions == sorted(on_demand_positions), (
+        "On-demand official asset wrapper is out of order in mcp-usage-guide.md"
+    )
+    assert "same live MCP host session" in on_demand_wrapper
     assert (
         "--require-live-validation-tools "
         "mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,"
