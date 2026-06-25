@@ -2020,9 +2020,22 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
         in official_catalog
     )
     assert (
+        "docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md"
+        in official_catalog
+    )
+    assert (
         "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md"
         in official_catalog
     )
+    assert (
+        "docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md"
+        in official_catalog
+    )
+    assert (
+        "docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md"
+        in official_catalog
+    )
+    assert "current final-log public proof anchors" in catalog_normalized
 
     tool_normalized = " ".join(official_asset_verify_tool.split())
     for token in (

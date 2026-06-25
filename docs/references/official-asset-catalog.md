@@ -180,10 +180,17 @@ For repeatable read-only catalog diagnostics, use
 `search_known_miss:diagnostics.reason=query_no_match` plus
 `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`.
 Current public proof anchors include
-`docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md` for the
-bounded live proof and
-`docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md` for
-the docs-only tool-order dry-run.
+`docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`
+for the final-log close-gate live proof,
+`docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`
+for read-only catalog diagnostics, and
+`docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md` plus
+`docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md` for
+docs-only dry-run gates. The stop-guard and live-pass artifacts remain linked
+from `docs/mcp-usage-guide.md` as historical/current-baseline context; keep
+`docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md` as the
+post-stop baseline, but the close-gate artifacts are the current final-log
+public proof anchors.
 
 Carry the same `app_profile` through `official_asset_search`,
 `official_asset_resolve`, `official_asset_get`, and `official_asset_verify` when
