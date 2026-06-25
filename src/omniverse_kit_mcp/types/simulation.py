@@ -133,3 +133,4 @@ class SimulationWaitUntilResult:
     timed_out: bool
     elapsed_s: float
     frames_waited: int
+    diagnostics: dict[str, object] = field(default_factory=dict)

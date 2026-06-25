@@ -646,7 +646,7 @@ def register_module_tools(
 
     @tool()
     async def simulation_wait_until(until_time: float, timeout_s: float = 30.0) -> str:
-        """Tick the timeline until current_time >= until_time (or timeout_s wall-clock elapses), then return final status + reached/timed_out/elapsed_s/frames_waited. Ticks via next_update_async on the Kit loop (deadlock-safe, non-blocking). Replaces sleep+poll loops for sim_time-precise timing (e.g. trigger an event at t=12s). Requires the timeline PLAYING to advance — otherwise it times out."""
+        """Tick the timeline until current_time >= until_time (or timeout_s wall-clock elapses), then return final status + reached/timed_out/elapsed_s/frames_waited. Ticks via next_update_async on the Kit loop (deadlock-safe, non-blocking). Replaces sleep+poll loops for sim_time-precise timing (e.g. trigger an event at t=12s). Requires the timeline PLAYING to advance — otherwise it times out; failures include data.diagnostics.suggested_next and data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.SIMULATION)
         request = SimulationWaitUntilRequest(until_time=until_time, timeout_s=timeout_s)
         result = await simulation.wait_until(meta, request)

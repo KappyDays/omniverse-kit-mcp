@@ -12,6 +12,8 @@ from omniverse_kit_mcp.types.simulation import (
     SimulationStepObserveResult,
     SimulationStepRequest,
     SimulationStepResult,
+    SimulationWaitUntilRequest,
+    SimulationWaitUntilResult,
 )
 from tests.conftest import MockIsaacRestClient
 
@@ -141,6 +143,40 @@ async def test_simulation_step_observe_error_returns_typed_diagnostics(meta):
         "simulation_step_observe",
         "extension_capture_logs",
     ]
+
+
+@pytest.mark.asyncio
+async def test_simulation_wait_until_error_returns_typed_diagnostics(meta):
+    class FailingWaitUntilClient(MockIsaacRestClient):
+        async def simulation_wait_until(self, request):  # type: ignore[override]
+            raise RuntimeError("timeline wait failed")
+
+    mod = SimulationModule(FailingWaitUntilClient())
+    result = await mod.wait_until(
+        meta,
+        SimulationWaitUntilRequest(until_time=12.5, timeout_s=2.0),
+    )
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "SIMULATION_WAIT_UNTIL_ERROR"
+    assert isinstance(result.data, SimulationWaitUntilResult)
+    assert result.data.until_time == 12.5
+    assert result.data.reached is False
+    assert result.data.timed_out is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "simulation_wait_until_error"
+    assert diagnostics["upstream_error_code"] == "SIMULATION_WAIT_UNTIL_ERROR"
+    assert diagnostics["upstream_message"] == "timeline wait failed"
+    assert diagnostics["until_time"] == 12.5
+    assert diagnostics["timeout_s"] == 2.0
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "simulation_wait_until",
+        "extension_capture_logs",
+    ]
+    assert any("simulation_get_status" in item for item in diagnostics["suggested_next"])
 
 
 @pytest.mark.asyncio
