@@ -213,6 +213,8 @@ The current post-stop-guard Robot + RTX refresh is
 `docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md`.
 The current final-log close-gate Robot + RTX refresh is
 `docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md`.
+Its success result shape is guarded in
+`docs/artifacts/robot-rtx-success-result-shape-guard-2026-06-26.md`.
 The current final-log close-gate controlled-failure refresh is
 `docs/artifacts/robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md`.
 The current doc-only durable-rule E2E refresh is verified in

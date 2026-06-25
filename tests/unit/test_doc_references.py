@@ -1482,7 +1482,20 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     close_gate_artifact = (
         PROJECT / "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md"
     ).read_text(encoding="utf-8")
+    close_gate_artifact_normalized = " ".join(close_gate_artifact.split())
     assert "`--expect-live-status passed`" in close_gate_artifact
+    assert (
+        "Live validation passed with `passed_steps=32`, `failed_steps=0`, "
+        "`continued_steps=0`, `fatal_failed_steps=0`, and `cleanup_failed_steps=0`."
+        in close_gate_artifact_normalized
+    )
+    assert (
+        "`rtx_lidar_point_cloud`, `viewport_framing`, and `visual_capture`"
+        in close_gate_artifact_normalized
+    )
+    assert "observed `num_points=512`" in close_gate_artifact
+    assert "`data.capture_stop_completed=true`" in close_gate_artifact
+    assert "`data.capture_stop_timed_out=false`" in close_gate_artifact
 
     controlled_close_gate = (
         PROJECT
