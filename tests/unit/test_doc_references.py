@@ -1235,6 +1235,11 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
             / "docs/artifacts/"
             "robot-rtx-live-evidence-threshold-assertions-2026-06-25.md"
         ),
+        "close_gate": (
+            PROJECT
+            / "docs/artifacts/"
+            "robot-rtx-golden-close-gate-live-refresh-2026-06-26.md"
+        ),
     }
     calls: list[dict[str, object]] = []
 
@@ -1246,13 +1251,21 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
 
     for path in artifact_paths.values():
         text = path.read_text(encoding="utf-8")
-        commands = re.findall(r"`(scripts/probe_mcp_surface\.py [^`]+)`", text)
+        commands = re.findall(
+            r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`", text
+        )
         assert len(commands) == 1
-        argv = shlex.split(commands[0])
+        command = commands[0]
+        command_start = re.search(r"scripts[\\/]probe_mcp_surface\.py", command)
+        assert command_start is not None
+        command = command[command_start.start() :].replace(
+            "scripts\\probe_mcp_surface.py", "scripts/probe_mcp_surface.py"
+        )
+        argv = shlex.split(command)
         assert argv[0] == "scripts/probe_mcp_surface.py"
         assert mcp_probe.main(argv[1:]) == 0
 
-    assert len(calls) == 2
+    assert len(calls) == 3
     for call in calls:
         assert call["scenario_plan"] == "smoke/robot_rtx_sensor_golden_workflow.yaml"
         assert call["scenario_validate_dry_run"] is True
@@ -1279,11 +1292,14 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
             in call["expected_live_evidence_fields"]
         )
 
-    field_call, threshold_call = calls
+    field_call, threshold_call, close_gate_call = calls
     assert ("read_lidar_point_cloud", "num_points", 512) in (
         field_call["expected_live_evidence_fields"]
     )
     assert threshold_call["expected_live_evidence_field_minimums"] == (
+        ("read_lidar_point_cloud", "num_points", 1.0),
+    )
+    assert close_gate_call["expected_live_evidence_field_minimums"] == (
         ("read_lidar_point_cloud", "num_points", 1.0),
     )
 
