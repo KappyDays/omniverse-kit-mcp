@@ -213,6 +213,8 @@ controlled-failure step/error-code assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`,
 and controlled-failure diagnostic reason assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`.
+Diagnostic JSON-array values such as `diagnostics.fallback_tool_order` are
+guarded in `docs/artifacts/probe-diagnostic-field-json-array-guard-2026-06-26.md`.
 The current post-stop-guard Robot + RTX refresh is
 `docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md`.
 The current final-log close-gate Robot + RTX refresh is

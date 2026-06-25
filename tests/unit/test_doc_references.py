@@ -1392,6 +1392,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "Runtime redaction coverage" in guide
     assert "current-vs-baseline artifact boundary" in guide
     assert "Robot + RTX current-proof-anchor boundary" in guide
+    assert "Diagnostic JSON-array values" in guide
     assert "current route-table pull-doc boundary refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
@@ -1438,6 +1439,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "docs/artifacts/"
             "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
         ),
+        "docs/artifacts/probe-diagnostic-field-json-array-guard-2026-06-26.md",
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md",

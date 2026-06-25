@@ -1969,6 +1969,11 @@ def test_mcp_probe_parses_expected_live_diagnostic_fields():
     assert mcp_probe._parse_expected_live_diagnostic_fields([
         "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum",
         "read_lidar_point_cloud:diagnostics.num_points=512",
+        (
+            "read_lidar_point_cloud:diagnostics.fallback_tool_order="
+            '["simulation_step","sensor_lidar_get_point_cloud",'
+            '"extension_capture_logs"]'
+        ),
         'read_lidar_point_cloud:source="step"',
     ]) == (
         (
@@ -1977,6 +1982,15 @@ def test_mcp_probe_parses_expected_live_diagnostic_fields():
             "point_count_below_minimum",
         ),
         ("read_lidar_point_cloud", "diagnostics.num_points", 512),
+        (
+            "read_lidar_point_cloud",
+            "diagnostics.fallback_tool_order",
+            [
+                "simulation_step",
+                "sensor_lidar_get_point_cloud",
+                "extension_capture_logs",
+            ],
+        ),
         ("read_lidar_point_cloud", "source", "step"),
     )
 
@@ -2090,6 +2104,11 @@ def test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value
                 "step_id": "read_lidar_point_cloud",
                 "diagnostics.reason": "point_count_below_minimum",
                 "diagnostics.num_points": 512,
+                "diagnostics.fallback_tool_order": [
+                    "simulation_step",
+                    "sensor_lidar_get_point_cloud",
+                    "extension_capture_logs",
+                ],
             },
             {
                 "step_id": "verify_pallet_asset",
@@ -2108,6 +2127,15 @@ def test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value
                 "point_count_below_minimum",
             ),
             ("read_lidar_point_cloud", "diagnostics.num_points", 512),
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.fallback_tool_order",
+                [
+                    "simulation_step",
+                    "sensor_lidar_get_point_cloud",
+                    "extension_capture_logs",
+                ],
+            ),
             (
                 "verify_pallet_asset",
                 "diagnostics.asset_checks",
@@ -2398,6 +2426,12 @@ def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):
         "read_lidar_point_cloud:num_points=1",
         "--expect-live-diagnostic-field",
         "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum",
+        "--expect-live-diagnostic-field",
+        (
+            "read_lidar_point_cloud:diagnostics.fallback_tool_order="
+            '["simulation_step","sensor_lidar_get_point_cloud",'
+            '"extension_capture_logs"]'
+        ),
     ])
 
     assert exit_code == 0
@@ -2420,6 +2454,15 @@ def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):
             "read_lidar_point_cloud",
             "diagnostics.reason",
             "point_count_below_minimum",
+        ),
+        (
+            "read_lidar_point_cloud",
+            "diagnostics.fallback_tool_order",
+            [
+                "simulation_step",
+                "sensor_lidar_get_point_cloud",
+                "extension_capture_logs",
+            ],
         ),
     )
 
