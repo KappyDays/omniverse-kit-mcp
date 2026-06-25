@@ -267,6 +267,13 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert 'scenario_last_report(report_format="markdown")` or' not in wrapper
     assert "only for private" in wrapper
     assert "never copy raw report text into public artifacts" in wrapper
+    dry_run_boundary = "Dry-run-only output is plan proof, not live proof"
+    for source in (guide, invariant, scenario_authoring):
+        normalized_source = " ".join(source.split())
+        assert dry_run_boundary in source
+        assert "--scenario-validate-live" in source
+        assert "--expect-live-*" in source
+        assert "do not cite `evidence_summary`" in normalized_source
     assert "extension_clear_logs" in invariant
     assert 'extension_capture_logs(level="WARN", stop_after_capture=true)' in invariant
     assert "data.capture_stop_requested=true" in invariant

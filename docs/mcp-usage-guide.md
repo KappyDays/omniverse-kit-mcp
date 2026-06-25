@@ -56,6 +56,10 @@ report-compatible evidence kinds: viewport/window `capture` and viewport
 `pixel_mean_average`, `pixel_variance_average`, `pixel_mean`,
 `pixel_variance`, and `warmup_frames_used` fields before relying on the image
 as nonblank evidence.
+Dry-run-only output is plan proof, not live proof; do not cite
+`evidence_summary`, live status, cleanup count, or diagnostic fields as
+evidence unless a later non-dry-run `scenario_validate` ran through
+`--scenario-validate-live` with the matching `--expect-live-*` assertions.
 If it fails, read `diagnostic_next_actions` for `diagnostics.reason`,
 `diagnostics.failure_codes`, pixel averages, threshold fields, and
 `diagnostics.fallback_tool_order`; if the capture itself errors, expect
@@ -223,6 +227,8 @@ the current executable probe runtime/profile gate is guarded by
 `docs/artifacts/current-probe-runtime-profile-gate-2026-06-26.md`;
 the live assertion CLI boundary is guarded in
 `docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md`;
+the dry-run/live-proof boundary is guarded in
+`docs/artifacts/dry-run-live-proof-boundary-2026-06-26.md`;
 the current public report redaction boundary refresh is
 `docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md`;
 the current route-table pull-doc boundary refresh is
