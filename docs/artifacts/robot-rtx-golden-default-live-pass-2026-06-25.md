@@ -3,7 +3,9 @@
 ## Scope
 
 Re-verified the default `smoke/robot_rtx_sensor_golden_workflow.yaml` as the
-current Robot + RTX sensor golden pass proof. This run used the Isaac Sim
+baseline Robot + RTX sensor golden pass proof. The post-stop-guard refresh in
+`docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md` supersedes
+this file for log-capture close metadata. This run used the Isaac Sim
 workspace-local MCP entry from `workspaces/isaac/instance-1`; Kit was not
 started from the repo root.
 

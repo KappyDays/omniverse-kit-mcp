@@ -923,7 +923,12 @@ def test_f3b_stop_guard_artifacts_record_close_metadata():
     offenders: list[str] = []
     for md in sorted((PROJECT / "docs" / "artifacts").glob("*.md")):
         text = md.read_text(encoding="utf-8")
-        if "stop-guard" not in text and "Stop guard" not in text:
+        is_stop_guard_proof = (
+            "stop-guard" in md.name
+            or "Stop guard check:" in text
+            or "post-stop-guard refresh:" in text
+        )
+        if not is_stop_guard_proof:
             continue
         rel = str(md.relative_to(PROJECT))
         guarded.append(rel)
@@ -1072,6 +1077,12 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         assert "extension_capture_logs(level=WARN, stop_after_capture=true)" in (
             wrapper_artifact
         )
+
+    baseline_artifact = (
+        PROJECT / "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert "baseline Robot + RTX sensor golden pass proof" in baseline_artifact
+    assert "robot-rtx-golden-stop-guard-refresh-2026-06-26.md" in baseline_artifact
 
     field_artifact = (
         PROJECT
