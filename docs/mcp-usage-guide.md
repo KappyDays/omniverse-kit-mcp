@@ -195,6 +195,8 @@ controlled-failure step/error-code assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`,
 and controlled-failure diagnostic reason assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`.
+The doc-only durable-rule E2E probe recipe is verified in
+`docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
 supersede them only with a new pass/failure artifact that preserves the same
 public-safety boundary.

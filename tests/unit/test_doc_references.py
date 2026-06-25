@@ -606,6 +606,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "docs/artifacts/"
             "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
         ),
+        "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md",
     ]
 
     for rel in artifacts:
