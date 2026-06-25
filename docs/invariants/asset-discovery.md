@@ -56,8 +56,9 @@ For repeatable live proof or public evidence, route through
 and `docs/mcp-usage-guide.md`; the proof must assert
 `--expect-live-status passed`,
 `official_asset_verify:verification_status=load_verified`,
-`official_asset_verify:kind=asset`, and
-`official_asset_verify:app_profile=isaac-sim` on the `official_asset_verify`
+`official_asset_verify:kind=asset`,
+`official_asset_verify:app_profile=isaac-sim`, and
+`official_asset_verify:load_quality=content_verified_no_bbox` on the `official_asset_verify`
 evidence row.
 Direct on-demand `official_asset_verify` response is only bounded operator
 evidence. Accept it before placement only after checking

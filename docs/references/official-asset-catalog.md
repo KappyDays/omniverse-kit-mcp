@@ -168,8 +168,9 @@ For repeatable scratch/test-stage live proof, use `docs/mcp-usage-guide.md` and
 `docs/invariants/scenario-validation.md` §"Official asset scenario proof sequence";
 the proof must assert `--expect-live-status passed`,
 `official_asset_verify:verification_status=load_verified`,
-`official_asset_verify:kind=asset`, and
-`official_asset_verify:app_profile=isaac-sim` when proving the Isaac Sim asset
+`official_asset_verify:kind=asset`,
+`official_asset_verify:app_profile=isaac-sim`, and
+`official_asset_verify:load_quality=content_verified_no_bbox` when proving the Isaac Sim asset
 workflow.
 For repeatable read-only catalog diagnostics, use
 `smoke/official_asset_catalog_diagnostics.yaml`; keep

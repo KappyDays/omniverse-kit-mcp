@@ -50,6 +50,7 @@ LIVE_EVIDENCE_SUMMARY_FIELDS = (
     "name",
     "app_profile",
     "verification_status",
+    "load_quality",
     "attempt",
     "timeout_s",
     "retry_count",

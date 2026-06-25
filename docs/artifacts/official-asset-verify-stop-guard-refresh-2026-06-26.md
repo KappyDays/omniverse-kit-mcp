@@ -20,6 +20,7 @@ Command shape:
   - `--expect-live-evidence-field official_asset_verify:verification_status=load_verified`
   - `--expect-live-evidence-field official_asset_verify:kind=asset`
   - `--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`
+  - `--expect-live-evidence-field official_asset_verify:load_quality=content_verified_no_bbox`
 
 Result:
 
@@ -43,7 +44,8 @@ Result:
   - `verify_pallet_asset`: evidence kind `official_asset_verify`,
     status `passed`, attempts `1/1`, kind `asset`, name
     `aluminumpallet_a01.usd`, app profile `isaac-sim`, verification status
-    `load_verified`, attempt `1`, timeout `180.0`, retry count `1`,
+    `load_verified`, load quality `content_verified_no_bbox`, attempt `1`,
+    timeout `180.0`, retry count `1`,
     error `null`
 - Final WARN+ log capture: `passed`
 

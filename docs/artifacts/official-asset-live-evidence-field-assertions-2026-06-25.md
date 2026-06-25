@@ -9,7 +9,7 @@ Command shape:
 - Workspace-local stdio entry: `workspaces/isaac/instance-1`
 - Scenario: `smoke/official_asset_verify_live.yaml`
 - Full live probe command:
-  `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_verify_live.yaml --scenario-validate-dry-run --scenario-validate-live --expect-live-status passed --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-cleanup-failures 0 --expect-live-evidence-kind official_asset_verify --expect-live-evidence-field official_asset_verify:verification_status=load_verified --expect-live-evidence-field official_asset_verify:kind=asset --expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`
+  `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_verify_live.yaml --scenario-validate-dry-run --scenario-validate-live --expect-live-status passed --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-cleanup-failures 0 --expect-live-evidence-kind official_asset_verify --expect-live-evidence-field official_asset_verify:verification_status=load_verified --expect-live-evidence-field official_asset_verify:kind=asset --expect-live-evidence-field official_asset_verify:app_profile=isaac-sim --expect-live-evidence-field official_asset_verify:load_quality=content_verified_no_bbox`
 - Live assertions:
   - `--expect-live-status passed`
   - `--expect-live-cleanup-failures 0`
@@ -17,6 +17,7 @@ Command shape:
   - `--expect-live-evidence-field official_asset_verify:verification_status=load_verified`
   - `--expect-live-evidence-field official_asset_verify:kind=asset`
   - `--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`
+  - `--expect-live-evidence-field official_asset_verify:load_quality=content_verified_no_bbox`
 
 Result:
 
@@ -56,6 +57,7 @@ Refresh run after durable-doc bridge:
   - `official_asset_verify:verification_status=load_verified`
   - `official_asset_verify:kind=asset`
   - `official_asset_verify:app_profile=isaac-sim`
+  - `official_asset_verify:load_quality=content_verified_no_bbox`
 - WARN+ log capture (stop_after_capture=true): `passed`
 - Snapshot path printed by the probe: `tmp_mcp_surface.json`
 
@@ -69,6 +71,7 @@ Evidence row asserted:
 - Name: `aluminumpallet_a01.usd`
 - App profile: `isaac-sim`
 - Verification status: `load_verified`
+- Load quality: `content_verified_no_bbox`
 - Attempt: `1`
 - Timeout: `180.0`
 - Retry count: `1`

@@ -635,6 +635,7 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
             ("official_asset_verify", "verification_status", "load_verified"),
             ("official_asset_verify", "kind", "asset"),
             ("official_asset_verify", "app_profile", "isaac-sim"),
+            ("official_asset_verify", "load_quality", "content_verified_no_bbox"),
         ),
     )
     assert official_verify["expect_live_status"] == "passed"
@@ -1522,6 +1523,10 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert (
         "--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim"
     ) in verify_live_probe
+    assert (
+        "--expect-live-evidence-field "
+        "official_asset_verify:load_quality=content_verified_no_bbox"
+    ) in verify_live_probe
     assert "Official asset scenario proof sequence" in invariant
     assert "scenario_plan(smoke/official_asset_verify_live.yaml)" in invariant
     assert "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)" in invariant
@@ -1538,9 +1543,17 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert (
         "--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim"
     ) in invariant
+    assert (
+        "--expect-live-evidence-field "
+        "official_asset_verify:load_quality=content_verified_no_bbox"
+    ) in invariant
     assert "official_asset_verify:verification_status=load_verified" in scenario_authoring
     assert "official_asset_verify:kind=asset" in scenario_authoring
     assert "official_asset_verify:app_profile=isaac-sim" in scenario_authoring
+    assert (
+        "official_asset_verify:load_quality=content_verified_no_bbox"
+        in scenario_authoring
+    )
     assert "--expect-live-status passed" in scenario_authoring
     assert "official read-only catalog diagnostics" in scenario_authoring
     assert "stage_mutation_summary.read_only=true" in scenario_authoring
@@ -1560,6 +1573,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         assert "official_asset_verify:verification_status=load_verified" in source
         assert "official_asset_verify:kind=asset" in source
         assert "official_asset_verify:app_profile=isaac-sim" in source
+        assert "official_asset_verify:load_quality=content_verified_no_bbox" in source
         assert "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND" in source
         assert "data.verification_status=load_verified" in source
         assert "data.kind" in source
@@ -1829,7 +1843,13 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         "`--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`"
         in field_assertion_artifact
     )
+    assert (
+        "`--expect-live-evidence-field "
+        "official_asset_verify:load_quality=content_verified_no_bbox`"
+        in field_assertion_artifact
+    )
     assert "Verification status: `load_verified`" in field_assertion_artifact
+    assert "Load quality: `content_verified_no_bbox`" in field_assertion_artifact
 
     close_gate_artifact = (
         PROJECT
@@ -1954,6 +1974,7 @@ def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch)
             ("official_asset_verify", "verification_status", "load_verified"),
             ("official_asset_verify", "kind", "asset"),
             ("official_asset_verify", "app_profile", "isaac-sim"),
+            ("official_asset_verify", "load_quality", "content_verified_no_bbox"),
         }
         assert call["required_live_validation_tools"] == (
             "mcp_runtime_info",

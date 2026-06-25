@@ -1695,6 +1695,41 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
     }
 
 
+def test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields():
+    summary = mcp_probe._scenario_live_report_summary({
+        "evidence_summary": [
+            {
+                "step_id": "verify_pallet_asset",
+                "evidence_kind": "official_asset_verify",
+                "kind": "asset",
+                "name": "aluminumpallet_a01.usd",
+                "app_profile": "isaac-sim",
+                "verification_status": "load_verified",
+                "load_quality": "content_verified_no_bbox",
+                "attempt": 1,
+                "timeout_s": 180.0,
+                "retry_count": 1,
+                "canonical_url": "https://example.invalid/asset.usd",
+            },
+        ],
+    })
+
+    assert summary["evidence"] == [
+        {
+            "step_id": "verify_pallet_asset",
+            "evidence_kind": "official_asset_verify",
+            "kind": "asset",
+            "name": "aluminumpallet_a01.usd",
+            "app_profile": "isaac-sim",
+            "verification_status": "load_verified",
+            "load_quality": "content_verified_no_bbox",
+            "attempt": 1,
+            "timeout_s": 180.0,
+            "retry_count": 1,
+        },
+    ]
+
+
 def test_mcp_probe_live_evidence_field_minimum_mismatches_are_empty():
     summary = {
         "evidence": [

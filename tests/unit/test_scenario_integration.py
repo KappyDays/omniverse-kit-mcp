@@ -4259,6 +4259,7 @@ async def test_official_asset_verify_failure_diagnostics_survive_runner_report(
         "name": "aluminumpallet_a01.usd",
         "app_profile": "isaac-sim",
         "verification_status": "failed",
+        "load_quality": "empty_content",
         "attempt": 2,
         "timeout_s": 1.0,
         "retry_count": 1,
@@ -4415,6 +4416,7 @@ def test_official_asset_verify_evidence_summary_preserves_error_type():
                     "name": "asset.usd",
                     "app_profile": "isaac-sim",
                     "verification_status": "failed",
+                    "load_quality": "content_verified_no_bbox",
                     "attempt": 2,
                     "timeout_s": 0.001,
                     "retry_count": 1,
@@ -4446,6 +4448,7 @@ def test_official_asset_verify_evidence_summary_preserves_error_type():
     evidence = report["evidence_summary"][0]
 
     assert evidence["evidence_kind"] == "official_asset_verify"
+    assert evidence["load_quality"] == "content_verified_no_bbox"
     assert evidence["diagnostics"]["reason"] == "verify_timeout"
     assert evidence["diagnostics"]["error_type"] == "TimeoutError"
     markdown = to_markdown(summary)

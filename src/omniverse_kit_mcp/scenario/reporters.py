@@ -694,6 +694,7 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
                 "name",
                 "app_profile",
                 "verification_status",
+                "load_quality",
                 "attempt",
                 "timeout_s",
                 "retry_count",
