@@ -2,9 +2,9 @@
 
 ## Scope
 
-Added `scripts/probe_mcp_surface.py --scenario-validate-live` so a parent/root
-session without first-class live MCP tools can run the documented workspace-local
-wrapper:
+Added the `--scenario-validate-live` option to `scripts/probe_mcp_surface.py`
+so a parent/root session without first-class live MCP tools can run the
+documented workspace-local wrapper:
 
 `mcp_runtime_info -> kit_app_start -> simulation_get_status -> scenario_plan ->
 scenario_validate(dry_run=true) -> extension_clear_logs -> scenario_validate ->

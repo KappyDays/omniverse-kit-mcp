@@ -563,6 +563,42 @@ def test_f3b_workspace_live_probe_commands_keep_dry_run_gate():
     )
 
 
+def test_f3b_artifact_probe_commands_parse(monkeypatch):
+    command_re = re.compile(r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`")
+    commands_by_artifact: dict[Path, list[str]] = {}
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    for md in sorted((PROJECT / "docs" / "artifacts").glob("*.md")):
+        for line in md.read_text(encoding="utf-8").splitlines():
+            for raw_command in command_re.findall(line):
+                if "..." in raw_command:
+                    continue
+                marker = re.search(r"scripts[\\/]probe_mcp_surface\.py", raw_command)
+                assert marker is not None
+                command = "scripts/probe_mcp_surface.py" + raw_command[marker.end() :]
+                commands_by_artifact.setdefault(md, []).append(command)
+
+    assert commands_by_artifact, "Runnable artifact probe commands should be guarded"
+    for md, commands in commands_by_artifact.items():
+        for command in commands:
+            argv = shlex.split(command)
+            assert argv[0] == "scripts/probe_mcp_surface.py"
+            assert "--workspace" in argv, md.relative_to(PROJECT)
+            if "--scenario-validate-live" in argv:
+                assert "--scenario-validate-dry-run" in argv, md.relative_to(PROJECT)
+            assert mcp_probe.main(argv[1:]) == 0, (
+                f"{md.relative_to(PROJECT)}: {command}"
+            )
+
+    assert calls
+
+
 def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
     artifact = (
         PROJECT / "docs" / "artifacts" / "probe-assertion-durable-docs-e2e-2026-06-25.md"
