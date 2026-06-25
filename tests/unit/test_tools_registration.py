@@ -959,6 +959,43 @@ async def test_robot_list_arm_profiles_tool_serializes_pick_place_blockers():
 
 
 @pytest.mark.asyncio
+async def test_robot_probe_arm_profile_tool_serializes_unknown_profile_error_data():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    mcp = FastMCP(name="test")
+    dummy = SimpleNamespace()
+    robot = RobotModule(client)
+    register_module_tools(
+        mcp,
+        *[dummy] * 6,
+        robot,
+        *[dummy] * 14,
+    )
+    tool = mcp._tool_manager._tools["robot_probe_arm_profile"]
+
+    payload = json.loads(await tool.fn(profile_name="not_a_builtin_arm"))
+
+    assert payload["ok"] is False
+    assert payload["status"] == "error"
+    assert payload["error_code"] == "ROBOT_PROBE_UNKNOWN_PROFILE"
+    data = payload["data"]
+    assert data["profile_name"] == "not_a_builtin_arm"
+    assert data["mcp_controllability"] == "blocked_profile_error"
+    probe = data["checks"]["probe"]
+    assert probe["error_code"] == "ROBOT_PROBE_UNKNOWN_PROFILE"
+    assert probe["evidence"]["requested_profile_found"] is False
+    assert probe["evidence"]["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profiles",
+        "official_asset_search",
+        "asset_search",
+        "robot_load",
+    ]
+    assert client.calls == []
+
+
+@pytest.mark.asyncio
 async def test_robot_probe_arm_profiles_tool_serializes_batch_summary_fields():
     from tests.conftest import MockIsaacRestClient
 
