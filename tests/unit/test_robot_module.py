@@ -56,6 +56,41 @@ def test_robot_probe_arm_profile_request_defaults_to_bounded_timeout():
 
 
 @pytest.mark.asyncio
+async def test_robot_probe_arm_profile_unknown_profile_returns_typed_error_payload():
+    from tests.conftest import MockIsaacRestClient
+
+    client = MockIsaacRestClient()
+    module = RobotModule(client)
+
+    result = await module.probe_arm_profile(
+        _meta(),
+        RobotArmProfileProbeRequest(profile_name="not_a_builtin_arm"),
+    )
+
+    assert result.ok is False
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_PROBE_UNKNOWN_PROFILE"
+    assert isinstance(result.data, RobotArmProfileProbeResult)
+    assert result.data.profile_name == "not_a_builtin_arm"
+    assert result.data.support_status == "unknown"
+    assert result.data.overall_ok is False
+    assert result.data.mcp_controllability == "blocked_profile_error"
+    probe = result.data.checks["probe"]
+    assert probe.error_code == "ROBOT_PROBE_UNKNOWN_PROFILE"
+    assert probe.evidence["requested_profile_found"] is False
+    assert probe.evidence["hard_failure"] is True
+    assert probe.evidence["known_profile_count"] > 0
+    assert probe.evidence["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profiles",
+        "official_asset_search",
+        "asset_search",
+        "robot_load",
+    ]
+    assert client.calls == []
+
+
+@pytest.mark.asyncio
 async def test_robot_list_arm_profiles_returns_curated_support_matrix():
     from tests.conftest import MockIsaacRestClient
 
@@ -1953,6 +1988,13 @@ async def test_robot_probe_arm_profiles_filters_explicit_profile_names_in_order(
     assert unknown.support_status == "unknown"
     assert unknown.checks["probe"].error_code == "ROBOT_PROBE_UNKNOWN_PROFILE"
     assert unknown.checks["probe"].evidence["hard_failure"] is True
+    assert unknown.checks["probe"].evidence["fallback_tool_order"] == [
+        "robot_list_arm_profiles",
+        "robot_probe_arm_profiles",
+        "official_asset_search",
+        "asset_search",
+        "robot_load",
+    ]
     assert [name for name, _ in client.calls if name == "stage_delete_prim"] == []
 
 

@@ -858,10 +858,14 @@ class RobotModule:
         started = int(time.time() * 1000)
         profile = get_robot_arm_profile(request.profile_name)
         if profile is None:
+            data = _build_unknown_profile_result(
+                _unknown_robot_arm_profile(request.profile_name)
+            )
             return error_result(
-                f"Unknown robot arm profile: {request.profile_name}",
+                f"Unknown robot arm profile: {data.profile_name}",
                 started_ms=started,
                 error_code="ROBOT_PROBE_UNKNOWN_PROFILE",
+                data=data,
             )
 
         prim_path = request.prim_path or _default_probe_prim_path(profile.profile_name)
@@ -2871,6 +2875,19 @@ def _build_unknown_profile_result(profile: RobotArmProfile) -> RobotArmProfilePr
                 "profile_name": profile.profile_name,
                 "hard_failure": True,
                 "requested_profile_found": False,
+                "known_profile_count": len(builtin_robot_arm_profiles()),
+                "suggested_next": (
+                    "Call robot_list_arm_profiles, then retry "
+                    "robot_probe_arm_profile with one listed profile name; "
+                    "for direct USD robot assets use robot_load."
+                ),
+                "fallback_tool_order": [
+                    "robot_list_arm_profiles",
+                    "robot_probe_arm_profiles",
+                    "official_asset_search",
+                    "asset_search",
+                    "robot_load",
+                ],
             },
         )
     }
