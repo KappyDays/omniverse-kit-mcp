@@ -28,6 +28,7 @@ class RobotLoadResult:
 class JointPositions:
     prim_path: str
     positions: tuple[float, ...]
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)
@@ -55,6 +56,7 @@ class JointConfig:
     max_velocity: tuple[float, ...]
     static_only: bool = False
     order_reliable: bool = True
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

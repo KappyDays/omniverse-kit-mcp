@@ -145,6 +145,29 @@ _ROBOT_GET_EE_POSE_FALLBACK_TOOL_ORDER = (
     "robot_get_ee_pose",
     "extension_capture_logs",
 )
+_ROBOT_GET_JOINT_POSITIONS_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_get_joint_config_static",
+    "robot_get_joint_positions",
+    "extension_capture_logs",
+)
+_ROBOT_GET_JOINT_CONFIG_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_get_joint_config_static",
+    "robot_get_joint_config",
+    "extension_capture_logs",
+)
+_ROBOT_GET_STATIC_JOINT_CONFIG_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_get_joint_config_static",
+    "extension_capture_logs",
+)
 _PROBE_UNSAFE_TIMEOUT_CLEANUP_PHASES = {
     "simulation_play",
     "warmup_step",
@@ -396,12 +419,31 @@ class RobotModule:
                 JointPositions(
                     prim_path=raw.get("prim_path", prim_path),
                     positions=positions,
+                    diagnostics=(
+                        dict(raw["diagnostics"])
+                        if isinstance(raw.get("diagnostics"), dict)
+                        else {}
+                    ),
                 ),
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_GET_JOINTS_ERROR"
+            data = JointPositions(
+                prim_path=prim_path,
+                positions=(),
+                diagnostics=_robot_get_joint_positions_error_diagnostics(
+                    prim_path=prim_path,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_GET_JOINTS_ERROR"
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def get_joint_config(
@@ -417,8 +459,24 @@ class RobotModule:
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_GET_JOINT_CONFIG_ERROR"
+            data = _empty_joint_config_error_data(
+                prim_path=prim_path,
+                source="",
+                static_only=False,
+                diagnostics=_robot_get_joint_config_error_diagnostics(
+                    prim_path=prim_path,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                    static=False,
+                ),
+            )
             return error_result(
-                str(exc), started_ms=started, exc=exc, error_code="ROBOT_GET_JOINT_CONFIG_ERROR"
+                str(exc),
+                started_ms=started,
+                exc=exc,
+                error_code=error_code,
+                data=data,
             )
 
     async def get_joint_config_static(
@@ -434,11 +492,24 @@ class RobotModule:
                 started_ms=started,
             )
         except Exception as exc:
+            error_code = "ROBOT_GET_STATIC_JOINT_CONFIG_ERROR"
+            data = _empty_joint_config_error_data(
+                prim_path=prim_path,
+                source="",
+                static_only=True,
+                diagnostics=_robot_get_joint_config_error_diagnostics(
+                    prim_path=prim_path,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                    static=True,
+                ),
+            )
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="ROBOT_GET_STATIC_JOINT_CONFIG_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def set_joint_positions(
@@ -2204,6 +2275,93 @@ def _robot_set_joint_positions_error_diagnostics(
     }
 
 
+def _robot_get_joint_positions_error_diagnostics(
+    *,
+    prim_path: str,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, Any]:
+    return {
+        "reason": "robot_get_joint_positions_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": prim_path,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the app and timeline are responsive before retrying joint readback.",
+            "Run stage_capture_snapshot and robot_get_joint_config_static to confirm the articulation prim and available joints.",
+            "Retry robot_get_joint_positions only after confirming the prim is an articulation.",
+        ],
+        "fallback_tool_order": list(_ROBOT_GET_JOINT_POSITIONS_FALLBACK_TOOL_ORDER),
+    }
+
+
+def _robot_get_joint_config_error_diagnostics(
+    *,
+    prim_path: str,
+    upstream_error_code: str,
+    upstream_message: str,
+    static: bool,
+) -> dict[str, Any]:
+    reason = (
+        "robot_get_static_joint_config_error"
+        if static
+        else "robot_get_joint_config_error"
+    )
+    fallback = (
+        _ROBOT_GET_STATIC_JOINT_CONFIG_FALLBACK_TOOL_ORDER
+        if static
+        else _ROBOT_GET_JOINT_CONFIG_FALLBACK_TOOL_ORDER
+    )
+    retry_tool = "robot_get_joint_config_static" if static else "robot_get_joint_config"
+    suggested_next = (
+        [
+            "Run stage_capture_snapshot to confirm the prim path and articulation-related USD metadata.",
+            "Confirm the expected USD joint prims or ArticulationRoot metadata exist before retrying static readback.",
+            "Capture WARN/ERROR logs if the USD metadata looks correct but static joint discovery still fails.",
+        ]
+        if static
+        else [
+            "Run stage_capture_snapshot to confirm the prim path and articulation-related USD metadata.",
+            "Use robot_get_joint_config_static as a diagnostic fallback when dynamic readback fails.",
+            f"Retry {retry_tool} only after correcting the prim path or articulation state.",
+        ]
+    )
+    return {
+        "reason": reason,
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "prim_path": prim_path,
+        "static": static,
+        "suggested_next": suggested_next,
+        "fallback_tool_order": list(fallback),
+    }
+
+
+def _empty_joint_config_error_data(
+    *,
+    prim_path: str,
+    source: str,
+    static_only: bool,
+    diagnostics: dict[str, Any],
+) -> JointConfig:
+    return JointConfig(
+        prim_path=prim_path,
+        source=source,
+        dof_count=0,
+        dof_names=(),
+        joint_types=(),
+        stiffness=(),
+        damping=(),
+        max_force=(),
+        lower_limits=(),
+        upper_limits=(),
+        max_velocity=(),
+        static_only=static_only,
+        order_reliable=False,
+        diagnostics=diagnostics,
+    )
+
+
 def _robot_navigate_to_error_diagnostics(
     *,
     request: RobotNavigateRequest,
@@ -2662,6 +2820,11 @@ def _joint_config_from_raw(raw: dict[str, Any], prim_path: str) -> JointConfig:
         max_velocity=_float_tuple(raw.get("max_velocity", ())),
         static_only=bool(raw.get("static_only", False)),
         order_reliable=bool(raw.get("order_reliable", True)),
+        diagnostics=(
+            dict(raw["diagnostics"])
+            if isinstance(raw.get("diagnostics"), dict)
+            else {}
+        ),
     )
 
 

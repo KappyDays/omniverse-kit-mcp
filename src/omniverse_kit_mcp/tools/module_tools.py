@@ -751,21 +751,21 @@ def register_module_tools(
 
     @tool()
     async def robot_get_joint_positions(prim_path: str) -> str:
-        """Get joint positions of an articulation (via SingleArticulation)."""
+        """Get joint positions of an articulation (via SingleArticulation). Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_joint_positions(meta, prim_path)
         return _serialize(result)
 
     @tool()
     async def robot_get_joint_config(prim_path: str) -> str:
-        """Read drive stiffness/damping/max_force + position lower/upper limits + max joint velocity per DOF. Symmetric readback for set_joint_positions — diagnose IK / drive_physics anomalies (drive too soft, target outside limits, velocity capped). Source field reports backend (dof_properties / usd_drive_api fallback)."""
+        """Read drive stiffness/damping/max_force + position lower/upper limits + max joint velocity per DOF. Symmetric readback for set_joint_positions — diagnose IK / drive_physics anomalies (drive too soft, target outside limits, velocity capped). Source field reports backend (dof_properties / usd_drive_api fallback). Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_joint_config(meta, prim_path)
         return _serialize(result)
 
     @tool()
     async def robot_get_joint_config_static(prim_path: str) -> str:
-        """Read static UsdPhysics joint metadata without simulation_play. Diagnostic only: USD prim traversal order is not write-order proof for set_joint_positions."""
+        """Read static UsdPhysics joint metadata without simulation_play. Diagnostic only: USD prim traversal order is not write-order proof for set_joint_positions. Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_joint_config_static(meta, prim_path)
         return _serialize(result)

@@ -215,6 +215,38 @@ async def test_robot_get_joint_positions():
     assert result.ok
     assert isinstance(result.data, JointPositions)
     assert result.data.positions == (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
+    assert result.data.diagnostics == {}
+
+
+@pytest.mark.asyncio
+async def test_robot_get_joint_positions_error_returns_typed_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingClient(MockIsaacRestClient):
+        async def robot_get_joint_positions(self, prim_path):  # type: ignore[override]
+            raise ValueError("Prim at /X has no PhysX articulation API")
+
+    module = RobotModule(FailingClient())
+    result = await module.get_joint_positions(_meta(), "/X")
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_GET_JOINTS_ERROR"
+    assert isinstance(result.data, JointPositions)
+    assert result.data.prim_path == "/X"
+    assert result.data.positions == ()
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_get_joint_positions_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_GET_JOINTS_ERROR"
+    assert diagnostics["prim_path"] == "/X"
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_get_joint_config_static",
+        "robot_get_joint_positions",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio
@@ -230,6 +262,7 @@ async def test_robot_get_joint_config_default_franka():
     assert isinstance(result.data, JointConfig)
     assert result.data.dof_count == 7
     assert result.data.source == "dof_properties"
+    assert result.data.diagnostics == {}
     assert len(result.data.stiffness) == 7
     assert result.data.stiffness[0] == 400.0
     assert result.data.upper_limits[5] == 3.7
@@ -264,6 +297,7 @@ async def test_robot_get_joint_config_usd_fallback_source():
     assert result.ok
     assert result.data.source == "usd_drive_api"
     assert result.data.dof_count == 6
+    assert result.data.diagnostics == {}
     assert all(v == 0.0 for v in result.data.stiffness)
 
 
@@ -280,6 +314,7 @@ async def test_robot_get_joint_config_static_marks_diagnostic_order():
     assert result.data.static_only is True
     assert result.data.order_reliable is False
     assert result.data.dof_count == 7
+    assert result.data.diagnostics == {}
     cfg_calls = [c for c in client.calls if c[0] == "robot_get_joint_config_static"]
     assert len(cfg_calls) == 1
     assert cfg_calls[0][1]["prim_path"] == "/World/Franka"
@@ -332,8 +367,63 @@ async def test_robot_get_joint_config_propagates_400():
     result = await module.get_joint_config(_meta(), "/X")
 
     assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
     assert result.error_code == "ROBOT_GET_JOINT_CONFIG_ERROR"
     assert "articulation" in (result.message or "").lower()
+    assert isinstance(result.data, JointConfig)
+    assert result.data.prim_path == "/X"
+    assert result.data.dof_count == 0
+    assert result.data.order_reliable is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_get_joint_config_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_GET_JOINT_CONFIG_ERROR"
+    assert diagnostics["prim_path"] == "/X"
+    assert diagnostics["static"] is False
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_get_joint_config_static",
+        "robot_get_joint_config",
+        "extension_capture_logs",
+    ]
+    assert any("dynamic readback fails" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_robot_get_joint_config_static_error_returns_typed_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingClient(MockIsaacRestClient):
+        async def robot_get_joint_config_static(self, prim_path):  # type: ignore[override]
+            raise ValueError("No joints discovered under /X")
+
+    module = RobotModule(FailingClient())
+    result = await module.get_joint_config_static(_meta(), "/X")
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_GET_STATIC_JOINT_CONFIG_ERROR"
+    assert isinstance(result.data, JointConfig)
+    assert result.data.prim_path == "/X"
+    assert result.data.static_only is True
+    assert result.data.order_reliable is False
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_get_static_joint_config_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_GET_STATIC_JOINT_CONFIG_ERROR"
+    assert diagnostics["prim_path"] == "/X"
+    assert diagnostics["static"] is True
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_get_joint_config_static",
+        "extension_capture_logs",
+    ]
+    assert any("USD joint prims" in item for item in diagnostics["suggested_next"])
+    assert not any(
+        "dynamic readback fails" in item for item in diagnostics["suggested_next"]
+    )
 
 
 @pytest.mark.asyncio
