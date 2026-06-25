@@ -1811,6 +1811,13 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "data.capture_stop_requested=true" in invariant
     assert "data.capture_stop_completed=true" in invariant
     assert "--expect-live-status passed" in invariant
+    assert "Current repeatable public proof anchors include" in official_catalog
+    assert "historical or baseline public-safe evidence" in official_catalog
+    assert "not the current repeatable proof path" in official_catalog
+    assert "historical/current-baseline" not in official_catalog
+    assert official_catalog.index("Current repeatable public proof anchors include") < (
+        official_catalog.index("historical or baseline public-safe evidence")
+    )
     read_only_sequence = [
         "mcp_runtime_info",
         "kit_app_start",
@@ -2255,6 +2262,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "docs/artifacts/"
             "official-asset-verify-success-result-shape-guard-2026-06-26.md"
         ),
+        (
+            "docs/artifacts/"
+            "official-asset-current-proof-anchor-boundary-2026-06-26.md"
+        ),
         "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md",
         (
             "docs/artifacts/"
@@ -2282,6 +2293,7 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     ).read_text(encoding="utf-8")
     assert "Baseline public-safe official asset live evidence is" in guide
     assert "Current public-safe official asset live evidence is" not in guide
+    assert "official asset current-proof-anchor boundary" in guide
     assert guide.index("Baseline public-safe official asset live evidence is") < (
         guide.index("current final-log close-gate official verify proof")
     )

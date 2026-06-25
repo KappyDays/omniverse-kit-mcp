@@ -371,6 +371,8 @@ current final-log close-gate official verify proof is
 `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`;
 its success result shape is guarded in
 `docs/artifacts/official-asset-verify-success-result-shape-guard-2026-06-26.md`.
+The official asset current-proof-anchor boundary is guarded in
+`docs/artifacts/official-asset-current-proof-anchor-boundary-2026-06-26.md`.
 The current docs-only official asset tool-order dry-run refresh is
 `docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`. The
 current read-only dry-run wrapper gate is
