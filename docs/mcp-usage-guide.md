@@ -168,8 +168,9 @@ Current public-safe Robot + RTX evidence anchors are
 `docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md` for the
 default success path and
 `docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md`
-for the `lidar_min_points=513` diagnostics path. The wrapper-specific refresh
-is `docs/artifacts/robot-rtx-controlled-failure-wrapper-refresh-2026-06-25.md`.
+for the `lidar_min_points=513` diagnostics path. Wrapper-specific refreshes
+are `docs/artifacts/robot-rtx-default-wrapper-refresh-2026-06-25.md` and
+`docs/artifacts/robot-rtx-controlled-failure-wrapper-refresh-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
 supersede them only with a new pass/failure artifact that preserves the same
 public-safety boundary.
