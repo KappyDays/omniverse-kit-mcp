@@ -1232,8 +1232,13 @@ official_asset_get(asset_id: 'str', app_profile: 'str | None' = None) -> 'str'
 ```
 
 Return the full generated official asset/material catalog entry by URL-based id. Pass the same
-app_profile used for search/resolve so profile-specific latest pointers and diagnostics,
-including catalog-read errors, are used.
+app_profile used for search/resolve so profile-specific latest pointers and diagnostics are
+used. OFFICIAL_ASSET_NOT_FOUND and catalog-read errors include data.diagnostics.reason,
+data.diagnostics.candidate_counts, data.diagnostics.available_profiles,
+data.diagnostics.available_providers, data.diagnostics.available_kinds,
+data.diagnostics.status_counts, data.diagnostics.sample_names, data.diagnostics.suggested_next,
+and data.diagnostics.fallback_tool_order before retrying another profile or falling back to
+asset_search.
 
 **Parameters**
 
@@ -1250,8 +1255,13 @@ official_asset_resolve(name_or_id: 'str', kind: 'str | None' = None, app_profile
 
 Resolve an official catalog name/url/id to a concrete USD or MDL target plus evidence. Prefer
 current app/profile loadability; if stale or not load/assign verified,
-verify_required_before_use is true; not-found and catalog-read errors include
-diagnostics.reason/suggested_next.
+verify_required_before_use is true. OFFICIAL_ASSET_NOT_FOUND and catalog-read errors include
+data.diagnostics.reason, data.diagnostics.candidate_counts,
+data.diagnostics.available_profiles, data.diagnostics.available_providers,
+data.diagnostics.available_kinds, data.diagnostics.status_counts,
+data.diagnostics.sample_names, data.diagnostics.suggested_next, and
+data.diagnostics.fallback_tool_order before changing kind/app_profile/prefer_loadable or
+falling back to asset_search.
 
 **Parameters**
 
@@ -1270,8 +1280,13 @@ official_asset_search(query: 'str', kind: 'str | None' = None, app_profile: 'str
 
 Search generated NVIDIA official browser-extension asset/material snapshots OFFLINE. Returns
 URL-based ids, provider/app evidence, stale warnings, and verify_required_before_use; verify
-stale/unverified hits with official_asset_verify before use; zero-result and catalog-read
-errors include diagnostics.reason/suggested_next before falling back to asset_search.
+stale/unverified hits with official_asset_verify before use. Zero-result responses include
+data.diagnostics.reason, data.diagnostics.candidate_counts,
+data.diagnostics.available_profiles, data.diagnostics.available_providers,
+data.diagnostics.available_kinds, data.diagnostics.status_counts,
+data.diagnostics.sample_names, data.diagnostics.suggested_next, and
+data.diagnostics.fallback_tool_order before changing filters or falling back to asset_search.
+Catalog-read errors use the same diagnostics boundary.
 
 **Parameters**
 

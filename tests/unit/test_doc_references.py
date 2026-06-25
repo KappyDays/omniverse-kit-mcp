@@ -1416,6 +1416,47 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
         assert token in tool_normalized
 
 
+def test_f3b_official_asset_lookup_tool_diagnostic_shape_guidance():
+    tool_catalog = (PROJECT / "docs" / "tool-catalog.md").read_text(encoding="utf-8")
+
+    sections: dict[str, str] = {}
+    boundaries = {
+        "official_asset_get": "official_asset_resolve",
+        "official_asset_resolve": "official_asset_search",
+        "official_asset_search": "official_asset_sync_status",
+    }
+    for tool_name, next_tool_name in boundaries.items():
+        start = tool_catalog.index(f"### `{tool_name}`")
+        end = tool_catalog.index(f"### `{next_tool_name}`", start)
+        sections[tool_name] = " ".join(tool_catalog[start:end].split())
+
+    common_tokens = (
+        "data.diagnostics.reason",
+        "data.diagnostics.candidate_counts",
+        "data.diagnostics.available_profiles",
+        "data.diagnostics.available_providers",
+        "data.diagnostics.available_kinds",
+        "data.diagnostics.status_counts",
+        "data.diagnostics.sample_names",
+        "data.diagnostics.suggested_next",
+        "data.diagnostics.fallback_tool_order",
+        "asset_search",
+    )
+    for tool_name, section in sections.items():
+        for token in common_tokens:
+            assert token in section, f"{tool_name} missing {token}"
+
+    assert "Zero-result responses" in sections["official_asset_search"]
+    assert "before changing filters" in sections["official_asset_search"]
+    assert "verify_required_before_use" in sections["official_asset_search"]
+    assert "OFFICIAL_ASSET_NOT_FOUND" in sections["official_asset_resolve"]
+    assert "catalog-read errors" in sections["official_asset_resolve"]
+    assert "prefer_loadable" in sections["official_asset_resolve"]
+    assert "OFFICIAL_ASSET_NOT_FOUND" in sections["official_asset_get"]
+    assert "catalog-read errors" in sections["official_asset_get"]
+    assert "same app_profile" in sections["official_asset_get"]
+
+
 def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     artifacts = [
