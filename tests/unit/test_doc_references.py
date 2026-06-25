@@ -955,6 +955,8 @@ def test_f3b_log_capture_tool_catalog_names_close_metadata():
 
     for marker in (
         "stop_after_capture=True",
+        "data.capture_stop_requested",
+        "data.capture_stop_completed",
         "data.capture_stop_timed_out",
         "data.capture_running",
     ):
