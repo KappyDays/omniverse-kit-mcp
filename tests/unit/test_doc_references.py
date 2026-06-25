@@ -869,9 +869,30 @@ def test_f3b_artifact_probe_commands_parse(monkeypatch):
             assert "--workspace" in argv, md.relative_to(PROJECT)
             if "--scenario-validate-live" in argv:
                 assert "--scenario-validate-dry-run" in argv, md.relative_to(PROJECT)
+            before = len(calls)
             assert mcp_probe.main(argv[1:]) == 0, (
                 f"{md.relative_to(PROJECT)}: {command}"
             )
+            assert len(calls) == before + 1
+            call = calls[-1]
+            if call["scenario_validate_live"]:
+                has_evidence_assertion = bool(
+                    call["expected_live_evidence_kinds"]
+                    or call["expected_live_evidence_fields"]
+                    or call["expected_live_evidence_field_minimums"]
+                )
+                has_diagnostic_assertion = bool(
+                    call["expected_live_failure_step_errors"]
+                    or call["expect_live_diagnostic_next_actions_min"] is not None
+                    or call["expected_live_diagnostic_fields"]
+                )
+                assert call["scenario_validate_dry_run"] is True
+                assert call["expect_live_cleanup_failures"] == 0
+                assert call["expect_log_capture_recommended"] is True
+                assert call["expect_scratch_stage_required"] is not None
+                assert has_evidence_assertion or has_diagnostic_assertion, (
+                    f"{md.relative_to(PROJECT)}: {command}"
+                )
 
     assert calls
 
