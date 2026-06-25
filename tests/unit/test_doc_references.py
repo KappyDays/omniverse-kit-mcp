@@ -1693,6 +1693,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
         ),
         "docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md",
+        (
+            "docs/artifacts/"
+            "official-asset-verify-close-gate-live-refresh-2026-06-26.md"
+        ),
         "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md",
         (
             "docs/artifacts/"

@@ -328,7 +328,9 @@ field-level evidence assertions are verified in
 Read-only catalog diagnostic field assertions are verified in
 `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
 The current post-stop-guard official verify proof is
-`docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md`, and
+`docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md`; the
+current final-log close-gate official verify proof is
+`docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`; and
 the current docs-only official asset tool-order dry-run refresh is
 `docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`. The
 current read-only final-log close-gate live refresh is
