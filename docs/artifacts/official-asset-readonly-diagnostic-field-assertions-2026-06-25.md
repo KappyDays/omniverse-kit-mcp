@@ -70,6 +70,24 @@ Recovery note:
   - `search_known_miss:diagnostics.reason=query_no_match`
   - `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`
 
+2026-06-26 post-stop-guard refresh:
+
+- Re-run command: same full live diagnostic probe command above.
+- Result: exit code `0`, live summary `passed`, `4` passed steps, `1`
+  continued expected failure, `0` cleanup failures, `2` diagnostic next
+  actions, and final WARN+ log capture passed.
+- Expected failure step reconfirmed:
+  `get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`.
+- Diagnostic fields reconfirmed:
+  - `search_known_miss:diagnostics.reason=query_no_match`
+  - `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`
+- Direct post-run log close metadata:
+  - `capture_running=false`
+  - `capture_stop_requested=true`
+  - `capture_stop_completed=true`
+  - `capture_stop_timed_out=false`
+  - `capture_stop_timeout_s=1.0`
+
 Public hygiene:
 
 - The artifact records only public scenario/tool names, public S3 asset URL
