@@ -99,6 +99,55 @@ class _FakeStandaloneClient:
         self.closed = True
 
 
+def _install_fake_mcp_stdio(
+    monkeypatch,
+    *,
+    responses: list[dict],
+    sent_messages: list[dict],
+) -> None:
+    class FakeStdin:
+        def write(self, data: bytes) -> None:
+            sent_messages.append(json.loads(data.decode("utf-8")))
+
+        async def drain(self) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+    class FakeStdout:
+        def __init__(self, payloads: list[dict]):
+            self._lines = [
+                (json.dumps(payload) + "\n").encode("utf-8")
+                for payload in payloads
+            ]
+
+        async def readline(self) -> bytes:
+            if not self._lines:
+                return b""
+            return self._lines.pop(0)
+
+    class FakeProcess:
+        def __init__(self, payloads: list[dict]):
+            self.stdin = FakeStdin()
+            self.stdout = FakeStdout(payloads)
+
+        async def wait(self) -> int:
+            return 0
+
+        def kill(self) -> None:
+            pass
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        return FakeProcess(responses)
+
+    monkeypatch.setattr(
+        mcp_probe.asyncio,
+        "create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+
 @pytest.mark.asyncio
 async def test_process_standalone_chdirs_to_project_root_before_config(
     monkeypatch, tmp_path,
@@ -842,6 +891,175 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         "level": "WARN",
         "stop_after_capture": True,
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "evidence_kinds",
+        "cleanup_failed_steps",
+        "expected_message",
+        "absent_message",
+    ),
+    (
+        (
+            ("visual_capture",),
+            0,
+            "live evidence kind 'official_asset_verify' was not found",
+            "scenario_validate live cleanup expectation mismatch:",
+        ),
+        (
+            ("official_asset_verify",),
+            1,
+            "cleanup_failed_steps expected 0, got 1",
+            "scenario_validate live evidence expectation mismatch:",
+        ),
+    ),
+)
+async def test_mcp_probe_live_expectation_mismatches_set_nonzero_exit(
+    monkeypatch,
+    capsys,
+    evidence_kinds,
+    cleanup_failed_steps,
+    expected_message,
+    absent_message,
+):
+    sent_messages: list[dict] = []
+    plan_payload = {
+        "scenario_id": "official_asset_verify_live",
+        "total_steps": 5,
+        "simulation_state_summary": {},
+        "simulation_state_steps": [],
+        "timeline_control_steps": [],
+    }
+    dry_run_payload = {
+        **plan_payload,
+        "dry_run": True,
+        "compiled": True,
+        "steps": 5,
+    }
+    live_report_payload = {
+        "scenario_id": "official_asset_verify_live",
+        "status": "passed",
+        "passed_steps": 5,
+        "failed_steps": 0,
+        "skipped_steps": 0,
+        "continued_steps": 0,
+        "fatal_failed_steps": 0,
+        "cleanup_failed_steps": cleanup_failed_steps,
+        "failure_summary": [],
+        "diagnostic_next_actions": [],
+        "evidence_summary": [
+            {"step_id": f"evidence_{index}", "evidence_kind": evidence_kind}
+            for index, evidence_kind in enumerate(evidence_kinds)
+        ],
+    }
+    module_pass = {"ok": True, "status": "passed", "data": {"status": "ready"}}
+    responses = [
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "serverInfo": {"name": "fake-mcp", "version": "0"},
+                "capabilities": {"tools": {}, "resources": {}},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "tools": [
+                    {"name": "mcp_runtime_info"},
+                    {"name": "kit_app_start"},
+                    {"name": "simulation_get_status"},
+                    {"name": "scenario_plan"},
+                    {"name": "scenario_validate"},
+                    {"name": "extension_clear_logs"},
+                    {"name": "scenario_last_report"},
+                    {"name": "extension_capture_logs"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": {
+                "resources": [
+                    {"uri": "isaacsim://scenario-schema"},
+                    {"uri": "isaacsim://scenarios"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "result": {"content": [{"type": "text", "text": "{}"}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "result": {"content": [{"type": "text", "text": json.dumps(plan_payload)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 8,
+            "result": {"content": [{"type": "text", "text": json.dumps(dry_run_payload)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 9,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 10,
+            "result": {
+                "content": [{"type": "text", "text": json.dumps(live_report_payload)}]
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 11,
+            "result": {
+                "content": [{"type": "text", "text": "# Scenario Report: redacted"}]
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "result": {"content": [{"type": "text", "text": json.dumps(module_pass)}]},
+        },
+    ]
+    _install_fake_mcp_stdio(
+        monkeypatch,
+        responses=responses,
+        sent_messages=sent_messages,
+    )
+
+    exit_code = await mcp_probe.probe(
+        workspace=Path("workspaces/isaac/instance-1"),
+        scenario_plan="smoke/official_asset_verify_live.yaml",
+        scenario_validate_dry_run=True,
+        scenario_validate_live=True,
+        expected_live_evidence_kinds=("official_asset_verify",),
+        expect_live_cleanup_failures=0,
+    )
+
+    assert exit_code == 1
+    output = capsys.readouterr().out
+    assert expected_message in output
+    assert absent_message not in output
+    assert "# Scenario Report: redacted" in output
 
 
 @pytest.mark.asyncio
