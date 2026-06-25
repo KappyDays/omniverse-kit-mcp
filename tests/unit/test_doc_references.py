@@ -1056,6 +1056,15 @@ def test_f3b_robot_rtx_public_evidence_redaction_guidance():
 
 def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
+    current_e2e = (
+        "docs/artifacts/"
+        "probe-assertion-durable-docs-e2e-refresh-2026-06-26.md"
+    )
+    baseline_e2e = "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md"
+    assert "current doc-only durable-rule E2E refresh" in guide
+    assert "baseline recipe remains" in guide
+    assert guide.index(current_e2e) < guide.index(baseline_e2e)
+
     artifacts = [
         "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
         "docs/artifacts/robot-rtx-lidar-controlled-failure-diagnostics-2026-06-25.md",
@@ -1071,8 +1080,8 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
         ),
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
-        "docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md",
-        "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md",
+        current_e2e,
+        baseline_e2e,
     ]
 
     for rel in artifacts:
