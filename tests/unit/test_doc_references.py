@@ -1330,6 +1330,13 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         PROJECT / "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md"
     ).read_text(encoding="utf-8")
     assert "baseline Robot + RTX sensor golden pass proof" in baseline_artifact
+    assert "Historical note" in baseline_artifact
+    assert "`redact_local_paths=false`" in baseline_artifact
+    assert "not the current public report contract" in baseline_artifact
+    assert (
+        'scenario_last_report(report_format="markdown", redact_local_paths=true)'
+        in baseline_artifact
+    )
     assert "robot-rtx-golden-stop-guard-refresh-2026-06-26.md" in baseline_artifact
     close_gate_artifact = (
         PROJECT / "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md"

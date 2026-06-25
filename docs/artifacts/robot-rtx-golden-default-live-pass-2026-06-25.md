@@ -9,6 +9,13 @@ this file for log-capture close metadata. This run used the Isaac Sim
 workspace-local MCP entry from `workspaces/isaac/instance-1`; Kit was not
 started from the repo root.
 
+Historical note: this baseline used a same-host JSON validation call with
+`redact_local_paths=false`, but only redacted/stable summary fields were copied
+into this public artifact. It is not the current public report contract. Current
+repeatable proof must use
+`scenario_last_report(report_format="markdown", redact_local_paths=true)` and
+the canonical probe assertion command in `docs/mcp-usage-guide.md`.
+
 This pass pairs with the 2026-06-25 controlled-failure artifact for
 `lidar_min_points=513`: the default workflow passes at `lidar_min_points=1`,
 while the controlled threshold proves the retry/failure diagnostics path.
