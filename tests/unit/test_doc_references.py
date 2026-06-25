@@ -586,7 +586,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "fails if the" in guide
     assert "override does not reach `retry_steps[].key_args.min_points`" in guide
     assert "scenario_validate(dry_run=true)" in guide
-    assert "--expect-retry-key-arg step:key=value" in scripts_doc
+    assert "--expect-retry-key-arg step_id:key=value" in scripts_doc
     assert "--expect-live-evidence-kind kind" in scripts_doc
     assert "--expect-live-evidence-field selector:key=value" in scripts_doc
     assert "--expect-live-evidence-field-min selector:key=minimum" in scripts_doc
@@ -599,9 +599,14 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "\"sensor_lidar_get_point_cloud\",\"extension_capture_logs\"]'"
     ) in scripts_doc
     assert "--expect-live-cleanup-failures 0" in scripts_doc
-    assert "--expect-live-failure-step-error step=ERROR_CODE" in scripts_doc
+    assert "--expect-live-failure-step-error step_id=ERROR_CODE" in scripts_doc
     assert "--expect-live-diagnostic-next-actions-min 1" in scripts_doc
-    assert "--expect-live-diagnostic-field step:key=value" in scripts_doc
+    assert "--expect-live-diagnostic-field step_id:key=value" in scripts_doc
+    assert "--expect-automatic-cleanup-timeout step_id=seconds" in scripts_doc
+    assert (
+        "failure, diagnostic, retry, and cleanup expectations address "
+        "scenario steps with `step_id`"
+    ) in scripts_doc
     assert "--scenario-validate-dry-run" in scripts_doc
     assert "stop_after_capture=true" in scripts_doc
     assert "the probe fails unless" in scripts_doc

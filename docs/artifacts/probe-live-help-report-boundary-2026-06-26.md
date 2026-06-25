@@ -17,22 +17,35 @@ report boundary used by live wrapper execution.
   `evidence_kind` or `step_id`.
 - `--expect-live-diagnostic-field` help must say it reads
   `diagnostic_next_actions` fields formatted as `step_id:key=value`.
+- `scripts/CLAUDE.md` must mirror help grammar for step-scoped assertions:
+  `--expect-live-failure-step-error step_id=ERROR_CODE`,
+  `--expect-live-diagnostic-field step_id:key=value`,
+  `--expect-retry-key-arg step_id:key=value`, and
+  `--expect-automatic-cleanup-timeout step_id=seconds`.
 
 ## Evidence
 
 - Updated `scripts/probe_mcp_surface.py` earlier; current refresh strengthens
   the help-output test assertions without changing runtime code.
+- Updated `scripts/CLAUDE.md` so the script table uses the same `step_id`
+  grammar as `probe_mcp_surface.py --help` for failure, diagnostic, retry, and
+  cleanup expectations while keeping evidence `selector` grammar distinct.
 - Guarded by
   `tests/unit/test_standalone_scripts.py::test_mcp_probe_help_names_log_capture_stop_boundary`.
 - Current targeted result:
-  `.\.venv\Scripts\python.exe -m pytest tests\unit\test_standalone_scripts.py::test_mcp_probe_help_names_log_capture_stop_boundary tests\unit\test_standalone_scripts.py::test_mcp_probe_parses_expected_live_diagnostic_fields tests\unit\test_standalone_scripts.py::test_mcp_probe_main_wires_live_assertion_options tests\unit\test_doc_references.py::test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact tests\unit\test_doc_references.py::test_f3b_usage_guide_artifact_links_exist -q`
-  passed: `5 passed in 1.01s`.
-- `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_standalone_scripts.py tests\unit\test_doc_references.py`
+  `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_robot_rtx_live_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_usage_guide_probe_commands_parse tests\unit\test_standalone_scripts.py::test_mcp_probe_help_names_log_capture_stop_boundary -q`
+  passed: `3 passed in 0.97s`.
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --help` confirmed
+  the CLI help uses `step_id=ERROR_CODE`, `step_id:key=value`, and
+  `step_id=seconds` for step-scoped assertions.
+- `rg -n -- "--expect-(retry-key-arg|live-diagnostic-field|live-failure-step-error|automatic-cleanup-timeout) step(:|=)" scripts docs tests`
+  returned no matches.
+- `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_doc_references.py`
   passed.
 - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
   `37 passed`.
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q` passed:
-  `944 passed, 16 skipped`.
+  `945 passed, 16 skipped`.
 - `git diff --check` passed with only existing CRLF normalization warnings for
   touched text files.
 - `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`
