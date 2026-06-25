@@ -90,6 +90,29 @@ def _assert_official_lookup_diagnostic_schema(
     assert suggested_next
 
 
+def _assert_official_verify_diagnostic_schema(
+    diagnostics: dict[str, object],
+    *,
+    reason: str,
+    check_key: str,
+) -> None:
+    assert diagnostics["reason"] == reason
+    for key in (
+        "target_status",
+        "current_catalog_status",
+        "stale_warning",
+        "retry_count",
+        "suggested_next",
+        "fallback_tool_order",
+        check_key,
+    ):
+        assert key in diagnostics
+    assert diagnostics["fallback_tool_order"] == _official_fallback_tool_order()
+    suggested_next = diagnostics["suggested_next"]
+    assert isinstance(suggested_next, list)
+    assert suggested_next
+
+
 def test_official_fallback_tool_order_matches_diagnostic_route() -> None:
     assert _official_fallback_tool_order() == [
         "official_asset_sync_status",
@@ -1317,7 +1340,11 @@ async def test_official_asset_verify_asset_rejects_empty_content(
     assert result.data["load_quality"] == "empty_content"
     assert result.data["error"] == "no authored child, default prim, or prim_count evidence"
     diagnostics = result.data["diagnostics"]
-    assert diagnostics["reason"] == "asset_load_quality_failed"
+    _assert_official_verify_diagnostic_schema(
+        diagnostics,
+        reason="asset_load_quality_failed",
+        check_key="asset_checks",
+    )
     assert diagnostics["target_status"] == "load_verified"
     assert diagnostics["asset_checks"]["load_quality"] == "empty_content"
     assert diagnostics["asset_checks"]["has_authored_children"] is False
@@ -1363,7 +1390,11 @@ async def test_official_asset_verify_timeout_reports_diagnostics(
     assert result.data["error_type"] == "TimeoutError"
     assert result.data["error"] == "TimeoutError"
     diagnostics = result.data["diagnostics"]
-    assert diagnostics["reason"] == "verify_timeout"
+    _assert_official_verify_diagnostic_schema(
+        diagnostics,
+        reason="verify_timeout",
+        check_key="asset_checks",
+    )
     assert diagnostics["error_type"] == "TimeoutError"
     assert diagnostics["retry_count"] == 1
 
@@ -1401,7 +1432,11 @@ async def test_official_asset_verify_material_timeout_reports_unknown_checks(
     assert result.ok, result.message
     assert result.data["verification_status"] == "failed"
     diagnostics = result.data["diagnostics"]
-    assert diagnostics["reason"] == "verify_timeout"
+    _assert_official_verify_diagnostic_schema(
+        diagnostics,
+        reason="verify_timeout",
+        check_key="material_checks",
+    )
     assert diagnostics["target_status"] == "assign_verified"
     assert diagnostics["material_checks"] == {
         "create_prim_ok": "unknown",
@@ -1467,7 +1502,11 @@ async def test_official_asset_verify_material_requires_created_test_prim(
     assert result.data["bound"]["material_path"]
     assert result.data["error"] == "material assign or binding readback failed"
     diagnostics = result.data["diagnostics"]
-    assert diagnostics["reason"] == "material_assign_or_binding_failed"
+    _assert_official_verify_diagnostic_schema(
+        diagnostics,
+        reason="material_assign_or_binding_failed",
+        check_key="material_checks",
+    )
     assert diagnostics["target_status"] == "assign_verified"
     assert diagnostics["material_checks"] == {
         "create_prim_ok": False,

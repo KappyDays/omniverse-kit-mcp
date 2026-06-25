@@ -26,8 +26,24 @@ Failure reasons currently covered:
 
 ## Validation
 
+- 2026-06-26 schema guard refresh:
+  `tests/unit/test_asset_module.py::test_official_asset_verify_asset_rejects_empty_content`,
+  `tests/unit/test_asset_module.py::test_official_asset_verify_timeout_reports_diagnostics`,
+  `tests/unit/test_asset_module.py::test_official_asset_verify_material_timeout_reports_unknown_checks`,
+  and
+  `tests/unit/test_asset_module.py::test_official_asset_verify_material_requires_created_test_prim`
+  now directly assert failed verify diagnostics preserve `suggested_next`,
+  `fallback_tool_order`, and the relevant `asset_checks` / `material_checks`
+  section. Targeted run: `4 passed`.
+- 2026-06-26 scenario-report shape refresh:
+  `tests/unit/test_scenario_integration.py::test_official_asset_verify_failure_diagnostics_survive_runner_report`,
+  `tests/unit/test_scenario_integration.py::test_official_asset_verify_not_found_diagnostics_survive_runner_report`,
+  and
+  `tests/unit/test_scenario_integration.py::test_official_asset_verify_material_failure_diagnostics_survive_runner_report`
+  still preserve the same diagnostics through JSON/Markdown reports. Targeted
+  run: `3 passed`.
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_asset_module.py -q`
-  - `50 passed`
+  - `52 passed`
 - `.\.venv\Scripts\python.exe -m ruff check src\omniverse_kit_mcp\modules\asset_module.py tests\unit\test_asset_module.py`
   - passed
 - `tests/unit/test_scenario_integration.py::test_official_asset_verify_failure_diagnostics_survive_runner_report`
