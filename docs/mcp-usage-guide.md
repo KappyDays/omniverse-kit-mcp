@@ -164,10 +164,11 @@ For a live controlled-failure probe, add `--scenario-validate-live`,
 `--expect-live-status failed`, `--expect-live-cleanup-failures 0`, and
 `--expect-live-evidence-kind rtx_lidar_point_cloud`, plus
 `--expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
-and `--expect-live-diagnostic-next-actions-min 1` so the wrapper fails only on
-the wrong terminal status, wrong failing step/error code, missing diagnostic
-next action, missing report, missing lidar evidence, or missing cleanup/log
-evidence.
+`--expect-live-diagnostic-next-actions-min 1`, and
+`--expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
+so the wrapper fails only on the wrong terminal status, wrong failing
+step/error code, missing or wrong diagnostic reason, missing report, missing
+lidar evidence, or missing cleanup/log evidence.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 
@@ -191,7 +192,9 @@ Robot + RTX field-level live evidence assertions are verified in
 numeric threshold assertions are verified in
 `docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md`; the
 controlled-failure step/error-code assertion is verified in
-`docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`.
+`docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md`,
+and controlled-failure diagnostic reason assertion is verified in
+`docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
 supersede them only with a new pass/failure artifact that preserves the same
 public-safety boundary.

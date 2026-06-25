@@ -702,7 +702,13 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
             }
         ],
         "diagnostic_next_actions": [
-            {"step_id": "read_lidar_point_cloud", "status": "failed"},
+            {
+                "step_id": "read_lidar_point_cloud",
+                "status": "failed",
+                "diagnostics.reason": "point_count_below_minimum",
+                "diagnostics.num_points": 512,
+                "diagnostics.min_points": 513,
+            },
         ],
         "evidence_summary": [
             {
@@ -876,6 +882,13 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
             ),
         ),
         expect_live_diagnostic_next_actions_min=1,
+        expected_live_diagnostic_fields=(
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.reason",
+                "point_count_below_minimum",
+            ),
+        ),
     )
 
     assert exit_code == 0
@@ -1802,6 +1815,151 @@ def test_mcp_probe_live_diagnostic_next_action_mismatches_report_drift():
     ) == ["diagnostic_next_action_count expected at least 1, got None"]
 
 
+def test_mcp_probe_parses_expected_live_diagnostic_fields():
+    assert mcp_probe._parse_expected_live_diagnostic_fields([
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum",
+        "read_lidar_point_cloud:diagnostics.num_points=512",
+        'read_lidar_point_cloud:source="step"',
+    ]) == (
+        (
+            "read_lidar_point_cloud",
+            "diagnostics.reason",
+            "point_count_below_minimum",
+        ),
+        ("read_lidar_point_cloud", "diagnostics.num_points", 512),
+        ("read_lidar_point_cloud", "source", "step"),
+    )
+
+
+def test_mcp_probe_rejects_malformed_live_diagnostic_field():
+    with pytest.raises(ValueError, match="step_id:key=value"):
+        mcp_probe._parse_expected_live_diagnostic_fields([
+            "read_lidar_point_cloud",
+        ])
+    with pytest.raises(ValueError, match="step_id:key=value"):
+        mcp_probe._parse_expected_live_diagnostic_fields([
+            "read_lidar_point_cloud:diagnostics.reason",
+        ])
+    with pytest.raises(ValueError, match="non-empty"):
+        mcp_probe._parse_expected_live_diagnostic_fields([
+            "read_lidar_point_cloud:=point_count_below_minimum",
+        ])
+
+
+def test_mcp_probe_live_summary_keeps_public_diagnostic_fields():
+    summary = mcp_probe._scenario_live_report_summary({
+        "diagnostic_next_actions": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "phase": "act",
+                "source": "step",
+                "status": "failed",
+                "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+                "diagnostics.reason": "point_count_below_minimum",
+                "diagnostics.num_points": 512,
+                "diagnostics.min_points": 513,
+                "diagnostics.fallback_tool_order": [
+                    "simulation_step",
+                    "sensor_lidar_get_point_cloud",
+                    "extension_capture_logs",
+                ],
+                "diagnostics.cached_lidar_instance": True,
+                "diagnostics.raw_local_path": "<local-log>/log.txt",
+            },
+        ],
+    })
+
+    assert summary["diagnostic_next_actions"] == [
+        {
+            "step_id": "read_lidar_point_cloud",
+            "phase": "act",
+            "source": "step",
+            "status": "failed",
+            "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+            "diagnostics.reason": "point_count_below_minimum",
+            "diagnostics.num_points": 512,
+            "diagnostics.min_points": 513,
+            "diagnostics.fallback_tool_order": [
+                "simulation_step",
+                "sensor_lidar_get_point_cloud",
+                "extension_capture_logs",
+            ],
+            "diagnostics.cached_lidar_instance": True,
+        },
+    ]
+
+
+def test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value():
+    summary = {
+        "diagnostic_next_actions": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "diagnostics.reason": "point_count_below_minimum",
+                "diagnostics.num_points": 512,
+            },
+        ],
+    }
+
+    assert mcp_probe._live_diagnostic_field_mismatches(
+        summary,
+        (
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.reason",
+                "point_count_below_minimum",
+            ),
+            ("read_lidar_point_cloud", "diagnostics.num_points", 512),
+        ),
+    ) == []
+
+
+def test_mcp_probe_live_diagnostic_field_mismatches_report_drift():
+    summary = {
+        "diagnostic_next_actions": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "diagnostics.reason": "empty_scan_buffer",
+            },
+        ],
+    }
+
+    assert mcp_probe._live_diagnostic_field_mismatches(
+        summary,
+        (
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.reason",
+                "point_count_below_minimum",
+            ),
+        ),
+    ) == [
+        "live diagnostic row 'read_lidar_point_cloud' field "
+        "'diagnostics.reason' expected 'point_count_below_minimum', "
+        "got ['empty_scan_buffer']",
+    ]
+    assert mcp_probe._live_diagnostic_field_mismatches(
+        summary,
+        (("read_lidar_point_cloud", "diagnostics.num_points", 512),),
+    ) == [
+        "live diagnostic row 'read_lidar_point_cloud' field "
+        "'diagnostics.num_points' was not found",
+    ]
+    assert mcp_probe._live_diagnostic_field_mismatches(
+        summary,
+        (("missing_step", "diagnostics.reason", "point_count_below_minimum"),),
+    ) == ["live diagnostic row 'missing_step' was not found"]
+    assert mcp_probe._live_diagnostic_field_mismatches(
+        {},
+        (
+            (
+                "read_lidar_point_cloud",
+                "diagnostics.reason",
+                "point_count_below_minimum",
+            ),
+        ),
+    ) == ["diagnostic_next_actions summary is missing or malformed"]
+
+
 def test_mcp_probe_preflight_runtime_check_mismatches_are_empty_for_expected_values():
     summary = {
         "preflight_runtime_info_checks": [
@@ -1934,6 +2092,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-live-diagnostic-next-actions-min",
         "1",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-live-diagnostic-field",
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum",
     ]) == 2
     assert mcp_probe.main([
         "--scenario-validate-live",

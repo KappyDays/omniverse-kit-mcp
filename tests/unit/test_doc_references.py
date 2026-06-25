@@ -317,6 +317,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
     ) in wrapper
     assert "--expect-live-diagnostic-next-actions-min 1" in wrapper
+    assert (
+        "--expect-live-diagnostic-field "
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum"
+    ) in wrapper
     assert "retry_steps[].key_args" in guide
     assert "retry_steps[].key_args" in invariant
     assert "stage_mutation_summary" in guide
@@ -433,6 +437,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-live-cleanup-failures 0" in scripts_doc
     assert "--expect-live-failure-step-error step=ERROR_CODE" in scripts_doc
     assert "--expect-live-diagnostic-next-actions-min 1" in scripts_doc
+    assert "--expect-live-diagnostic-field step:key=value" in scripts_doc
     assert "--scenario-validate-dry-run" in scripts_doc
 
 
@@ -506,6 +511,10 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-live-evidence-field-assertions-2026-06-25.md",
         "docs/artifacts/robot-rtx-live-evidence-threshold-assertions-2026-06-25.md",
         "docs/artifacts/robot-rtx-controlled-failure-step-error-assertion-2026-06-25.md",
+        (
+            "docs/artifacts/"
+            "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
+        ),
     ]
 
     for rel in artifacts:
@@ -543,6 +552,17 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         in threshold_artifact
     )
     assert "minimum threshold `>=1`" in threshold_artifact
+
+    diagnostic_artifact = (
+        PROJECT
+        / "docs/artifacts/"
+        "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    assert (
+        "`--expect-live-diagnostic-field "
+        "read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`"
+    ) in diagnostic_artifact
+    assert "diagnostics.reason=point_count_below_minimum" in diagnostic_artifact
 
 
 def test_f3b_official_asset_scenario_proof_wrapper_order():

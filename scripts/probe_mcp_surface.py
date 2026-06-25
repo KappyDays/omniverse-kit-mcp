@@ -74,6 +74,22 @@ LIVE_EVIDENCE_SUMMARY_FIELDS = (
     "pixel_variance_average",
     "failure_codes",
 )
+LIVE_DIAGNOSTIC_NEXT_ACTION_FIELDS = (
+    "step_id",
+    "phase",
+    "source",
+    "status",
+    "error_code",
+    "final_step_status",
+    "attempt",
+    "diagnostics.reason",
+    "diagnostics.num_points",
+    "diagnostics.min_points",
+    "diagnostics.fallback_tool_order",
+    "diagnostics.readback_paths_attempted",
+    "diagnostics.cached_lidar_instance",
+    "suggested_next",
+)
 
 
 def _load_workspace_stdio_entry(workspace: Path) -> tuple[list[str], Path, dict[str, str]]:
@@ -685,6 +701,73 @@ def _live_diagnostic_next_action_mismatches(
     ]
 
 
+def _parse_expected_live_diagnostic_fields(
+    raw_values: list[str],
+) -> tuple[tuple[str, str, Any], ...]:
+    expectations: list[tuple[str, str, Any]] = []
+    for raw in raw_values:
+        if ":" not in raw:
+            raise ValueError(
+                "--expect-live-diagnostic-field entries must look like "
+                "step_id:key=value"
+            )
+        step_id, rest = raw.split(":", 1)
+        if "=" not in rest:
+            raise ValueError(
+                "--expect-live-diagnostic-field entries must look like "
+                "step_id:key=value"
+            )
+        key, raw_value = rest.split("=", 1)
+        step_id = step_id.strip()
+        key = key.strip()
+        raw_value = raw_value.strip()
+        if not step_id or not key:
+            raise ValueError(
+                "--expect-live-diagnostic-field requires non-empty step_id "
+                "and key"
+            )
+        try:
+            value: Any = json.loads(raw_value)
+        except json.JSONDecodeError:
+            value = raw_value
+        expectations.append((step_id, key, value))
+    return tuple(expectations)
+
+
+def _live_diagnostic_field_mismatches(
+    summary: dict[str, Any],
+    expectations: tuple[tuple[str, str, Any], ...],
+) -> list[str]:
+    if not expectations:
+        return []
+    diagnostic_rows = summary.get("diagnostic_next_actions")
+    if not isinstance(diagnostic_rows, list):
+        return ["diagnostic_next_actions summary is missing or malformed"]
+    mismatches: list[str] = []
+    for step_id, key, expected in expectations:
+        matching_rows = [
+            row
+            for row in diagnostic_rows
+            if isinstance(row, dict) and row.get("step_id") == step_id
+        ]
+        if not matching_rows:
+            mismatches.append(f"live diagnostic row {step_id!r} was not found")
+            continue
+        actual_values = [row.get(key) for row in matching_rows if key in row]
+        if not actual_values:
+            mismatches.append(
+                f"live diagnostic row {step_id!r} field {key!r} was not found"
+            )
+            continue
+        if any(actual == expected for actual in actual_values):
+            continue
+        mismatches.append(
+            f"live diagnostic row {step_id!r} field {key!r} expected "
+            f"{expected!r}, got {actual_values!r}"
+        )
+    return mismatches
+
+
 def _preflight_runtime_check_mismatches(
     summary: dict[str, Any],
     expected_checks: tuple[str, ...],
@@ -787,6 +870,15 @@ def _scenario_live_report_summary(payload: dict[str, Any]) -> dict[str, Any]:
             if isinstance(row, dict) and row.get("step_id") is not None
         ],
         "diagnostic_next_action_count": len(diagnostic_next_actions),
+        "diagnostic_next_actions": [
+            {
+                field: row.get(field)
+                for field in LIVE_DIAGNOSTIC_NEXT_ACTION_FIELDS
+                if field in row
+            }
+            for row in diagnostic_next_actions
+            if isinstance(row, dict) and row.get("step_id") is not None
+        ],
         "evidence_kinds": [
             row.get("evidence_kind")
             for row in evidence_summary
@@ -933,6 +1025,7 @@ async def probe(
     expect_live_cleanup_failures: int | None = None,
     expected_live_failure_step_errors: tuple[tuple[str, str], ...] = (),
     expect_live_diagnostic_next_actions_min: int | None = None,
+    expected_live_diagnostic_fields: tuple[tuple[str, str, Any], ...] = (),
     expect_live_status: str = "passed",
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
@@ -1333,6 +1426,18 @@ async def probe(
                     for mismatch in diagnostic_mismatches:
                         print(f"  - {mismatch}")
                     exit_status = 1
+                diagnostic_field_mismatches = _live_diagnostic_field_mismatches(
+                    live_summary,
+                    expected_live_diagnostic_fields,
+                )
+                if diagnostic_field_mismatches:
+                    print(
+                        "scenario_validate live diagnostic field expectation "
+                        "mismatch:"
+                    )
+                    for mismatch in diagnostic_field_mismatches:
+                        print(f"  - {mismatch}")
+                    exit_status = 1
                 markdown_report = _tool_text_response(
                     await call_tool(
                         "scenario_last_report",
@@ -1529,6 +1634,16 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--expect-live-diagnostic-field",
+        action="append",
+        default=[],
+        help=(
+            "Require a scenario_validate live diagnostic_next_actions field, "
+            "formatted as step_id:key=value. Value is JSON-decoded when "
+            "possible; repeat for multiple expectations."
+        ),
+    )
+    parser.add_argument(
         "--input-overrides-json",
         help="JSON object passed as scenario_plan input_overrides.",
     )
@@ -1652,6 +1767,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Invalid probe option: {exc}")
         return 2
     try:
+        expected_live_diagnostic_fields = _parse_expected_live_diagnostic_fields(
+            args.expect_live_diagnostic_field,
+        )
+    except ValueError as exc:
+        print(f"Invalid probe option: {exc}")
+        return 2
+    try:
         expected_live_failure_step_errors = (
             _parse_expected_live_failure_step_errors(
                 args.expect_live_failure_step_error,
@@ -1717,6 +1839,9 @@ def main(argv: list[str] | None = None) -> int:
             "--scenario-validate-live"
         )
         return 2
+    elif expected_live_diagnostic_fields:
+        print("--expect-live-diagnostic-field requires --scenario-validate-live")
+        return 2
     if (
         args.expect_live_cleanup_failures is not None
         and args.expect_live_cleanup_failures < 0
@@ -1776,6 +1901,7 @@ def main(argv: list[str] | None = None) -> int:
             expect_live_diagnostic_next_actions_min=(
                 args.expect_live_diagnostic_next_actions_min
             ),
+            expected_live_diagnostic_fields=expected_live_diagnostic_fields,
             expect_live_status=args.expect_live_status,
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,
