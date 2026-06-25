@@ -875,6 +875,53 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "Verification status: `load_verified`" in field_assertion_artifact
 
 
+def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch):
+    artifact = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-live-evidence-field-assertions-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    commands = re.findall(r"`(scripts/probe_mcp_surface\.py [^`]+)`", artifact)
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    assert len(commands) == 1
+    argv = shlex.split(commands[0])
+    assert argv[0] == "scripts/probe_mcp_surface.py"
+    assert mcp_probe.main(argv[1:]) == 0
+
+    call = calls[0]
+    assert call["scenario_plan"] == "smoke/official_asset_verify_live.yaml"
+    assert call["scenario_validate_dry_run"] is True
+    assert call["scenario_validate_live"] is True
+    assert call["expect_live_status"] == "passed"
+    assert call["expect_live_cleanup_failures"] == 0
+    assert call["expect_scratch_stage_required"] is True
+    assert call["expect_log_capture_recommended"] is True
+    assert call["expected_live_evidence_kinds"] == ("official_asset_verify",)
+    assert set(call["expected_live_evidence_fields"]) == {
+        ("official_asset_verify", "verification_status", "load_verified"),
+        ("official_asset_verify", "kind", "asset"),
+        ("official_asset_verify", "app_profile", "isaac-sim"),
+    }
+    assert call["required_live_validation_tools"] == (
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "scenario_validate",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    )
+
+
 def test_f3b_usage_guide_explains_visual_capture_plan_alignment():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
 
