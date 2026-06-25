@@ -2313,6 +2313,11 @@ def test_mcp_probe_module_result_summary_includes_error_diagnostics():
         "error_code": "EXTENSION_LOGS_ERROR",
         "duration_ms": 91_757,
         "data": {
+            "capture_running": True,
+            "capture_stop_requested": True,
+            "capture_stop_completed": False,
+            "capture_stop_timed_out": True,
+            "capture_stop_timeout_s": 1.0,
             "diagnostics": {
                 "reason": "extension_logs_error",
                 "error_type": "RemoteTimeoutError",
@@ -2333,6 +2338,11 @@ def test_mcp_probe_module_result_summary_includes_error_diagnostics():
         "message": "RemoteTimeoutError",
         "error_code": "EXTENSION_LOGS_ERROR",
         "duration_ms": 91_757,
+        "data.capture_running": True,
+        "data.capture_stop_requested": True,
+        "data.capture_stop_completed": False,
+        "data.capture_stop_timed_out": True,
+        "data.capture_stop_timeout_s": 1.0,
         "data.diagnostics.reason": "extension_logs_error",
         "data.diagnostics.error_type": "RemoteTimeoutError",
         "data.diagnostics.retryable": True,

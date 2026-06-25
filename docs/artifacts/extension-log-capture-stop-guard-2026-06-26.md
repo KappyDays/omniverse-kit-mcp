@@ -47,6 +47,20 @@ Live reflection evidence:
   `mcp_runtime_info`, `kit_app_start`, `simulation_get_status`,
   `extension_clear_logs`, and `extension_capture_logs`.
 
+Probe summary refresh:
+
+- `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1
+  --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim
+  --expect-tool-count 152 --require-runtime-fresh
+  --require-robot-probe-error-contract --live-preflight` now surfaces the typed
+  log-capture close metadata in its compact module-result summary.
+- Live preflight output after the refresh included:
+  - `data.capture_running=false`
+  - `data.capture_stop_requested=true`
+  - `data.capture_stop_completed=true`
+  - `data.capture_stop_timed_out=false`
+  - `data.capture_stop_timeout_s=1.0`
+
 Public hygiene:
 
 - This artifact intentionally omits local absolute paths, process IDs, raw Kit

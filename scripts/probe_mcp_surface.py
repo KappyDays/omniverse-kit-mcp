@@ -837,6 +837,11 @@ def _module_result_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
         "current_time",
         "timeline_settled",
         "timeline_settle_updates",
+        "capture_running",
+        "capture_stop_requested",
+        "capture_stop_completed",
+        "capture_stop_timed_out",
+        "capture_stop_timeout_s",
     ):
         if key in data:
             summary[f"data.{key}"] = data.get(key)
