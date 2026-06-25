@@ -49,6 +49,27 @@ Recovery note:
   `data.diagnostics.error_type`, `data.diagnostics.retryable`, and
   `data.diagnostics.fallback_tool_order`.
 
+2026-06-26 recovery refresh:
+
+- Symptom: the final `extension_capture_logs` step had timed out after the
+  scenario assertions passed; direct health/log endpoint checks also timed out.
+- Lifecycle route used:
+  `extension_clear_logs`/`extension_capture_logs` retry evidence ->
+  process inspection -> `scripts/run_process_module_standalone.py restart
+  --profile isaac-sim --instance 1`.
+- Restart result: `ok=true`, `status=started`, `caches_cleared=4`.
+- Post-restart health: `ok=true`, `extension_enabled=true`, `busy=false`.
+- Post-restart preflight:
+  `mcp_runtime_info`, `kit_app_start`, `simulation_get_status`,
+  `extension_clear_logs`, and `extension_capture_logs` all passed.
+- Re-run command: same full live diagnostic probe command above.
+- Re-run result: exit code `0`, live summary `passed`, `4` passed steps,
+  `1` continued expected failure, `0` cleanup failures, `2`
+  diagnostic next actions, and final WARN+ log capture passed.
+- Field assertions reconfirmed:
+  - `search_known_miss:diagnostics.reason=query_no_match`
+  - `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`
+
 Public hygiene:
 
 - The artifact records only public scenario/tool names, public S3 asset URL
