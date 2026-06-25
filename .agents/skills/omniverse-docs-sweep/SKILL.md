@@ -80,6 +80,7 @@ Output: `{changed file: [files to update together]}` mapping.
   - Number of lines: `wc -l` in each CLAUDE.md / invariants / runbooks
 - **(3b) Pointer**: Extract cross-refs (`docs/...`, `../...`) of all sub-CLAUDE.md / invariants / runbooks → Verify file existence. Among broken pointers, only *simple rename / path drift* are candidates (along with semantic transformation is L3).
 - **(3c) Missing table entry**: Verify whether the new file in Step 1 is missing in the sub-CLAUDE.md "File Structure" table / root CLAUDE.md "Document Map" table / pull-doc table.
+- **(3d) Result-shape path clarity**: When docs mention diagnostics, fallback, scenario, or public-report fields, prefer exact JSON paths (`data.diagnostics.fallback_tool_order`, `data.checks.probe.evidence...`, `diagnostic_next_actions[]`) and only keep claims backed by tests, generated catalog output, or explicit live evidence from the session.
 
 Record each candidate as `{file, before, after, reason}`.
 
@@ -117,7 +118,7 @@ Record discarded candidates with reasons in the Sign-off “Discarded — Self-r
 
 ### Step 7 — Apply L1+L2
 
-Actual editing of each passing candidate with `Edit` tool. If there are multiple candidates in one file, the changes are combined and processed into 1 Edit call, if possible. **Does not apply to L3 candidates** — Sign-off reporting only.
+Actual editing of each passing candidate with `Edit` tool. If there are multiple candidates in one file, the changes are combined and processed into 1 Edit call, if possible. **Does not apply to L3 candidates** — Sign-off reporting only. Do not hand-edit generated docs; when a tool docstring or tool metadata change makes `scripts/verify_mcp_sync.py` regenerate `docs/tool-catalog.md`, include the generated diff as sync evidence instead.
 
 ### Step 8 — Post-verification
 
