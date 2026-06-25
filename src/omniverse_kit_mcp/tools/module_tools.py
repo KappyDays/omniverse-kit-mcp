@@ -878,7 +878,7 @@ def register_module_tools(
         end_effector_orientation: list[float] | None = None,
         events_dt: list[float] | None = None,
     ) -> str:
-        """Run Isaac Sim's official Franka PickPlaceController/RMPflow/ParallelGripper against an existing object prim. Explicit picking/orientation inputs allow official-example-style grasps; success requires physical lift plus final bbox/position validation."""
+        """Run Isaac Sim's official Franka PickPlaceController/RMPflow/ParallelGripper against an existing object prim. Explicit picking/orientation inputs allow official-example-style grasps; success requires physical lift plus final bbox/position validation. Failures include data.diagnostics.fallback_tool_order."""
         meta = make_meta(ModuleName.ROBOT)
         if len(target_position) != 3:
             raise ValueError("target_position must be [x,y,z]")

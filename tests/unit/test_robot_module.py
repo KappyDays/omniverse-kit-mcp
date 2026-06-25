@@ -3003,6 +3003,56 @@ async def test_robot_run_franka_pick_place_failed_physical_validation_is_not_suc
 
 
 @pytest.mark.asyncio
+async def test_robot_run_franka_pick_place_exception_returns_typed_diagnostics():
+    class FailingClient:
+        async def robot_run_franka_pick_place(self, request):
+            raise RuntimeError("PickPlaceController unavailable")
+
+    module = RobotModule(FailingClient())  # type: ignore[arg-type]
+    request = RobotFrankaPickPlaceRequest(
+        robot_prim_path="/World/Franka",
+        object_prim_path="/World/Cube",
+        target_position=(0.45, -0.35, 0.72),
+        picking_position=(0.3, 0.2, 0.51),
+        end_effector_initial_height=0.2,
+        max_steps=900,
+        position_tolerance=0.04,
+        lift_height_tolerance=0.02,
+    )
+
+    result = await module.run_franka_pick_place(_meta(), request)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_FRANKA_PICK_PLACE_ERROR"
+    assert isinstance(result.data, RobotFrankaPickPlaceResult)
+    assert result.data.ok is False
+    assert result.data.robot_prim_path == "/World/Franka"
+    assert result.data.object_prim_path == "/World/Cube"
+    assert result.data.target_position == (0.45, -0.35, 0.72)
+    assert result.data.picking_position == (0.3, 0.2, 0.51)
+    assert result.data.end_effector_initial_height == 0.2
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "robot_franka_pick_place_error"
+    assert diagnostics["upstream_error_code"] == "ROBOT_FRANKA_PICK_PLACE_ERROR"
+    assert diagnostics["upstream_message"] == "PickPlaceController unavailable"
+    assert diagnostics["robot_prim_path"] == "/World/Franka"
+    assert diagnostics["object_prim_path"] == "/World/Cube"
+    assert diagnostics["target_position"] == [0.45, -0.35, 0.72]
+    assert diagnostics["picking_position"] == [0.3, 0.2, 0.51]
+    assert diagnostics["max_steps"] == 900
+    assert diagnostics["position_tolerance"] == 0.04
+    assert diagnostics["lift_height_tolerance"] == 0.02
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "stage_capture_snapshot",
+        "robot_run_franka_pick_place",
+        "extension_capture_logs",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_robot_install_pick_place_playback_demo_forwards_payload():
     from tests.conftest import MockIsaacRestClient
 

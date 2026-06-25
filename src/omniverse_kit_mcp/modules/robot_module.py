@@ -86,6 +86,13 @@ _PICK_PLACE_STATUS_FALLBACK_TOOL_ORDER = (
     "robot_get_pick_place_demo_status",
     "extension_capture_logs",
 )
+_FRANKA_PICK_PLACE_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "stage_capture_snapshot",
+    "robot_run_franka_pick_place",
+    "extension_capture_logs",
+)
 _PICK_PLACE_UNSUPPORTED_FALLBACK_TOOL_ORDER = (
     "robot_list_arm_profiles",
     "robot_probe_arm_profile",
@@ -1857,11 +1864,18 @@ class RobotModule:
                 )
             return ok_result(result, started_ms=started)
         except Exception as exc:
+            error_code = "ROBOT_FRANKA_PICK_PLACE_ERROR"
+            data = _franka_pick_place_error_data(
+                request=request,
+                error_code=error_code,
+                message=str(exc),
+            )
             return error_result(
                 str(exc),
                 started_ms=started,
                 exc=exc,
-                error_code="ROBOT_FRANKA_PICK_PLACE_ERROR",
+                error_code=error_code,
+                data=data,
             )
 
     async def install_franka_pick_place_playback_demo(
@@ -2440,6 +2454,66 @@ def _robot_drive_physics_error_diagnostics(
     if raw_reason is not None:
         diagnostics.setdefault("raw_reason", raw_reason)
     return diagnostics
+
+
+def _franka_pick_place_error_data(
+    *,
+    request: RobotFrankaPickPlaceRequest,
+    error_code: str,
+    message: str,
+) -> RobotFrankaPickPlaceResult:
+    diagnostics = {
+        "reason": "robot_franka_pick_place_error",
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "robot_prim_path": request.robot_prim_path,
+        "object_prim_path": request.object_prim_path,
+        "target_position": list(request.target_position),
+        "robot_description": request.robot_description,
+        "picking_position": (
+            list(request.picking_position)
+            if request.picking_position is not None
+            else None
+        ),
+        "max_steps": request.max_steps,
+        "position_tolerance": request.position_tolerance,
+        "lift_height_tolerance": request.lift_height_tolerance,
+        "suggested_next": [
+            "Run simulation_get_status before treating the pick-place controller as available.",
+            "Run stage_capture_snapshot to confirm robot and object prims exist at the requested paths.",
+            "Retry robot_run_franka_pick_place only after correcting prim paths, target pose, or controller profile inputs.",
+        ],
+        "fallback_tool_order": list(_FRANKA_PICK_PLACE_FALLBACK_TOOL_ORDER),
+    }
+    return RobotFrankaPickPlaceResult(
+        ok=False,
+        robot_prim_path=request.robot_prim_path,
+        object_prim_path=request.object_prim_path,
+        target_position=request.target_position,
+        controller="",
+        gripper="",
+        uses_kinematic_carry=False,
+        steps=0,
+        done=False,
+        placed=False,
+        lifted=False,
+        initial_object_position=(0.0, 0.0, 0.0),
+        final_object_position=(0.0, 0.0, 0.0),
+        final_distance=0.0,
+        max_lift_delta=0.0,
+        object_bbox_size=(0.0, 0.0, 0.0),
+        picking_position=request.picking_position or (0.0, 0.0, 0.0),
+        picking_position_source="request" if request.picking_position else "unknown",
+        end_effector_initial_height=request.end_effector_initial_height or 0.0,
+        end_effector_initial_height_source=(
+            "request"
+            if request.end_effector_initial_height is not None
+            else "unknown"
+        ),
+        end_effector_orientation=request.end_effector_orientation,
+        diagnostics=diagnostics,
+        reason=message,
+    )
 
 
 def _robot_navigate_to_error_diagnostics(

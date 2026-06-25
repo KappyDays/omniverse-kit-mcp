@@ -1817,7 +1817,8 @@ robot_run_franka_pick_place(robot_prim_path: 'str', object_prim_path: 'str', tar
 
 Run Isaac Sim's official Franka PickPlaceController/RMPflow/ParallelGripper against an existing
 object prim. Explicit picking/orientation inputs allow official-example-style grasps; success
-requires physical lift plus final bbox/position validation.
+requires physical lift plus final bbox/position validation. Failures include
+data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
