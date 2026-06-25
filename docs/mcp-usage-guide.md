@@ -143,7 +143,8 @@ parent/root session, rerun the same workspace-local command with
 `--scenario-plan`, and `--scenario-validate-dry-run`, then follows the wrapper
 order through `kit_app_start`, `simulation_get_status`, `extension_clear_logs`,
 live `scenario_validate`, redacted Markdown `scenario_last_report`, and
-`extension_capture_logs` while failing if the live report loses required
+`extension_capture_logs(level="WARN", stop_after_capture=true)` while failing
+if the live report loses required
 evidence rows, expected evidence field values, or cleanup preservation.
 If you run the standalone script normally and plan to copy its report into a
 public artifact, add `--report-format markdown --redact-local-paths`; the

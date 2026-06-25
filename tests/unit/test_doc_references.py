@@ -247,7 +247,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)",
         'scenario_last_report(report_format="markdown")',
         'scenario_last_report(report_format="markdown", redact_local_paths=true)',
-        "extension_capture_logs",
+        'extension_capture_logs(level="WARN", stop_after_capture=true)',
     ]
 
     start = guide.index("Robot + RTX live proof wrapper:")
@@ -262,7 +262,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "Robot + RTX live proof wrapper is out of order in mcp-usage-guide.md"
     )
     assert "extension_clear_logs" in invariant
-    assert "extension_capture_logs" in invariant
+    assert 'extension_capture_logs(level="WARN", stop_after_capture=true)' in invariant
     assert "scenario_plan(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     assert "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)" in invariant
     invariant_start = invariant.index("Live proof wrapper:")
