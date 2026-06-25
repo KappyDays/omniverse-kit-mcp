@@ -664,6 +664,55 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "diagnostics.reason=point_count_below_minimum" in diagnostic_artifact
 
 
+def test_f3b_robot_rtx_controlled_failure_artifact_command_parse(monkeypatch):
+    artifact = (
+        PROJECT
+        / "docs/artifacts/"
+        "robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    commands = re.findall(r"`(scripts/probe_mcp_surface\.py [^`]+)`", artifact)
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    assert len(commands) == 1
+    argv = shlex.split(commands[0])
+    assert argv[0] == "scripts/probe_mcp_surface.py"
+    assert mcp_probe.main(argv[1:]) == 0
+
+    call = calls[0]
+    assert call["scenario_plan"] == "smoke/robot_rtx_sensor_golden_workflow.yaml"
+    assert call["scenario_validate_dry_run"] is True
+    assert call["scenario_validate_live"] is True
+    assert call["input_overrides"] == {"lidar_min_points": 513}
+    assert call["expect_live_status"] == "failed"
+    assert call["expect_scratch_stage_required"] is True
+    assert call["expect_log_capture_recommended"] is True
+    assert call["expect_live_cleanup_failures"] == 0
+    assert call["expected_live_evidence_kinds"] == ("rtx_lidar_point_cloud",)
+    assert call["expected_live_failure_step_errors"] == (
+        (
+            "read_lidar_point_cloud",
+            "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
+        ),
+    )
+    assert call["expect_live_diagnostic_next_actions_min"] == 1
+    assert call["expected_live_diagnostic_fields"] == (
+        (
+            "read_lidar_point_cloud",
+            "diagnostics.reason",
+            "point_count_below_minimum",
+        ),
+    )
+    assert call["expected_retry_key_args"] == (
+        ("read_lidar_point_cloud", "min_points", 513),
+    )
+
+
 def test_f3b_official_asset_scenario_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")

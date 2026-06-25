@@ -9,6 +9,8 @@ Command shape:
 - Workspace-local stdio entry: `workspaces/isaac/instance-1`
 - Scenario: `smoke/robot_rtx_sensor_golden_workflow.yaml`
 - Input override: `lidar_min_points=513`
+- Full live diagnostic probe command:
+  `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --input-overrides-json '{"lidar_min_points":513}' --expect-live-status failed --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-retry-key-arg read_lidar_point_cloud:min_points=513 --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS --expect-live-diagnostic-next-actions-min 1 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
 - Live assertions:
   - `--expect-live-status failed`
   - `--expect-live-cleanup-failures 0`
@@ -38,6 +40,21 @@ Result:
   - `rtx_lidar_point_cloud`
 - Diagnostic next action count: `4`
 - WARN+ log capture: `passed`
+
+Refresh run after full command pin:
+
+- Exit code: `0`
+- Live summary: `failed` as expected
+- Steps: `25` passed, `1` failed, `5` skipped
+- Failed step: `read_lidar_point_cloud`
+- Error code: `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
+- Evidence kind asserted: `rtx_lidar_point_cloud`
+- Diagnostic field asserted:
+  `read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
+- Retry key arg asserted: `read_lidar_point_cloud:min_points=513`
+- Cleanup failed steps: `0`
+- WARN+ log capture: `passed`
+- Snapshot path printed by the probe: `tmp_mcp_surface.json`
 
 Diagnostic fields asserted:
 
