@@ -9,8 +9,10 @@ from omniverse_kit_mcp.mcp.server import create_mcp_server
 from omniverse_kit_mcp.modules.viewport_module import ViewportModule
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, OperationMeta
 from omniverse_kit_mcp.types.viewport import (
+    ImageArtifact,
     ViewportCaptureAssertRequest,
     ViewportCaptureAssertResult,
+    ViewportCaptureRequest,
     ViewportFramePrimsRequest,
     ViewportFramePrimsResult,
     ViewportProjectPointsRequest,
@@ -224,6 +226,47 @@ async def test_frame_prims_error_returns_typed_diagnostics():
         "extension_capture_logs",
     ]
     assert any("stage_capture_snapshot" in item for item in diagnostics["suggested_next"])
+
+
+@pytest.mark.asyncio
+async def test_capture_error_returns_typed_diagnostics():
+    class BrokenCaptureClient:
+        async def viewport_capture(self, _req):
+            raise RuntimeError("viewport unavailable")
+
+    module = ViewportModule(BrokenCaptureClient())  # type: ignore[arg-type]
+    request = ViewportCaptureRequest(
+        viewport_name="Viewport",
+        camera_prim_path="/World/Camera",
+        renderer="rtx",
+        width=640,
+        height=480,
+        warmup_frames=2,
+        return_stats=True,
+    )
+    result = await module.capture(_meta(), request)
+
+    assert result.ok is False
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "VIEWPORT_CAPTURE_ERROR"
+    assert isinstance(result.data, ImageArtifact)
+    assert result.data.path == ""
+    assert result.data.width == 640
+    assert result.data.height == 480
+    diagnostics = result.data.diagnostics
+    assert diagnostics["reason"] == "viewport_capture_error"
+    assert diagnostics["upstream_error_code"] == "VIEWPORT_CAPTURE_ERROR"
+    assert diagnostics["upstream_message"] == "viewport unavailable"
+    assert diagnostics["camera_prim_path"] == "/World/Camera"
+    assert diagnostics["warmup_frames"] == 2
+    assert diagnostics["return_stats"] is True
+    assert diagnostics["fallback_tool_order"] == [
+        "mcp_runtime_info",
+        "simulation_get_status",
+        "viewport_frame_prims",
+        "viewport_capture",
+        "extension_capture_logs",
+    ]
 
 
 @pytest.mark.asyncio

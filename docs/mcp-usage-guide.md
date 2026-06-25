@@ -62,7 +62,10 @@ If `viewport_frame_prims` itself errors, expect
 `diagnostics.reason=viewport_frame_prims_error` with requested prim paths,
 upstream error details, and `diagnostics.fallback_tool_order`; first confirm
 the prims with `stage_capture_snapshot`, then check `simulation_get_status`,
-retry `viewport_frame_prims`, and only then open logs.
+retry `viewport_frame_prims`, and only then open logs. If direct
+`viewport_capture` errors, inspect `diagnostics.reason=viewport_capture_error`,
+requested viewport / camera / size fields, and `diagnostics.fallback_tool_order`
+before changing render or camera code.
 
 Robot + RTX live proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

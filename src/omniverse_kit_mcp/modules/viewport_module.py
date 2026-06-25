@@ -47,6 +47,13 @@ _CAPTURE_ASSERT_FALLBACK_TOOL_ORDER = (
     "viewport_capture_assert",
     "extension_capture_logs",
 )
+_CAPTURE_FALLBACK_TOOL_ORDER = (
+    "mcp_runtime_info",
+    "simulation_get_status",
+    "viewport_frame_prims",
+    "viewport_capture",
+    "extension_capture_logs",
+)
 _FRAME_PRIMS_FALLBACK_TOOL_ORDER = (
     "stage_capture_snapshot",
     "simulation_get_status",
@@ -87,10 +94,26 @@ class ViewportModule:
                 pixel_mean=tuple(raw["pixel_mean"]) if raw.get("pixel_mean") is not None else None,
                 pixel_variance=tuple(raw["pixel_variance"]) if raw.get("pixel_variance") is not None else None,
                 warmup_frames_used=int(raw.get("warmup_frames_used", 0)),
+                diagnostics=(
+                    dict(raw["diagnostics"])
+                    if isinstance(raw.get("diagnostics"), dict)
+                    else {}
+                ),
             )
             return ok_result(artifact, started_ms=started, artifacts={"image": artifact.path})
         except Exception as exc:
-            return error_result(str(exc), started_ms=started, error_code="VIEWPORT_CAPTURE_ERROR")
+            error_code = "VIEWPORT_CAPTURE_ERROR"
+            return error_result(
+                str(exc),
+                started_ms=started,
+                error_code=error_code,
+                exc=exc,
+                data=_capture_error_artifact(
+                    request=request,
+                    upstream_error_code=error_code,
+                    upstream_message=str(exc),
+                ),
+            )
 
     async def compare_ssim(
         self, meta: OperationMeta, request: SSIMComparisonRequest
@@ -489,7 +512,7 @@ class ViewportModule:
                 return_stats=True,
             ),
         )
-        if capture.data is None:
+        if not capture.ok or capture.data is None:
             failure_code = capture.error_code or "VIEWPORT_CAPTURE_ERROR"
             data = ViewportCaptureAssertResult(
                 passed=False,
@@ -618,6 +641,53 @@ def _capture_assert_capture_error_diagnostics(
         "fallback_tool_order": list(_CAPTURE_ASSERT_FALLBACK_TOOL_ORDER),
     }
     return diagnostics
+
+
+def _capture_error_artifact(
+    *,
+    request: ViewportCaptureRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> ImageArtifact:
+    return ImageArtifact(
+        artifact_id="",
+        path="",
+        width=request.width,
+        height=request.height,
+        sha256="",
+        created_at_epoch_ms=int(time.time() * 1000),
+        diagnostics=_capture_error_diagnostics(
+            request=request,
+            upstream_error_code=upstream_error_code,
+            upstream_message=upstream_message,
+        ),
+    )
+
+
+def _capture_error_diagnostics(
+    *,
+    request: ViewportCaptureRequest,
+    upstream_error_code: str,
+    upstream_message: str,
+) -> dict[str, JsonValue]:
+    return {
+        "reason": "viewport_capture_error",
+        "upstream_error_code": upstream_error_code,
+        "upstream_message": upstream_message,
+        "viewport_name": request.viewport_name,
+        "camera_prim_path": request.camera_prim_path,
+        "renderer": request.renderer,
+        "width": request.width,
+        "height": request.height,
+        "warmup_frames": request.warmup_frames,
+        "return_stats": request.return_stats,
+        "suggested_next": [
+            "Run simulation_get_status to confirm the app and timeline endpoint are responsive.",
+            "Frame the target prims with viewport_frame_prims, then retry viewport_capture with warmup_frames > 0.",
+            "Capture WARN/ERROR logs if direct viewport capture keeps failing.",
+        ],
+        "fallback_tool_order": list(_CAPTURE_FALLBACK_TOOL_ORDER),
+    }
 
 
 def _capture_assert_failure_reason(failure_codes: tuple[str, ...]) -> str:

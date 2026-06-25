@@ -335,10 +335,14 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "simulation_wait_until_error" in diagnostic_map
     assert "simulation_set_time_error" in diagnostic_map
     assert "diagnostics.reason=viewport_frame_prims_error" in guide
+    assert "diagnostics.reason=viewport_capture_error" in guide
+    assert "VIEWPORT_CAPTURE_ERROR" in diagnostic_map
+    assert "diagnostics.reason=viewport_capture_error" in diagnostic_map
     assert "VIEWPORT_FRAME_PRIMS_ERROR" in diagnostic_map
     assert "diagnostics.reason=viewport_frame_prims_error" in diagnostic_map
     assert "diagnostics.prim_paths" in diagnostic_map
     assert "diagnostics.reason=viewport_frame_prims_error" in invariant
+    assert "diagnostics.reason=viewport_capture_error" in invariant
     assert "capture_error" in guide
     assert "diagnostics.upstream_error_code" in guide
     assert "data_summary.diagnostics.upstream_error_code" in invariant

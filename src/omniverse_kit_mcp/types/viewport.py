@@ -34,6 +34,7 @@ class ImageArtifact:
     pixel_mean: tuple[float, ...] | None = None
     pixel_variance: tuple[float, ...] | None = None
     warmup_frames_used: int = 0
+    diagnostics: dict[str, JsonValue] = field(default_factory=dict)
 
 
 @dataclass(slots=True, frozen=True)

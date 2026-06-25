@@ -491,7 +491,8 @@ viewport_capture(viewport_name: 'str' = 'Viewport', camera_prim_path: 'str | Non
 Capture the 3D RTX render only (no Kit chrome) to PNG; returns artifact path. For the whole app
 window (menus + panels + viewport) use window_capture instead. warmup_frames=N ticks extra
 frames before grab (cold-RTX black fix); return_stats=True adds pixel_mean/pixel_variance per
-channel so you can auto-detect a blank/black frame without reading the PNG.
+channel so you can auto-detect a blank/black frame without reading the PNG. Failures include
+data.diagnostics.reason=viewport_capture_error and data.diagnostics.fallback_tool_order.
 
 **Parameters**
 
