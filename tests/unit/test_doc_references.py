@@ -246,7 +246,6 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)",
         "extension_clear_logs",
         "scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)",
-        'scenario_last_report(report_format="markdown")',
         'scenario_last_report(report_format="markdown", redact_local_paths=true)',
         'extension_capture_logs(level="WARN", stop_after_capture=true)',
     ]
@@ -265,6 +264,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert positions == sorted(positions), (
         "Robot + RTX live proof wrapper is out of order in mcp-usage-guide.md"
     )
+    assert 'scenario_last_report(report_format="markdown")` or' not in wrapper
+    assert "only for private" in wrapper
+    assert "never copy raw report text into public artifacts" in wrapper
     assert "extension_clear_logs" in invariant
     assert 'extension_capture_logs(level="WARN", stop_after_capture=true)' in invariant
     assert "data.capture_stop_requested=true" in invariant
@@ -276,11 +278,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     invariant_start = invariant.index("Live proof wrapper:")
     invariant_end = invariant.index("Before stage mutation", invariant_start)
     invariant_wrapper = invariant[invariant_start:invariant_end]
-    invariant_sequence = [
-        token
-        for token in sequence
-        if token != 'scenario_last_report(report_format="markdown")'
-    ]
+    invariant_sequence = sequence
     invariant_positions = [
         invariant_wrapper.find(token) for token in invariant_sequence
     ]
@@ -1209,10 +1207,15 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/"
         "probe-assertion-durable-docs-e2e-refresh-2026-06-26.md"
     )
+    redaction_boundary = (
+        "docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md"
+    )
     baseline_e2e = "docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md"
     assert "current doc-only durable-rule E2E refresh" in guide
+    assert "current public report redaction boundary refresh" in guide
     assert "baseline recipe remains" in guide
     assert guide.index(current_e2e) < guide.index(baseline_e2e)
+    assert guide.index(redaction_boundary) < guide.index(baseline_e2e)
     assert (
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md"
         in guide
@@ -1240,6 +1243,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"
         ),
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
+        redaction_boundary,
         current_e2e,
         baseline_e2e,
     ]

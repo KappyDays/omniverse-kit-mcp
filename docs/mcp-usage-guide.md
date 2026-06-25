@@ -83,9 +83,10 @@ Robot + RTX live proof wrapper:
 `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml, dry_run=true)` ->
 `extension_clear_logs` ->
 `scenario_validate(smoke/robot_rtx_sensor_golden_workflow.yaml)` ->
-`scenario_last_report(report_format="markdown")` or
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
 `extension_capture_logs`.
+Use raw `scenario_last_report(report_format="markdown")` only for private
+same-host triage; never copy raw report text into public artifacts.
 Before validation, check `scenario_plan.phase_counts`, `total_steps`,
 `preflight_requirements`, `stage_mutation_summary`, `stage_mutation_steps`, `simulation_state_summary`,
 `simulation_state_steps`, `timeline_control_steps`, `evidence_steps`, and
@@ -216,6 +217,8 @@ The current final-log close-gate controlled-failure refresh is
 `docs/artifacts/robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md`.
 The current doc-only durable-rule E2E refresh is verified in
 `docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md`;
+the current public report redaction boundary refresh is
+`docs/artifacts/robot-rtx-public-report-redaction-boundary-2026-06-26.md`;
 the baseline recipe remains
 `docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or
