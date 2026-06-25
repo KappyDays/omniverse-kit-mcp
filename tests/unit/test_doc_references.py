@@ -667,6 +667,12 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
 def test_f3b_official_asset_scenario_proof_wrapper_order():
     guide = (PROJECT / "docs" / "mcp-usage-guide.md").read_text(encoding="utf-8")
     scripts_claude = (PROJECT / "scripts" / "CLAUDE.md").read_text(encoding="utf-8")
+    asset_discovery = (
+        PROJECT / "docs" / "invariants" / "asset-discovery.md"
+    ).read_text(encoding="utf-8")
+    official_catalog = (
+        PROJECT / "docs" / "references" / "official-asset-catalog.md"
+    ).read_text(encoding="utf-8")
     diagnostic_map = (PROJECT / "docs" / "tool-diagnostic-map.md").read_text(
         encoding="utf-8"
     )
@@ -788,6 +794,12 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "official_asset_verify:verification_status=load_verified" in scenario_authoring
     assert "official_asset_verify:kind=asset" in scenario_authoring
     assert "official_asset_verify:app_profile=isaac-sim" in scenario_authoring
+    for source in (asset_discovery, official_catalog):
+        assert "Official asset scenario proof sequence" in source
+        assert "docs/mcp-usage-guide.md" in source
+        assert "official_asset_verify:verification_status=load_verified" in source
+        assert "official_asset_verify:kind=asset" in source
+        assert "official_asset_verify:app_profile=isaac-sim" in source
     assert "Official asset verify failed or found nothing?" in diagnostic_map
     assert "OFFICIAL_ASSET_NOT_FOUND" in diagnostic_map
     assert "diagnostics.candidate_counts" in diagnostic_map

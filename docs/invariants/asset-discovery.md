@@ -51,6 +51,13 @@ Generated official catalog, offline.** Searches ignored NVIDIA official
 asset/material snapshots from browser providers. Use `official_asset_resolve`
 for concrete USD/MDL targets and `official_asset_verify` when stale or not
 load/assign verified for the target app.
+For repeatable live proof or public evidence, route through
+`docs/invariants/scenario-validation.md` §"Official asset scenario proof sequence"
+and `docs/mcp-usage-guide.md`; the proof must assert
+`official_asset_verify:verification_status=load_verified`,
+`official_asset_verify:kind=asset`, and
+`official_asset_verify:app_profile=isaac-sim` on the `official_asset_verify`
+evidence row.
 1. **`asset_search(query, category=None, limit=20)` — Legacy curated catalog, offline.** Curation markdown
 Read the catalog directly from the MCP server process + ranking → `[{name, url, category,
    source_file}]`. Live REST / Isaac Startup **Not Required**. Example: `asset_search("forklift")`,

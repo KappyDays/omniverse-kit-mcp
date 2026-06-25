@@ -164,6 +164,12 @@ official browser-extension assets or materials. Stale snapshot hits can be
 returned with warnings, but any result with `verify_required_before_use=true`
 must be passed to `official_asset_verify` before stage placement or material
 assignment.
+For repeatable scratch/test-stage live proof, use `docs/mcp-usage-guide.md` and
+`docs/invariants/scenario-validation.md` §"Official asset scenario proof sequence";
+the proof must assert `official_asset_verify:verification_status=load_verified`,
+`official_asset_verify:kind=asset`, and
+`official_asset_verify:app_profile=isaac-sim` when proving the Isaac Sim asset
+workflow.
 
 Carry the same `app_profile` through `official_asset_search`,
 `official_asset_resolve`, `official_asset_get`, and `official_asset_verify` when
