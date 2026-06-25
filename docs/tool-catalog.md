@@ -909,7 +909,8 @@ extension_capture_logs(ext_id: 'str | None' = None, since_ms: 'int | None' = Non
 Peek Extension carb.log ring buffer (maxlen 10000, does not drain). Filters: ext_id substring,
 since_ms, level ∈ VERBOSE|INFO|WARN|ERROR|FATAL|ALL. Use extension_clear_logs before risky live
 work to start a request-scoped capture window; set stop_after_capture=True after collecting
-failure logs.
+failure logs. For stop_after_capture=True, inspect data.capture_stop_timed_out and
+data.capture_running before assuming the hook closed.
 
 **Parameters**
 

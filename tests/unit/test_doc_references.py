@@ -855,6 +855,20 @@ def test_f3b_stop_guard_artifacts_record_close_metadata():
     )
 
 
+def test_f3b_log_capture_tool_catalog_names_close_metadata():
+    tool_catalog = (PROJECT / "docs" / "tool-catalog.md").read_text(encoding="utf-8")
+    tool_start = tool_catalog.index("### `extension_capture_logs`")
+    tool_end = tool_catalog.index("### `extension_clear_logs`", tool_start)
+    capture_tool = tool_catalog[tool_start:tool_end]
+
+    for marker in (
+        "stop_after_capture=True",
+        "data.capture_stop_timed_out",
+        "data.capture_running",
+    ):
+        assert marker in capture_tool
+
+
 def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
     artifact = (
         PROJECT / "docs" / "artifacts" / "probe-assertion-durable-docs-e2e-2026-06-25.md"
