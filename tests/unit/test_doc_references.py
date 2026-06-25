@@ -1224,6 +1224,8 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "On-demand official asset wrapper is out of order in mcp-usage-guide.md"
     )
     assert "same live MCP host session" in on_demand_wrapper
+    assert "data.capture_stop_timed_out=false" in on_demand_wrapper
+    assert "data.capture_running=false" in on_demand_wrapper
     assert (
         "--require-live-validation-tools "
         "mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,"
@@ -1349,6 +1351,11 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "data.diagnostics.reason=extension_logs_error" in diagnostic_map
     assert "data.diagnostics.error_type" in diagnostic_map
     assert "data.diagnostics.fallback_tool_order" in diagnostic_map
+    assert "data.capture_stop_timed_out" in diagnostic_map
+    assert "data.capture_running" in diagnostic_map
+    assert "data.capture_stop_timed_out=false" in (
+        PROJECT / "docs" / "invariants" / "usd-load.md"
+    ).read_text(encoding="utf-8")
     assert "search_known_miss:diagnostics.reason=query_no_match" in diagnostic_map
     assert (
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
