@@ -602,6 +602,20 @@ def test_f3b_artifact_probe_commands_parse(monkeypatch):
     assert calls
 
 
+def test_f3b_probe_assertion_artifacts_mark_request_scoped_log_capture():
+    offenders: list[str] = []
+    for md in sorted((PROJECT / "docs" / "artifacts").glob("*2026-06-25.md")):
+        text = md.read_text(encoding="utf-8")
+        if "WARN+ log capture" in text and "stop_after_capture=true" not in text:
+            offenders.append(str(md.relative_to(PROJECT)))
+
+    assert not offenders, (
+        "Probe assertion artifacts with WARN+ log capture must mark "
+        "stop_after_capture=true:\n  "
+        + "\n  ".join(offenders)
+    )
+
+
 def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
     artifact = (
         PROJECT / "docs" / "artifacts" / "probe-assertion-durable-docs-e2e-2026-06-25.md"

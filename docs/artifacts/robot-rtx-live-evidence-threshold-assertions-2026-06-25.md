@@ -40,7 +40,7 @@ Result:
 - Cleanup failed steps: `0`
 - Failure summary count: `0`
 - Diagnostic next-action count: `0`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 
 Evidence rows asserted:
 
@@ -85,5 +85,5 @@ Refresh run after full command pin:
   `width=1280`, `height=720`, `warmup_frames_used=8`,
   `pixel_mean_average=145.60662290219906`,
   `pixel_variance_average=1107.970695684133`, `failure_codes=[]`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 - Snapshot: `tmp_mcp_surface.json`

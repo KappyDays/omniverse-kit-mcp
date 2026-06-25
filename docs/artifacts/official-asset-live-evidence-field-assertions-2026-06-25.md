@@ -37,7 +37,7 @@ Result:
 - Cleanup failed steps: `0`
 - Failure summary count: `0`
 - Diagnostic next-action count: `0`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 
 Refresh run after durable-doc bridge:
 
@@ -56,7 +56,7 @@ Refresh run after durable-doc bridge:
   - `official_asset_verify:verification_status=load_verified`
   - `official_asset_verify:kind=asset`
   - `official_asset_verify:app_profile=isaac-sim`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 - Snapshot path printed by the probe: `tmp_mcp_surface.json`
 
 Evidence row asserted:

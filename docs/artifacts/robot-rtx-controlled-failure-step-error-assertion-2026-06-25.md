@@ -35,7 +35,7 @@ Result:
 - Evidence kinds:
   - `rtx_lidar_point_cloud`
 - Diagnostic next action count: `4`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 
 Diagnostic shape:
 

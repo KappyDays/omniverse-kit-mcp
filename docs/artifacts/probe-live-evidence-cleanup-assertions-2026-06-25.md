@@ -30,7 +30,7 @@ Result:
   - `rtx_lidar_point_cloud`
   - `viewport_framing`
   - `visual_capture`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 
 Key live evidence:
 

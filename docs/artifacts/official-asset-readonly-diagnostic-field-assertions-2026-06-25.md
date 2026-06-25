@@ -34,7 +34,7 @@ Result:
 - Diagnostic fields asserted:
   - `search_known_miss:diagnostics.reason=query_no_match`
   - `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 - Snapshot path printed by the probe: `tmp_mcp_surface.json`
 
 Recovery note:

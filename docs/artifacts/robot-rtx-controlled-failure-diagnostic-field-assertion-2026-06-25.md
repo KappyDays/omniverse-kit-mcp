@@ -39,7 +39,7 @@ Result:
 - Evidence kinds:
   - `rtx_lidar_point_cloud`
 - Diagnostic next action count: `4`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 
 Refresh run after full command pin:
 
@@ -53,7 +53,7 @@ Refresh run after full command pin:
   `read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum`
 - Retry key arg asserted: `read_lidar_point_cloud:min_points=513`
 - Cleanup failed steps: `0`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 - Snapshot path printed by the probe: `tmp_mcp_surface.json`
 
 Diagnostic fields asserted:

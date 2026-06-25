@@ -29,7 +29,7 @@ Result:
 - Cleanup failed steps: `0`
 - Evidence kinds:
   - `official_asset_verify`
-- WARN+ log capture: `passed`
+- WARN+ log capture (stop_after_capture=true): `passed`
 
 Evidence row:
 
