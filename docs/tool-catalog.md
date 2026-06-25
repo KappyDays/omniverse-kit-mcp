@@ -2121,10 +2121,11 @@ sensor_lidar_get_point_cloud(sensor_prim: 'str', max_points: 'int' = 1000, frame
 ```
 
 Read one frame of RTX Lidar XYZ point cloud (symmetric readback for sensor_attach_rtx_lidar).
-Reuses annotator stamped on sensor prim. Empty cloud returns warning + empty_reason +
-diagnostics.suggested_next (typically "call simulation_play & wait for spin"). Set min_points>0
-or fail_on_warning=True to make live proof loops fail instead of silently accepting
-empty/warned data. Truncates to max_points (≤100000).
+Reuses annotator stamped on sensor prim. Empty/short/warned reads return warning/empty_reason
+plus diagnostics.suggested_next and diagnostics.fallback_tool_order; scenario reports promote
+these to diagnostic_next_actions. Set min_points>0 or fail_on_warning=True to fail live proof
+loops instead of silently accepting empty/warned data; warning failures use
+SENSOR_LIDAR_POINT_CLOUD_WARNING. Truncates to max_points (≤100000).
 
 **Parameters**
 
