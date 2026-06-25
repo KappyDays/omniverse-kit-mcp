@@ -81,6 +81,11 @@ _PROBE_IK_KUKA_FORWARD_HIGH_IDENTITY_TARGET_POSE = (
 _PROBE_TIMEOUT_CLEANUP_TIMEOUT_S = 3.0
 _PROBE_BATCH_CLEANUP_RESERVE_S = 2 * _PROBE_TIMEOUT_CLEANUP_TIMEOUT_S + 2.0
 _PROBE_PHASE_OPERATION_TIMEOUT_S = 20.0
+_PICK_PLACE_STATUS_FALLBACK_TOOL_ORDER = (
+    "simulation_get_status",
+    "robot_get_pick_place_demo_status",
+    "extension_capture_logs",
+)
 _PROBE_UNSAFE_TIMEOUT_CLEANUP_PHASES = {
     "simulation_play",
     "warmup_step",
@@ -1722,12 +1727,19 @@ class RobotModule:
                     data=status,
                 )
             return ok_result(status, started_ms=started)
-        except TimeoutError:
+        except (asyncio.TimeoutError, TimeoutError):
             timeout_label = f"{timeout_s:g}s" if timeout_s is not None else "the caller limit"
+            message = f"Franka pick-place demo status timed out after {timeout_label}"
             return error_result(
-                f"Franka pick-place demo status timed out after {timeout_label}",
+                message,
                 started_ms=started,
                 error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT",
+                data=_pick_place_demo_status_error_data(
+                    reason="pick_place_demo_status_timeout",
+                    error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT",
+                    message=message,
+                    timeout_s=timeout_s,
+                ),
             )
         except Exception as exc:
             return error_result(
@@ -1735,6 +1747,12 @@ class RobotModule:
                 started_ms=started,
                 exc=exc,
                 error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_ERROR",
+                data=_pick_place_demo_status_error_data(
+                    reason="pick_place_demo_status_error",
+                    error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_ERROR",
+                    message=str(exc),
+                    timeout_s=timeout_s,
+                ),
             )
 
 
@@ -1828,6 +1846,58 @@ def _parse_pick_place_demo_status(
             if raw.get("last_error") is not None
             else None
         ),
+    )
+
+
+def _pick_place_demo_status_error_data(
+    *,
+    reason: str,
+    error_code: str,
+    message: str,
+    timeout_s: float | None,
+) -> RobotFrankaPickPlaceDemoStatus:
+    status = "timeout" if reason.endswith("_timeout") else "error"
+    diagnostics: dict[str, Any] = {
+        "reason": reason,
+        "upstream_error_code": error_code,
+        "upstream_message": message,
+        "timeout_s": timeout_s,
+        "suggested_next": [
+            "Check simulation_get_status before treating the proof loop as valid.",
+            "Retry robot_get_pick_place_demo_status with a short timeout to "
+            "confirm the status endpoint recovers.",
+            "Capture WARN/ERROR logs if the status endpoint keeps timing out "
+            "or raising errors.",
+        ],
+        "fallback_tool_order": list(_PICK_PLACE_STATUS_FALLBACK_TOOL_ORDER),
+    }
+    return RobotFrankaPickPlaceDemoStatus(
+        ok=False,
+        status=status,
+        robot_prim_path="",
+        object_prim_path="",
+        target_position=(0.0, 0.0, 0.0),
+        uses_kinematic_carry=False,
+        steps=0,
+        controller_event=0,
+        done=False,
+        placed=False,
+        lifted=False,
+        initial_object_position=(0.0, 0.0, 0.0),
+        final_object_position=(0.0, 0.0, 0.0),
+        final_distance=0.0,
+        max_lift_delta=0.0,
+        object_bbox_center=(0.0, 0.0, 0.0),
+        object_bbox_size=(0.0, 0.0, 0.0),
+        object_fit_ok=False,
+        object_fit_reason=None,
+        object_fit_axis=None,
+        object_fit_limit_m=None,
+        object_fit_measured_m=None,
+        picking_position=(0.0, 0.0, 0.0),
+        end_effector_initial_height=0.0,
+        diagnostics=diagnostics,
+        last_error=message,
     )
 
 

@@ -1046,6 +1046,92 @@ def test_report_surfaces_lidar_read_error_next_actions():
     )
 
 
+def test_report_surfaces_pick_place_status_timeout_next_actions():
+    summary = ScenarioRunSummary(
+        scenario_id="pick_place_status_timeout_next_actions",
+        status=ExecutionStatus.ERROR,
+        passed_steps=0,
+        failed_steps=1,
+        skipped_steps=0,
+        started_at_epoch_ms=1000,
+        ended_at_epoch_ms=1100,
+        step_results=(
+            StepResult(
+                step_id="check_pick_place_status",
+                phase="assert",
+                status=ExecutionStatus.ERROR,
+                error_code="ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT",
+                data_summary={
+                    "ok": False,
+                    "status": "timeout",
+                    "last_error": (
+                        "Franka pick-place demo status timed out after 0.5s"
+                    ),
+                    "diagnostics": {
+                        "reason": "pick_place_demo_status_timeout",
+                        "upstream_error_code": (
+                            "ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT"
+                        ),
+                        "timeout_s": 0.5,
+                        "suggested_next": [
+                            (
+                                "Check simulation_get_status before treating "
+                                "the proof loop as valid."
+                            ),
+                            (
+                                "Retry robot_get_pick_place_demo_status with "
+                                "a short timeout to confirm the status "
+                                "endpoint recovers."
+                            ),
+                        ],
+                        "fallback_tool_order": [
+                            "simulation_get_status",
+                            "robot_get_pick_place_demo_status",
+                            "extension_capture_logs",
+                        ],
+                    },
+                },
+            ),
+        ),
+        artifact_paths=(),
+    )
+
+    report = json.loads(to_json(summary))
+    markdown = to_markdown(summary)
+    step = report["step_results"][0]
+
+    assert step["diagnostic_next_actions"] == {
+        "diagnostics.reason": "pick_place_demo_status_timeout",
+        "suggested_next": [
+            "Check simulation_get_status before treating the proof loop as valid.",
+            (
+                "Retry robot_get_pick_place_demo_status with a short timeout "
+                "to confirm the status endpoint recovers."
+            ),
+        ],
+        "diagnostics.fallback_tool_order": [
+            "simulation_get_status",
+            "robot_get_pick_place_demo_status",
+            "extension_capture_logs",
+        ],
+        "diagnostics.upstream_error_code": (
+            "ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT"
+        ),
+        "diagnostics.timeout_s": 0.5,
+    }
+    assert report["diagnostic_next_actions"] == [{
+        "step_id": "check_pick_place_status",
+        "phase": "assert",
+        "source": "step",
+        "status": "error",
+        "error_code": "ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT",
+        **step["diagnostic_next_actions"],
+    }]
+    assert "## Diagnostic Next Actions" in markdown
+    assert "diagnostics.reason=pick_place_demo_status_timeout" in markdown
+    assert "diagnostics.timeout_s=0.5" in markdown
+
+
 def test_report_preserves_retry_next_action_status_and_error_code():
     summary = ScenarioRunSummary(
         scenario_id="retry_next_action_metadata",

@@ -92,6 +92,7 @@ _DIAGNOSTIC_SUMMARY_PATHS = (
         "diagnostics.upstream_error_code",
         (("diagnostics", "upstream_error_code"),),
     ),
+    ("diagnostics.timeout_s", (("diagnostics", "timeout_s"),)),
     (
         "diagnostics.pixel_mean_average",
         (("diagnostics", "pixel_mean_average"),),
@@ -951,6 +952,7 @@ def _diagnostic_next_action_payload(data_summary: dict[str, Any]) -> dict[str, A
             "diagnostics.upstream_error_code",
             diagnostics.get("upstream_error_code"),
         ),
+        ("diagnostics.timeout_s", diagnostics.get("timeout_s")),
         (
             "diagnostics.pixel_mean_average",
             diagnostics.get("pixel_mean_average"),

@@ -1069,7 +1069,7 @@ def register_module_tools(
 
     @tool()
     async def robot_get_pick_place_demo_status(timeout_s: float | None = 10.0) -> str:
-        """Return installed Franka pick/place playback demo status with a caller-side timeout; includes idle/resetting/picking/placing/done/failed plus bbox, lift/place metrics, controller event, diagnostics.playback_progress with approach/contact windows, diagnostic end-effector offset deltas, bounded next-offset recommendations, and last_error."""
+        """Return installed Franka pick/place playback demo status with a caller-side timeout; includes idle/resetting/picking/placing/done/failed plus timeout/error diagnostics, bbox, lift/place metrics, controller event, diagnostics.playback_progress with approach/contact windows, bounded next-offset recommendations, and last_error."""
         meta = make_meta(ModuleName.ROBOT)
         result = await robot.get_pick_place_demo_status(meta, timeout_s=timeout_s)
         return _serialize(result)

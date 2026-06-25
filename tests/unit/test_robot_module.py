@@ -2869,11 +2869,61 @@ async def test_robot_get_pick_place_demo_status_records_timeout_without_waiting_
 
     assert not result.ok
     assert result.status == ExecutionStatus.ERROR
-    assert result.data is None
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
     assert result.error_code == "ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT"
     assert "timed out after 0.01s" in (result.message or "")
+    assert result.data.ok is False
+    assert result.data.status == "timeout"
+    assert result.data.last_error == result.message
+    assert result.data.diagnostics["reason"] == "pick_place_demo_status_timeout"
+    assert result.data.diagnostics["upstream_error_code"] == (
+        "ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_TIMEOUT"
+    )
+    assert result.data.diagnostics["timeout_s"] == pytest.approx(0.01)
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "simulation_get_status",
+        "robot_get_pick_place_demo_status",
+        "extension_capture_logs",
+    ]
+    assert any(
+        "simulation_get_status" in item
+        for item in result.data.diagnostics["suggested_next"]
+    )
     assert result.duration_ms is not None
     assert result.duration_ms < 1000
+    assert client.calls == [("robot_get_pick_place_demo_status", {})]
+
+
+@pytest.mark.asyncio
+async def test_robot_get_pick_place_demo_status_surfaces_rest_error_diagnostics():
+    from tests.conftest import MockIsaacRestClient
+
+    class FailingStatusClient(MockIsaacRestClient):
+        async def robot_get_pick_place_demo_status(self) -> dict:
+            self.calls.append(("robot_get_pick_place_demo_status", {}))
+            raise RuntimeError("status endpoint unavailable")
+
+    client = FailingStatusClient()
+    module = RobotModule(client)
+
+    result = await module.get_pick_place_demo_status(_meta(), timeout_s=0.5)
+
+    assert not result.ok
+    assert result.status == ExecutionStatus.ERROR
+    assert result.error_code == "ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_ERROR"
+    assert isinstance(result.data, RobotFrankaPickPlaceDemoStatus)
+    assert result.data.status == "error"
+    assert result.data.last_error == "status endpoint unavailable"
+    assert result.data.diagnostics["reason"] == "pick_place_demo_status_error"
+    assert result.data.diagnostics["upstream_error_code"] == (
+        "ROBOT_FRANKA_PICK_PLACE_DEMO_STATUS_ERROR"
+    )
+    assert result.data.diagnostics["timeout_s"] == pytest.approx(0.5)
+    assert result.data.diagnostics["fallback_tool_order"] == [
+        "simulation_get_status",
+        "robot_get_pick_place_demo_status",
+        "extension_capture_logs",
+    ]
     assert client.calls == [("robot_get_pick_place_demo_status", {})]
 
 
