@@ -123,6 +123,7 @@ Actual editing of each passing candidate with `Edit` tool. If there are multiple
 
 ```bash
 .venv/Scripts/python.exe -m pytest tests/unit/test_doc_integrity.py -q
+.venv/Scripts/python.exe -m pytest tests/unit/test_doc_references.py -q  # when MCP usage guide, artifact anchors, scenario routing, or documented command lines changed
 .venv/Scripts/python.exe -m pytest tests/unit/ -q
 .venv/Scripts/python.exe scripts/verify_mcp_sync.py
 .\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples
