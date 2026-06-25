@@ -652,6 +652,17 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
         (("get_pallet_wrong_profile", "OFFICIAL_ASSET_NOT_FOUND"),),
     )
 
+    for call in (robot_success, robot_failure, official_verify, official_diagnostics):
+        assert str(call["workspace"]).replace("\\", "/") == (
+            "workspaces/isaac/instance-1"
+        )
+        assert call["runtime_info"] is True
+        assert call["expect_tool_profile"] == "full"
+        assert call["expect_app_profile"] == "isaac-sim"
+        assert call["expect_tool_count"] == 152
+        assert call["require_runtime_fresh"] is True
+        assert call["require_robot_probe_error_contract"] is True
+
     assert "ignored `tmp_mcp_surface.json`" in guide
     assert "repo-relative snapshot path" in guide
     assert "without exposing the local workspace root" in guide
