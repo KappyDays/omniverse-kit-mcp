@@ -326,6 +326,69 @@ def _retry_key_arg_mismatches(
     return mismatches
 
 
+def _parse_expected_automatic_cleanup_timeouts(
+    raw_values: list[str],
+) -> tuple[tuple[str, float], ...]:
+    expectations: list[tuple[str, float]] = []
+    for raw in raw_values:
+        if "=" not in raw:
+            raise ValueError(
+                "--expect-automatic-cleanup-timeout entries must look like "
+                "step_id=seconds"
+            )
+        step_id, raw_value = raw.split("=", 1)
+        step_id = step_id.strip()
+        if not step_id:
+            raise ValueError(
+                "--expect-automatic-cleanup-timeout requires non-empty step_id"
+            )
+        try:
+            timeout_s = float(raw_value)
+        except ValueError as exc:
+            raise ValueError(
+                "--expect-automatic-cleanup-timeout seconds must be numeric"
+            ) from exc
+        expectations.append((step_id, timeout_s))
+    return tuple(expectations)
+
+
+def _automatic_cleanup_timeout_mismatches(
+    summary: dict[str, Any],
+    expectations: tuple[tuple[str, float], ...],
+) -> list[str]:
+    if not expectations:
+        return []
+    cleanup_steps = summary.get("automatic_cleanup_steps")
+    if not isinstance(cleanup_steps, list):
+        return ["automatic_cleanup_steps summary is missing or malformed"]
+    by_id = {
+        str(step.get("step_id")): step
+        for step in cleanup_steps
+        if isinstance(step, dict) and step.get("step_id") is not None
+    }
+    mismatches: list[str] = []
+    for step_id, expected in expectations:
+        step = by_id.get(step_id)
+        if step is None:
+            mismatches.append(f"automatic cleanup step {step_id!r} was not found")
+            continue
+        actual = step.get("timeoutSeconds")
+        try:
+            actual_s = float(actual)
+        except (TypeError, ValueError):
+            mismatches.append(
+                f"automatic cleanup step {step_id!r} timeoutSeconds "
+                f"is missing or non-numeric: {actual!r}"
+            )
+            continue
+        if actual_s != expected:
+            mismatches.append(
+                f"automatic cleanup step {step_id!r} timeoutSeconds expected "
+                f"{expected!r}, got {actual!r}"
+            )
+    return mismatches
+
+
 def _preflight_runtime_check_mismatches(
     summary: dict[str, Any],
     expected_checks: tuple[str, ...],
@@ -546,6 +609,7 @@ async def probe(
     required_live_validation_tools: tuple[str, ...] = (),
     expected_preflight_runtime_checks: tuple[str, ...] = (),
     expected_retry_key_args: tuple[tuple[str, str, Any], ...] = (),
+    expected_automatic_cleanup_timeouts: tuple[tuple[str, float], ...] = (),
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
     mcp_response_timeout_s: float = 30.0,
@@ -701,6 +765,15 @@ async def probe(
         if retry_mismatches:
             print(f"{label} retry key-arg expectation mismatch:")
             for mismatch in retry_mismatches:
+                print(f"  - {mismatch}")
+            passed = False
+        cleanup_timeout_mismatches = _automatic_cleanup_timeout_mismatches(
+            plan_summary,
+            expected_automatic_cleanup_timeouts,
+        )
+        if cleanup_timeout_mismatches:
+            print(f"{label} automatic cleanup timeout expectation mismatch:")
+            for mismatch in cleanup_timeout_mismatches:
                 print(f"  - {mismatch}")
             passed = False
         return passed
@@ -1063,6 +1136,15 @@ def main(argv: list[str] | None = None) -> int:
             "repeat for multiple expectations."
         ),
     )
+    parser.add_argument(
+        "--expect-automatic-cleanup-timeout",
+        action="append",
+        default=[],
+        help=(
+            "Require a runner-added automatic cleanup timeout, formatted as "
+            "step_id=seconds; repeat for multiple expectations."
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         input_overrides = _parse_json_object(
@@ -1086,6 +1168,15 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as exc:
         print(f"Invalid probe option: {exc}")
         return 2
+    try:
+        expected_automatic_cleanup_timeouts = (
+            _parse_expected_automatic_cleanup_timeouts(
+                args.expect_automatic_cleanup_timeout,
+            )
+        )
+    except ValueError as exc:
+        print(f"Invalid probe option: {exc}")
+        return 2
     expect_scratch_stage_required = _parse_expected_bool(
         args.expect_scratch_stage_required,
     )
@@ -1096,6 +1187,7 @@ def main(argv: list[str] | None = None) -> int:
         bool(required_live_validation_tools)
         or bool(args.expect_preflight_runtime_check)
         or bool(expected_retry_key_args)
+        or bool(expected_automatic_cleanup_timeouts)
         or expect_scratch_stage_required is not None
         or expect_log_capture_recommended is not None
     )
@@ -1150,6 +1242,9 @@ def main(argv: list[str] | None = None) -> int:
                 args.expect_preflight_runtime_check
             ),
             expected_retry_key_args=expected_retry_key_args,
+            expected_automatic_cleanup_timeouts=(
+                expected_automatic_cleanup_timeouts
+            ),
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,
             mcp_response_timeout_s=args.mcp_response_timeout_s,

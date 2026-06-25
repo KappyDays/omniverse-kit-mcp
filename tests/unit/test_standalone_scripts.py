@@ -792,6 +792,9 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         ),
         expect_scratch_stage_required=True,
         expect_log_capture_recommended=True,
+        expected_automatic_cleanup_timeouts=(
+            ("__fallback_cleanup_reset", 30.0),
+        ),
     )
 
     assert exit_code == 0
@@ -1039,6 +1042,23 @@ def test_mcp_probe_rejects_malformed_retry_key_arg_expectation():
         mcp_probe._parse_expected_retry_key_args(["read_lidar_point_cloud"])
 
 
+def test_mcp_probe_parses_expected_automatic_cleanup_timeouts():
+    assert mcp_probe._parse_expected_automatic_cleanup_timeouts([
+        "__fallback_cleanup_reset=30",
+    ]) == (("__fallback_cleanup_reset", 30.0),)
+
+
+def test_mcp_probe_rejects_malformed_automatic_cleanup_timeout():
+    with pytest.raises(ValueError, match="step_id=seconds"):
+        mcp_probe._parse_expected_automatic_cleanup_timeouts([
+            "__fallback_cleanup_reset",
+        ])
+    with pytest.raises(ValueError, match="seconds must be numeric"):
+        mcp_probe._parse_expected_automatic_cleanup_timeouts([
+            "__fallback_cleanup_reset=soon",
+        ])
+
+
 def test_mcp_probe_retry_key_arg_mismatches_are_empty_for_expected_value():
     summary = {
         "retry_steps": [
@@ -1083,6 +1103,45 @@ def test_mcp_probe_retry_key_arg_mismatches_report_drift():
         summary,
         (("missing_step", "min_points", 513),),
     ) == ["retry step 'missing_step' was not found"]
+
+
+def test_mcp_probe_automatic_cleanup_timeout_mismatches_are_empty_for_expected_value():
+    summary = {
+        "automatic_cleanup_steps": [
+            {
+                "step_id": "__fallback_cleanup_reset",
+                "timeoutSeconds": 30.0,
+            },
+        ],
+    }
+
+    assert mcp_probe._automatic_cleanup_timeout_mismatches(
+        summary,
+        (("__fallback_cleanup_reset", 30.0),),
+    ) == []
+
+
+def test_mcp_probe_automatic_cleanup_timeout_mismatches_report_drift():
+    summary = {
+        "automatic_cleanup_steps": [
+            {
+                "step_id": "__fallback_cleanup_reset",
+                "timeoutSeconds": 60.0,
+            },
+        ],
+    }
+
+    assert mcp_probe._automatic_cleanup_timeout_mismatches(
+        summary,
+        (("__fallback_cleanup_reset", 30.0),),
+    ) == [
+        "automatic cleanup step '__fallback_cleanup_reset' timeoutSeconds "
+        "expected 30.0, got 60.0",
+    ]
+    assert mcp_probe._automatic_cleanup_timeout_mismatches(
+        summary,
+        (("missing_cleanup", 30.0),),
+    ) == ["automatic cleanup step 'missing_cleanup' was not found"]
 
 
 def test_mcp_probe_preflight_runtime_check_mismatches_are_empty_for_expected_values():
@@ -1182,6 +1241,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     assert mcp_probe.main([
         "--expect-retry-key-arg",
         "read_lidar_point_cloud:min_points=513",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-automatic-cleanup-timeout",
+        "__fallback_cleanup_reset=30",
     ]) == 2
     assert mcp_probe.main([
         "--scenario-validate-dry-run",
