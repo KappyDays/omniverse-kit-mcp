@@ -1304,6 +1304,14 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         in guide
     )
     assert "fails if the hook remains running" in guide
+    preflight_artifact = (
+        PROJECT
+        / "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "Refresh Check" in preflight_artifact
+    assert "status=ready" in preflight_artifact
+    assert "data.capture_stop_completed=true" in preflight_artifact
+    assert "tmp_mcp_surface.json` snapshot remained ignored" in preflight_artifact
 
     artifacts = [
         "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
