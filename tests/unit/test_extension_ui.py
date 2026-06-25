@@ -231,6 +231,34 @@ async def test_capture_logs_error(ext_module, mock_client, meta):
     result = await ext_module.capture_logs(meta)
     assert result.ok is False
     assert result.error_code == "EXTENSION_LOGS_ERROR"
+    assert result.message == "log hook dead"
+    diagnostics = result.data["diagnostics"]
+    assert diagnostics["reason"] == "extension_logs_error"
+    assert diagnostics["error_type"] == "RuntimeError"
+    assert diagnostics["fallback_tool_order"] == [
+        "extension_clear_logs",
+        "extension_capture_logs",
+        "process_list_kit_instances",
+        "kit_app_restart",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_capture_logs_error_uses_exception_type_when_message_empty(
+    ext_module, mock_client, meta
+):
+    class EmptyMessageError(Exception):
+        def __str__(self) -> str:
+            return ""
+
+    async def _boom(*_a, **_kw):
+        raise EmptyMessageError()
+
+    mock_client.extension_logs = _boom
+    result = await ext_module.capture_logs(meta)
+    assert result.ok is False
+    assert result.message == "EmptyMessageError"
+    assert result.data["diagnostics"]["error_type"] == "EmptyMessageError"
 
 
 # --- extension_clear_logs ------------------------------------------------

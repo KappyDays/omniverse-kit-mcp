@@ -578,7 +578,7 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
     assert official_verify["expect_scratch_stage_required"] is True
     assert "evidence_steps" in official_verify["required_plan_fields"]
     official_read_only = plans["smoke/official_asset_catalog_diagnostics.yaml"]
-    assert official_read_only["scenario_validate_dry_run"] is False
+    assert official_read_only["scenario_validate_dry_run"] is True
     assert official_read_only["scenario_validate_live"] is False
     assert official_read_only["expect_scratch_stage_required"] is False
 
@@ -817,10 +817,41 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         wrapper.index("--scenario-plan smoke/official_asset_catalog_diagnostics.yaml"):
         wrapper.index("After validation, request redacted JSON")
     ]
+    assert "--scenario-validate-dry-run" in read_only_probe
+    assert "keep `--scenario-validate-dry-run`" in read_only_probe
     assert "--expect-scratch-stage-required false" in read_only_probe
     assert "--expect-log-capture-recommended true" in read_only_probe
+    assert "--expect-live-cleanup-failures 0" in read_only_probe
+    assert (
+        "--expect-live-failure-step-error "
+        "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND"
+    ) in read_only_probe
+    assert "--expect-live-diagnostic-next-actions-min 2" in read_only_probe
+    assert (
+        "--expect-live-diagnostic-field "
+        "search_known_miss:diagnostics.reason=query_no_match"
+    ) in read_only_probe
+    assert (
+        "--expect-live-diagnostic-field "
+        "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
+    ) in read_only_probe
     assert "--expect-scratch-stage-required true" in scripts_claude
     assert "--expect-log-capture-recommended true" in scripts_claude
+    assert "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND" in invariant
+    assert "search_known_miss:diagnostics.reason=query_no_match" in invariant
+    assert (
+        "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
+        in invariant
+    )
+    assert "EXTENSION_LOGS_ERROR" in diagnostic_map
+    assert "data.diagnostics.reason=extension_logs_error" in diagnostic_map
+    assert "data.diagnostics.error_type" in diagnostic_map
+    assert "data.diagnostics.fallback_tool_order" in diagnostic_map
+    assert "search_known_miss:diagnostics.reason=query_no_match" in diagnostic_map
+    assert (
+        "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
+        in diagnostic_map
+    )
 
 
 def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact():
@@ -831,6 +862,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         (
             "docs/artifacts/"
             "official-asset-live-evidence-field-assertions-2026-06-25.md"
+        ),
+        (
+            "docs/artifacts/"
+            "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
         ),
     ]
 
@@ -873,6 +908,58 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         in field_assertion_artifact
     )
     assert "Verification status: `load_verified`" in field_assertion_artifact
+
+
+def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypatch):
+    artifact = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
+    ).read_text(encoding="utf-8")
+    commands = re.findall(r"`(scripts/probe_mcp_surface\.py [^`]+)`", artifact)
+    calls: list[dict[str, object]] = []
+
+    async def fake_probe(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    assert len(commands) == 1
+    argv = shlex.split(commands[0])
+    assert argv[0] == "scripts/probe_mcp_surface.py"
+    assert mcp_probe.main(argv[1:]) == 0
+
+    call = calls[0]
+    assert call["scenario_plan"] == "smoke/official_asset_catalog_diagnostics.yaml"
+    assert call["scenario_validate_dry_run"] is True
+    assert call["scenario_validate_live"] is True
+    assert call["expect_live_status"] == "passed"
+    assert call["expect_live_cleanup_failures"] == 0
+    assert call["expect_scratch_stage_required"] is False
+    assert call["expect_log_capture_recommended"] is True
+    assert call["expected_live_failure_step_errors"] == (
+        ("get_pallet_wrong_profile", "OFFICIAL_ASSET_NOT_FOUND"),
+    )
+    assert call["expect_live_diagnostic_next_actions_min"] == 2
+    assert set(call["expected_live_diagnostic_fields"]) == {
+        ("search_known_miss", "diagnostics.reason", "query_no_match"),
+        (
+            "get_pallet_wrong_profile",
+            "diagnostics.reason",
+            "app_profile_not_covered",
+        ),
+    }
+    assert call["required_live_validation_tools"] == (
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    )
 
 
 def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch):

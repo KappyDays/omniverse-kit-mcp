@@ -434,8 +434,25 @@ class ExtensionModule:
             )
             return ok_result(result, started_ms=started)
         except Exception as exc:  # noqa: BLE001
+            message = str(exc) or exc.__class__.__name__
+            diagnostics: dict[str, Any] = {
+                "reason": "extension_logs_error",
+                "error_type": exc.__class__.__name__,
+                "fallback_tool_order": [
+                    "extension_clear_logs",
+                    "extension_capture_logs",
+                    "process_list_kit_instances",
+                    "kit_app_restart",
+                ],
+            }
+            retryable = getattr(exc, "retryable", None)
+            if retryable is not None:
+                diagnostics["retryable"] = bool(retryable)
             return error_result(
-                str(exc), started_ms=started, error_code="EXTENSION_LOGS_ERROR",
+                message,
+                started_ms=started,
+                error_code="EXTENSION_LOGS_ERROR",
+                data={"diagnostics": diagnostics},
             )
 
 

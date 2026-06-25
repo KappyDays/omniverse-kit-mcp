@@ -815,6 +815,7 @@ def _module_result_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {
         "ok": payload.get("ok"),
         "status": payload.get("status"),
+        "message": payload.get("message"),
         "error_code": payload.get("error_code"),
         "duration_ms": payload.get("duration_ms"),
     }
@@ -827,6 +828,16 @@ def _module_result_probe_summary(payload: dict[str, Any]) -> dict[str, Any]:
     ):
         if key in data:
             summary[f"data.{key}"] = data.get(key)
+    diagnostics = data.get("diagnostics")
+    if isinstance(diagnostics, dict):
+        for key in (
+            "reason",
+            "error_type",
+            "retryable",
+            "fallback_tool_order",
+        ):
+            if key in diagnostics:
+                summary[f"data.diagnostics.{key}"] = diagnostics.get(key)
     return {key: value for key, value in summary.items() if value is not None}
 
 

@@ -284,7 +284,16 @@ proof, add `--scenario-validate-live`, `--expect-live-cleanup-failures 0`,
 the live report must preserve the expected verification evidence row and
 field values.
 For the read-only catalog diagnostics path, use
-`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true`.
+`scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --scenario-validate-dry-run --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true`.
+If you promote this read-only diagnostics probe to `--scenario-validate-live`,
+keep `--scenario-validate-dry-run`; the probe intentionally requires the
+dry-run plan gate before any live wrapper execution.
+For the live diagnostic assertion proof, add `--expect-live-status passed`,
+`--expect-live-cleanup-failures 0`,
+`--expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`,
+`--expect-live-diagnostic-next-actions-min 2`,
+`--expect-live-diagnostic-field search_known_miss:diagnostics.reason=query_no_match`,
+and `--expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`.
 After validation, request redacted JSON when you need exact fields; compare
 `evidence_summary[]` with that plan row and check
 `verification_status`, `kind`, `app_profile`, and either
@@ -298,9 +307,12 @@ assertion options for the same workflow are verified in
 `docs/artifacts/official-asset-live-evidence-assertions-2026-06-25.md`, and
 field-level evidence assertions are verified in
 `docs/artifacts/official-asset-live-evidence-field-assertions-2026-06-25.md`.
+Read-only catalog diagnostic field assertions are verified in
+`docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
 Use them as the baseline for the bounded `official_asset_verify` load-quality
-proof and refresh them when verification status, load-quality shape,
-diagnostics, evidence kind/fields, cleanup count, or WARN/ERROR counts change.
+proof and read-only catalog diagnostics; refresh them when verification status,
+load-quality shape, diagnostics, evidence kind/fields, cleanup count, continued
+failure shape, or WARN/ERROR counts change.
 
 Official asset on-demand live verify wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->

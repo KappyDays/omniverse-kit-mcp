@@ -2197,6 +2197,46 @@ def test_mcp_probe_summarizes_runtime_info_shape():
     }
 
 
+def test_mcp_probe_module_result_summary_includes_error_diagnostics():
+    summary = mcp_probe._module_result_probe_summary({
+        "ok": False,
+        "status": "error",
+        "message": "RemoteTimeoutError",
+        "error_code": "EXTENSION_LOGS_ERROR",
+        "duration_ms": 91_757,
+        "data": {
+            "diagnostics": {
+                "reason": "extension_logs_error",
+                "error_type": "RemoteTimeoutError",
+                "retryable": True,
+                "fallback_tool_order": [
+                    "extension_clear_logs",
+                    "extension_capture_logs",
+                    "process_list_kit_instances",
+                    "kit_app_restart",
+                ],
+            },
+        },
+    })
+
+    assert summary == {
+        "ok": False,
+        "status": "error",
+        "message": "RemoteTimeoutError",
+        "error_code": "EXTENSION_LOGS_ERROR",
+        "duration_ms": 91_757,
+        "data.diagnostics.reason": "extension_logs_error",
+        "data.diagnostics.error_type": "RemoteTimeoutError",
+        "data.diagnostics.retryable": True,
+        "data.diagnostics.fallback_tool_order": [
+            "extension_clear_logs",
+            "extension_capture_logs",
+            "process_list_kit_instances",
+            "kit_app_restart",
+        ],
+    }
+
+
 def test_mcp_probe_runtime_info_mismatches_are_empty_for_expected_shape():
     summary = {
         "tool_profile": "full",
