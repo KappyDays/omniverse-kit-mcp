@@ -610,6 +610,7 @@ async def probe(
     expected_preflight_runtime_checks: tuple[str, ...] = (),
     expected_retry_key_args: tuple[tuple[str, str, Any], ...] = (),
     expected_automatic_cleanup_timeouts: tuple[tuple[str, float], ...] = (),
+    expect_live_status: str = "passed",
     expect_scratch_stage_required: bool | None = None,
     expect_log_capture_recommended: bool | None = None,
     mcp_response_timeout_s: float = 30.0,
@@ -938,7 +939,12 @@ async def probe(
                 live_summary = _scenario_live_report_summary(live_report_payload)
                 print("\n=== scenario_validate live summary ===")
                 print(json.dumps(live_summary, indent=2, ensure_ascii=False))
-                if live_report_payload.get("status") != "passed":
+                if live_report_payload.get("status") != expect_live_status:
+                    print(
+                        "scenario_validate live status expected "
+                        f"{expect_live_status!r}, got "
+                        f"{live_report_payload.get('status')!r}"
+                    )
                     exit_status = 1
                 markdown_report = _tool_text_response(
                     await call_tool(
@@ -970,6 +976,7 @@ async def probe(
         required_live_validation_tools
         or expected_preflight_runtime_checks
         or expected_retry_key_args
+        or expected_automatic_cleanup_timeouts
         or expect_scratch_stage_required is not None
         or expect_log_capture_recommended is not None
     ):
@@ -1068,6 +1075,15 @@ def main(argv: list[str] | None = None) -> int:
             "simulation_get_status, extension_clear_logs, scenario_validate, "
             "scenario_last_report(markdown, redacted), and extension_capture_logs. "
             "Requires --scenario-plan and --scenario-validate-dry-run."
+        ),
+    )
+    parser.add_argument(
+        "--expect-live-status",
+        default="passed",
+        choices=("passed", "failed", "timeout", "error", "canceled"),
+        help=(
+            "Expected status for --scenario-validate-live; use 'failed' for "
+            "controlled-failure diagnostics."
         ),
     )
     parser.add_argument(
@@ -1210,6 +1226,9 @@ def main(argv: list[str] | None = None) -> int:
         if not args.scenario_validate_dry_run:
             print("--scenario-validate-live requires --scenario-validate-dry-run")
             return 2
+    elif args.expect_live_status != "passed":
+        print("--expect-live-status requires --scenario-validate-live")
+        return 2
     runtime_info = (
         args.runtime_info
         or args.expect_tool_profile is not None
@@ -1245,6 +1264,7 @@ def main(argv: list[str] | None = None) -> int:
             expected_automatic_cleanup_timeouts=(
                 expected_automatic_cleanup_timeouts
             ),
+            expect_live_status=args.expect_live_status,
             expect_scratch_stage_required=expect_scratch_stage_required,
             expect_log_capture_recommended=expect_log_capture_recommended,
             mcp_response_timeout_s=args.mcp_response_timeout_s,

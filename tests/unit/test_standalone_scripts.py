@@ -638,14 +638,19 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
     }
     live_report_payload = {
         "scenario_id": "robot_rtx_sensor_golden_workflow",
-        "status": "passed",
-        "passed_steps": 32,
-        "failed_steps": 0,
+        "status": "failed",
+        "passed_steps": 31,
+        "failed_steps": 1,
         "skipped_steps": 0,
         "continued_steps": 0,
-        "fatal_failed_steps": 0,
+        "fatal_failed_steps": 1,
         "cleanup_failed_steps": 0,
-        "failure_summary": [],
+        "failure_summary": [
+            {
+                "step_id": "read_lidar_point_cloud",
+                "status": "failed",
+            }
+        ],
         "diagnostic_next_actions": [],
         "evidence_summary": [
             {"step_id": "capture_visible_result", "evidence_kind": "visual_capture"},
@@ -795,6 +800,7 @@ async def test_mcp_probe_live_scenario_uses_canonical_wrapper_order(
         expected_automatic_cleanup_timeouts=(
             ("__fallback_cleanup_reset", 30.0),
         ),
+        expect_live_status="failed",
     )
 
     assert exit_code == 0
@@ -1248,6 +1254,10 @@ def test_mcp_probe_rejects_plan_expectations_without_scenario_plan():
     ]) == 2
     assert mcp_probe.main([
         "--scenario-validate-dry-run",
+    ]) == 2
+    assert mcp_probe.main([
+        "--expect-live-status",
+        "failed",
     ]) == 2
     assert mcp_probe.main([
         "--live-preflight",

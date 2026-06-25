@@ -152,6 +152,9 @@ For bounded RTX lidar failure-shape checks, override
 `lidar_min_points` above `lidar_max_points` instead of editing the scenario; the
 expected failure is `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS` on
 `read_lidar_point_cloud` with cleanup preserved.
+For a live controlled-failure probe, add `--scenario-validate-live
+--expect-live-status failed` so the wrapper fails only on the wrong terminal
+status, missing report, or missing cleanup/log evidence.
 Call `scenario_last_report` from the same MCP host process that ran
 `scenario_validate`; a fresh stdio host has no in-memory latest report.
 
