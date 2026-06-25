@@ -365,6 +365,166 @@ def test_mcp_probe_summarizes_scenario_plan_shape():
     }
 
 
+@pytest.mark.asyncio
+async def test_mcp_probe_calls_scenario_validate_dry_run_with_plan_args(
+    monkeypatch,
+    capsys,
+):
+    sent_messages: list[dict] = []
+
+    plan_payload = {
+        "scenario_id": "official_asset_verify_live",
+        "total_steps": 5,
+        "diagnostic_steps": [],
+        "evidence_steps": [{"id": "verify_pallet_asset"}],
+        "stage_mutation_steps": [{"id": "verify_pallet_asset"}],
+        "live_validation_checklist": {
+            "scratch_stage_required": True,
+            "log_capture_recommended": True,
+            "steps": [
+                {"tool": "mcp_runtime_info"},
+                {"tool": "scenario_validate"},
+            ],
+        },
+    }
+    dry_run_payload = {
+        **plan_payload,
+        "dry_run": True,
+        "compiled": True,
+        "steps": 5,
+    }
+    responses = [
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "serverInfo": {"name": "fake-mcp", "version": "0"},
+                "capabilities": {"tools": {}, "resources": {}},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "result": {
+                "tools": [
+                    {"name": "mcp_runtime_info"},
+                    {"name": "scenario_plan"},
+                    {"name": "scenario_validate"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "result": {
+                "resources": [
+                    {"uri": "isaacsim://scenario-schema"},
+                    {"uri": "isaacsim://scenarios"},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "result": {
+                "content": [
+                    {"type": "text", "text": json.dumps(plan_payload)},
+                ],
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "result": {
+                "content": [
+                    {"type": "text", "text": json.dumps(dry_run_payload)},
+                ],
+            },
+        },
+    ]
+
+    class FakeStdin:
+        def write(self, data: bytes) -> None:
+            sent_messages.append(json.loads(data.decode("utf-8")))
+
+        async def drain(self) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+    class FakeStdout:
+        def __init__(self, payloads: list[dict]):
+            self._lines = [
+                (json.dumps(payload) + "\n").encode("utf-8")
+                for payload in payloads
+            ]
+
+        async def readline(self) -> bytes:
+            if not self._lines:
+                return b""
+            return self._lines.pop(0)
+
+    class FakeProcess:
+        def __init__(self, payloads: list[dict]):
+            self.stdin = FakeStdin()
+            self.stdout = FakeStdout(payloads)
+
+        async def wait(self) -> int:
+            return 0
+
+        def kill(self) -> None:
+            pass
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        return FakeProcess(responses)
+
+    monkeypatch.setattr(
+        mcp_probe.asyncio,
+        "create_subprocess_exec",
+        fake_create_subprocess_exec,
+    )
+
+    exit_code = await mcp_probe.probe(
+        scenario_plan="smoke/official_asset_verify_live.yaml",
+        scenario_validate_dry_run=True,
+        input_overrides={"asset_name": "pallet"},
+        required_plan_fields=(
+            "diagnostic_steps",
+            "evidence_steps",
+            "stage_mutation_steps",
+        ),
+        required_live_validation_tools=(
+            "mcp_runtime_info",
+            "scenario_validate",
+        ),
+        expect_scratch_stage_required=True,
+        expect_log_capture_recommended=True,
+    )
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "=== scenario_validate dry-run smoke ===" in output
+    tool_calls = [
+        message
+        for message in sent_messages
+        if message.get("method") == "tools/call"
+    ]
+    assert [call["params"]["name"] for call in tool_calls] == [
+        "scenario_plan",
+        "scenario_validate",
+    ]
+    assert tool_calls[0]["params"]["arguments"] == {
+        "scenario_path": "smoke/official_asset_verify_live.yaml",
+        "input_overrides": {"asset_name": "pallet"},
+    }
+    assert tool_calls[1]["params"]["arguments"] == {
+        "scenario_path": "smoke/official_asset_verify_live.yaml",
+        "dry_run": True,
+        "input_overrides": {"asset_name": "pallet"},
+    }
+
+
 def test_mcp_probe_parses_required_live_validation_tools():
     assert mcp_probe._parse_required_tool_sequence(
         "mcp_runtime_info, kit_app_start,, scenario_plan ",
