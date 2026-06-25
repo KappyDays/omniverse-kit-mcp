@@ -177,8 +177,11 @@ For repeatable read-only catalog diagnostics, use
 `stage_mutation_summary.read_only=true` and assert
 `--expect-live-status passed`,
 `--expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`,
-`search_known_miss:diagnostics.reason=query_no_match` plus
-`get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`.
+`--expect-live-diagnostic-next-actions-min 2`,
+`--expect-live-diagnostic-field search_known_miss:diagnostics.reason=query_no_match`,
+`--expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`,
+`--expect-live-diagnostic-field search_known_miss:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]'`,
+and `--expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]'`.
 Current repeatable public proof anchors include
 `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`
 for the final-log close-gate live proof,
@@ -186,7 +189,10 @@ for the final-log close-gate live proof,
 for read-only catalog diagnostics, and
 `docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md` plus
 `docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md` for
-docs-only dry-run gates. Treat older stop-guard and live-pass artifacts linked
+docs-only dry-run gates. Exact read-only fallback field assertion wording is
+guarded by
+`docs/artifacts/official-asset-readonly-fallback-assertion-boundary-2026-06-26.md`.
+Treat older stop-guard and live-pass artifacts linked
 from `docs/mcp-usage-guide.md` as historical or baseline public-safe evidence,
 not the current repeatable proof path. Keep
 `docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md` as a

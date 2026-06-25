@@ -2108,6 +2108,10 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         assert "official_asset_verify:app_profile=isaac-sim" in source
         assert "official_asset_verify:load_quality=content_verified_no_bbox" in source
         assert "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND" in source
+        assert "--expect-live-diagnostic-next-actions-min 2" in source
+        for fallback_assertion in _OFFICIAL_READONLY_FALLBACK_ASSERTIONS:
+            assert fallback_assertion in source
+        assert "...:diagnostics.fallback_tool_order" not in source
         assert "data.verification_status=load_verified" in source
         assert "data.kind" in source
         assert "data.app_profile" in source

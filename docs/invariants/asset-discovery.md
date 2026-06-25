@@ -75,8 +75,11 @@ For repeatable read-only catalog diagnostics, keep
 `stage_mutation_summary.read_only=true` and assert
 `--expect-live-status passed`,
 `--expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`,
-`search_known_miss:diagnostics.reason=query_no_match`, and
-`get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`.
+`--expect-live-diagnostic-next-actions-min 2`,
+`--expect-live-diagnostic-field search_known_miss:diagnostics.reason=query_no_match`,
+`--expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`,
+`--expect-live-diagnostic-field search_known_miss:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]'`,
+and `--expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]'`.
 1. **`asset_search(query, category=None, limit=20)` — Legacy curated catalog, offline.** Curation markdown
 Read the catalog directly from the MCP server process + ranking → `[{name, url, category,
    source_file}]`. Live REST / Isaac Startup **Not Required**. Example: `asset_search("forklift")`,
