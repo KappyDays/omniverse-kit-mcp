@@ -9,7 +9,7 @@ and did not mutate a stage.
 
 ## Command
 
-- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --scenario-validate-dry-run --scenario-validate-live --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true --expect-live-status passed --expect-live-cleanup-failures 0 --expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND --expect-live-diagnostic-next-actions-min 2 --expect-live-diagnostic-field search_known_miss:diagnostics.reason=query_no_match --expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`
+- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_catalog_diagnostics.yaml --scenario-validate-dry-run --scenario-validate-live --require-plan-field diagnostic_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required false --expect-log-capture-recommended true --expect-live-status passed --expect-live-cleanup-failures 0 --expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND --expect-live-diagnostic-next-actions-min 2 --expect-live-diagnostic-field search_known_miss:diagnostics.reason=query_no_match --expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered --expect-live-diagnostic-field search_known_miss:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]' --expect-live-diagnostic-field get_pallet_wrong_profile:diagnostics.fallback_tool_order='["official_asset_sync_status","official_asset_search","official_asset_resolve","official_asset_verify","asset_search"]'`
 
 ## Result
 
@@ -26,6 +26,9 @@ and did not mutate a stage.
 - Required diagnostic assertions passed:
   - `search_known_miss:diagnostics.reason=query_no_match`
   - `get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered`
+  - fallback order for both diagnostic rows:
+    `official_asset_sync_status -> official_asset_search ->
+    official_asset_resolve -> official_asset_verify -> asset_search`
   - `get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`
 - Both diagnostic next-action rows preserved the fallback route:
   `official_asset_sync_status -> official_asset_search ->

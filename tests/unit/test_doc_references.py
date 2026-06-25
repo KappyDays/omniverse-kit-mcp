@@ -594,6 +594,13 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
         "scenario_last_report",
         "extension_capture_logs",
     )
+    official_fallback_order = [
+        "official_asset_sync_status",
+        "official_asset_search",
+        "official_asset_resolve",
+        "official_asset_verify",
+        "asset_search",
+    ]
     for call in calls:
         if not call["scenario_validate_live"]:
             continue
@@ -605,7 +612,8 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
         assert "extension_capture_logs" in call["required_live_validation_tools"]
 
     def _contains(call: dict[str, object], key: str, expected: tuple) -> bool:
-        return set(expected).issubset(set(call[key]))
+        values = list(call[key])
+        return all(item in values for item in expected)
 
     def _live_call(
         scenario_plan: str,
@@ -721,6 +729,16 @@ def test_f3b_usage_guide_probe_commands_parse(monkeypatch):
     assert official_diagnostics["expect_scratch_stage_required"] is False
     assert official_diagnostics["required_live_validation_tools"] == read_only_live_tools
     assert official_diagnostics["expect_live_diagnostic_next_actions_min"] == 2
+    assert (
+        "search_known_miss",
+        "diagnostics.fallback_tool_order",
+        official_fallback_order,
+    ) in official_diagnostics["expected_live_diagnostic_fields"]
+    assert (
+        "get_pallet_wrong_profile",
+        "diagnostics.fallback_tool_order",
+        official_fallback_order,
+    ) in official_diagnostics["expected_live_diagnostic_fields"]
     assert _contains(
         official_diagnostics,
         "expected_live_failure_step_errors",
@@ -1663,6 +1681,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
         in scenario_authoring
     )
+    assert "diagnostics.fallback_tool_order" in scenario_authoring
+    assert "official_asset_sync_status" in scenario_authoring
+    assert "asset_search" in scenario_authoring
     for source in (asset_discovery, official_catalog):
         assert "Official asset scenario proof sequence" in source
         assert "docs/mcp-usage-guide.md" in source
@@ -1720,6 +1741,10 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "--expect-live-diagnostic-field "
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
     ) in read_only_probe
+    assert "search_known_miss:diagnostics.fallback_tool_order" in read_only_probe
+    assert "get_pallet_wrong_profile:diagnostics.fallback_tool_order" in read_only_probe
+    assert "official_asset_sync_status" in read_only_probe
+    assert "asset_search" in read_only_probe
     assert "--expect-scratch-stage-required true" in scripts_claude
     assert "--expect-log-capture-recommended true" in scripts_claude
     assert "only after the dry-run plan gate" in scripts_claude
@@ -1736,6 +1761,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
         in invariant
     )
+    assert "diagnostics.fallback_tool_order" in invariant
+    assert "official_asset_sync_status" in invariant
+    assert "asset_search" in invariant
     assert "EXTENSION_LOGS_ERROR" in diagnostic_map
     assert "data.diagnostics.reason=extension_logs_error" in diagnostic_map
     assert "data.diagnostics.error_type" in diagnostic_map
@@ -1750,6 +1778,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "get_pallet_wrong_profile:diagnostics.reason=app_profile_not_covered"
         in diagnostic_map
     )
+    assert "diagnostics.fallback_tool_order" in diagnostic_map
+    assert "official_asset_sync_status" in diagnostic_map
+    assert "asset_search" in diagnostic_map
 
 
 def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
@@ -2004,14 +2035,30 @@ def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypat
             ("get_pallet_wrong_profile", "OFFICIAL_ASSET_NOT_FOUND"),
         )
         assert call["expect_live_diagnostic_next_actions_min"] == 2
-        assert set(call["expected_live_diagnostic_fields"]) == {
-            ("search_known_miss", "diagnostics.reason", "query_no_match"),
-            (
-                "get_pallet_wrong_profile",
-                "diagnostics.reason",
-                "app_profile_not_covered",
-            ),
-        }
+        fields = call["expected_live_diagnostic_fields"]
+        fallback_order = [
+            "official_asset_sync_status",
+            "official_asset_search",
+            "official_asset_resolve",
+            "official_asset_verify",
+            "asset_search",
+        ]
+        assert ("search_known_miss", "diagnostics.reason", "query_no_match") in fields
+        assert (
+            "get_pallet_wrong_profile",
+            "diagnostics.reason",
+            "app_profile_not_covered",
+        ) in fields
+        assert (
+            "search_known_miss",
+            "diagnostics.fallback_tool_order",
+            fallback_order,
+        ) in fields
+        assert (
+            "get_pallet_wrong_profile",
+            "diagnostics.fallback_tool_order",
+            fallback_order,
+        ) in fields
         assert call["required_live_validation_tools"] == (
             "mcp_runtime_info",
             "kit_app_start",
