@@ -2447,6 +2447,7 @@ def test_mcp_probe_help_names_log_capture_stop_boundary(capsys):
     assert "diagnostic_next_actions field" in output
     assert "step_id:key=value" in output
     assert "selector matches evidence_kind or step_id" in output
+    assert "Use step_id for row-specific failure fields such as error_code" in output
 
 
 def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):

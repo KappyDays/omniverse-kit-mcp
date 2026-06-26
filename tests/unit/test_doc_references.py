@@ -607,6 +607,9 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "evidence-field `selector` matches either `evidence_kind` or `step_id`" in (
         scripts_doc
     )
+    assert "row-specific failure fields such as `error_code` should use `step_id`" in (
+        scripts_doc
+    )
     assert "field expectation values are JSON-decoded when possible" in scripts_doc
     assert (
         "diagnostics.fallback_tool_order='[\"simulation_step\","

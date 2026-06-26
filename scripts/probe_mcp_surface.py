@@ -1648,7 +1648,8 @@ def main(argv: list[str] | None = None) -> int:
             "Require a scenario_validate live evidence_summary field, formatted "
             "as selector:key=value where selector matches evidence_kind or "
             "step_id. Value is JSON-decoded when possible; repeat for multiple "
-            "expectations."
+            "expectations. Use step_id for row-specific failure fields such as "
+            "error_code when multiple rows share an evidence_kind."
         ),
     )
     parser.add_argument(
