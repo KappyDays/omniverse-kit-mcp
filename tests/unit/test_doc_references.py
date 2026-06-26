@@ -1016,6 +1016,19 @@ def test_f3b_usage_guide_live_probe_commands_have_assertion_gates(monkeypatch):
 
     live_calls = [call for call in calls if call["scenario_validate_live"]]
     assert live_calls, "mcp-usage-guide.md must keep live probe commands"
+    live_command_keys = sorted(
+        (
+            call["scenario_plan"],
+            tuple(sorted((call["input_overrides"] or {}).items())),
+        )
+        for call in live_calls
+    )
+    assert live_command_keys == [
+        ("smoke/official_asset_catalog_diagnostics.yaml", ()),
+        ("smoke/official_asset_verify_live.yaml", ()),
+        ("smoke/robot_rtx_sensor_golden_workflow.yaml", ()),
+        ("smoke/robot_rtx_sensor_golden_workflow.yaml", (("lidar_min_points", 513),)),
+    ]
     for call in live_calls:
         has_evidence_assertion = bool(
             call["expected_live_evidence_kinds"]
