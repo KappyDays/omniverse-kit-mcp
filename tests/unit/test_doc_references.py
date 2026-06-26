@@ -1607,6 +1607,37 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "smoke/official_asset_verify_live.yaml" in route_artifact
     assert "smoke/official_asset_catalog_diagnostics.yaml" in route_artifact
     assert "`tmp_mcp_surface.json` snapshot remained ignored" in route_artifact
+    assert "Post-Assertion Boundary Recheck" in route_artifact
+    assert (
+        "--expect-live-evidence-field read_lidar_point_cloud:status=passed"
+        in route_artifact
+    )
+    assert (
+        "--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1"
+        in route_artifact
+    )
+    assert (
+        "--expect-live-failure-step-error "
+        "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
+        in route_artifact
+    )
+    assert "Optional" in route_artifact
+    assert "`read_lidar_point_cloud:error_code=...`" in route_artifact
+    assert "evidence assertions do not replace" in route_artifact
+    assert "official_asset_verify:verification_status=load_verified" in (
+        route_artifact
+    )
+    assert "official_asset_verify:load_quality=content_verified_no_bbox" in (
+        route_artifact
+    )
+    assert "official_asset_verify:error_code=...` free" in route_artifact
+    assert "verify_timeout_asset:diagnostics.error_type=TimeoutError" in (
+        route_artifact
+    )
+    assert "probe-live-assertion-cli-boundary-2026-06-26.md" in route_artifact
+    assert "official-asset-pass-error-code-boundary-2026-06-26.md" in (
+        route_artifact
+    )
     assert (
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md"
         in guide

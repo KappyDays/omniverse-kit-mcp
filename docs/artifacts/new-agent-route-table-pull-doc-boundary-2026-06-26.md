@@ -96,6 +96,39 @@ Sim MCP entry was rechecked with the three doc-only probe commands. All exited
 - The generated `tmp_mcp_surface.json` snapshot remained ignored and was not
   promoted as public evidence.
 
+## Post-Assertion Boundary Recheck
+
+A fresh agent starting only from root `CLAUDE.md` or `docs/mcp-usage-guide.md`
+now reaches the current durable proof criteria after following the route-table
+pull-docs:
+
+- Robot + RTX success proof gates are documented with
+  `--expect-live-evidence-field read_lidar_point_cloud:status=passed`,
+  `--expect-live-evidence-field-min read_lidar_point_cloud:num_points=1`,
+  `--expect-live-evidence-field frame_robot_and_sensors:bbox_empty=false`, and
+  `--expect-live-evidence-field capture_visible_result:passed=true`.
+- Robot + RTX controlled lidar failure proof remains anchored on
+  `--expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
+  plus exact diagnostic fields for `diagnostics.reason`,
+  `diagnostics.min_points`, and `diagnostics.fallback_tool_order`. Optional
+  `read_lidar_point_cloud:error_code=...` evidence assertions do not replace
+  the terminal failure-step contract.
+- Official asset load-quality pass proof gates are documented with
+  `official_asset_verify:verification_status=load_verified`,
+  `official_asset_verify:kind=asset`,
+  `official_asset_verify:app_profile=isaac-sim`, and
+  `official_asset_verify:load_quality=content_verified_no_bbox`.
+- The successful official asset pass row is explicitly
+  `official_asset_verify:error_code=...` free. Failed or timeout-shaped
+  official asset evidence rows must assert row-specific `error_code` and
+  public-safe nested diagnostics only with the concrete failed `step_id`
+  selector, for example
+  `verify_timeout_asset:diagnostics.error_type=TimeoutError`.
+- The CLI/report contract for dotted evidence diagnostics remains guarded in
+  `docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md`, and the
+  official asset pass-vs-failed-row `error_code` boundary remains guarded in
+  `docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md`.
+
 ## Public Boundary
 
 No raw local absolute paths, local capture paths, worker/thread IDs, process
