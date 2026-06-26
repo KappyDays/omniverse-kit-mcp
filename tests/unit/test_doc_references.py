@@ -1694,6 +1694,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/probe-diagnostic-field-json-array-guard-2026-06-26.md",
         "docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md",
+        "docs/artifacts/robot-rtx-success-live-probe-refresh-2026-06-26.md",
         "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md",
         "docs/artifacts/robot-rtx-integration-facts-proof-gate-2026-06-26.md",
         "docs/artifacts/scenario-authoring-selector-plan-guard-2026-06-26.md",
@@ -1759,6 +1760,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "Current public-safe Robot + RTX evidence anchors are" not in guide
     assert "The baseline post-stop-guard Robot + RTX comparison refresh is" in guide
     assert "The current post-stop-guard Robot + RTX refresh is" not in guide
+    assert "post-assertion Robot + RTX success live probe refresh" in guide
     assert guide.index("Baseline public-safe Robot + RTX evidence anchors are") < (
         guide.index("The current final-log close-gate Robot + RTX refresh")
     )
@@ -1788,6 +1790,21 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "observed `num_points=512`" in close_gate_artifact
     assert "`data.capture_stop_completed=true`" in close_gate_artifact
     assert "`data.capture_stop_timed_out=false`" in close_gate_artifact
+    success_live_refresh = (
+        PROJECT
+        / "docs/artifacts/robot-rtx-success-live-probe-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "Exit code: `0`" in success_live_refresh
+    assert "scratch_stage_required=true" in success_live_refresh
+    assert "`passed_steps=32`, `failed_steps=0`" in success_live_refresh
+    assert "`read_lidar_point_cloud` passed on attempt `1/3`" in (
+        success_live_refresh
+    )
+    assert "`num_points=512`" in success_live_refresh
+    assert "`bbox_empty=false`" in success_live_refresh
+    assert "`capture_visible_result` passed" in success_live_refresh
+    assert "data.capture_stop_completed=true" in success_live_refresh
+    assert "tmp_mcp_surface.json` snapshot remained ignored" in success_live_refresh
 
     controlled_close_gate = (
         PROJECT

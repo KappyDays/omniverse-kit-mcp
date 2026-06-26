@@ -223,6 +223,8 @@ The baseline post-stop-guard Robot + RTX comparison refresh is
 `docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md`.
 The current final-log close-gate Robot + RTX refresh is
 `docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md`.
+The post-assertion Robot + RTX success live probe refresh is
+`docs/artifacts/robot-rtx-success-live-probe-refresh-2026-06-26.md`.
 Its success result shape is guarded in
 `docs/artifacts/robot-rtx-success-result-shape-guard-2026-06-26.md`.
 The current final-log close-gate controlled-failure refresh is
