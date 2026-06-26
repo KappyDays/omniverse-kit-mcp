@@ -18,6 +18,12 @@ asset live proof.
 - `tests/unit/test_doc_references.py` asserts the boundary sentence and the
   required `--scenario-validate-live` / `--expect-live-*` anchors remain present
   in the invariant, scenario authoring guide, and usage guide.
+- `scripts/CLAUDE.md` keeps the probe row split between dry-run-only
+  plan/retry/cleanup expectations without stage mutation and live proof
+  assertions gated by `--scenario-validate-live` plus scratch/read-only guards.
+- Historical help-output evidence must not be written as a runnable artifact
+  command using the probe script path plus `--help`; artifact command parsing
+  requires runnable probe commands to include `--workspace`.
 
 ## Public Boundary
 
@@ -28,13 +34,19 @@ IDs, secrets, raw logs, local capture paths, and generated catalog records.
 ## Verification
 
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_robot_rtx_live_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_usage_guide_artifact_links_exist -q`
-  passed: `2 passed in 0.24s`.
+  passed: `2 passed in 0.09s`.
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_robot_rtx_live_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact tests\unit\test_doc_references.py::test_f3b_usage_guide_artifact_links_exist -q`
+  passed: `3 passed in 0.28s`.
+- `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_artifact_probe_commands_parse tests\unit\test_doc_references.py::test_f3b_robot_rtx_live_proof_wrapper_order -q`
+  passed: `2 passed in 0.09s`.
+- `rg -n "without live stage mutation" scripts docs\mcp-usage-guide.md docs\invariants scenarios tests\unit\test_doc_references.py`
+  returned no matches.
 - `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_doc_references.py`
   passed.
 - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
   `37 passed`.
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q` passed:
-  `944 passed, 16 skipped`.
+  `945 passed, 16 skipped`.
 - `git diff --check` passed with only existing CRLF normalization warnings for
   touched text files.
 - `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`

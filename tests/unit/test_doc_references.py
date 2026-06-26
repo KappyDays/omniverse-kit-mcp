@@ -604,6 +604,11 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "--expect-live-diagnostic-field step_id:key=value" in scripts_doc
     assert "--expect-automatic-cleanup-timeout step_id=seconds" in scripts_doc
     assert (
+        "dry-run-only plan/retry/cleanup expectations without stage mutation"
+        in scripts_doc
+    )
+    assert "With `--scenario-validate-live`, use the same wrapper" in scripts_doc
+    assert (
         "failure, diagnostic, retry, and cleanup expectations address "
         "scenario steps with `step_id`"
     ) in scripts_doc

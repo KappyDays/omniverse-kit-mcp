@@ -35,9 +35,9 @@ report boundary used by live wrapper execution.
 - Current targeted result:
   `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_robot_rtx_live_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_usage_guide_probe_commands_parse tests\unit\test_standalone_scripts.py::test_mcp_probe_help_names_log_capture_stop_boundary -q`
   passed: `3 passed in 0.97s`.
-- `.\.venv\Scripts\python.exe scripts\probe_mcp_surface.py --help` confirmed
-  the CLI help uses `step_id=ERROR_CODE`, `step_id:key=value`, and
-  `step_id=seconds` for step-scoped assertions.
+- The `probe_mcp_surface.py --help` output confirmed the CLI help uses
+  `step_id=ERROR_CODE`, `step_id:key=value`, and `step_id=seconds` for
+  step-scoped assertions.
 - `rg -n -- "--expect-(retry-key-arg|live-diagnostic-field|live-failure-step-error|automatic-cleanup-timeout) step(:|=)" scripts docs tests`
   returned no matches.
 - `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_doc_references.py`
