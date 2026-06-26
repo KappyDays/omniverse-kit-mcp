@@ -1697,8 +1697,8 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "Require a numeric scenario_validate live evidence_summary field "
             "to be at least a value, formatted as selector:key=minimum where "
-            "selector matches evidence_kind or step_id; repeat for multiple "
-            "expectations."
+            "selector matches evidence_kind or step_id and key may be dotted; "
+            "repeat for multiple expectations."
         ),
     )
     parser.add_argument(
@@ -1729,8 +1729,9 @@ def main(argv: list[str] | None = None) -> int:
         default=[],
         help=(
             "Require a scenario_validate live diagnostic_next_actions field, "
-            "formatted as step_id:key=value. Value is JSON-decoded when "
-            "possible; repeat for multiple expectations."
+            "formatted as step_id:key=value where key may be dotted, for "
+            "example diagnostics.fallback_tool_order. Value is JSON-decoded "
+            "when possible; repeat for multiple expectations."
         ),
     )
     parser.add_argument(

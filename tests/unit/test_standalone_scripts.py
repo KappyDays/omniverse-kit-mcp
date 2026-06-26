@@ -2508,9 +2508,11 @@ def test_mcp_probe_help_names_log_capture_stop_boundary(capsys):
     assert "Value is JSON-decoded when possible" in output
     assert "--expect-live-evidence-field-min" in output
     assert "selector:key=minimum" in output
+    assert "selector matches evidence_kind or step_id and key may be dotted" in output
     assert "--expect-live-diagnostic-field" in output
     assert "diagnostic_next_actions field" in output
     assert "step_id:key=value" in output
+    assert "key may be dotted, for example diagnostics.fallback_tool_order" in output
     assert "selector matches evidence_kind or step_id" in output
     assert (
         "Use step_id for row-specific failure fields such as error_code or "
