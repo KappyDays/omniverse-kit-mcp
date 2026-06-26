@@ -2246,6 +2246,10 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "exact public-safe fields in" in official_catalog
     assert "Official asset verify failed or found nothing?" in diagnostic_map
     assert "OFFICIAL_ASSET_NOT_FOUND" in diagnostic_map
+    assert "`evidence_summary` stays empty because no stage probe ran" in guide
+    assert "evidence_summary` should stay empty because no stage probe ran" in (
+        diagnostic_map
+    )
     assert (
         'scenario_last_report(report_format="markdown", redact_local_paths=true)'
         in diagnostic_map
@@ -2549,6 +2553,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         (
             "docs/artifacts/"
             "official-asset-readonly-fallback-assertion-boundary-2026-06-26.md"
+        ),
+        (
+            "docs/artifacts/"
+            "official-asset-notfound-evidence-empty-boundary-2026-06-26.md"
         ),
     ]
 
