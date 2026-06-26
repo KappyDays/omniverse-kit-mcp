@@ -427,6 +427,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         '"simulation_step","sensor_lidar_get_point_cloud",'
         '"extension_capture_logs"]\''
     ) in integration_facts
+    assert "read_lidar_point_cloud:error_code=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS" in (
+        integration_facts
+    )
+    assert "does not replace `--expect-live-failure-step-error`" in integration_facts
     assert "Current repeatable public proof anchors are" in invariant
     assert "baseline public-safe evidence" in invariant
     assert "not the current repeatable proof path" in invariant
@@ -1970,6 +1974,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     diagnostic_map = (PROJECT / "docs" / "tool-diagnostic-map.md").read_text(
         encoding="utf-8"
     )
+    integration_facts = (
+        PROJECT / "src" / "omniverse_kit_mcp" / "modules" / "integration-facts.md"
+    ).read_text(encoding="utf-8")
     invariant = (
         PROJECT / "docs" / "invariants" / "scenario-validation.md"
     ).read_text(encoding="utf-8")
@@ -2184,6 +2191,17 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     )
     assert "failed evidence" in official_catalog
     assert "rows should assert `error_code`" in official_catalog
+    assert "Official asset proof gates" in integration_facts
+    assert "official_asset_verify:verification_status=load_verified" in (
+        integration_facts
+    )
+    assert "official_asset_verify:load_quality=content_verified_no_bbox" in (
+        integration_facts
+    )
+    assert "do not add `official_asset_verify:error_code=...`" in (
+        integration_facts
+    )
+    assert "concrete failed `step_id` selector" in integration_facts
     assert (
         "docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md"
         in wrapper

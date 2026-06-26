@@ -15,6 +15,10 @@ only in the usage guide and scenario invariant.
 - Controlled-failure guidance must name the `lidar_min_points=513` boundary,
   `SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`, diagnostic reason/minimum fields,
   and the exact lidar fallback tool order.
+- Optional evidence `error_code` guidance may assert
+  `read_lidar_point_cloud:error_code=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`
+  when present, but it must not replace the terminal
+  `--expect-live-failure-step-error` assertion.
 
 ## Public Boundary
 
@@ -30,6 +34,6 @@ paths, and generated catalog records; no local absolute paths are included.
 - `python -m ruff check tests/unit/test_doc_references.py` passed.
 - `python scripts/verify_mcp_sync.py` passed: registration/catalog sync green,
   37 tests.
-- `python -m pytest tests/unit/ -q` passed: 945 tests, 16 skipped.
+- `python -m pytest tests/unit/ -q` passed: 948 tests, 16 skipped.
 - `git diff --check` passed.
 - `python scripts/review_public_hygiene.py --redact-samples` passed.

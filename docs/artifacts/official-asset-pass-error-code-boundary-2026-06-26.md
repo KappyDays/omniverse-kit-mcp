@@ -11,13 +11,15 @@ assert `error_code` with a concrete `step_id` selector.
 
 - `docs/mcp-usage-guide.md`, `docs/invariants/scenario-validation.md`,
   `docs/invariants/asset-discovery.md`,
-  `docs/references/official-asset-catalog.md`, and `scenarios/CLAUDE.md` now
-  state that the canonical successful official asset pass command must not add
+  `docs/references/official-asset-catalog.md`, `scenarios/CLAUDE.md`, and
+  `src/omniverse_kit_mcp/modules/integration-facts.md` now state that the
+  canonical successful official asset pass command must not add
   `official_asset_verify:error_code=...`.
 - `tests/unit/test_doc_references.py::test_f3b_official_asset_scenario_proof_wrapper_order`
   guards that the canonical successful official asset live probe command stays
-  free of `official_asset_verify:error_code` while the surrounding docs explain
-  that failed rows can assert `error_code` by `step_id`.
+  free of `official_asset_verify:error_code` while the surrounding docs and
+  module integration facts explain that failed rows can assert `error_code` by
+  `step_id`.
 - `tests/unit/test_standalone_scripts.py::test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields`
   separates the successful `verify_pallet_asset` row from a failed
   `verify_timeout_asset` row.
