@@ -2702,6 +2702,19 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "verify_timeout_asset:diagnostics.error_type=TimeoutError" in (
         current_anchor
     )
+    live_assertion_boundary = (
+        PROJECT
+        / "docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "_summary_field_value" in live_assertion_boundary
+    assert "flat `diagnostics.error_type` rows" in live_assertion_boundary
+    assert '"diagnostics": {"error_type": "TimeoutError"}' in (
+        live_assertion_boundary
+    )
+    assert (
+        "test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value"
+        in live_assertion_boundary
+    )
     assert "Verification status: `load_verified`" in baseline
     assert "Load quality: `content_verified_no_bbox`" in baseline
     assert "Command-boundary note" in baseline

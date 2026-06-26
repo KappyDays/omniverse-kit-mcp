@@ -550,7 +550,11 @@ def _live_evidence_field_mismatches(
         if not matching_rows:
             mismatches.append(f"live evidence row {selector!r} was not found")
             continue
-        actual_values = [row.get(key) for row in matching_rows if key in row]
+        actual_values = [
+            value
+            for row in matching_rows
+            if (value := _summary_field_value(row, key)) is not _MISSING
+        ]
         if not actual_values:
             mismatches.append(
                 f"live evidence row {selector!r} field {key!r} was not found"
@@ -622,7 +626,11 @@ def _live_evidence_field_minimum_mismatches(
         if not matching_rows:
             mismatches.append(f"live evidence row {selector!r} was not found")
             continue
-        actual_values = [row.get(key) for row in matching_rows if key in row]
+        actual_values = [
+            value
+            for row in matching_rows
+            if (value := _summary_field_value(row, key)) is not _MISSING
+        ]
         if not actual_values:
             mismatches.append(
                 f"live evidence row {selector!r} field {key!r} was not found"

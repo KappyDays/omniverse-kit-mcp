@@ -1584,6 +1584,7 @@ def test_mcp_probe_parses_expected_live_evidence_fields():
         "official_asset_verify:stale=false",
         'official_asset_verify:name="aluminumpallet_a01.usd"',
         "capture_visible_result:error_code=VIEWPORT_CAPTURE_ASSERT_FAILED",
+        "verify_timeout_asset:diagnostics.error_type=TimeoutError",
     ]) == (
         ("official_asset_verify", "verification_status", "load_verified"),
         ("verify_pallet_asset", "attempt", 2),
@@ -1594,6 +1595,7 @@ def test_mcp_probe_parses_expected_live_evidence_fields():
             "error_code",
             "VIEWPORT_CAPTURE_ASSERT_FAILED",
         ),
+        ("verify_timeout_asset", "diagnostics.error_type", "TimeoutError"),
     )
 
 
@@ -1902,7 +1904,7 @@ def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value()
                 "kind": "asset",
                 "app_profile": "isaac-sim",
                 "error_code": "OFFICIAL_ASSET_VERIFY_TIMEOUT",
-                "diagnostics.error_type": "TimeoutError",
+                "diagnostics": {"error_type": "TimeoutError"},
             },
         ],
     }
@@ -2536,6 +2538,8 @@ def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):
         "rtx_lidar_point_cloud",
         "--expect-live-evidence-field",
         "read_lidar_point_cloud:status=passed",
+        "--expect-live-evidence-field",
+        "verify_timeout_asset:diagnostics.error_type=TimeoutError",
         "--expect-live-evidence-field-min",
         "read_lidar_point_cloud:num_points=1",
         "--expect-live-diagnostic-field",
@@ -2559,6 +2563,7 @@ def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):
     assert captured["expected_live_evidence_kinds"] == ("rtx_lidar_point_cloud",)
     assert captured["expected_live_evidence_fields"] == (
         ("read_lidar_point_cloud", "status", "passed"),
+        ("verify_timeout_asset", "diagnostics.error_type", "TimeoutError"),
     )
     assert captured["expected_live_evidence_field_minimums"] == (
         ("read_lidar_point_cloud", "num_points", 1.0),

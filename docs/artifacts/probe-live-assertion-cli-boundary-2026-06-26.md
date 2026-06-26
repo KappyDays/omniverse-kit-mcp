@@ -30,6 +30,11 @@ after Robot/RTX and official asset workflows started relying on
   RTX lidar evidence rows, including target/current status, `error_type`,
   `suggested_next`, fallback order, asset/material checks, lidar `min_points`,
   cached-lidar state, and readback paths.
+- Evidence field assertions resolve dotted keys through the same
+  `_summary_field_value` helper used by compact summaries, so
+  `--expect-live-evidence-field <step_id>:diagnostics.error_type=TimeoutError`
+  matches both flat `diagnostics.error_type` rows and nested
+  `{"diagnostics": {"error_type": "TimeoutError"}}` rows.
 - `--scenario-validate-live` itself exits with code `2` unless
   `--scenario-validate-dry-run` is present, even when `--workspace` and
   `--scenario-plan` are already provided.
@@ -45,6 +50,9 @@ catalog records.
 
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_standalone_scripts.py::test_mcp_probe_main_rejects_live_mode_without_dry_run tests\unit\test_standalone_scripts.py::test_mcp_probe_main_rejects_live_assertions_without_live_mode tests\unit\test_standalone_scripts.py::test_mcp_probe_main_wires_live_assertion_options -q`
   passed: `10 passed in 0.71s`.
+- Current dotted evidence refresh:
+  `.\.venv\Scripts\python.exe -m pytest tests\unit\test_standalone_scripts.py::test_mcp_probe_parses_expected_live_evidence_fields tests\unit\test_standalone_scripts.py::test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value tests\unit\test_standalone_scripts.py::test_mcp_probe_live_evidence_field_minimum_mismatches_are_empty tests\unit\test_standalone_scripts.py::test_mcp_probe_main_wires_live_assertion_options tests\unit\test_doc_references.py::test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact -q`
+  passed: `5 passed in 0.95s`.
 - `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_standalone_scripts.py`
   passed.
 - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
