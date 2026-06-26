@@ -296,8 +296,9 @@ placing the asset in a user scene. JSON `diagnostic_next_actions` carries the
 target/current status plus the relevant check dict when a verify failure also
 provides `suggested_next` or a fallback order. JSON `evidence_summary` and
 Markdown `Evidence Summary` also expose `evidence_kind=official_asset_verify`,
-`verification_status`, `kind`, `app_profile`, and bounded diagnostics, so use
-them as the compact proof row for `scenario_validate(smoke/official_asset_verify_live.yaml)`.
+`verification_status`, `kind`, `app_profile`, `error_code` when present, and
+bounded diagnostics, so use them as the compact proof row for
+`scenario_validate(smoke/official_asset_verify_live.yaml)`.
 
 Official asset scenario proof wrapper:
 `mcp_runtime_info` -> `kit_app_start` -> `simulation_get_status` ->
@@ -359,7 +360,7 @@ After validation, request redacted JSON with
 `scenario_last_report(redact_local_paths=true)` when you need exact fields
 (`report_format="json"` is the default); compare
 `evidence_summary[]` with that plan row and check
-`verification_status`, `kind`, `app_profile`, and either
+`verification_status`, `kind`, `app_profile`, `error_code` when present, and either
 `diagnostics.asset_checks` or `diagnostics.material_checks`; for timeout or
 exception failures, also check `diagnostics.error_type` before deciding whether
 to retry or widen the live proof. Use redacted JSON for exact public-safe fields
@@ -386,6 +387,8 @@ current final-log close-gate official verify proof is
 `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`;
 its success result shape is guarded in
 `docs/artifacts/official-asset-verify-success-result-shape-guard-2026-06-26.md`.
+Official asset evidence error-code preservation is guarded in
+`docs/artifacts/official-asset-evidence-error-code-guard-2026-06-26.md`.
 The official asset current-proof-anchor boundary is guarded in
 `docs/artifacts/official-asset-current-proof-anchor-boundary-2026-06-26.md`.
 The shared post-stop-guard baseline boundary is guarded in

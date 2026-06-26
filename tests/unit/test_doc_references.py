@@ -2262,6 +2262,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "diagnostics.asset_checks" in diagnostic_map
     assert "diagnostics.material_checks" in diagnostic_map
     assert "evidence_summary[].evidence_kind=official_asset_verify" in diagnostic_map
+    assert "evidence_summary[].error_code" in diagnostic_map
+    assert "evidence_summary[].error_code" in invariant
+    assert "`error_code` when present" in guide
     assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
     assert (
         "--require-live-validation-tools "
@@ -2506,6 +2509,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         (
             "docs/artifacts/"
             "official-asset-verify-success-result-shape-guard-2026-06-26.md"
+        ),
+        (
+            "docs/artifacts/"
+            "official-asset-evidence-error-code-guard-2026-06-26.md"
         ),
         (
             "docs/artifacts/"

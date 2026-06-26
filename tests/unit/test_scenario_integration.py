@@ -2785,6 +2785,7 @@ async def test_robot_rtx_sensor_golden_workflow_reports_capture_assert_diagnosti
         "max_attempts": 1,
         "retry_failure_count": 0,
         "evidence_kind": "visual_capture",
+        "error_code": "VIEWPORT_CAPTURE_ASSERT_FAILED",
         "capture_path": "/tmp/blank_robot_sensor.png",
         "sha256": "abc123",
         "width": 1280,
@@ -2804,6 +2805,7 @@ async def test_robot_rtx_sensor_golden_workflow_reports_capture_assert_diagnosti
     assert (
         "- `capture_visible_result`: "
         "evidence_kind=visual_capture; status=failed; attempts=1/1; "
+        "error_code=VIEWPORT_CAPTURE_ASSERT_FAILED; "
         "capture_path=/tmp/blank_robot_sensor.png; sha256=abc123; "
         "width=1280; height=720; pixel_mean=[0.0, 0.0, 0.0]; "
         "pixel_variance=[0.0, 0.0, 0.0]; warmup_frames_used=8; "
@@ -3286,6 +3288,7 @@ async def test_scenario_runner_reports_diagnostic_actions_for_exhausted_lidar_re
         "max_attempts": 3,
         "retry_failure_count": 3,
         "evidence_kind": "rtx_lidar_point_cloud",
+        "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
         "num_points": 2,
         "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
         "frames_waited": 180,
@@ -4515,6 +4518,7 @@ def test_official_asset_verify_evidence_summary_preserves_error_type():
                 step_id="verify_timeout_asset",
                 phase="assert",
                 status=ExecutionStatus.PASSED,
+                error_code="OFFICIAL_ASSET_VERIFY_TIMEOUT",
                 data_summary={
                     "id": "url:https://example.invalid/asset.usd",
                     "kind": "asset",
@@ -4553,10 +4557,12 @@ def test_official_asset_verify_evidence_summary_preserves_error_type():
     evidence = report["evidence_summary"][0]
 
     assert evidence["evidence_kind"] == "official_asset_verify"
+    assert evidence["error_code"] == "OFFICIAL_ASSET_VERIFY_TIMEOUT"
     assert evidence["load_quality"] == "content_verified_no_bbox"
     assert evidence["diagnostics"]["reason"] == "verify_timeout"
     assert evidence["diagnostics"]["error_type"] == "TimeoutError"
     markdown = to_markdown(summary)
+    assert "error_code=OFFICIAL_ASSET_VERIFY_TIMEOUT" in markdown
     assert "diagnostics.error_type=TimeoutError" in markdown
 
 

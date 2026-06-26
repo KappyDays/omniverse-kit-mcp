@@ -104,6 +104,7 @@ on idempotent sensor reads; inspect `scenario_last_report` fields
 `data_summary.diagnostics.readback_paths_attempted`,
 `data_summary.raw_keys`, `data_summary.warning`,
 `evidence_summary[].evidence_kind`,
+`evidence_summary[].error_code`,
 `evidence_summary[].pixel_mean_average`,
 `evidence_summary[].pixel_variance_average`,
 `evidence_summary[].pixel_mean`, `evidence_summary[].pixel_variance`,

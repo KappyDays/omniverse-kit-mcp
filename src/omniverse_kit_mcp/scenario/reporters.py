@@ -684,6 +684,8 @@ def _evidence_summary_payload(step: StepResult) -> dict[str, Any]:
         "retry_failure_count": len(step.retry_failures),
         "evidence_kind": evidence_kind,
     }
+    if step.error_code:
+        row["error_code"] = step.error_code
     if evidence_kind == "official_asset_verify":
         _copy_if_present(
             data_summary,
