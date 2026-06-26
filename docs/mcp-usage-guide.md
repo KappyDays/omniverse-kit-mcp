@@ -215,7 +215,7 @@ and controlled-failure diagnostic reason assertion is verified in
 `docs/artifacts/robot-rtx-controlled-failure-diagnostic-field-assertion-2026-06-25.md`.
 Diagnostic JSON-array values such as `diagnostics.fallback_tool_order` are
 guarded in `docs/artifacts/probe-diagnostic-field-json-array-guard-2026-06-26.md`.
-The current post-stop-guard Robot + RTX refresh is
+The baseline post-stop-guard Robot + RTX comparison refresh is
 `docs/artifacts/robot-rtx-golden-stop-guard-refresh-2026-06-26.md`.
 The current final-log close-gate Robot + RTX refresh is
 `docs/artifacts/robot-rtx-golden-close-gate-live-refresh-2026-06-26.md`.
@@ -233,6 +233,8 @@ the dry-run/live-proof boundary is guarded in
 `docs/artifacts/dry-run-live-proof-boundary-2026-06-26.md`;
 the current-vs-baseline artifact boundary is guarded in
 `docs/artifacts/current-vs-baseline-artifact-boundary-2026-06-26.md`;
+the post-stop-guard baseline boundary is guarded in
+`docs/artifacts/post-stop-guard-baseline-boundary-2026-06-26.md`;
 the Robot + RTX current-proof-anchor boundary is guarded in
 `docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md`;
 the current public report redaction boundary refresh is
@@ -374,7 +376,7 @@ Probe `--scenario-validate-live` help/report wording is guarded in
 `docs/artifacts/probe-live-help-report-boundary-2026-06-26.md`.
 Read-only catalog diagnostic field assertions are verified in
 `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
-The current post-stop-guard official verify proof is
+The baseline post-stop-guard official verify comparison is
 `docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md`; the
 current final-log close-gate official verify proof is
 `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`;
@@ -382,6 +384,8 @@ its success result shape is guarded in
 `docs/artifacts/official-asset-verify-success-result-shape-guard-2026-06-26.md`.
 The official asset current-proof-anchor boundary is guarded in
 `docs/artifacts/official-asset-current-proof-anchor-boundary-2026-06-26.md`.
+The shared post-stop-guard baseline boundary is guarded in
+`docs/artifacts/post-stop-guard-baseline-boundary-2026-06-26.md`.
 The current docs-only official asset tool-order dry-run refresh is
 `docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md`. The
 current read-only dry-run wrapper gate is

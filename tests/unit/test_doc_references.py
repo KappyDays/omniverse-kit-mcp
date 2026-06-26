@@ -1296,11 +1296,15 @@ def test_f3b_stop_guard_artifacts_record_close_metadata():
     offenders: list[str] = []
     for md in sorted((PROJECT / "docs" / "artifacts").glob("*.md")):
         text = md.read_text(encoding="utf-8")
+        is_boundary_doc = "-boundary-" in md.name
         is_stop_guard_proof = (
-            "stop-guard" in md.name
-            or "close-gate" in md.name
-            or "Stop guard check:" in text
-            or "post-stop-guard refresh:" in text
+            not is_boundary_doc
+            and (
+                "stop-guard" in md.name
+                or "close-gate" in md.name
+                or "Stop guard check:" in text
+                or "post-stop-guard refresh:" in text
+            )
         )
         if not is_stop_guard_proof:
             continue
@@ -1549,6 +1553,9 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     profile_gate = (
         "docs/artifacts/current-probe-runtime-profile-gate-2026-06-26.md"
     )
+    post_stop_baseline = (
+        "docs/artifacts/post-stop-guard-baseline-boundary-2026-06-26.md"
+    )
     route_boundary = (
         "docs/artifacts/new-agent-route-table-pull-doc-boundary-2026-06-26.md"
     )
@@ -1558,6 +1565,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "current public report redaction boundary refresh" in guide
     assert "Runtime redaction coverage" in guide
     assert "current-vs-baseline artifact boundary" in guide
+    assert "post-stop-guard baseline boundary" in guide
     assert "Robot + RTX current-proof-anchor boundary" in guide
     assert "Diagnostic JSON-array values" in guide
     assert "current route-table pull-doc boundary refresh" in guide
@@ -1623,6 +1631,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         profile_gate,
         redaction_boundary,
         runtime_redaction,
+        post_stop_baseline,
         route_boundary,
         current_e2e,
         baseline_e2e,
@@ -1669,6 +1678,8 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     ).read_text(encoding="utf-8")
     assert "Baseline public-safe Robot + RTX evidence anchors are" in guide
     assert "Current public-safe Robot + RTX evidence anchors are" not in guide
+    assert "The baseline post-stop-guard Robot + RTX comparison refresh is" in guide
+    assert "The current post-stop-guard Robot + RTX refresh is" not in guide
     assert guide.index("Baseline public-safe Robot + RTX evidence anchors are") < (
         guide.index("The current final-log close-gate Robot + RTX refresh")
     )
@@ -2488,6 +2499,7 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "docs/artifacts/"
             "official-asset-current-proof-anchor-boundary-2026-06-26.md"
         ),
+        "docs/artifacts/post-stop-guard-baseline-boundary-2026-06-26.md",
         "docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md",
         (
             "docs/artifacts/"
@@ -2519,6 +2531,8 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     ).read_text(encoding="utf-8")
     assert "Baseline public-safe official asset live evidence is" in guide
     assert "Current public-safe official asset live evidence is" not in guide
+    assert "The baseline post-stop-guard official verify comparison is" in guide
+    assert "The current post-stop-guard official verify proof is" not in guide
     assert "official asset current-proof-anchor boundary" in guide
     assert guide.index("Baseline public-safe official asset live evidence is") < (
         guide.index("current final-log close-gate official verify proof")
