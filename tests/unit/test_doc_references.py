@@ -2145,6 +2145,9 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         wrapper.index("--scenario-plan smoke/official_asset_verify_live.yaml"):
         wrapper.index("For the read-only catalog diagnostics path, use")
     ]
+    verify_live_command = verify_live_probe[
+        verify_live_probe.index("Canonical official asset load-quality live probe command:")
+    ]
     assert "--scenario-validate-dry-run" in verify_live_probe
     assert "--expect-scratch-stage-required true" in wrapper
     assert "--expect-log-capture-recommended true" in verify_live_probe
@@ -2164,6 +2167,27 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         "--expect-live-evidence-field "
         "official_asset_verify:load_quality=content_verified_no_bbox"
     ) in verify_live_probe
+    assert "official_asset_verify:error_code" not in verify_live_command
+    assert "Do not add `official_asset_verify:error_code=...`" in verify_live_probe
+    assert "successful `load_verified` rows should be error-code-free" in invariant
+    assert "successful `load_verified` rows should be error-code-free" in (
+        scenario_authoring
+    )
+    assert "successful `load_verified` rows should be error-code-free" in (
+        asset_discovery
+    )
+    assert "successful `load_verified` rows should be error-code-free" in (
+        official_catalog
+    )
+    assert "failed evidence rows with the concrete `step_id` selector" in (
+        scenario_authoring
+    )
+    assert "failed evidence" in official_catalog
+    assert "rows should assert `error_code`" in official_catalog
+    assert (
+        "docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md"
+        in wrapper
+    )
     assert "Official asset scenario proof sequence" in invariant
     assert "scenario_plan(smoke/official_asset_verify_live.yaml)" in invariant
     assert "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)" in invariant

@@ -59,7 +59,10 @@ and `docs/mcp-usage-guide.md`; the proof must assert
 `official_asset_verify:kind=asset`,
 `official_asset_verify:app_profile=isaac-sim`, and
 `official_asset_verify:load_quality=content_verified_no_bbox` on the `official_asset_verify`
-evidence row.
+evidence row. Do not add `official_asset_verify:error_code=...` to the normal
+pass proof; successful `load_verified` rows should be error-code-free, and
+failed evidence rows should assert `error_code` with the concrete `step_id`
+selector only when the row contains one.
 Direct on-demand `official_asset_verify` response is only bounded operator
 evidence. Accept it before placement only after checking
 `data.verification_status=load_verified`, `data.kind`, `data.app_profile`, and

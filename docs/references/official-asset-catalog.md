@@ -180,7 +180,10 @@ the proof must assert `--expect-live-status passed`,
 `official_asset_verify:kind=asset`,
 `official_asset_verify:app_profile=isaac-sim`, and
 `official_asset_verify:load_quality=content_verified_no_bbox` when proving the Isaac Sim asset
-workflow.
+workflow. Do not add `official_asset_verify:error_code=...` to the pass proof;
+successful `load_verified` rows should be error-code-free, and failed evidence
+rows should assert `error_code` with the concrete `step_id` selector only when
+the row contains one.
 For repeatable read-only catalog diagnostics, use
 `smoke/official_asset_catalog_diagnostics.yaml`; keep
 `stage_mutation_summary.read_only=true` and assert
@@ -222,7 +225,8 @@ only when the response preserves `data.verification_status=load_verified`,
 (`content_verified_with_bbox` or `content_verified_no_bbox`). Direct proof is a
 bounded operator check; use the scenario/probe wrapper from
 `docs/mcp-usage-guide.md` when repeatable public evidence or field assertions are
-required. On failure, inspect `data.diagnostics.reason`,
+required. Successful direct proof should also be error-code-free. On failure,
+inspect `data.diagnostics.reason`,
 `data.diagnostics.asset_checks` or `data.diagnostics.material_checks`,
 `data.diagnostics.error_type`, `data.diagnostics.suggested_next`, and
 `data.diagnostics.fallback_tool_order` before retrying or falling back to

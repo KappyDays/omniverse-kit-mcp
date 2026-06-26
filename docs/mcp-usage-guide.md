@@ -344,7 +344,9 @@ proof, add `--scenario-validate-live`, `--expect-live-status passed`,
 `--expect-live-evidence-field official_asset_verify:app_profile=isaac-sim`, plus
 `--expect-live-evidence-field official_asset_verify:load_quality=content_verified_no_bbox` so
 the live report must preserve the expected verification evidence row and
-field values.
+field values. Do not add `official_asset_verify:error_code=...` to this
+successful pass command; assert `error_code` only on failed evidence rows with
+the concrete `step_id` selector when the row actually contains one.
 Canonical official asset load-quality live probe command:
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/official_asset_verify_live.yaml --scenario-validate-dry-run --scenario-validate-live --expect-live-status passed --require-plan-field diagnostic_steps --require-plan-field evidence_steps --require-plan-field stage_mutation_steps --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-cleanup-failures 0 --expect-live-evidence-kind official_asset_verify --expect-live-evidence-field official_asset_verify:verification_status=load_verified --expect-live-evidence-field official_asset_verify:kind=asset --expect-live-evidence-field official_asset_verify:app_profile=isaac-sim --expect-live-evidence-field official_asset_verify:load_quality=content_verified_no_bbox`
 For the read-only catalog diagnostics path, use
@@ -371,6 +373,8 @@ After validation, request redacted JSON with
 exception failures, also check `diagnostics.error_type` before deciding whether
 to retry or widen the live proof. Use redacted JSON for exact public-safe fields
 and redacted Markdown `Evidence Summary` for the compact evidence note.
+The successful `load_verified` proof row should remain error-code-free; keep
+`error_code` checks for failed/timeout-shaped rows.
 For failed evidence rows, `--expect-live-evidence-field <step_id>:error_code=...`
 can assert the compact proof row directly.
 Baseline public-safe official asset live evidence is
@@ -387,6 +391,9 @@ Direct nested helper redaction coverage is recorded in
 `docs/artifacts/scenario-redaction-helper-direct-guard-2026-06-26.md`.
 Probe `--scenario-validate-live` help/report wording is guarded in
 `docs/artifacts/probe-live-help-report-boundary-2026-06-26.md`.
+The official asset successful-pass versus failed-row `error_code` boundary is
+guarded in
+`docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md`.
 Read-only catalog diagnostic field assertions are verified in
 `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
 The baseline post-stop-guard official verify comparison is
