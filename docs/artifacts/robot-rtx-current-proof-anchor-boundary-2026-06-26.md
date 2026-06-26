@@ -19,6 +19,13 @@ repeatable close-gate proof anchors and older baseline evidence.
   baseline Robot + RTX evidence boundary.
 - `tests/unit/test_doc_references.py` asserts the strengthened authoring gate,
   invariant proof-anchor wording, and usage-guide artifact link.
+- The current anchor set is paired with
+  `docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md` and
+  `docs/artifacts/robot-rtx-evidence-error-code-assertion-guard-2026-06-26.md`
+  so `--expect-live-evidence-field`,
+  `--expect-live-evidence-field-min`, controlled-failure diagnostics, and
+  optional `read_lidar_point_cloud:error_code=...` evidence assertions stay
+  tied to the current close-gate proof path.
 
 ## Public Boundary
 

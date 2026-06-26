@@ -17,6 +17,13 @@ current repeatable public proof anchors and older baseline evidence.
   close-gate proof and result-shape guard.
 - `tests/unit/test_doc_references.py` asserts the pull-doc wording so new
   agents do not promote baseline evidence over the current close-gate path.
+- The current anchor set is paired with
+  `docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md` and
+  `docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md` so the
+  successful `official_asset_verify` pass row stays
+  `official_asset_verify:error_code=...` free, while failed evidence rows use
+  concrete `step_id` selectors for `error_code` and dotted nested diagnostics
+  such as `verify_timeout_asset:diagnostics.error_type=TimeoutError`.
 
 ## Public Boundary
 

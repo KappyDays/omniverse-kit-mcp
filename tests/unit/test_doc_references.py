@@ -1651,6 +1651,18 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "status=ready" in preflight_artifact
     assert "data.capture_stop_completed=true" in preflight_artifact
     assert "tmp_mcp_surface.json` snapshot remained ignored" in preflight_artifact
+    robot_anchor_artifact = (
+        PROJECT
+        / "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "probe-live-assertion-cli-boundary-2026-06-26.md" in (
+        robot_anchor_artifact
+    )
+    assert "robot-rtx-evidence-error-code-assertion-guard-2026-06-26.md" in (
+        robot_anchor_artifact
+    )
+    assert "--expect-live-evidence-field-min" in robot_anchor_artifact
+    assert "read_lidar_point_cloud:error_code=..." in robot_anchor_artifact
 
     artifacts = [
         "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
@@ -2595,6 +2607,7 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
             "official-asset-readonly-diagnostic-field-assertions-2026-06-25.md"
         ),
         "docs/artifacts/probe-live-help-report-boundary-2026-06-26.md",
+        "docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md",
         "docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md",
         (
             "docs/artifacts/"
@@ -2659,8 +2672,22 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "The baseline post-stop-guard official verify comparison is" in guide
     assert "The current post-stop-guard official verify proof is" not in guide
     assert "official asset current-proof-anchor boundary" in guide
+    assert "shared live assertion CLI boundary for dotted evidence diagnostics" in guide
     assert guide.index("Baseline public-safe official asset live evidence is") < (
         guide.index("current final-log close-gate official verify proof")
+    )
+    current_anchor = (
+        PROJECT
+        / "docs/artifacts/official-asset-current-proof-anchor-boundary-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "official-asset-pass-error-code-boundary-2026-06-26.md" in (
+        current_anchor
+    )
+    assert "probe-live-assertion-cli-boundary-2026-06-26.md" in current_anchor
+    assert "official_asset_verify:error_code=...` free" in current_anchor
+    assert "concrete `step_id` selectors" in current_anchor
+    assert "verify_timeout_asset:diagnostics.error_type=TimeoutError" in (
+        current_anchor
     )
     assert "Verification status: `load_verified`" in baseline
     assert "Load quality: `content_verified_no_bbox`" in baseline

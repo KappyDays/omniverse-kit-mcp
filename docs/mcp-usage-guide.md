@@ -396,6 +396,9 @@ Probe `--scenario-validate-live` help/report wording is guarded in
 The official asset successful-pass versus failed-row `error_code` boundary is
 guarded in
 `docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md`.
+The shared live assertion CLI boundary for dotted evidence diagnostics is
+guarded in
+`docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md`.
 Read-only catalog diagnostic field assertions are verified in
 `docs/artifacts/official-asset-readonly-diagnostic-field-assertions-2026-06-25.md`.
 The baseline post-stop-guard official verify comparison is
