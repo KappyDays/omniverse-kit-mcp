@@ -2521,6 +2521,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         ),
         (
             "docs/artifacts/"
+            "runtime-fresh-after-evidence-error-code-guard-2026-06-26.md"
+        ),
+        (
+            "docs/artifacts/"
             "official-asset-current-proof-anchor-boundary-2026-06-26.md"
         ),
         "docs/artifacts/post-stop-guard-baseline-boundary-2026-06-26.md",

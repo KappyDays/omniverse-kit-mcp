@@ -393,6 +393,8 @@ Official asset evidence error-code preservation is guarded in
 `docs/artifacts/official-asset-evidence-error-code-guard-2026-06-26.md`.
 Probe-level `error_code` evidence assertion coverage is guarded in
 `docs/artifacts/probe-evidence-error-code-assertion-guard-2026-06-26.md`.
+Post error-code-contract runtime freshness is recorded in
+`docs/artifacts/runtime-fresh-after-evidence-error-code-guard-2026-06-26.md`.
 The official asset current-proof-anchor boundary is guarded in
 `docs/artifacts/official-asset-current-proof-anchor-boundary-2026-06-26.md`.
 The shared post-stop-guard baseline boundary is guarded in
