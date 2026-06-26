@@ -1650,6 +1650,7 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
                 "num_points": 512,
                 "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
                 "frames_waited": 180,
+                "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
                 "warning": None,
                 "truncated": False,
             },
@@ -1667,7 +1668,8 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
                 "sha256": "abc123",
                 "width": 1280,
                 "height": 720,
-                "passed": True,
+                "error_code": "VIEWPORT_CAPTURE_ASSERT_FAILED",
+                "passed": False,
             },
         ],
     })
@@ -1682,6 +1684,7 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
         "num_points": 512,
         "backend": "isaacsim.sensors.experimental.rtx.LidarSensor",
         "frames_waited": 180,
+        "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
         "warning": None,
         "truncated": False,
     }
@@ -1697,7 +1700,8 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
         "sha256": "abc123",
         "width": 1280,
         "height": 720,
-        "passed": True,
+        "error_code": "VIEWPORT_CAPTURE_ASSERT_FAILED",
+        "passed": False,
     }
 
 

@@ -185,6 +185,10 @@ plus
 so the wrapper fails only on the wrong terminal status, wrong failing
 step/error code, missing or wrong diagnostic reason/minimum/fallback route,
 missing report, missing lidar evidence, or missing cleanup/log evidence.
+If the current report includes `evidence_summary[].error_code`, you may add
+`--expect-live-evidence-field read_lidar_point_cloud:error_code=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS`,
+but keep `--expect-live-failure-step-error` as the primary terminal failure
+contract.
 Canonical Robot + RTX controlled-failure live probe command:
 `scripts/probe_mcp_surface.py --workspace workspaces/isaac/instance-1 --runtime-info --expect-tool-profile full --expect-app-profile isaac-sim --expect-tool-count 152 --require-runtime-fresh --require-robot-probe-error-contract --scenario-plan smoke/robot_rtx_sensor_golden_workflow.yaml --scenario-validate-dry-run --scenario-validate-live --input-overrides-json '{"lidar_min_points":513}' --require-plan-fields --expect-preflight-runtime-check robot_probe_unknown_profile_error_code=ROBOT_PROBE_UNKNOWN_PROFILE --expect-preflight-runtime-check robot_probe_unknown_profile_fallback_tool_order --expect-retry-key-arg read_lidar_point_cloud:min_points=513 --require-live-validation-tools mcp_runtime_info,kit_app_start,simulation_get_status,scenario_plan,scenario_validate,extension_clear_logs,scenario_validate,scenario_last_report,extension_capture_logs --expect-automatic-cleanup-timeout __fallback_cleanup_reset=30 --expect-scratch-stage-required true --expect-log-capture-recommended true --expect-live-status failed --expect-live-cleanup-failures 0 --expect-live-evidence-kind rtx_lidar_point_cloud --expect-live-failure-step-error read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS --expect-live-diagnostic-next-actions-min 1 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.reason=point_count_below_minimum --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.min_points=513 --expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.fallback_tool_order='["simulation_step","sensor_lidar_get_point_cloud","extension_capture_logs"]'`
 Call `scenario_last_report` from the same MCP host process that ran
@@ -247,6 +251,8 @@ the scenario authoring selector-to-plan guard is
 `docs/artifacts/scenario-authoring-selector-plan-guard-2026-06-26.md`;
 the integration-facts Robot + RTX proof gate is guarded in
 `docs/artifacts/robot-rtx-integration-facts-proof-gate-2026-06-26.md`;
+optional Robot + RTX evidence error-code assertion coverage is guarded in
+`docs/artifacts/robot-rtx-evidence-error-code-assertion-guard-2026-06-26.md`;
 the baseline recipe remains
 `docs/artifacts/probe-assertion-durable-docs-e2e-2026-06-25.md`.
 Use them as the comparison baseline when refreshing live proof, and replace or

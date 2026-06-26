@@ -349,6 +349,11 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "--expect-live-failure-step-error "
         "read_lidar_point_cloud=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS"
     ) in wrapper
+    assert "read_lidar_point_cloud:error_code=SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS" in (
+        wrapper
+    )
+    assert "does not replace `--expect-live-failure-step-error`" in invariant
+    assert "do not replace `--expect-live-failure-step-error`" in scenario_authoring
     assert "--expect-live-diagnostic-next-actions-min 1" in wrapper
     assert (
         "--expect-live-diagnostic-field "
@@ -1627,6 +1632,10 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md",
         "docs/artifacts/robot-rtx-integration-facts-proof-gate-2026-06-26.md",
         "docs/artifacts/scenario-authoring-selector-plan-guard-2026-06-26.md",
+        (
+            "docs/artifacts/"
+            "robot-rtx-evidence-error-code-assertion-guard-2026-06-26.md"
+        ),
         (
             "docs/artifacts/"
             "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"
