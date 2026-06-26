@@ -431,6 +431,12 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         integration_facts
     )
     assert "does not replace `--expect-live-failure-step-error`" in integration_facts
+    assert "robot-rtx-success-live-probe-refresh-2026-06-26.md" in (
+        integration_facts
+    )
+    assert "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md" in (
+        integration_facts
+    )
     assert "Current repeatable public proof anchors are" in invariant
     assert "robot-rtx-success-live-probe-refresh-2026-06-26.md" in invariant
     assert "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md" in (
@@ -2357,6 +2363,13 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
         integration_facts
     )
     assert "concrete failed `step_id` selector" in integration_facts
+    assert "official-asset-verify-live-probe-refresh-2026-06-26.md" in (
+        integration_facts
+    )
+    assert (
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+        in integration_facts
+    )
     assert (
         "docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md"
         in wrapper
