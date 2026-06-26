@@ -1556,6 +1556,9 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     post_stop_baseline = (
         "docs/artifacts/post-stop-guard-baseline-boundary-2026-06-26.md"
     )
+    live_preflight_current = (
+        "docs/artifacts/workspace-live-preflight-current-gate-2026-06-26.md"
+    )
     route_boundary = (
         "docs/artifacts/new-agent-route-table-pull-doc-boundary-2026-06-26.md"
     )
@@ -1566,6 +1569,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "Runtime redaction coverage" in guide
     assert "current-vs-baseline artifact boundary" in guide
     assert "post-stop-guard baseline boundary" in guide
+    assert "workspace-local live preflight gate" in guide
     assert "Robot + RTX current-proof-anchor boundary" in guide
     assert "Diagnostic JSON-array values" in guide
     assert "current route-table pull-doc boundary refresh" in guide
@@ -1632,6 +1636,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
         redaction_boundary,
         runtime_redaction,
         post_stop_baseline,
+        live_preflight_current,
         route_boundary,
         current_e2e,
         baseline_e2e,

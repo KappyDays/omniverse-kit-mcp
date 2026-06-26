@@ -229,6 +229,8 @@ the current executable probe runtime/profile gate is guarded by
 `docs/artifacts/current-probe-runtime-profile-gate-2026-06-26.md`;
 the live assertion CLI boundary is guarded in
 `docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md`;
+the current workspace-local live preflight gate is recorded in
+`docs/artifacts/workspace-live-preflight-current-gate-2026-06-26.md`;
 the dry-run/live-proof boundary is guarded in
 `docs/artifacts/dry-run-live-proof-boundary-2026-06-26.md`;
 the current-vs-baseline artifact boundary is guarded in
