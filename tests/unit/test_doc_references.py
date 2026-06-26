@@ -1676,6 +1676,12 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     )
     assert "--expect-live-evidence-field-min" in robot_anchor_artifact
     assert "read_lidar_point_cloud:error_code=..." in robot_anchor_artifact
+    assert "robot-rtx-success-live-probe-refresh-2026-06-26.md" in (
+        robot_anchor_artifact
+    )
+    assert "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md" in (
+        robot_anchor_artifact
+    )
 
     artifacts = [
         "docs/artifacts/robot-rtx-golden-default-live-pass-2026-06-25.md",
@@ -2758,6 +2764,13 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "probe-live-assertion-cli-boundary-2026-06-26.md" in current_anchor
     assert "official_asset_verify:error_code=...` free" in current_anchor
     assert "concrete `step_id` selectors" in current_anchor
+    assert "official-asset-verify-live-probe-refresh-2026-06-26.md" in (
+        current_anchor
+    )
+    assert (
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+        in current_anchor
+    )
     assert "verify_timeout_asset:diagnostics.error_type=TimeoutError" in (
         current_anchor
     )

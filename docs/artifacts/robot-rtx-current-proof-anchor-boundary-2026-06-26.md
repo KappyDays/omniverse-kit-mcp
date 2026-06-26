@@ -26,6 +26,11 @@ repeatable close-gate proof anchors and older baseline evidence.
   `--expect-live-evidence-field-min`, controlled-failure diagnostics, and
   optional `read_lidar_point_cloud:error_code=...` evidence assertions stay
   tied to the current close-gate proof path.
+- The post-assertion live proof refreshes are also part of the current anchor
+  set: `docs/artifacts/robot-rtx-success-live-probe-refresh-2026-06-26.md`
+  for the success path and
+  `docs/artifacts/robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md`
+  for the controlled-failure path.
 
 ## Public Boundary
 

@@ -24,6 +24,11 @@ current repeatable public proof anchors and older baseline evidence.
   `official_asset_verify:error_code=...` free, while failed evidence rows use
   concrete `step_id` selectors for `error_code` and dotted nested diagnostics
   such as `verify_timeout_asset:diagnostics.error_type=TimeoutError`.
+- The post-assertion live proof refreshes are also part of the current anchor
+  set: `docs/artifacts/official-asset-verify-live-probe-refresh-2026-06-26.md`
+  for mutating load-quality proof and
+  `docs/artifacts/official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md`
+  for read-only diagnostic proof.
 
 ## Public Boundary
 
