@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -226,6 +227,74 @@ def test_write_latest_catalogs_adds_per_profile_pointers(tmp_path: Path) -> None
     )
     assert [s["app_profile"] for s in isaac_latest["snapshots"]] == ["isaac-sim"]
     assert [s["app_profile"] for s in composer_latest["snapshots"]] == ["usd-composer"]
+
+
+def test_parse_args_pins_bounded_live_verification_chunk_contract(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "official-assets"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "sync_official_asset_catalog.py",
+            "--source-run-id",
+            "url-discovery-run",
+            "--run-id",
+            "live-chunk-run",
+            "--profiles",
+            "isaac-sim",
+            "--providers",
+            "omni.simready.explorer",
+            "--output-dir",
+            str(output_dir),
+            "--verify",
+            "full",
+            "--verify-kind",
+            "asset",
+            "--verify-provider",
+            "omni.simready.explorer",
+            "--verify-id",
+            "url:https://example.com/Assets/Pallet.usd",
+            "--verify-id",
+            "https://example.com/Assets/Pallet.usd",
+            "--verify-limit",
+            "50",
+            "--rerun-classified",
+            "--asset-timeout-s",
+            "180",
+            "--material-timeout-s",
+            "180",
+            "--retry",
+            "2",
+            "--base-url",
+            "isaac-sim=http://127.0.0.1:18111",
+            "--resume",
+        ],
+    )
+
+    args = sync.parse_args()
+
+    assert args.source_run_id == "url-discovery-run"
+    assert args.run_id == "live-chunk-run"
+    assert args.profiles == ["isaac-sim"]
+    assert args.providers == ["omni.simready.explorer"]
+    assert args.output_dir == output_dir
+    assert args.verify == "full"
+    assert args.verify_kind == ["asset"]
+    assert args.verify_provider == ["omni.simready.explorer"]
+    assert args.verify_id == [
+        "url:https://example.com/Assets/Pallet.usd",
+        "https://example.com/Assets/Pallet.usd",
+    ]
+    assert args.verify_limit == 50
+    assert args.rerun_classified is True
+    assert args.asset_timeout_s == 180.0
+    assert args.material_timeout_s == 180.0
+    assert args.retry == 2
+    assert sync.base_url_map(args.base_url)["isaac-sim"] == "http://127.0.0.1:18111"
+    assert args.resume is True
 
 
 @pytest.mark.asyncio

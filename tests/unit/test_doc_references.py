@@ -2388,6 +2388,9 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
     )
     assert "bounded operator check" in catalog_normalized
     assert "do not commit generated verification records" in catalog_normalized
+    assert "`--base-url <profile>=<url>`" in official_catalog
+    assert "generated catalog JSON" in catalog_normalized
+    assert "verification JSONL" in catalog_normalized
     assert "smoke/official_asset_catalog_diagnostics.yaml" in official_catalog
     assert "stage_mutation_summary.read_only=true" in official_catalog
     assert "search_known_miss:diagnostics.reason=query_no_match" in official_catalog
@@ -2413,6 +2416,10 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
     )
     assert (
         "docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md"
+        in official_catalog
+    )
+    assert (
+        "docs/artifacts/official-asset-sync-cli-contract-2026-06-26.md"
         in official_catalog
     )
     assert "current final-log public proof anchors" in catalog_normalized

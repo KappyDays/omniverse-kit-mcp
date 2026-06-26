@@ -106,6 +106,13 @@ first, then run the script against that running REST endpoint. Verification is
 sequential per app, retries once, and defaults to 120 s for assets and 45 s for
 materials.
 
+Default REST endpoints are `isaac-sim=http://127.0.0.1:8111` and
+`usd-composer=http://127.0.0.1:8114`. If the workspace runtime reports a
+different endpoint, add repeatable `--base-url <profile>=<url>` overrides to
+the verification command and keep public summaries to the profile/port
+decision; do not publish raw worker temp paths, process metadata, generated
+catalog JSON, or verification JSONL.
+
 For broad official verification, prefer longer per-item timeouts (for example,
 `--asset-timeout-s 180 --material-timeout-s 180`) and stop to audit if official
 assets unexpectedly fail or timeout. Do not accumulate large failure batches
@@ -140,6 +147,8 @@ S3 LIST keys are URL-escaped when converted to canonical URLs. This matters for
 official folders such as `Floor Lamps` and `Table Lamps`; literal spaces in a
 canonical URL are a tooling/path-sanitization bug, not evidence that the asset
 is missing.
+
+CLI contract evidence: `docs/artifacts/official-asset-sync-cli-contract-2026-06-26.md`.
 
 ## Provider Coverage
 
