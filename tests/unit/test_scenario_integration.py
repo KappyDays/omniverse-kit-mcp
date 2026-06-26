@@ -4081,6 +4081,31 @@ async def test_official_asset_catalog_diagnostics_smoke_routes_through_runner(
         "mutation_kinds": [],
     }
     assert plan["stage_mutation_steps"] == []
+    live_validation_checklist = plan["live_validation_checklist"]
+    assert live_validation_checklist["scratch_stage_required"] is False
+    assert live_validation_checklist["log_capture_recommended"] is True
+    assert [step["tool"] for step in live_validation_checklist["steps"]] == [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    ]
+    assert not any(
+        step.get("args") == {"dry_run": True}
+        for step in live_validation_checklist["steps"]
+    )
+    assert live_validation_checklist["steps"][6]["args"] == {
+        "report_format": "markdown",
+        "redact_local_paths": True,
+    }
+    assert live_validation_checklist["steps"][7]["args"] == {
+        "level": "WARN",
+        "stop_after_capture": True,
+    }
 
     summary = await runner.run(scenario)
 
@@ -4660,6 +4685,29 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
             "app_profile": "isaac-sim",
             "timeout_s": 180,
         },
+    }
+    live_validation_checklist = plan["live_validation_checklist"]
+    assert live_validation_checklist["scratch_stage_required"] is True
+    assert live_validation_checklist["log_capture_recommended"] is True
+    assert [step["tool"] for step in live_validation_checklist["steps"]] == [
+        "mcp_runtime_info",
+        "kit_app_start",
+        "simulation_get_status",
+        "scenario_plan",
+        "scenario_validate",
+        "extension_clear_logs",
+        "scenario_validate",
+        "scenario_last_report",
+        "extension_capture_logs",
+    ]
+    assert live_validation_checklist["steps"][4]["args"] == {"dry_run": True}
+    assert live_validation_checklist["steps"][7]["args"] == {
+        "report_format": "markdown",
+        "redact_local_paths": True,
+    }
+    assert live_validation_checklist["steps"][8]["args"] == {
+        "level": "WARN",
+        "stop_after_capture": True,
     }
 
     summary = await runner.run(compile_scenario(raw))

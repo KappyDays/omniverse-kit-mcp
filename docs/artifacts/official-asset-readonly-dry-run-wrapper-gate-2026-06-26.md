@@ -28,6 +28,15 @@ the durable wrapper sequence omitted the explicit
   `--scenario-validate-dry-run` remains mandatory for the probe wrapper.
 - The mutating `stage_mutation_summary.read_only=false` gate is now named as
   the load-quality live proof gate, not a generic read-only diagnostics rule.
+- Unit coverage now pins the actual `scenario_plan.live_validation_checklist`
+  contrast: read-only catalog diagnostics have no `{"dry_run": true}` checklist
+  step, while the mutating load-quality verify checklist includes it before
+  `extension_clear_logs`.
+- Plan-payload checklist guard:
+  - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_scenario_integration.py::test_official_asset_catalog_diagnostics_smoke_routes_through_runner tests\unit\test_scenario_integration.py::test_official_asset_verify_live_smoke_routes_through_runner -q`
+    passed: `2 passed in 0.90s`.
+  - `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_scenario_integration.py`
+    passed.
 - Load-quality/read-only wording refresh:
   - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_official_asset_scenario_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_artifact_probe_commands_parse -q`
     passed: `2 passed in 0.33s`.
