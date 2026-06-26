@@ -409,6 +409,8 @@ The baseline post-stop-guard official verify comparison is
 `docs/artifacts/official-asset-verify-stop-guard-refresh-2026-06-26.md`; the
 current final-log close-gate official verify proof is
 `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`;
+the post-assertion official verify live probe refresh is
+`docs/artifacts/official-asset-verify-live-probe-refresh-2026-06-26.md`;
 its success result shape is guarded in
 `docs/artifacts/official-asset-verify-success-result-shape-guard-2026-06-26.md`.
 Official asset evidence error-code preservation is guarded in

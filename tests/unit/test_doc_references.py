@@ -2677,6 +2677,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         ),
         (
             "docs/artifacts/"
+            "official-asset-verify-live-probe-refresh-2026-06-26.md"
+        ),
+        (
+            "docs/artifacts/"
             "official-asset-verify-success-result-shape-guard-2026-06-26.md"
         ),
         (
@@ -2740,6 +2744,7 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "official asset current-proof-anchor boundary" in guide
     assert "shared live assertion CLI boundary for dotted evidence diagnostics" in guide
     assert "post-assertion read-only diagnostic live probe refresh" in guide
+    assert "post-assertion official verify live probe refresh" in guide
     assert guide.index("Baseline public-safe official asset live evidence is") < (
         guide.index("current final-log close-gate official verify proof")
     )
@@ -2877,6 +2882,27 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     ):
         assert token in close_gate_artifact
 
+    live_probe_refresh = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-verify-live-probe-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    live_probe_refresh_normalized = " ".join(live_probe_refresh.split())
+    assert "Exit code: `0`" in live_probe_refresh
+    assert "Live scenario status: `passed`" in live_probe_refresh
+    assert "`passed_steps=5`, `failed_steps=0`, `skipped_steps=0`" in (
+        live_probe_refresh_normalized
+    )
+    assert "exactly one compact `official_asset_verify` evidence row" in (
+        live_probe_refresh
+    )
+    assert "`verification_status=load_verified`" in live_probe_refresh
+    assert "`load_quality=content_verified_no_bbox`" in live_probe_refresh
+    assert "`error=null`" in live_probe_refresh
+    assert "Success rows remain `error_code` free" in live_probe_refresh
+    assert "`data.capture_stop_completed=true`" in live_probe_refresh
+    assert "tmp_mcp_surface.json` snapshot remained ignored" in live_probe_refresh
+
     read_only_close_gate = (
         PROJECT
         / "docs/artifacts/"
@@ -3012,6 +3038,9 @@ def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch)
         PROJECT
         / "docs/artifacts/"
         "official-asset-verify-close-gate-live-refresh-2026-06-26.md",
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-verify-live-probe-refresh-2026-06-26.md",
     )
     calls: list[dict[str, object]] = []
 
@@ -3037,7 +3066,7 @@ def test_f3b_official_asset_field_artifact_live_probe_command_parse(monkeypatch)
         assert argv[0] == "scripts/probe_mcp_surface.py"
         assert mcp_probe.main(argv[1:]) == 0
 
-    assert len(calls) == 2
+    assert len(calls) == 3
     for call in calls:
         assert call["scenario_plan"] == "smoke/official_asset_verify_live.yaml"
         assert call["scenario_validate_dry_run"] is True
