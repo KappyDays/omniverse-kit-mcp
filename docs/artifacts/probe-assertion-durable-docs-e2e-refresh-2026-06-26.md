@@ -15,6 +15,11 @@ artifact is dry-run only; it did not mutate a stage.
 
 ## Results
 
+- Latest rerun after the integration-facts proof-gate sync passed the same three
+  workspace-local dry-run probes. Runtime remained fresh with
+  `tool_profile=full`, `app_profile=isaac-sim`, `tool_count=152`,
+  `source_newer_than_import=false`, and
+  `restart_required_for_latest_mcp_code=false`.
 - Robot + RTX dry-run: passed. `scenario_id=robot_rtx_sensor_golden_workflow`,
   `total_steps=32`, `scratch_stage_required=true`,
   `log_capture_recommended=true`, fallback cleanup
