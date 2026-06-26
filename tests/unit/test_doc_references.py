@@ -628,6 +628,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
         "row-specific failure fields such as `error_code` or "
         "`diagnostics.error_type` should use `step_id`"
     ) in scripts_doc
+    assert (
+        "diagnostic field keys may also be dotted such as "
+        "`diagnostics.fallback_tool_order`"
+    ) in scripts_doc
     assert "field expectation values are JSON-decoded when possible" in scripts_doc
     assert (
         "diagnostics.fallback_tool_order='[\"simulation_step\","
