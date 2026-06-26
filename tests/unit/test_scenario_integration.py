@@ -4821,6 +4821,7 @@ async def test_official_asset_verify_live_smoke_routes_through_runner(
     )
     assert evidence_report["verify_pallet_asset"]["kind"] == "asset"
     assert evidence_report["verify_pallet_asset"]["app_profile"] == "isaac-sim"
+    assert "error_code" not in evidence_report["verify_pallet_asset"]
     markdown = to_markdown(summary)
     assert "## Evidence Summary" in markdown
     assert (
