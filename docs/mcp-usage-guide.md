@@ -365,6 +365,8 @@ After validation, request redacted JSON with
 exception failures, also check `diagnostics.error_type` before deciding whether
 to retry or widen the live proof. Use redacted JSON for exact public-safe fields
 and redacted Markdown `Evidence Summary` for the compact evidence note.
+For failed evidence rows, `--expect-live-evidence-field <step_id>:error_code=...`
+can assert the compact proof row directly.
 Baseline public-safe official asset live evidence is
 `docs/artifacts/official-asset-verify-live-pass-2026-06-25.md`. The live probe
 assertion options for the same workflow are verified in
@@ -389,6 +391,8 @@ its success result shape is guarded in
 `docs/artifacts/official-asset-verify-success-result-shape-guard-2026-06-26.md`.
 Official asset evidence error-code preservation is guarded in
 `docs/artifacts/official-asset-evidence-error-code-guard-2026-06-26.md`.
+Probe-level `error_code` evidence assertion coverage is guarded in
+`docs/artifacts/probe-evidence-error-code-assertion-guard-2026-06-26.md`.
 The official asset current-proof-anchor boundary is guarded in
 `docs/artifacts/official-asset-current-proof-anchor-boundary-2026-06-26.md`.
 The shared post-stop-guard baseline boundary is guarded in

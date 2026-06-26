@@ -1583,11 +1583,17 @@ def test_mcp_probe_parses_expected_live_evidence_fields():
         "verify_pallet_asset:attempt=2",
         "official_asset_verify:stale=false",
         'official_asset_verify:name="aluminumpallet_a01.usd"',
+        "capture_visible_result:error_code=VIEWPORT_CAPTURE_ASSERT_FAILED",
     ]) == (
         ("official_asset_verify", "verification_status", "load_verified"),
         ("verify_pallet_asset", "attempt", 2),
         ("official_asset_verify", "stale", False),
         ("official_asset_verify", "name", "aluminumpallet_a01.usd"),
+        (
+            "capture_visible_result",
+            "error_code",
+            "VIEWPORT_CAPTURE_ASSERT_FAILED",
+        ),
     )
 
 
@@ -1706,6 +1712,7 @@ def test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields():
                 "app_profile": "isaac-sim",
                 "verification_status": "load_verified",
                 "load_quality": "content_verified_no_bbox",
+                "error_code": "OFFICIAL_ASSET_VERIFY_TIMEOUT",
                 "attempt": 1,
                 "timeout_s": 180.0,
                 "retry_count": 1,
@@ -1723,6 +1730,7 @@ def test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields():
             "app_profile": "isaac-sim",
             "verification_status": "load_verified",
             "load_quality": "content_verified_no_bbox",
+            "error_code": "OFFICIAL_ASSET_VERIFY_TIMEOUT",
             "attempt": 1,
             "timeout_s": 180.0,
             "retry_count": 1,
@@ -1807,6 +1815,7 @@ def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value()
                 "verification_status": "load_verified",
                 "kind": "asset",
                 "app_profile": "isaac-sim",
+                "error_code": "OFFICIAL_ASSET_VERIFY_TIMEOUT",
             },
         ],
     }
@@ -1816,6 +1825,11 @@ def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value()
         (
             ("official_asset_verify", "verification_status", "load_verified"),
             ("verify_pallet_asset", "app_profile", "isaac-sim"),
+            (
+                "verify_pallet_asset",
+                "error_code",
+                "OFFICIAL_ASSET_VERIFY_TIMEOUT",
+            ),
         ),
     ) == []
 

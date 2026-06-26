@@ -2265,6 +2265,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "evidence_summary[].error_code" in diagnostic_map
     assert "evidence_summary[].error_code" in invariant
     assert "`error_code` when present" in guide
+    assert "--expect-live-evidence-field <step_id>:error_code=..." in guide
     assert "smoke/official_asset_catalog_diagnostics.yaml" in wrapper
     assert (
         "--require-live-validation-tools "
@@ -2513,6 +2514,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         (
             "docs/artifacts/"
             "official-asset-evidence-error-code-guard-2026-06-26.md"
+        ),
+        (
+            "docs/artifacts/"
+            "probe-evidence-error-code-assertion-guard-2026-06-26.md"
         ),
         (
             "docs/artifacts/"
