@@ -14,6 +14,9 @@ and did not mutate a stage.
 ## Result
 
 - Exit code: 0.
+- A follow-up rerun after
+  `docs/artifacts/workspace-live-preflight-current-gate-2026-06-26.md` also
+  exited 0 with the same read-only diagnostic assertions.
 - Runtime gate was fresh: `tool_profile=full`, `app_profile=isaac-sim`,
   `tool_count=152`, `source_newer_than_import=false`, and
   `restart_required_for_latest_mcp_code=false`.
