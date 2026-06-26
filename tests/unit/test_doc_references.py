@@ -2718,6 +2718,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "Diagnostic field assertions use the same dotted-key resolution" in (
         live_assertion_boundary
     )
+    assert "Minimum evidence field assertions use the same dotted-key resolution" in (
+        live_assertion_boundary
+    )
+    assert "diagnostics.min_points=512" in live_assertion_boundary
     readonly_fallback_boundary = (
         PROJECT
         / "docs/artifacts/"

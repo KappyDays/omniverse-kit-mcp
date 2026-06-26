@@ -1826,6 +1826,7 @@ def test_mcp_probe_live_evidence_field_minimum_mismatches_are_empty():
                 "step_id": "read_lidar_point_cloud",
                 "evidence_kind": "rtx_lidar_point_cloud",
                 "num_points": 512,
+                "diagnostics": {"min_points": 513},
             },
             {
                 "step_id": "capture_visible_result",
@@ -1839,6 +1840,7 @@ def test_mcp_probe_live_evidence_field_minimum_mismatches_are_empty():
         summary,
         (
             ("read_lidar_point_cloud", "num_points", 1.0),
+            ("read_lidar_point_cloud", "diagnostics.min_points", 512.0),
             ("visual_capture", "pixel_variance_average", 1.0),
         ),
     ) == []

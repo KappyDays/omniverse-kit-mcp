@@ -38,6 +38,11 @@ after Robot/RTX and official asset workflows started relying on
 - Diagnostic field assertions use the same dotted-key resolution, so
   `--expect-live-diagnostic-field <step_id>:diagnostics.fallback_tool_order=...`
   matches either flat summary rows or nested `diagnostics` objects.
+- Minimum evidence field assertions use the same dotted-key resolution for
+  numeric thresholds, so
+  `--expect-live-evidence-field-min <step_id>:diagnostics.min_points=512`
+  can validate nested numeric diagnostic values when a workflow chooses to
+  threshold one.
 - `--scenario-validate-live` itself exits with code `2` unless
   `--scenario-validate-dry-run` is present, even when `--workspace` and
   `--scenario-plan` are already provided.
@@ -56,6 +61,9 @@ catalog records.
 - Current dotted evidence refresh:
   `.\.venv\Scripts\python.exe -m pytest tests\unit\test_standalone_scripts.py::test_mcp_probe_parses_expected_live_evidence_fields tests\unit\test_standalone_scripts.py::test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value tests\unit\test_standalone_scripts.py::test_mcp_probe_live_evidence_field_minimum_mismatches_are_empty tests\unit\test_standalone_scripts.py::test_mcp_probe_main_wires_live_assertion_options tests\unit\test_doc_references.py::test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact -q`
   passed: `5 passed in 0.95s`.
+- Current minimum dotted evidence refresh:
+  `.\.venv\Scripts\python.exe -m pytest tests\unit\test_standalone_scripts.py::test_mcp_probe_live_evidence_field_minimum_mismatches_are_empty tests\unit\test_doc_references.py::test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact -q`
+  passed: `2 passed`.
 - `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_standalone_scripts.py`
   passed.
 - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
