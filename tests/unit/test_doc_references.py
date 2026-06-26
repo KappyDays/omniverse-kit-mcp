@@ -1221,6 +1221,33 @@ def test_f3b_usage_guide_artifact_links_exist():
     )
 
 
+def test_f3b_current_proof_anchor_artifact_links_exist_across_pull_docs():
+    source_paths = (
+        PROJECT / "docs/invariants/scenario-validation.md",
+        PROJECT / "scenarios/CLAUDE.md",
+        PROJECT / "src/omniverse_kit_mcp/modules/integration-facts.md",
+        PROJECT / "docs/references/official-asset-catalog.md",
+        PROJECT / "docs/invariants/asset-discovery.md",
+        PROJECT / "docs/artifacts/new-agent-route-table-pull-doc-boundary-2026-06-26.md",
+        PROJECT / "docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md",
+        PROJECT / "docs/artifacts/robot-rtx-current-proof-anchor-boundary-2026-06-26.md",
+        PROJECT / "docs/artifacts/official-asset-current-proof-anchor-boundary-2026-06-26.md",
+    )
+    missing: list[str] = []
+
+    for source_path in source_paths:
+        text = source_path.read_text(encoding="utf-8")
+        links = sorted(set(re.findall(r"docs/artifacts/[A-Za-z0-9_./\\-]+\.md", text)))
+        assert links, f"{source_path.relative_to(PROJECT)} should link proof artifacts"
+        for link in links:
+            if not (PROJECT / link).exists():
+                missing.append(f"{source_path.relative_to(PROJECT)} -> {link}")
+
+    assert not missing, (
+        "current proof pull-docs link missing artifacts:\n  " + "\n  ".join(missing)
+    )
+
+
 def test_f3b_workspace_live_probe_commands_keep_dry_run_gate():
     offenders: list[str] = []
     command_re = re.compile(r"`([^`]*scripts[\\/]probe_mcp_surface\.py [^`]+)`")
