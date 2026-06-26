@@ -461,6 +461,7 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert "stage_mutation_summary" in guide
     assert "stage_mutation_summary" in invariant
     assert "stage_mutation_summary.read_only=false" in invariant
+    assert "before mutating live runs" in scenario_authoring
     assert "stage_mutation_steps" in guide
     assert "stage_mutation_steps" in invariant
     assert "simulation_state_summary" in guide

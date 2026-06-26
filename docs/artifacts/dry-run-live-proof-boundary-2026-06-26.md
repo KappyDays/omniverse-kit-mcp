@@ -24,6 +24,14 @@ asset live proof.
 - Historical help-output evidence must not be written as a runnable artifact
   command using the probe script path plus `--help`; artifact command parsing
   requires runnable probe commands to include `--workspace`.
+- `scenarios/CLAUDE.md` tells authors to check plan fields before mutating live
+  runs, so read-only diagnostic live runs are not conflated with scratch-stage
+  proofs.
+- Scenario authoring wording refresh:
+  - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_robot_rtx_live_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_artifact_probe_commands_parse -q`
+    passed: `2 passed in 0.31s`.
+  - `rg -n "before live runs|check these before live runs" scenarios\CLAUDE.md tests\unit\test_doc_references.py`
+    returned no matches.
 
 ## Public Boundary
 
