@@ -423,6 +423,8 @@ current read-only dry-run wrapper gate is
 `docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md`, and
 the current read-only final-log close-gate live refresh is
 `docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`;
+the post-assertion read-only diagnostic live probe refresh is
+`docs/artifacts/official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md`;
 its continued-failure result shape is guarded in
 `docs/artifacts/official-asset-readonly-result-shape-guard-2026-06-26.md`.
 The exact read-only fallback diagnostic field assertions are guarded in

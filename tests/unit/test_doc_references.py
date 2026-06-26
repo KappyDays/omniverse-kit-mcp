@@ -2654,6 +2654,10 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         ),
         (
             "docs/artifacts/"
+            "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+        ),
+        (
+            "docs/artifacts/"
             "official-asset-readonly-result-shape-guard-2026-06-26.md"
         ),
         (
@@ -2686,6 +2690,7 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
     assert "The current post-stop-guard official verify proof is" not in guide
     assert "official asset current-proof-anchor boundary" in guide
     assert "shared live assertion CLI boundary for dotted evidence diagnostics" in guide
+    assert "post-assertion read-only diagnostic live probe refresh" in guide
     assert guide.index("Baseline public-safe official asset live evidence is") < (
         guide.index("current final-log close-gate official verify proof")
     )
@@ -2734,6 +2739,17 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         "test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value"
         in readonly_fallback_boundary
     )
+    readonly_live_refresh = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "Exit code: `0`" in readonly_live_refresh
+    assert "scratch_stage_required=false" in readonly_live_refresh
+    assert "evidence_kinds=[]" in readonly_live_refresh
+    assert "get_pallet_wrong_profile` reported" in readonly_live_refresh
+    assert "data.capture_stop_completed=true" in readonly_live_refresh
+    assert "tmp_mcp_surface.json` snapshot remained ignored" in readonly_live_refresh
     assert "Verification status: `load_verified`" in baseline
     assert "Load quality: `content_verified_no_bbox`" in baseline
     assert "Command-boundary note" in baseline
@@ -2857,6 +2873,9 @@ def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypat
         PROJECT
         / "docs/artifacts/"
         "official-asset-readonly-close-gate-live-refresh-2026-06-26.md",
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md",
     )
     calls: list[dict[str, object]] = []
 
@@ -2882,7 +2901,7 @@ def test_f3b_official_asset_readonly_diagnostic_artifact_command_parse(monkeypat
         assert argv[0] == "scripts/probe_mcp_surface.py"
         assert mcp_probe.main(argv[1:]) == 0
 
-    assert len(calls) == 2
+    assert len(calls) == 3
     for call in calls:
         assert call["scenario_plan"] == (
             "smoke/official_asset_catalog_diagnostics.yaml"
