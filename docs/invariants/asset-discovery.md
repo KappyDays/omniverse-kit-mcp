@@ -63,6 +63,11 @@ evidence row. Do not add `official_asset_verify:error_code=...` to the normal
 pass proof; successful `load_verified` rows should be error-code-free, and
 failed evidence rows should assert `error_code` with the concrete `step_id`
 selector only when the row contains one.
+Current official asset scenario proof anchors are
+`docs/artifacts/official-asset-verify-live-probe-refresh-2026-06-26.md` for
+mutating load-quality proof and
+`docs/artifacts/official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md`
+for read-only diagnostic proof.
 Direct on-demand `official_asset_verify` response is only bounded operator
 evidence. Accept it before placement only after checking
 `data.verification_status=load_verified`, `data.kind`, `data.app_profile`, and

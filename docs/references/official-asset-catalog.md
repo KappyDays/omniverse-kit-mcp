@@ -198,7 +198,10 @@ Current repeatable public proof anchors include
 `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`
 for the final-log close-gate live proof,
 `docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`
-for read-only catalog diagnostics, and
+for read-only catalog diagnostics,
+`docs/artifacts/official-asset-verify-live-probe-refresh-2026-06-26.md` plus
+`docs/artifacts/official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md`
+for the current post-assertion live probe refreshes, and
 `docs/artifacts/official-asset-tool-order-dry-run-refresh-2026-06-26.md` plus
 `docs/artifacts/official-asset-readonly-dry-run-wrapper-gate-2026-06-26.md` for
 docs-only dry-run gates. Exact read-only fallback field assertion wording is

@@ -2423,6 +2423,11 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     for source in (asset_discovery, official_catalog):
         assert "Official asset scenario proof sequence" in source
         assert "docs/mcp-usage-guide.md" in source
+        assert "official-asset-verify-live-probe-refresh-2026-06-26.md" in source
+        assert (
+            "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+            in source
+        )
         assert "--expect-live-status passed" in source
         assert "official_asset_verify:verification_status=load_verified" in source
         assert "official_asset_verify:kind=asset" in source
@@ -2642,6 +2647,15 @@ def test_f3b_official_asset_on_demand_direct_result_shape_guidance():
     )
     assert (
         "docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md"
+        in official_catalog
+    )
+    assert (
+        "docs/artifacts/official-asset-verify-live-probe-refresh-2026-06-26.md"
+        in official_catalog
+    )
+    assert (
+        "docs/artifacts/"
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
         in official_catalog
     )
     assert (
