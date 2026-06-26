@@ -229,6 +229,8 @@ Its success result shape is guarded in
 `docs/artifacts/robot-rtx-success-result-shape-guard-2026-06-26.md`.
 The current final-log close-gate controlled-failure refresh is
 `docs/artifacts/robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md`.
+The post-assertion Robot + RTX controlled-failure live probe refresh is
+`docs/artifacts/robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md`.
 The current doc-only durable-rule E2E refresh is verified in
 `docs/artifacts/probe-assertion-durable-docs-e2e-refresh-2026-06-26.md`;
 the current executable probe runtime/profile gate is guarded by

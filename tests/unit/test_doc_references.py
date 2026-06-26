@@ -1706,6 +1706,10 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
             "docs/artifacts/"
             "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md"
         ),
+        (
+            "docs/artifacts/"
+            "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md"
+        ),
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md",
         profile_gate,
         redaction_boundary,
@@ -1761,6 +1765,7 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "The baseline post-stop-guard Robot + RTX comparison refresh is" in guide
     assert "The current post-stop-guard Robot + RTX refresh is" not in guide
     assert "post-assertion Robot + RTX success live probe refresh" in guide
+    assert "post-assertion Robot + RTX controlled-failure live probe refresh" in guide
     assert guide.index("Baseline public-safe Robot + RTX evidence anchors are") < (
         guide.index("The current final-log close-gate Robot + RTX refresh")
     )
@@ -1821,6 +1826,22 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     )
     assert "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS" in controlled_close_gate
     assert "diagnostic next-action count `4`" in controlled_close_gate
+    controlled_live_refresh = (
+        PROJECT
+        / "docs/artifacts/"
+        "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    controlled_live_refresh_normalized = " ".join(controlled_live_refresh.split())
+    assert "Exit code: `0`" in controlled_live_refresh
+    assert "status: `failed` as expected" in controlled_live_refresh
+    assert "`passed_steps=25`, `failed_steps=1`, `skipped_steps=5`" in (
+        controlled_live_refresh_normalized
+    )
+    assert "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS" in controlled_live_refresh
+    assert "Diagnostic next-action count was `4`" in controlled_live_refresh
+    assert "`diagnostics.min_points=513`" in controlled_live_refresh
+    assert "data.capture_stop_completed=true" in controlled_live_refresh
+    assert "tmp_mcp_surface.json` snapshot remained ignored" in controlled_live_refresh
 
     field_artifact = (
         PROJECT
@@ -1879,6 +1900,9 @@ def test_f3b_robot_rtx_controlled_failure_artifact_command_parse(monkeypatch):
         PROJECT
         / "docs/artifacts/"
         "robot-rtx-controlled-failure-close-gate-live-refresh-2026-06-26.md",
+        PROJECT
+        / "docs/artifacts/"
+        "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md",
     )
     calls: list[dict[str, object]] = []
 
@@ -1905,7 +1929,7 @@ def test_f3b_robot_rtx_controlled_failure_artifact_command_parse(monkeypatch):
         assert argv[0] == "scripts/probe_mcp_surface.py"
         assert mcp_probe.main(argv[1:]) == 0
 
-    assert len(calls) == 2
+    assert len(calls) == 3
     for call in calls:
         assert call["scenario_plan"] == "smoke/robot_rtx_sensor_golden_workflow.yaml"
         assert call["scenario_validate_dry_run"] is True
@@ -1966,6 +1990,11 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
             / "docs/artifacts/"
             "robot-rtx-golden-close-gate-live-refresh-2026-06-26.md"
         ),
+        "post_assertion": (
+            PROJECT
+            / "docs/artifacts/"
+            "robot-rtx-success-live-probe-refresh-2026-06-26.md"
+        ),
     }
     calls: list[dict[str, object]] = []
 
@@ -1991,7 +2020,7 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
         assert argv[0] == "scripts/probe_mcp_surface.py"
         assert mcp_probe.main(argv[1:]) == 0
 
-    assert len(calls) == 3
+    assert len(calls) == 4
     for call in calls:
         assert call["scenario_plan"] == "smoke/robot_rtx_sensor_golden_workflow.yaml"
         assert call["scenario_validate_dry_run"] is True
@@ -2028,7 +2057,7 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
             call["expected_live_evidence_fields"]
         )
 
-    field_call, threshold_call, close_gate_call = calls
+    field_call, threshold_call, close_gate_call, post_assertion_call = calls
     assert field_call["expected_live_evidence_field_minimums"] == (
         ("read_lidar_point_cloud", "num_points", 1.0),
     )
@@ -2036,6 +2065,9 @@ def test_f3b_robot_rtx_success_artifact_commands_parse(monkeypatch):
         ("read_lidar_point_cloud", "num_points", 1.0),
     )
     assert close_gate_call["expected_live_evidence_field_minimums"] == (
+        ("read_lidar_point_cloud", "num_points", 1.0),
+    )
+    assert post_assertion_call["expected_live_evidence_field_minimums"] == (
         ("read_lidar_point_cloud", "num_points", 1.0),
     )
 
