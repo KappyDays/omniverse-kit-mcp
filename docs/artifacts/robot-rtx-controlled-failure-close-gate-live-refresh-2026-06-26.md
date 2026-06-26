@@ -16,6 +16,9 @@ diagnostic boundary while cleanup and log close behavior remain verified.
 ## Result
 
 - Exit code: 0.
+- A follow-up rerun after
+  `docs/artifacts/workspace-live-preflight-current-gate-2026-06-26.md` also
+  exited 0 with the same controlled-failure assertion gates.
 - Runtime gate was fresh: `tool_profile=full`, `app_profile=isaac-sim`,
   `tool_count=152`, `source_newer_than_import=false`, and
   `restart_required_for_latest_mcp_code=false`.
@@ -58,7 +61,7 @@ diagnostic boundary while cleanup and log close behavior remain verified.
 
 - The command above was rerun after adding the explicit
   `--expect-live-diagnostic-field read_lidar_point_cloud:diagnostics.fallback_tool_order=...`
-  gate.
+  gate, then rerun again after the workspace-local live preflight refresh.
 - Exit code: `0`.
 - Live validation again reported `status=failed` as expected with the only fatal
   step `read_lidar_point_cloud`, error code
