@@ -2210,13 +2210,15 @@ def test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value
         "diagnostic_next_actions": [
             {
                 "step_id": "read_lidar_point_cloud",
-                "diagnostics.reason": "point_count_below_minimum",
-                "diagnostics.num_points": 512,
-                "diagnostics.fallback_tool_order": [
-                    "simulation_step",
-                    "sensor_lidar_get_point_cloud",
-                    "extension_capture_logs",
-                ],
+                "diagnostics": {
+                    "reason": "point_count_below_minimum",
+                    "num_points": 512,
+                    "fallback_tool_order": [
+                        "simulation_step",
+                        "sensor_lidar_get_point_cloud",
+                        "extension_capture_logs",
+                    ],
+                },
             },
             {
                 "step_id": "verify_pallet_asset",

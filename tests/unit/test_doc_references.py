@@ -2715,6 +2715,21 @@ def test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact()
         "test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value"
         in live_assertion_boundary
     )
+    assert "Diagnostic field assertions use the same dotted-key resolution" in (
+        live_assertion_boundary
+    )
+    readonly_fallback_boundary = (
+        PROJECT
+        / "docs/artifacts/"
+        "official-asset-readonly-fallback-assertion-boundary-2026-06-26.md"
+    ).read_text(encoding="utf-8")
+    assert "_summary_field_value" in readonly_fallback_boundary
+    assert "nested" in readonly_fallback_boundary
+    assert "`diagnostics` objects" in readonly_fallback_boundary
+    assert (
+        "test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value"
+        in readonly_fallback_boundary
+    )
     assert "Verification status: `load_verified`" in baseline
     assert "Load quality: `content_verified_no_bbox`" in baseline
     assert "Command-boundary note" in baseline

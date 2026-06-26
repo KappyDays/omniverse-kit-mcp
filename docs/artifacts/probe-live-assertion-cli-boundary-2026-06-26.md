@@ -35,6 +35,9 @@ after Robot/RTX and official asset workflows started relying on
   `--expect-live-evidence-field <step_id>:diagnostics.error_type=TimeoutError`
   matches both flat `diagnostics.error_type` rows and nested
   `{"diagnostics": {"error_type": "TimeoutError"}}` rows.
+- Diagnostic field assertions use the same dotted-key resolution, so
+  `--expect-live-diagnostic-field <step_id>:diagnostics.fallback_tool_order=...`
+  matches either flat summary rows or nested `diagnostics` objects.
 - `--scenario-validate-live` itself exits with code `2` unless
   `--scenario-validate-dry-run` is present, even when `--workspace` and
   `--scenario-plan` are already provided.

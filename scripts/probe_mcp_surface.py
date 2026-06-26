@@ -798,7 +798,11 @@ def _live_diagnostic_field_mismatches(
         if not matching_rows:
             mismatches.append(f"live diagnostic row {step_id!r} was not found")
             continue
-        actual_values = [row.get(key) for row in matching_rows if key in row]
+        actual_values = [
+            value
+            for row in matching_rows
+            if (value := _summary_field_value(row, key)) is not _MISSING
+        ]
         if not actual_values:
             mismatches.append(
                 f"live diagnostic row {step_id!r} field {key!r} was not found"

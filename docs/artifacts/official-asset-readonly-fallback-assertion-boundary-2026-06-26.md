@@ -22,6 +22,11 @@ both diagnostic rows' `diagnostics.fallback_tool_order` values.
   the usage guide.
 - `docs/mcp-usage-guide.md` remains the canonical command source for the full
   read-only wrapper.
+- The probe assertion path resolves dotted diagnostic keys through
+  `_summary_field_value`, so the exact
+  `--expect-live-diagnostic-field <step_id>:diagnostics.fallback_tool_order=...`
+  assertions match either flat `diagnostics.fallback_tool_order` rows or nested
+  `diagnostics` objects.
 
 ## Public Boundary
 
@@ -34,6 +39,9 @@ paths, and generated catalog records; no local absolute paths are included.
 
 - `python -m pytest tests/unit/test_doc_references.py::test_f3b_official_asset_scenario_proof_wrapper_order tests/unit/test_doc_references.py::test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact tests/unit/test_doc_references.py::test_f3b_usage_guide_artifact_links_exist -q`
   passed: 3 tests.
+- Current nested diagnostic refresh:
+  `.\.venv\Scripts\python.exe -m pytest tests\unit\test_standalone_scripts.py::test_mcp_probe_live_diagnostic_field_mismatches_are_empty_for_expected_value tests\unit\test_doc_references.py::test_f3b_official_asset_usage_guide_links_current_public_evidence_artifact -q`
+  passed: `2 passed`.
 - `python -m ruff check tests/unit/test_doc_references.py` passed.
 - `rg "...:diagnostics.fallback_tool_order|diagnostics.fallback_tool_order=[official_asset_sync_status" docs/references/official-asset-catalog.md docs/invariants/asset-discovery.md docs/invariants/scenario-validation.md docs/tool-diagnostic-map.md scenarios/CLAUDE.md`
   returned no matches.
