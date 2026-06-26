@@ -374,6 +374,8 @@ The JSON/Markdown report boundary is refreshed in
 `docs/artifacts/scenario-last-report-json-redaction-boundary-2026-06-26.md`.
 Runtime redaction coverage for process and worker/thread identifiers is recorded
 in `docs/artifacts/scenario-report-redaction-runtime-fields-2026-06-26.md`.
+Direct nested helper redaction coverage is recorded in
+`docs/artifacts/scenario-redaction-helper-direct-guard-2026-06-26.md`.
 Probe `--scenario-validate-live` help/report wording is guarded in
 `docs/artifacts/probe-live-help-report-boundary-2026-06-26.md`.
 Read-only catalog diagnostic field assertions are verified in

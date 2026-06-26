@@ -28,7 +28,11 @@ from omniverse_kit_mcp.scenario.action_registry import (
 )
 from omniverse_kit_mcp.scenario.compiler import compile_scenario
 from omniverse_kit_mcp.scenario.loader import load_scenario
-from omniverse_kit_mcp.scenario.reporters import to_json, to_markdown
+from omniverse_kit_mcp.scenario.reporters import (
+    _redact_local_paths,
+    to_json,
+    to_markdown,
+)
 from omniverse_kit_mcp.scenario.runner import ScenarioRunner
 from omniverse_kit_mcp.tools.scenario_tools import _scenario_plan_payload
 from omniverse_kit_mcp.types.common import ExecutionStatus, ModuleName, ModuleResult
@@ -447,6 +451,82 @@ def test_reporters_can_redact_host_local_artifact_paths():
     assert "'worker_thread_id': '<worker-thread-id>'" in markdown
     assert '"pid": <process-id>' in markdown
     assert '"process_id": "<process-id>"' in markdown
+
+
+def test_redact_local_paths_handles_nested_runtime_identifiers():
+    capture_path = (
+        "C:" + "/Users/" + "localuser"
+        + "/AppData/Local/Temp/validation_api_captures/capture_tuple.png"
+    )
+    log_path = (
+        "C:" + "/Users/" + "localuser"
+        + "/AppData/Local/Temp/omniverse_kit_mcp/kit_789.log"
+    )
+    workspace_path = "C:" + "/Users/" + "localuser" + "/workspace/scene.usd"
+    sanitized_path = "C--Users-" + "localuser" + "-AppData-Local-Temp-scene"
+    process_value = 50123
+    child_pid_values = (50124, 50125)
+    message_pid = "50126"
+    message_process_value = "50127"
+
+    redacted = _redact_local_paths(
+        {
+            "tuple_paths": (
+                capture_path,
+                log_path,
+                workspace_path,
+                sanitized_path,
+            ),
+            "nested": [
+                {"pid": process_value, "child_pids": child_pid_values},
+                {
+                    "threadIds": ("worker-alpha", "worker-beta"),
+                    "pendingWorktreeIds": ["pending-alpha"],
+                },
+            ],
+            "message": (
+                "pid=" + message_pid + " process_id=\"" + message_process_value + "\" "
+                "thread_id=worker-message pendingWorktreeId:pending-message"
+            ),
+        }
+    )
+    serialized = json.dumps(redacted)
+
+    assert redacted["tuple_paths"] == [
+        "<validation-api-capture>/capture_tuple.png",
+        "<local-kit-log>/kit_789.log",
+        "<local-user-path>",
+        "<local-user-path>",
+    ]
+    assert redacted["nested"][0]["pid"] == "<process-id>"
+    assert redacted["nested"][0]["child_pids"] == [
+        "<process-id>",
+        "<process-id>",
+    ]
+    assert redacted["nested"][1]["threadIds"] == [
+        "<worker-thread-id>",
+        "<worker-thread-id>",
+    ]
+    assert redacted["nested"][1]["pendingWorktreeIds"] == [
+        "<worker-thread-id>"
+    ]
+    assert "pid=<process-id>" in redacted["message"]
+    assert 'process_id="<process-id>"' in redacted["message"]
+    assert "thread_id=<worker-thread-id>" in redacted["message"]
+    assert "pendingWorktreeId:<worker-thread-id>" in redacted["message"]
+    for raw in (
+        str(process_value),
+        *(str(value) for value in child_pid_values),
+        message_pid,
+        message_process_value,
+        "worker-alpha",
+        "worker-beta",
+        "pending-alpha",
+        "worker-message",
+        "pending-message",
+        "localuser",
+    ):
+        assert raw not in serialized
 
 
 def test_official_verify_evidence_summary_redacts_public_sensitive_fields():
