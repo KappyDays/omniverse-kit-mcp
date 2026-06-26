@@ -432,6 +432,16 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     )
     assert "does not replace `--expect-live-failure-step-error`" in integration_facts
     assert "Current repeatable public proof anchors are" in invariant
+    assert "robot-rtx-success-live-probe-refresh-2026-06-26.md" in invariant
+    assert "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md" in (
+        invariant
+    )
+    assert "robot-rtx-success-live-probe-refresh-2026-06-26.md" in (
+        scenario_authoring
+    )
+    assert "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md" in (
+        scenario_authoring
+    )
     assert "baseline public-safe evidence" in invariant
     assert "not the current repeatable proof path" in invariant
     assert (
@@ -2357,6 +2367,18 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "--expect-live-status passed" in scenario_authoring
     assert "official read-only catalog diagnostics" in scenario_authoring
     assert "stage_mutation_summary.read_only=true" in scenario_authoring
+    assert "official-asset-verify-live-probe-refresh-2026-06-26.md" in invariant
+    assert (
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+        in invariant
+    )
+    assert "official-asset-verify-live-probe-refresh-2026-06-26.md" in (
+        scenario_authoring
+    )
+    assert (
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+        in scenario_authoring
+    )
     assert (
         "--expect-live-failure-step-error "
         "get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND"
