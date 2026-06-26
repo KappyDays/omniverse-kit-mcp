@@ -20,6 +20,11 @@ after Robot/RTX and official asset workflows started relying on
   `--expect-live-diagnostic-field`.
 - This keeps dry-run-only probe commands from accidentally claiming live
   evidence, diagnostics, cleanup, or failure-step proof.
+- `--expect-live-evidence-field` can assert public-safe dotted evidence fields
+  preserved in the compact live summary, such as
+  `<step_id>:diagnostics.error_type=TimeoutError`; row-specific failure fields
+  should use the concrete `step_id` selector when multiple evidence rows share
+  an `evidence_kind`.
 - `--scenario-validate-live` itself exits with code `2` unless
   `--scenario-validate-dry-run` is present, even when `--workspace` and
   `--scenario-plan` are already provided.
@@ -40,7 +45,7 @@ catalog records.
 - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
   `37 passed`.
 - `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q` passed:
-  `946 passed, 16 skipped`.
+  `948 passed, 16 skipped`.
 - `git diff --check` passed with only existing CRLF normalization warnings for
   touched text files.
 - `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`

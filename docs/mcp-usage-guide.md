@@ -376,7 +376,9 @@ and redacted Markdown `Evidence Summary` for the compact evidence note.
 The successful `load_verified` proof row should remain error-code-free; keep
 `error_code` checks for failed/timeout-shaped rows.
 For failed evidence rows, `--expect-live-evidence-field <step_id>:error_code=...`
-can assert the compact proof row directly.
+can assert the compact proof row directly; dotted keys such as
+`<step_id>:diagnostics.error_type=TimeoutError` can assert public-safe nested
+evidence diagnostics after the live report is summarized.
 Baseline public-safe official asset live evidence is
 `docs/artifacts/official-asset-verify-live-pass-2026-06-25.md`. The live probe
 assertion options for the same workflow are verified in

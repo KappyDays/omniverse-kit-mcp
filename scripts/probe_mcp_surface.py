@@ -74,6 +74,11 @@ LIVE_EVIDENCE_SUMMARY_FIELDS = (
     "pixel_mean_average",
     "pixel_variance_average",
     "failure_codes",
+    "diagnostics.reason",
+    "diagnostics.error_type",
+    "diagnostics.fallback_tool_order",
+    "diagnostics.asset_checks",
+    "diagnostics.material_checks",
 )
 LIVE_DIAGNOSTIC_NEXT_ACTION_FIELDS = (
     "step_id",
@@ -103,6 +108,18 @@ LIVE_DIAGNOSTIC_NEXT_ACTION_FIELDS = (
     "diagnostics.material_checks",
     "suggested_next",
 )
+_MISSING = object()
+
+
+def _summary_field_value(row: dict[str, Any], field: str) -> Any:
+    if field in row:
+        return row[field]
+    current: Any = row
+    for part in field.split("."):
+        if not isinstance(current, dict) or part not in current:
+            return _MISSING
+        current = current[part]
+    return current
 
 
 def _load_workspace_stdio_entry(workspace: Path) -> tuple[list[str], Path, dict[str, str]]:
@@ -929,9 +946,9 @@ def _scenario_live_report_summary(payload: dict[str, Any]) -> dict[str, Any]:
         ],
         "evidence": [
             {
-                field: row.get(field)
+                field: value
                 for field in LIVE_EVIDENCE_SUMMARY_FIELDS
-                if field in row
+                if (value := _summary_field_value(row, field)) is not _MISSING
             }
             for row in evidence_summary
             if isinstance(row, dict)
@@ -1647,9 +1664,11 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "Require a scenario_validate live evidence_summary field, formatted "
             "as selector:key=value where selector matches evidence_kind or "
-            "step_id. Value is JSON-decoded when possible; repeat for multiple "
+            "step_id and key may be dotted, for example diagnostics.error_type. "
+            "Value is JSON-decoded when possible; repeat for multiple "
             "expectations. Use step_id for row-specific failure fields such as "
-            "error_code when multiple rows share an evidence_kind."
+            "error_code or diagnostics.error_type when multiple rows share an "
+            "evidence_kind."
         ),
     )
     parser.add_argument(

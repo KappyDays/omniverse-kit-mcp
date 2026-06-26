@@ -1732,6 +1732,12 @@ def test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields():
                 "attempt": 1,
                 "timeout_s": 180.0,
                 "retry_count": 1,
+                "diagnostics": {
+                    "reason": "asset_verify_timeout",
+                    "error_type": "TimeoutError",
+                    "asset_checks": {"load_quality": "unknown"},
+                    "raw_local_path": "<local-log>/kit.log",
+                },
                 "canonical_url": "https://example.invalid/asset.usd",
             },
         ],
@@ -1761,6 +1767,9 @@ def test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields():
             "attempt": 1,
             "timeout_s": 180.0,
             "retry_count": 1,
+            "diagnostics.reason": "asset_verify_timeout",
+            "diagnostics.error_type": "TimeoutError",
+            "diagnostics.asset_checks": {"load_quality": "unknown"},
         },
     ]
 
@@ -1850,6 +1859,7 @@ def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value()
                 "kind": "asset",
                 "app_profile": "isaac-sim",
                 "error_code": "OFFICIAL_ASSET_VERIFY_TIMEOUT",
+                "diagnostics.error_type": "TimeoutError",
             },
         ],
     }
@@ -1863,6 +1873,11 @@ def test_mcp_probe_live_evidence_field_mismatches_are_empty_for_expected_value()
                 "verify_timeout_asset",
                 "error_code",
                 "OFFICIAL_ASSET_VERIFY_TIMEOUT",
+            ),
+            (
+                "verify_timeout_asset",
+                "diagnostics.error_type",
+                "TimeoutError",
             ),
         ),
     ) == []
@@ -2440,6 +2455,7 @@ def test_mcp_probe_help_names_log_capture_stop_boundary(capsys):
     assert "scenario_last_report(markdown, redacted)" not in output
     assert "--expect-live-evidence-field" in output
     assert "selector:key=value" in output
+    assert "key may be dotted, for example diagnostics.error_type" in output
     assert "Value is JSON-decoded when possible" in output
     assert "--expect-live-evidence-field-min" in output
     assert "selector:key=minimum" in output
@@ -2447,7 +2463,10 @@ def test_mcp_probe_help_names_log_capture_stop_boundary(capsys):
     assert "diagnostic_next_actions field" in output
     assert "step_id:key=value" in output
     assert "selector matches evidence_kind or step_id" in output
-    assert "Use step_id for row-specific failure fields such as error_code" in output
+    assert (
+        "Use step_id for row-specific failure fields such as error_code or "
+        "diagnostics.error_type"
+    ) in output
 
 
 def test_mcp_probe_main_wires_live_assertion_options(monkeypatch):

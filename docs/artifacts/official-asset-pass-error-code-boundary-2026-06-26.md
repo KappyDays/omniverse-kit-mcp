@@ -5,7 +5,7 @@
 This artifact records the official asset live proof boundary for
 `evidence_summary[].error_code`: successful `load_verified` proof rows should be
 error-code-free, while failed or timeout-shaped evidence rows may preserve and
-assert `error_code` with a concrete `step_id` selector.
+assert `error_code` and nested diagnostics with a concrete `step_id` selector.
 
 ## Evidence
 
@@ -22,7 +22,8 @@ assert `error_code` with a concrete `step_id` selector.
   `step_id`.
 - `tests/unit/test_standalone_scripts.py::test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields`
   separates the successful `verify_pallet_asset` row from a failed
-  `verify_timeout_asset` row.
+  `verify_timeout_asset` row and keeps public-safe nested diagnostics such as
+  `diagnostics.error_type` on the failed evidence row.
 - `tests/unit/test_scenario_integration.py::test_official_asset_verify_live_smoke_routes_through_runner`
   asserts the successful `load_verified` evidence row does not include
   `error_code`.
