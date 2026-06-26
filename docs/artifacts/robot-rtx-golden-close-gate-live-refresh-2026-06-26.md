@@ -15,6 +15,9 @@ Robot + RTX proof.
 ## Result
 
 - Exit code: 0.
+- A follow-up rerun after
+  `docs/artifacts/workspace-live-preflight-current-gate-2026-06-26.md` also
+  exited 0 with the same canonical command and live assertion gates.
 - Runtime gate was fresh: `tool_profile=full`, `app_profile=isaac-sim`,
   `tool_count=152`, `source_newer_than_import=false`, and
   `restart_required_for_latest_mcp_code=false`.
@@ -37,9 +40,9 @@ Robot + RTX proof.
 - Evidence kinds were `rtx_lidar_point_cloud`, `viewport_framing`, and
   `visual_capture`.
 - Visual capture compact proof preserved `width=1280`, `height=720`,
-  `warmup_frames_used=8`, `pixel_mean_average=145.60115198206017`,
-  `pixel_variance_average=1107.8388266359327`, and
-  `sha256=ec784e4891ffb7905a4366f7f5d6260cdd87250a5e5152049533cd8a1a4dac48`.
+  `warmup_frames_used=8`, `pixel_mean_average=145.69952510127314`,
+  `pixel_variance_average=1101.8297503731858`, and
+  `sha256=18b1ba43fc03509e09279209869a8f2e6c294564652790e1cb999e7bbda0f5aa`.
 - Final `extension_capture_logs(level=WARN, stop_after_capture=true)` passed the
   close gate with:
   - `data.capture_running=false`
