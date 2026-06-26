@@ -1653,6 +1653,19 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
                 "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
                 "warning": None,
                 "truncated": False,
+                "diagnostics": {
+                    "reason": "point_count_below_minimum",
+                    "min_points": 513,
+                    "cached_lidar_instance": True,
+                    "readback_paths_attempted": ["cpu", "gpu"],
+                    "suggested_next": ["Step simulation and retry lidar read."],
+                    "fallback_tool_order": [
+                        "simulation_step",
+                        "sensor_lidar_get_point_cloud",
+                        "extension_capture_logs",
+                    ],
+                    "raw_local_path": "<local-log>/kit.log",
+                },
             },
             {
                 "step_id": "frame_robot_and_sensors",
@@ -1687,6 +1700,16 @@ def test_mcp_probe_live_summary_keeps_public_robot_rtx_evidence_fields():
         "error_code": "SENSOR_LIDAR_POINT_CLOUD_TOO_FEW_POINTS",
         "warning": None,
         "truncated": False,
+        "diagnostics.reason": "point_count_below_minimum",
+        "diagnostics.min_points": 513,
+        "diagnostics.cached_lidar_instance": True,
+        "diagnostics.readback_paths_attempted": ["cpu", "gpu"],
+        "diagnostics.suggested_next": ["Step simulation and retry lidar read."],
+        "diagnostics.fallback_tool_order": [
+            "simulation_step",
+            "sensor_lidar_get_point_cloud",
+            "extension_capture_logs",
+        ],
     }
     assert evidence["frame_robot_and_sensors"] == {
         "step_id": "frame_robot_and_sensors",
@@ -1734,7 +1757,17 @@ def test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields():
                 "retry_count": 1,
                 "diagnostics": {
                     "reason": "asset_verify_timeout",
+                    "target_status": "load_verified",
+                    "current_catalog_status": "url_validated",
+                    "stale_warning": None,
                     "error_type": "TimeoutError",
+                    "suggested_next": ["Retry verify with a larger timeout."],
+                    "fallback_tool_order": [
+                        "official_asset_sync_status",
+                        "official_asset_search",
+                        "official_asset_resolve",
+                        "official_asset_verify",
+                    ],
                     "asset_checks": {"load_quality": "unknown"},
                     "raw_local_path": "<local-log>/kit.log",
                 },
@@ -1768,7 +1801,17 @@ def test_mcp_probe_live_summary_keeps_public_official_asset_evidence_fields():
             "timeout_s": 180.0,
             "retry_count": 1,
             "diagnostics.reason": "asset_verify_timeout",
+            "diagnostics.target_status": "load_verified",
+            "diagnostics.current_catalog_status": "url_validated",
+            "diagnostics.stale_warning": None,
             "diagnostics.error_type": "TimeoutError",
+            "diagnostics.suggested_next": ["Retry verify with a larger timeout."],
+            "diagnostics.fallback_tool_order": [
+                "official_asset_sync_status",
+                "official_asset_search",
+                "official_asset_resolve",
+                "official_asset_verify",
+            ],
             "diagnostics.asset_checks": {"load_quality": "unknown"},
         },
     ]

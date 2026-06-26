@@ -25,6 +25,11 @@ after Robot/RTX and official asset workflows started relying on
   `<step_id>:diagnostics.error_type=TimeoutError`; row-specific failure fields
   should use the concrete `step_id` selector when multiple evidence rows share
   an `evidence_kind`.
+- The compact live summary preserves the same bounded nested evidence
+  diagnostics exposed by `scenario_last_report` for official asset verify and
+  RTX lidar evidence rows, including target/current status, `error_type`,
+  `suggested_next`, fallback order, asset/material checks, lidar `min_points`,
+  cached-lidar state, and readback paths.
 - `--scenario-validate-live` itself exits with code `2` unless
   `--scenario-validate-dry-run` is present, even when `--workspace` and
   `--scenario-plan` are already provided.
