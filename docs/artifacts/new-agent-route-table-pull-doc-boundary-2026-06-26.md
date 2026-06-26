@@ -128,6 +128,11 @@ pull-docs:
   `docs/artifacts/probe-live-assertion-cli-boundary-2026-06-26.md`, and the
   official asset pass-vs-failed-row `error_code` boundary remains guarded in
   `docs/artifacts/official-asset-pass-error-code-boundary-2026-06-26.md`.
+- The latest post-assertion live probe refresh anchors are
+  `docs/artifacts/robot-rtx-success-live-probe-refresh-2026-06-26.md`,
+  `docs/artifacts/robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md`,
+  `docs/artifacts/official-asset-verify-live-probe-refresh-2026-06-26.md`, and
+  `docs/artifacts/official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md`.
 
 ## Public Boundary
 

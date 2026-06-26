@@ -61,6 +61,14 @@ artifact is dry-run only; it did not mutate a stage.
   `docs/artifacts/official-asset-verify-close-gate-live-refresh-2026-06-26.md`
 - Official asset read-only diagnostics final-log close gate:
   `docs/artifacts/official-asset-readonly-close-gate-live-refresh-2026-06-26.md`
+- Robot + RTX success post-assertion live probe refresh:
+  `docs/artifacts/robot-rtx-success-live-probe-refresh-2026-06-26.md`
+- Robot + RTX controlled-failure post-assertion live probe refresh:
+  `docs/artifacts/robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md`
+- Official asset verify post-assertion live probe refresh:
+  `docs/artifacts/official-asset-verify-live-probe-refresh-2026-06-26.md`
+- Official asset read-only diagnostics post-assertion live probe refresh:
+  `docs/artifacts/official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md`
 
 ## Public Boundary
 

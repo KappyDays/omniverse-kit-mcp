@@ -1439,6 +1439,22 @@ def test_f3b_probe_assertion_e2e_artifact_commands_parse(monkeypatch):
                         "docs/artifacts/"
                         "official-asset-readonly-close-gate-live-refresh-2026-06-26.md"
                     ),
+                    (
+                        "docs/artifacts/"
+                        "robot-rtx-success-live-probe-refresh-2026-06-26.md"
+                    ),
+                    (
+                        "docs/artifacts/"
+                        "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md"
+                    ),
+                    (
+                        "docs/artifacts/"
+                        "official-asset-verify-live-probe-refresh-2026-06-26.md"
+                    ),
+                    (
+                        "docs/artifacts/"
+                        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+                    ),
                 ]
             )
 
@@ -1660,6 +1676,17 @@ def test_f3b_robot_rtx_usage_guide_links_current_public_evidence_artifacts():
     assert "probe-live-assertion-cli-boundary-2026-06-26.md" in route_artifact
     assert "official-asset-pass-error-code-boundary-2026-06-26.md" in (
         route_artifact
+    )
+    assert "robot-rtx-success-live-probe-refresh-2026-06-26.md" in route_artifact
+    assert "robot-rtx-controlled-failure-live-probe-refresh-2026-06-26.md" in (
+        route_artifact
+    )
+    assert "official-asset-verify-live-probe-refresh-2026-06-26.md" in (
+        route_artifact
+    )
+    assert (
+        "official-asset-readonly-diagnostic-live-probe-refresh-2026-06-26.md"
+        in route_artifact
     )
     assert (
         "docs/artifacts/probe-log-capture-close-gate-live-preflight-2026-06-26.md"
