@@ -2541,6 +2541,30 @@ def test_mcp_probe_main_rejects_live_assertions_without_live_mode(
     assert expected_message in capsys.readouterr().out
 
 
+def test_mcp_probe_main_rejects_live_mode_without_dry_run(
+    monkeypatch,
+    capsys,
+):
+    async def fake_probe(**kwargs):
+        raise AssertionError("probe must not run when live mode lacks dry-run gate")
+
+    monkeypatch.setattr(mcp_probe, "probe", fake_probe)
+
+    exit_code = mcp_probe.main([
+        "--workspace",
+        "workspaces/isaac/instance-1",
+        "--scenario-plan",
+        "smoke/official_asset_verify_live.yaml",
+        "--scenario-validate-live",
+    ])
+
+    assert exit_code == 2
+    assert (
+        "--scenario-validate-live requires --scenario-validate-dry-run"
+        in capsys.readouterr().out
+    )
+
+
 def test_mcp_probe_summarizes_runtime_info_shape():
     summary = mcp_probe._runtime_info_probe_summary({
         "tool_profile": "full",
