@@ -1978,6 +1978,14 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "`stage_mutation_summary.read_only` should be `true`" in wrapper
     assert "`stage_mutation_steps`" in wrapper
     assert "should be empty" in wrapper
+    assert (
+        "The read-only `--require-live-validation-tools` list mirrors the "
+        "scenario plan's live checklist"
+    ) in wrapper
+    assert (
+        "the CLI-level dry-run gate is still asserted by the separate "
+        "`--scenario-validate-dry-run` flag"
+    ) in wrapper
     assert "sync/search/resolve/get" in wrapper
     assert "evidence_kind=official_asset_verify" in wrapper
     assert "evidence_summary[]" in wrapper
@@ -2047,6 +2055,14 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert invariant_read_only_positions == sorted(invariant_read_only_positions), (
         "Read-only official asset wrapper is out of order in scenario-validation.md"
     )
+    assert (
+        "For read-only catalog diagnostics, `--require-live-validation-tools` "
+        "mirrors the scenario plan's live checklist"
+    ) in invariant_official
+    assert (
+        "the CLI-level dry-run gate remains mandatory through the separate "
+        "`--scenario-validate-dry-run` flag"
+    ) in invariant_official
     on_demand_sequence = [
         "mcp_runtime_info",
         "kit_app_start",

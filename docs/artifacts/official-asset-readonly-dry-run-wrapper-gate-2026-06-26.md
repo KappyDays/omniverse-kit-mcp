@@ -22,6 +22,22 @@ the durable wrapper sequence omitted the explicit
 - The wrapper sequence is now fixed in `docs/mcp-usage-guide.md` and
   `docs/invariants/scenario-validation.md`: `scenario_plan` -> dry-run
   `scenario_validate` -> `extension_clear_logs` -> live `scenario_validate`.
+- The docs now also distinguish the plan-level `--require-live-validation-tools`
+  list from the CLI-level dry-run gate: the read-only live checklist has one
+  live `scenario_validate` after `extension_clear_logs`, while
+  `--scenario-validate-dry-run` remains mandatory for the probe wrapper.
+- Current refresh checks:
+  - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_official_asset_scenario_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_usage_guide_probe_commands_parse tests\unit\test_doc_references.py::test_f3b_artifact_probe_commands_parse -q`
+    passed: `3 passed in 0.13s`.
+  - `.\.venv\Scripts\python.exe -m ruff check tests\unit\test_doc_references.py`
+    passed.
+  - `.\.venv\Scripts\python.exe scripts\verify_mcp_sync.py` passed:
+    `37 passed`.
+  - `.\.venv\Scripts\python.exe -m pytest tests\unit\ -q` passed:
+    `946 passed, 16 skipped`.
+  - `git diff --check` and
+    `.\.venv\Scripts\python.exe scripts\review_public_hygiene.py --redact-samples`
+    passed.
 - The workspace-local dry-run probe exited 0.
 - Runtime gate fields were fresh: `tool_profile=full`,
   `app_profile=isaac-sim`, `tool_count=152`,

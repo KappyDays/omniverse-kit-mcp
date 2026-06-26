@@ -341,6 +341,7 @@ For the read-only catalog diagnostics path, use
 If you promote this read-only diagnostics probe to `--scenario-validate-live`,
 keep `--scenario-validate-dry-run`; the probe intentionally requires the
 dry-run plan gate before any live wrapper execution.
+The read-only `--require-live-validation-tools` list mirrors the scenario plan's live checklist, so it contains one live `scenario_validate` after `extension_clear_logs`; the CLI-level dry-run gate is still asserted by the separate `--scenario-validate-dry-run` flag.
 For the live diagnostic assertion proof, add `--expect-live-status passed`,
 `--expect-live-cleanup-failures 0`,
 `--expect-live-failure-step-error get_pallet_wrong_profile=OFFICIAL_ASSET_NOT_FOUND`,
