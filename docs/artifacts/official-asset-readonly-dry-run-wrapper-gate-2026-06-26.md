@@ -26,6 +26,13 @@ the durable wrapper sequence omitted the explicit
   list from the CLI-level dry-run gate: the read-only live checklist has one
   live `scenario_validate` after `extension_clear_logs`, while
   `--scenario-validate-dry-run` remains mandatory for the probe wrapper.
+- The mutating `stage_mutation_summary.read_only=false` gate is now named as
+  the load-quality live proof gate, not a generic read-only diagnostics rule.
+- Load-quality/read-only wording refresh:
+  - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_official_asset_scenario_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_artifact_probe_commands_parse -q`
+    passed: `2 passed in 0.33s`.
+  - `rg -n "Before live execution" docs\mcp-usage-guide.md docs\invariants\scenario-validation.md tests\unit\test_doc_references.py`
+    returned no matches.
 - Current refresh checks:
   - `.\.venv\Scripts\python.exe -m pytest tests\unit\test_doc_references.py::test_f3b_official_asset_scenario_proof_wrapper_order tests\unit\test_doc_references.py::test_f3b_usage_guide_probe_commands_parse tests\unit\test_doc_references.py::test_f3b_artifact_probe_commands_parse -q`
     passed: `3 passed in 0.13s`.

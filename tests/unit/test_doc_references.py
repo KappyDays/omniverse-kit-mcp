@@ -1971,6 +1971,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     )
     assert "scenario_plan.evidence_steps" in wrapper
     assert "scenario_plan.diagnostic_steps" in wrapper
+    assert "Before mutating load-quality live proof" in wrapper
     assert "scenario_plan.stage_mutation_summary.read_only=false" in wrapper
     assert "scenario_plan.stage_mutation_steps" in wrapper
     assert "official_asset_verify_stage_probe" in wrapper
@@ -2136,6 +2137,7 @@ def test_f3b_official_asset_scenario_proof_wrapper_order():
     assert "Official asset scenario proof sequence" in invariant
     assert "scenario_plan(smoke/official_asset_verify_live.yaml)" in invariant
     assert "scenario_validate(smoke/official_asset_verify_live.yaml, dry_run=true)" in invariant
+    assert "Before mutating load-quality live proof" in invariant
     assert "official_asset_verify_stage_probe" in invariant
     assert "evidence_kind=official_asset_verify" in invariant
     assert "--expect-live-evidence-kind official_asset_verify" in invariant

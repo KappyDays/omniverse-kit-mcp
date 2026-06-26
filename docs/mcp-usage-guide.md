@@ -303,7 +303,7 @@ Official asset scenario proof wrapper:
 `scenario_validate(smoke/official_asset_verify_live.yaml)` ->
 `scenario_last_report(report_format="markdown", redact_local_paths=true)` ->
 `extension_capture_logs(level="WARN", stop_after_capture=true)`.
-Before live execution, confirm `scenario_plan.stage_mutation_summary.read_only=false`,
+Before mutating load-quality live proof, confirm `scenario_plan.stage_mutation_summary.read_only=false`,
 `scenario_plan.stage_mutation_steps` includes the
 `official_asset_verify_stage_probe` verify row, `scenario_plan.evidence_steps`
 includes `evidence_kind=official_asset_verify` for the same step, and
