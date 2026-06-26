@@ -280,6 +280,10 @@ def test_f3b_robot_rtx_live_proof_wrapper_order():
     assert 'scenario_last_report(report_format="markdown")` or' not in wrapper
     assert "only for private" in wrapper
     assert "never copy raw report text into public artifacts" in wrapper
+    assert "copy only the PNG itself" in scripts_doc
+    assert "do not record the raw temp path" in scripts_doc
+    assert "Kit log filename, process ID, or worker/thread ID" in scripts_doc
+    assert "scripts/review_public_hygiene.py --redact-samples" in scripts_doc
     dry_run_boundary = "Dry-run-only output is plan proof, not live proof"
     for source in (guide, invariant, scenario_authoring):
         normalized_source = " ".join(source.split())

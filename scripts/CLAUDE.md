@@ -32,7 +32,7 @@
   overrides (`ISAAC_SIM_KIT_EXE` / `ISAAC_SIM_KIT_FILE`) can override
   profile defaults and launch the wrong `.kit` app. For "start Isaac/Composer",
   use the workspace-local MCP worker and `kit_app_start`.
-- **Live script output**: Saved to `docs/artifacts/phase-{id}/` (e.g. `docs/artifacts/phase-e/`). The `PHASE_*_DIR` constant in each script is set to this path. Copy the original capture saved in `%TEMP%/validation_api_captures/` to a meaningful name.
+- **Live script output**: Saved to `docs/artifacts/phase-{id}/` (e.g. `docs/artifacts/phase-e/`). The `PHASE_*_DIR` constant in each script is set to this path. If a phase script saves an image under `%TEMP%/validation_api_captures/`, copy only the PNG itself to a stable `docs/artifacts/phase-{id}/...png` name; do not record the raw temp path, Kit log filename, process ID, or worker/thread ID in public artifacts. Pair public evidence notes with redacted reports/log summaries (`scenario_last_report(..., redact_local_paths=true)` when a scenario report exists, or script output with local paths removed) and run `scripts/review_public_hygiene.py --redact-samples` before commit/push.
 - **`live_test_*.py` personality**: **Manual ad-hoc phase verification tool** that directly hits `/validation/v1/*` with standalone httpx (pytest not collected — test signal unaffected). **The official path of domain regression is `scenarios/*.yaml` + `scenario_validate`** (Arrange→Act→Assert→Cleanup). live_test is for surfaces not covered by scenario (save/open, UI automation, viewport create/destroy) or quick one-shot inspection — add new regressions as scenario.
 - **verify_mcp_sync.py requires exit 0**: This script must end with 0 before committing the new tool. If non-zero, regen or frozenset updates are missing.
 
